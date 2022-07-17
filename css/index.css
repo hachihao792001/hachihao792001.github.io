@@ -1,0 +1,101 @@
+.container-fluid,
+.container-fluid>.row {
+    height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: 'Inter', sans-serif;
+}
+
+.sidebar {
+    padding: 10px 0px 0px 0px;
+    background-color: #8fd6e1;
+    list-style-type: none;
+    height: 100vh;
+}
+
+.sidebar h1 {
+    text-align: center;
+    margin: 40px 0px;
+    font-weight: 500;
+    padding: 0px 10px;
+    font-family: 'Inter', sans-serif;
+}
+
+.sidebar .sidebar-item a {
+    color: black;
+}
+
+.sidebar .sidebar-item a:hover {
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+
+.sidebar .sidebar-item {
+    padding: 15px 0px;
+}
+
+.sidebar .sidebar-item a {
+    padding: 1rem 0;
+    text-align: center;
+    text-decoration: none;
+}
+
+
+.sidebar .sidebar-item h6 {
+    margin: auto;
+    font-size: 1.2em;
+    font-weight: 200;
+}
+
+.about {
+    padding: 40px;
+}
+
+.aboutAvatarSection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.aboutAvatarSection>img {
+    border-radius: 50%;
+    width: 70%;
+}
+
+.aboutAvatarSection>button {
+    margin: auto;
+    width: 70%;
+}
+
+.aboutIntroSection {
+    margin-left: 40px;
+}
+
+.contacts {
+    margin: auto;
+    width: 100%;
+    display: flex;
+    justify-items: center;
+    justify-content: center;
+    gap: 50px;
+}
+
+.aboutIntroSection > h1{
+    font-size: 2.5em;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.aboutIntroSection > lead{
+    font-size: 1.2em;
+}
