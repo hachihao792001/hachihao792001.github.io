@@ -1,3 +1,6 @@
+@import url(experience.css);
+@import url(project.css);
+
 .container-fluid,
 .container-fluid>.row {
     height: 100vh;
@@ -13,43 +16,50 @@ h6 {
 }
 
 .sidebar {
+    height: 100%;
+    width: 280px;
+    position: fixed;
+}
+
+.sidebar-list {
     padding: 10px 0px 0px 0px;
-    background-color: #8fd6e1;
+    background-color: #299ac5;
     list-style-type: none;
     height: 100vh;
 }
 
-.sidebar h1 {
+.sidebar-list h1 {
     text-align: center;
     margin: 40px 0px;
     font-weight: 500;
     padding: 0px 10px;
     font-family: 'Inter', sans-serif;
+    color: white;
 }
 
-.sidebar .sidebar-item a {
-    color: black;
+.sidebar-list .sidebar-list-item a {
+    color: white;
 }
 
-.sidebar .sidebar-item a:hover {
+.sidebar-list .sidebar-list-item a:hover {
     background-color: #f8f9fa;
     border-radius: 0.5rem;
     cursor: pointer;
 }
 
 
-.sidebar .sidebar-item {
+.sidebar-list .sidebar-list-item {
     padding: 15px 0px;
 }
 
-.sidebar .sidebar-item a {
+.sidebar-list .sidebar-list-item a {
     padding: 1rem 0;
     text-align: center;
     text-decoration: none;
 }
 
 
-.sidebar .sidebar-item h6 {
+.sidebar-list .sidebar-list-item h6 {
     margin: auto;
     font-size: 1.2em;
     font-weight: 200;
@@ -57,6 +67,7 @@ h6 {
 
 .about {
     padding: 40px;
+    padding-left: 320px;
 }
 
 .aboutAvatarSection {
@@ -90,12 +101,21 @@ h6 {
     gap: 50px;
 }
 
-.aboutIntroSection > h1{
+.aboutIntroSection>h1 {
     font-size: 2.5em;
     font-weight: bold;
     margin-bottom: 20px;
 }
 
-.aboutIntroSection > lead{
+.aboutIntroSection>lead {
     font-size: 1.2em;
+}
+
+.aboutAvatarSection {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
 }

@@ -1,0 +1,9 @@
+.project{
+    display:flex;
+    flex-direction:column;
+    gap: 20px;
+}
+
+.project>h2 {
+    font-weight: bold;
+}

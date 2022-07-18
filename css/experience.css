@@ -1,0 +1,16 @@
+.experience{
+    display:flex;
+    flex-direction:column;
+    gap: 20px;
+}
+
+.experience>h2 {
+    font-weight: bold;
+}
+
+.experience-item {
+    display: flex;
+    flex-direction: row;
+    justify-items: center;
+    gap: 50px;
+}
