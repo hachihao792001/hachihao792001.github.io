@@ -2,16 +2,22 @@
     {
         "image": "images/freelancer.png",
         "title": "Freelancer apprenticeship",
-        "description": "Assist a freelancer in his personal projects and freelancing projects, earn wisdom as well as experience from him and the projects along the way."
+        "url": "#",
+        "description": "Assist a freelancer in his personal projects and freelancing projects, earn wisdom as well as experience from him and the projects along the way.",
+        "period": "10/2020 - 5/2022" 
     },
     {
         "image": "images/re.png",
         "title": "RE",
-        "description": "Work temporarily as a web developer for a startup and helped build their main website"
+        "url": "https://www.facebook.com/retryuntilrevolution",
+        "description": "Work temporarily as a web developer for a startup and helped build their main website",
+        "period": "11/2021 - 2/2022" 
     },
     {
         "image": "images/vng.png",
         "title": "Madpoly studio - VNG Corporation",
-        "description": "Work with the title Software development fresher, still on the way to learning how to make games the professional way"
+        "url": "https://play.google.com/store/apps/dev?id=5579086278019851339&hl=vi&gl=US",
+        "description": "Work with the title Software development fresher, still on the way to learning how to make games the professional way",
+        "period": "5/2022 - Present"
     }
 ]

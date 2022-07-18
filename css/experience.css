@@ -1,6 +1,6 @@
-.experience{
-    display:flex;
-    flex-direction:column;
+.experience {
+    display: flex;
+    flex-direction: column;
     gap: 20px;
 }
 
@@ -13,4 +13,18 @@
     flex-direction: row;
     justify-items: center;
     gap: 50px;
+    position: relative;
+}
+
+.experience-item>h6 {
+    position: absolute;
+    right: 0px;
+    top: 0px;
+    font-weight: 200;
+    font-size: 1em;
+}
+
+.experience-item-content {
+    display: flex;
+    flex-direction: column;
 }

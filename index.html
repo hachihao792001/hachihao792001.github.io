@@ -40,18 +40,13 @@
                             <h1>Hà Chí Hào</h1>
 
                             <li class='nav-item sidebar-list-item'>
-                                <a href='/dashboard'>
+                                <a href='/'>
                                     <h6 class='col-10'>About</h6>
                                 </a>
                             </li>
                             <li class='nav-item sidebar-list-item'>
-                                <a href='/staffs'>
+                                <a href='/blogs'>
                                     <h6 class='col-10'>Blogs</h6>
-                                </a>
-                            </li>
-                            <li class='nav-item sidebar-list-item'>
-                                <a href='/orders'>
-                                    <h6 class='col-10'>Projects</h6>
                                 </a>
                             </li>
                         </ul>
@@ -64,8 +59,12 @@
                             <img src="images/haoVuonDieu.png" alt="avatar" width="100%">
                             <button type="button" class="btn btn-outline-primary">Get my CV</button>
                             <div class="contacts">
-                                <img src="images/linkedin.png" alt="linkedin" width="30px">
-                                <img src="images/github.png" alt="github" width="30px">
+                                <a href="https://www.linkedin.com/in/chí-hào-hà-0831801bb/">
+                                    <img src="images/linkedin.png" alt="linkedin" width="30px">
+                                </a>
+                                <a href="https://github.com/hachihao792001">
+                                    <img src="images/github.png" alt="github" width="30px">
+                                </a>
                             </div>
                         </div>
 
@@ -116,13 +115,16 @@
             for (var i = 0; i < experienceData.length; i++) {
                 experience.innerHTML += `
                     <div class="experience-item">
-                        <img src="${experienceData[i].image}" alt="freelancer" width="60px" height="60px">
+                        <a href="${experienceData[i].url}">
+                            <img src="${experienceData[i].image}" alt="freelancer" width="60px" height="60px">
+                        </a>
                         <div class="experience-item-content">
                             <h3>${experienceData[i].title}</h3>
                             <lead>
                                 ${experienceData[i].description}
                             </lead>
                         </div>
+                        <h6>${experienceData[i].period}</h6>
                     </div>
                 `;
             }
@@ -131,12 +133,15 @@
             for (var i = 0; i < projectData.length; i++) {
                 project.innerHTML += `
                     <div class="experience-item">
-                        <img src="${projectData[i].image}" alt="freelancer" width="60px" height="60px">
+                        <a href="${projectData[i].url}">
+                            <img src="${projectData[i].image}" alt="freelancer" width="60px" height="60px">
+                        </a>
                         <div class="experience-item-content">
                             <h3>${projectData[i].title}</h3>
                             <lead>
                                 ${projectData[i].description}
                             </lead>
+                            <a href="${projectData[i].detail}" class="link-info">Learn more</a>
                         </div>
                     </div>
                 `;
