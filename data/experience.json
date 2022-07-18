@@ -1,0 +1,17 @@
+[
+    {
+        "image": "images/freelancer.png",
+        "title": "Freelancer apprenticeship",
+        "description": "Assist a freelancer in his personal projects and freelancing projects, earn wisdom as well as experience from him and the projects along the way."
+    },
+    {
+        "image": "images/re.png",
+        "title": "RE",
+        "description": "Work temporarily as a web developer for a startup and helped build their main website"
+    },
+    {
+        "image": "images/vng.png",
+        "title": "Madpoly studio - VNG Corporation",
+        "description": "Work with the title Software development fresher, still on the way to learning how to make games the professional way"
+    }
+]

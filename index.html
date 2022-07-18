@@ -83,74 +83,12 @@
 
                     <div class="experience mt-5">
                         <h2 class="mb-3">My experience</h2>
-                        <div class="experience-item">
-                            <img src="images/freelancer.png" alt="freelancer" width="60px" height="60px">
-                            <div class="experience-item-content">
-                                <h3>Freelancer apprenticeship</h3>
-                                <lead>
-                                    Assist a freelancer in his personal projects and freelancing projects, earn wisdom
-                                    as
-                                    well as experience from him and the projects along the way.
-                                </lead>
-                            </div>
-                        </div>
-                        <div class="experience-item">
-                            <img src="images/re.png" alt="freelancer" width="60px" height="60px">
-                            <div class="experience-item-content">
-                                <h3>RE</h3>
-                                <lead>
-                                    Work temporarily as a web developer for a startup and helped build their main
-                                    website
-                                </lead>
-                            </div>
-                        </div>
-                        <div class="experience-item">
-                            <img src="images/vng.png" alt="freelancer" width="60px" height="60px">
-                            <div class="experience-item-content">
-                                <h3> Madpoly studio - VNG Corporation </h3>
-                                <lead>
-                                    Work with the title Software development fresher, still on the way to learning how
-                                    to
-                                    make games the professional way
-                                </lead>
-                            </div>
-                        </div>
+                        <!-- Load from script -->
                     </div>
 
                     <div class="project mt-5">
                         <h2 class="mb-3">What have I done</h2>
-                        <div class="experience-item">
-                            <img src="images/freelancer.png" alt="freelancer" width="60px" height="60px">
-                            <div class="experience-item-content">
-                                <h3>Freelancer apprenticeship</h3>
-                                <lead>
-                                    Assist a freelancer in his personal projects and freelancing projects, earn wisdom
-                                    as
-                                    well as experience from him and the projects along the way.
-                                </lead>
-                            </div>
-                        </div>
-                        <div class="experience-item">
-                            <img src="images/re.png" alt="freelancer" width="60px" height="60px">
-                            <div class="experience-item-content">
-                                <h3>RE</h3>
-                                <lead>
-                                    Work temporarily as a web developer for a startup and helped build their main
-                                    website
-                                </lead>
-                            </div>
-                        </div>
-                        <div class="experience-item">
-                            <img src="images/vng.png" alt="freelancer" width="60px" height="60px">
-                            <div class="experience-item-content">
-                                <h3> Madpoly studio - VNG Corporation </h3>
-                                <lead>
-                                    Work with the title Software development fresher, still on the way to learning how
-                                    to
-                                    make games the professional way
-                                </lead>
-                            </div>
-                        </div>
+                        <!-- Load from script -->
                     </div>
                 </div>
             </div>
@@ -168,6 +106,49 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
         integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
         crossorigin="anonymous"></script>
+
+    <script>
+        const experience = document.querySelector('.experience');
+        const project = document.querySelector('.project');
+
+        window.onload = async () => {
+            const experienceData = await loadData('experience.json');
+            for (var i = 0; i < experienceData.length; i++) {
+                experience.innerHTML += `
+                    <div class="experience-item">
+                        <img src="${experienceData[i].image}" alt="freelancer" width="60px" height="60px">
+                        <div class="experience-item-content">
+                            <h3>${experienceData[i].title}</h3>
+                            <lead>
+                                ${experienceData[i].description}
+                            </lead>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const projectData = await loadData('project.json');
+            for (var i = 0; i < projectData.length; i++) {
+                project.innerHTML += `
+                    <div class="experience-item">
+                        <img src="${projectData[i].image}" alt="freelancer" width="60px" height="60px">
+                        <div class="experience-item-content">
+                            <h3>${projectData[i].title}</h3>
+                            <lead>
+                                ${projectData[i].description}
+                            </lead>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadData(jsonFileName) {
+            const response = await fetch(`data/${jsonFileName}`)
+            const jsondata = await response.json();
+            return jsondata;
+        }
+    </script>
 </body>
 
 </html>
