@@ -16,10 +16,7 @@
     position: relative;
 }
 
-.experience-item>h6 {
-    position: absolute;
-    right: 0px;
-    top: 0px;
+.experience-item-content>h6 {
     font-weight: 200;
     font-size: 1em;
 }

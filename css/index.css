@@ -1,6 +1,7 @@
 @import url(about.css);
 
-.container-fluid {
+.container-fluid,
+.container-fluid>.row {
     height: 100vh;
 }
 
@@ -60,4 +61,3 @@ h6 {
     font-size: 1.2em;
     font-weight: 200;
 }
-

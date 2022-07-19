@@ -27,7 +27,7 @@
     <main>
         <div class="container-fluid ps-0">
             <div class="row">
-                <nav class="navbar navbar-expand-lg navbar-light bg-light sidebar col-12 col-md-2 p-0">
+                <nav class="navbar navbar-expand-lg navbar-light bg-light sidebar col-12 col-lg-2 p-0">
                     <button class="navbar-toggler" type="button" data-toggle="collapse"
                         data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
@@ -36,7 +36,7 @@
 
                     <div class="collapse navbar-collapse" id="navbarSupportedContent">
 
-                        <ul class='sidebar-list navbar-nav flex-column p-0'>
+                        <ul class='sidebar-list navbar-nav flex-column p-2'>
                             <h1>Hà Chí Hào</h1>
 
                             <li class='nav-item sidebar-list-item'>
@@ -53,7 +53,7 @@
                     </div>
                 </nav>
 
-                <div class="about col-12 col-md-10">
+                <div class="about col-12 col-lg-10">
                     <div class="row">
                         <div class="col-md-3 col-12 aboutAvatarSection p-0 mb-5 mb-md-0">
                             <img src="images/haoVuonDieu.png" alt="avatar" width="100%">
@@ -120,11 +120,11 @@
                         </a>
                         <div class="experience-item-content">
                             <h3>${experienceData[i].title}</h3>
+                            <h6>${experienceData[i].period}</h6>
                             <lead>
                                 ${experienceData[i].description}
                             </lead>
                         </div>
-                        <h6>${experienceData[i].period}</h6>
                     </div>
                 `;
             }
