@@ -36,15 +36,15 @@
 
                     <div class="collapse navbar-collapse" id="navbarSupportedContent">
 
-                        <ul class='sidebar-list navbar-nav flex-column p-2'>
+                        <div class='sidebar-list p-2'>
                             <h1>Hà Chí Hào</h1>
 
-                            <li class='nav-item sidebar-list-item'>
+                            <li class='sidebar-list-item'>
                                 <a href='/'>
                                     <h6 class='col-10'>About</h6>
                                 </a>
                             </li>
-                            <li class='nav-item sidebar-list-item'>
+                            <li class='sidebar-list-item'>
                                 <a href='/blogs'>
                                     <h6 class='col-10'>Blogs</h6>
                                 </a>
@@ -54,7 +54,7 @@
                 </nav>
 
                 <div class="about col-12 col-lg-10">
-                    <div class="row">
+                    <div class="row ms-0">
                         <div class="col-md-3 col-12 aboutAvatarSection p-0 mb-5 mb-md-0">
                             <img src="images/haoVuonDieu.png" alt="avatar" width="100%">
                             <button type="button" class="btn btn-outline-primary">Get my CV</button>
@@ -131,17 +131,21 @@
 
             const projectData = await loadData('project.json');
             for (var i = 0; i < projectData.length; i++) {
+                let type
+
                 project.innerHTML += `
-                    <div class="experience-item">
+                    <div class="project-item">
                         <a href="${projectData[i].url}">
                             <img src="${projectData[i].image}" alt="freelancer" width="60px" height="60px">
                         </a>
-                        <div class="experience-item-content">
+                        <div class="project-item-content">
                             <h3>${projectData[i].title}</h3>
+                            <div class="btn btn-outline-primary p-0" style="width:100px; text-align: center">
+                                ${projectData[i].type}
+                            </div>
                             <lead>
                                 ${projectData[i].description}
                             </lead>
-                            <a href="${projectData[i].detail}" class="link-info">Learn more</a>
                         </div>
                     </div>
                 `;

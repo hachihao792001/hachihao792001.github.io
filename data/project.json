@@ -4,13 +4,13 @@
         "title": "My CatPots by MaxSRarity",
         "url": "https://play.google.com/store/apps/details?id=com.shinart.planya&hl=vi&gl=US",
         "description": "A cute little cat-themed game that I had the opportunity to contribute during the freelancing apprenticeship period. It was a fun project to work on, and I learned a lot about how to effectively manage user data in a game.",
-        "detail": "/project/mycatpots"
+        "type": "Contributed"
     },
     {
         "image": "images/tilecat.png",
         "title": "Tile Cat - Triple Match Puzzle by MaxSRarity",
         "url": "https://play.google.com/store/apps/details?id=com.shinart.tilecat&hl=vi&gl=US",
         "description": "Another cat-themed game that I contributed during the freelancing apprenticeship period. It was a big opportunity to learn how to make a level design tool and manage levels data effectively.",
-        "detail": "/project/tilecat"
+        "type": "Contributed"
     }
 ]

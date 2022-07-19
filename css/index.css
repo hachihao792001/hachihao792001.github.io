@@ -14,6 +14,10 @@ h6 {
     font-family: 'Inter', sans-serif;
 }
 
+.sidebar {
+    align-items: flex-start;
+}
+
 #navbarSupportedContent {
     height: 100%;
 }
@@ -23,6 +27,14 @@ h6 {
     background-color: #299ac5;
     list-style-type: none;
     height: 100%;
+}
+
+@media screen and (max-width: 991px) {
+
+    #navbarSupportedContent,
+    .sidebar-list {
+        height: auto;
+    }
 }
 
 .sidebar-list h1 {

@@ -1,9 +1,23 @@
-.project{
-    display:flex;
-    flex-direction:column;
+.project {
+    display: flex;
+    flex-direction: column;
     gap: 20px;
 }
 
 .project>h2 {
     font-weight: bold;
+}
+
+.project-item {
+    display: flex;
+    flex-direction: row;
+    justify-items: center;
+    gap: 50px;
+    position: relative;
+}
+
+.project-item-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
