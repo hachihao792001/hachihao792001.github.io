@@ -1,16 +1,226 @@
 [
     {
-        "image": "images/mycatpots.png",
-        "title": "My CatPots by MaxSRarity",
-        "url": "https://play.google.com/store/apps/details?id=com.shinart.planya&hl=vi&gl=US",
-        "description": "A cute little cat-themed game that I had the opportunity to contribute during the freelancing apprenticeship period. It was a fun project to work on, and I learned a lot about how to effectively manage user data in a game.",
-        "type": "Contributed"
+      "image": "mycatpots",
+      "title": "My CatPots by MaxSRarity",
+      "url": "https://play.google.com/store/apps/details?id=com.shinart.planya&hl=vi&gl=US",
+      "description": "A cute little cat-themed game that I had the opportunity to contribute during the freelancing apprenticeship period. It was a fun project to work on, and I learned a lot about how to effectively manage user data in a game.",
+      "type": "Contributed",
+      "technology": "Unity, C#"
     },
     {
-        "image": "images/tilecat.png",
-        "title": "Tile Cat - Triple Match Puzzle by MaxSRarity",
-        "url": "https://play.google.com/store/apps/details?id=com.shinart.tilecat&hl=vi&gl=US",
-        "description": "Another cat-themed game that I contributed during the freelancing apprenticeship period. It was a big opportunity to learn how to make a level design tool and manage levels data effectively.",
-        "type": "Contributed"
+      "image": "tilecat",
+      "title": "Tile Cat - Triple Match Puzzle by MaxSRarity",
+      "url": "https://play.google.com/store/apps/details?id=com.shinart.tilecat&hl=vi&gl=US",
+      "description": "Another cat-themed game that I contributed during the freelancing apprenticeship period. It was a big opportunity to learn how to make a level design tool and manage levels data effectively.",
+      "type": "Contributed",
+      "technology": "Unity, C#"
+    },
+    {
+      "image": "swing",
+      "title": "Swing!",
+      "url": "https://play.google.com/store/apps/details?id=com.Hao.Swing",
+      "description": "The first game that I published on Google Play Store, and the first game whose quality that I truly cared about and not just make it looks like another prototype",
+      "type": "Published",
+      "technology": "Unity, C#"
+    },
+    {
+      "image": "meme",
+      "title": "Press on them MEMES",
+      "url": "https://play.google.com/store/apps/details?id=com.hao.PressOnThemMEMES",
+      "description": "The second app that I published on Google Play Store, it is more like a fun project and an app that I wish actually existed",
+      "type": "Published",
+      "technology": "Flutter, Dart"
+    },
+    {
+      "image": "tacticsage",
+      "title": "Tactics age by Offline Strategy Games",
+      "url": "https://play.google.com/store/apps/details?id=monsters.tactic.fantasy",
+      "description": "a",
+      "type": "Contributed",
+      "technology": "Unity, C#"
+    },
+    {
+      "image": "heroestactic",
+      "title": "Heroes Tactic - formation war by Offline Strategy Games",
+      "url": "https://play.google.com/store/apps/details?id=com.nostel.heroes.tactic",
+      "description": "a",
+      "type": "Contributed",
+      "technology": "Unity, C#"
+    },
+    {
+      "image": "mummymaze",
+      "title": "Mummy maze by Offline Strategy Games",
+      "url": "https://play.google.com/store/apps/details?id=com.nostel.mummy.maze",
+      "description": "a",
+      "type": "Contributed",
+      "technology": "Unity, C#"
+    },
+    {
+      "image": "re",
+      "title": "RE Organization website",
+      "url": "https://applycv.herokuapp.com",
+      "description": "a",
+      "type": "Contributed",
+      "technology": "ASP.NET, Bootstrap"
+    },
+    {
+      "image": "wzgem",
+      "title": "Weirdest zombie game ever made",
+      "url": "https://github.com/hachihao792001/FPSGame",
+      "description": "a",
+      "type": "Personal",
+      "technology": "Unity, C#"
+    },
+    {
+      "image": "zombiedefense",
+      "title": "Zombie Defense",
+      "url": "https://github.com/hachihao792001/ZombieDefense",
+      "description": "a",
+      "type": "Personal",
+      "technology": "Unity, C#"
+    },
+    {
+      "image": "pong",
+      "title": "LAN version of PONG (1972)",
+      "url": "https://github.com/hachihao792001/PongCSocket",
+      "description": "a",
+      "type": "Personal",
+      "technology": "C++"
+    },
+    {
+      "image": "mazebitmap",
+      "title": "Program that solve mazes from bitmap images",
+      "url": "https://github.com/hachihao792001/SolveMazeBMP",
+      "description": "a",
+      "type": "Personal",
+      "technology": "C++"
+    },
+    {
+      "image": "portal",
+      "title": "Recreate the main mechanic of Portal (Valve)",
+      "url": "https://github.com/hachihao792001/Portal",
+      "description": "a",
+      "type": "Personal",
+      "technology": "Unity, C#"
+    },
+    {
+      "image": "superliminal",
+      "title": "Recreate the main mechanic of SuperLiminal",
+      "url": "https://github.com/hachihao792001/SuperLiminal",
+      "description": "a",
+      "type": "Personal",
+      "technology": "Unity, C#"
+    },
+    {
+      "image": "minecraftastar",
+      "title": "Simulate the A* path finding algorithm in Minecraft",
+      "url": "https://www.planetminecraft.com/data-pack/a-path-finding-algorithm-visualization/",
+      "description": "a",
+      "type": "Personal",
+      "technology": "mcfunction"
+    },
+    {
+      "image": "minecraftwilson",
+      "title": "Simulate the Wilson maze generating algorithm in Minecraft",
+      "url": "",
+      "description": "a",
+      "type": "Personal",
+      "technology": "mcfunction"
+    },
+    {
+      "image": "mummymazesolver",
+      "title": "Mummy maze level solver",
+      "url": "",
+      "description": "a",
+      "type": "Personal",
+      "technology": "C++"
+    },
+    {
+      "image": "minecraft",
+      "title": "Minecraft's replica",
+      "url": "https://github.com/hachihao792001/Remake-Minecraft",
+      "description": "a",
+      "type": "Personal",
+      "technology": "Unity, C#"
+    },
+    {
+      "image": "flappybird",
+      "title": "Flappy bird's replica",
+      "url": "https://github.com/hachihao792001/FlappyBirdReplica",
+      "description": "a",
+      "type": "Personal",
+      "technology": "Unity, C#"
+    },
+    {
+      "image": "3dascii",
+      "title": "An 3D graphics engine with ASCII renderer",
+      "url": "https://github.com/hachihao792001/BadAppleASCII3D",
+      "description": "a",
+      "type": "Personal",
+      "technology": "C++"
+    },
+    {
+      "image": "ik",
+      "title": "Simulate Inverse Kinematic",
+      "url": "https://github.com/hachihao792001/InverseKinematicOpenGL",
+      "description": "a",
+      "type": "Personal",
+      "technology": "C++, OpenGL"
+    },
+    {
+      "image": "stega",
+      "title": "Simple Steganography demonstration using LSB technique",
+      "url": "https://github.com/hachihao792001/Simple-steganography",
+      "description": "a",
+      "type": "Personal",
+      "technology": "C++"
+    },
+    {
+      "image": "courseregistration",
+      "title": "Course registration project",
+      "url": "https://github.com/hachihao792001/CourseRegistrationSystem",
+      "description": "a",
+      "type": "University",
+      "technology": "Java"
+    },
+    {
+      "image": "chatapplication",
+      "title": "Chat application",
+      "url": "https://github.com/hachihao792001/ChatApplication",
+      "description": "a",
+      "type": "University",
+      "technology": "Java"
+    },
+    {
+      "image": "todo",
+      "title": "Todo App with Firebase",
+      "url": "https://github.com/hachihao792001/MobileMidterm",
+      "description": "a",
+      "type": "University",
+      "technology": "Java (Android)"
+    },
+    {
+      "image": "omr",
+      "title": "One more review",
+      "url": "https://onemorereview.vercel.app",
+      "description": "a",
+      "type": "University",
+      "technology": "MEAN stack"
+    },
+    {
+      "image": "fournationcoffee",
+      "title": "Four nations coffee",
+      "url": "https://four-nations-coffee.herokuapp.com",
+      "description": "a",
+      "type": "University",
+      "technology": "NodeJS, ExpressJS, Bootstrap"
+    },
+    {
+      "image": "portfolio",
+      "title": "Portfolio website",
+      "url": "https://hachihao792001.github.io",
+      "description": "a",
+      "type": "Personal",
+      "technology": "Bootstrap"
     }
-]
+  ]

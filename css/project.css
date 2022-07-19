@@ -21,3 +21,24 @@
     flex-direction: column;
     gap: 2px;
 }
+
+.project-item-content>.btn {
+    width: 100px;
+    text-align: center;
+    cursor: unset;
+}
+
+.project-item-content-title{
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+}
+
+.project-item-content-title > p{
+    height: 30px;
+    padding: 0 7px;
+    margin: 0;
+    text-align: center;
+    border-radius: 5px;
+    cursor: unset;
+}

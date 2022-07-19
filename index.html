@@ -49,15 +49,19 @@
                                     <h6 class='col-10'>Blogs</h6>
                                 </a>
                             </li>
-                        </ul>
-                    </div>
+                            </ul>
+                        </div>
                 </nav>
 
                 <div class="about col-12 col-lg-10">
                     <div class="row ms-0">
                         <div class="col-md-3 col-12 aboutAvatarSection p-0 mb-5 mb-md-0">
                             <img src="images/haoVuonDieu.png" alt="avatar" width="100%">
-                            <button type="button" class="btn btn-outline-primary">Get my CV</button>
+                            <button type="button" class="btn btn-outline-primary">
+                                <a href="https://www.topcv.vn/xem-cv/AFNRAAIPXVRWU1UCUQNQUwVTUQUGVlAAVQoBVQb07a">
+                                    See my CV
+                                </a>
+                            </button>
                             <div class="contacts">
                                 <a href="https://www.linkedin.com/in/chí-hào-hà-0831801bb/">
                                     <img src="images/linkedin.png" alt="linkedin" width="30px">
@@ -116,7 +120,7 @@
                 experience.innerHTML += `
                     <div class="experience-item">
                         <a href="${experienceData[i].url}">
-                            <img src="${experienceData[i].image}" alt="freelancer" width="60px" height="60px">
+                            <img src="${experienceData[i].image}" alt="${experienceData[i].title}" width="60px" height="60px">
                         </a>
                         <div class="experience-item-content">
                             <h3>${experienceData[i].title}</h3>
@@ -131,16 +135,17 @@
 
             const projectData = await loadData('project.json');
             for (var i = 0; i < projectData.length; i++) {
-                let type
-
                 project.innerHTML += `
                     <div class="project-item">
                         <a href="${projectData[i].url}">
-                            <img src="${projectData[i].image}" alt="freelancer" width="60px" height="60px">
+                            <img src="images/${projectData[i].image}.png" alt="${projectData[i].title}" width="60px" height="60px">
                         </a>
                         <div class="project-item-content">
-                            <h3>${projectData[i].title}</h3>
-                            <div class="btn btn-outline-primary p-0" style="width:100px; text-align: center">
+                            <div class="project-item-content-title">
+                                <h3>${projectData[i].title}</h3>
+                                <p class="btn btn-outline-warning">${projectData[i].technology}</p>
+                            </div>
+                            <div class="btn ${getTypeDivBtnStyle(projectData[i].type)} p-0">
                                 ${projectData[i].type}
                             </div>
                             <lead>
@@ -156,6 +161,20 @@
             const response = await fetch(`data/${jsonFileName}`)
             const jsondata = await response.json();
             return jsondata;
+        }
+
+        function getTypeDivBtnStyle(type) {
+            let typeDivBtnStyle = '';
+            if (type === 'Contributed') {
+                typeDivBtnStyle = 'btn-outline-primary';
+            } else if (type === 'Published') {
+                typeDivBtnStyle = 'btn-outline-success';
+            } else if (type === 'Personal') {
+                typeDivBtnStyle = 'btn-outline-secondary';
+            } else if (type === 'University') {
+                typeDivBtnStyle = 'btn-outline-danger';
+            }
+            return typeDivBtnStyle;
         }
     </script>
 </body>

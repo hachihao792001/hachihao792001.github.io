@@ -23,6 +23,10 @@
     width: 70%;
 }
 
+.aboutAvatarSection a{
+    text-decoration: none;
+}
+
 .contacts {
     margin: auto;
     width: 100%;
