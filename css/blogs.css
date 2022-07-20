@@ -1,0 +1,28 @@
+.blogs {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.blogs-item {
+    padding: 10px;
+}
+
+.blogs-item>a {
+    text-decoration: none;
+    color: black;
+    font-size: 1.8em;
+    font-weight: 500;
+}
+
+.blogs-item>p {
+    font-size: 200;
+}
+
+.blogs-item:hover {
+    box-shadow: 0 0 10px #ccc;
+    animation-name: scaling;
+    animation-duration: 0.5s;
+    animation-fill-mode: forwards;
+}
