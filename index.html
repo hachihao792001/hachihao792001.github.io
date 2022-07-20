@@ -151,6 +151,7 @@
                             <lead>
                                 ${projectData[i].description}
                             </lead>
+                            ${getSrcLinkHTML(projectData[i].source)}
                         </div>
                     </div>
                 `;
@@ -175,6 +176,18 @@
                 typeDivBtnStyle = 'btn-outline-danger';
             }
             return typeDivBtnStyle;
+        }
+
+        function getSrcLinkHTML(source) {
+            if (source === "")
+                return "";
+            else {
+                return `
+                    <a href="${source}">
+                        Source code
+                    </a>
+                `;
+            }
         }
     </script>
 </body>
