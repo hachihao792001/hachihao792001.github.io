@@ -48,8 +48,8 @@
     "title": "Heroes Tactic - formation war by Offline Strategy Games",
     "image": "heroestactic",
     "url": "https://play.google.com/store/apps/details?id=com.nostel.heroes.tactic",
-    "source": "The first game that the freelancer let me work on, it's the first experience that I had with a turn-based game",
-    "description": "a",
+    "source": "",
+    "description": "The first game that the freelancer let me work on, it's the first experience that I had with a turn-based game",
     "type": "Contributed",
     "technology": "Unity, C#"
   },
@@ -57,8 +57,8 @@
     "title": "Mummy maze by Offline Strategy Games",
     "image": "mummymaze",
     "url": "https://play.google.com/store/apps/details?id=com.nostel.mummy.maze",
-    "source": "Another game that I worked on during the apprenticeship period, my main role in this game was to make a tool/algorithm to solve and also to generate levels for this classic game, I was proud of myself for being able to think of an algorithm that does exactly what we need",
-    "description": "a",
+    "source": "",
+    "description": "Another game that I worked on during the apprenticeship period, my main role in this game was to make a tool/algorithm to solve and also to generate levels for this classic game, I was proud of myself for being able to think of an algorithm that does exactly what we need",
     "type": "Contributed",
     "technology": "Unity, C#"
   },
