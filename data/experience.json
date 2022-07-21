@@ -1,5 +1,12 @@
 [
     {
+        "image": "images/hcmus.png",
+        "title": "Ho Chi Minh City University of Science",
+        "url": "https://www.hcmus.edu.vn",
+        "description": "The university that I'm studying at now, I've learned a lot from this place and have had many happy memories with it.",
+        "period": "8/2019 - Present" 
+    },
+    {
         "image": "images/freelancer.png",
         "title": "Freelancer apprenticeship",
         "url": "#",
@@ -10,7 +17,7 @@
         "image": "images/re.png",
         "title": "RE",
         "url": "https://www.facebook.com/retryuntilrevolution",
-        "description": "Work temporarily as a web developer for a startup and helped build their main website",
+        "description": "A startup that I temporarily work for as a web developer and helped build their main website",
         "period": "11/2021 - 2/2022" 
     },
     {
