@@ -58,10 +58,13 @@
     margin: 0;
     text-align: center;
     border-radius: 5px;
-    cursor: unset;
 
     display: flex;
     justify-content: center;
     align-content: center;
     flex-direction: column;
+}
+
+.project-item-content-title-tech > div{
+    cursor: unset;
 }

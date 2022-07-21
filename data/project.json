@@ -234,6 +234,15 @@
     "technology": "MEAN stack"
   },
   {
+    "title": "A web application for Stored XSS attack demonstration",
+    "image": "xss",
+    "url": "https://github.com/hachihao792001/DemoStoredXSS",
+    "source": "https://github.com/hachihao792001/DemoStoredXSS",
+    "description": "A simple web to demonstrate stored XSS attack and prevention, I made this project to use as a demo when presenting for the seminar in the Cryptography and Its Applications course.",
+    "type": "University",
+    "technology": "NodeJS, ExpressJS"
+  },
+  {
     "title": "Four nations coffee",
     "image": "fournationcoffee",
     "url": "https://four-nations-coffee.herokuapp.com",
