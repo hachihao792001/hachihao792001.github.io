@@ -5,11 +5,11 @@ window.onload = async () => {
     const experienceData = await loadData('experience.json');
     for (var i = 0; i < experienceData.length; i++) {
         experience.innerHTML += `
-            <div class="experience-item">
-                <a href="${experienceData[i].url}">
+            <div class="experience-item row">
+                <a class="col-12 col-lg-1 me-0 me-md-2 me-lg-2" href="${experienceData[i].url}">
                     <img src="${experienceData[i].image}" alt="${experienceData[i].title}" width="60px" height="60px">
                 </a>
-                <div class="experience-item-content">
+                <div class="col-12 col-lg-10 experience-item-content">
                     <h3>${experienceData[i].title}</h3>
                     <h6>${experienceData[i].period}</h6>
                     <lead>
@@ -23,14 +23,17 @@ window.onload = async () => {
     const projectData = await loadData('project.json');
     for (var i = 0; i < projectData.length; i++) {
         project.innerHTML += `
-            <div class="project-item">
-                <a href="${projectData[i].url}">
+            <div class="project-item row">
+                <a class="col-12 col-lg-1 me-0 me-md-2 me-lg-2" href="${projectData[i].url}">
                     <img src="images/${projectData[i].image}.png" alt="${projectData[i].title}" width="60px" height="60px">
                 </a>
-                <div class="project-item-content">
-                    <div class="project-item-content-title">
-                        <h3>${projectData[i].title}</h3>
-                        <p class="btn btn-outline-warning">${projectData[i].technology}</p>
+                <div class="col-12 col-lg-10 project-item-content">
+                    <div class="project-item-content-title row m-0">
+                        <h3 class="col-12 col-md-10 col-lg-10 p-0">${projectData[i].title}</h3>
+                        <div class="btn btn-outline-warning col-5 col-md-2 col-lg-2 
+                            project-item-content-title-tech p-0 ">
+                            ${projectData[i].technology}
+                        </div>
                     </div>
                     <div class="btn ${getTypeDivBtnStyle(projectData[i].type)} p-0">
                         ${projectData[i].type}

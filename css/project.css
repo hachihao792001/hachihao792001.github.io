@@ -9,19 +9,28 @@
 }
 
 .project-item {
-    display: flex;
-    flex-direction: row;
     justify-items: center;
-    gap: 50px;
     position: relative;
     border: 1px solid #ccc;
     border-radius: 10px;
     padding: 10px;
 }
 
+@media screen and (max-width: 991px) {
+    .project-item {
+        gap: 20px;
+        margin: 0px;
+    }
+}
+
 @keyframes scaling {
-    from {transform: scale(1);}
-    to {transform: scale(1.05);}
+    from {
+        transform: scale(1);
+    }
+
+    to {
+        transform: scale(1.05);
+    }
 }
 
 .project-item:hover {
@@ -43,17 +52,17 @@
     cursor: unset;
 }
 
-.project-item-content-title{
-    display: flex;
-    flex-direction: row;
-    gap: 20px;
-}
-
-.project-item-content-title > p{
-    height: 30px;
-    padding: 0 7px;
+.project-item-content-title-tech {
+    min-height: 30px;
+    max-height: 90px;
     margin: 0;
     text-align: center;
     border-radius: 5px;
     cursor: unset;
+    overflow-x: wrap;
+
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
 }
