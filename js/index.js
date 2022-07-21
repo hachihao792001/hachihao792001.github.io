@@ -30,9 +30,11 @@ window.onload = async () => {
                 <div class="col-12 col-lg-10 project-item-content">
                     <div class="project-item-content-title row m-0">
                         <h3 class="col-12 col-md-10 col-lg-10 p-0">${projectData[i].title}</h3>
-                        <div class="btn btn-outline-warning col-5 col-md-2 col-lg-2 
-                            project-item-content-title-tech p-0 ">
-                            ${projectData[i].technology}
+                        <div class="col-5 col-md-2 col-lg-2 
+                            project-item-content-title-tech p-0">
+                            <div class="btn btn-outline-warning m-0 p-1">
+                                ${projectData[i].technology}
+                            </div>
                         </div>
                     </div>
                     <div class="btn ${getTypeDivBtnStyle(projectData[i].type)} p-0">

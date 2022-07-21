@@ -54,12 +54,11 @@
 
 .project-item-content-title-tech {
     min-height: 30px;
-    max-height: 90px;
+    max-height: min-content;
     margin: 0;
     text-align: center;
     border-radius: 5px;
     cursor: unset;
-    overflow-x: wrap;
 
     display: flex;
     justify-content: center;

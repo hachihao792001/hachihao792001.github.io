@@ -3,6 +3,7 @@
 .container-fluid,
 .container-fluid>.row {
     height: 100vh;
+    overflow-x: hidden;
 }
 
 h1,

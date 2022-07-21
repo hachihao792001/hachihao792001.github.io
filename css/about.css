@@ -23,7 +23,11 @@
     width: 70%;
 }
 
-.aboutAvatarSection a{
+.aboutAvatarSection>button:hover>a {
+    color: white;
+}
+
+.aboutAvatarSection a {
     text-decoration: none;
 }
 
