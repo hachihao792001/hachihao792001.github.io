@@ -17,9 +17,10 @@ h6 {
 
 .sidebar {
     align-items: flex-start;
- }
+    background-color: #299ac5;
+}
 
-.sidebar > nav{
+.sidebar>nav {
     height: 100%;
 }
 
