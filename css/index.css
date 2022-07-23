@@ -17,6 +17,10 @@ h6 {
 
 .sidebar {
     align-items: flex-start;
+ }
+
+.sidebar > nav{
+    height: 100%;
 }
 
 #navbarSupportedContent {
@@ -24,7 +28,7 @@ h6 {
 }
 
 .sidebar-list {
-    padding: 0px 0px 0px 0px;
+    padding: 0px;
     background-color: #299ac5;
     list-style-type: none;
     height: 100%;
