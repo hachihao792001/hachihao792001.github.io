@@ -1,5 +1,14 @@
 [
   {
+    "title": "DEAD TARGET: Zombie Games 3D by VNG GAME STUDIOS",
+    "image": "dt",
+    "url": "https://play.google.com/store/apps/details?id=com.vng.g6.a.zombie",
+    "source": "",
+    "description": "The game that I'm currently working on in Madpoly studio - VNG Corporation. It is a big opportunity for me to work in such a big game, there are many challenges, one of them being understanding the huge and old codebase, but I will embrace it and try my best to contribute to it.",
+    "type": "Contributed",
+    "technology": "Unity, C#"
+  },
+  {
     "title": "My CatPots by MaxSRarity",
     "image": "mycatpots",
     "url": "https://play.google.com/store/apps/details?id=com.shinart.planya&hl=vi&gl=US",
@@ -59,6 +68,24 @@
     "url": "https://play.google.com/store/apps/details?id=com.nostel.mummy.maze",
     "source": "",
     "description": "Another game that I worked on during the apprenticeship period, my main role in this game was to make a tool/algorithm to solve and also to generate levels for this classic game, I was proud of myself for being able to think of an algorithm that does exactly what we need",
+    "type": "Contributed",
+    "technology": "Unity, C#"
+  },
+  {
+    "title": "Pet connect: Tile Puzzle Match by Indiez Global Pte. Ltd.",
+    "image": "petconnect",
+    "url": "https://play.google.com/store/apps/details?id=com.nostel.pikachu",
+    "source": "",
+    "description": "Another game that I worked on during the apprenticeship period, what I did in this game was coded up the entire gameplay and main mechanic of the game.",
+    "type": "Contributed",
+    "technology": "Unity, C#"
+  },
+  {
+    "title": "Car Parking: Traffic Jam 3D by Indiez Global Pte. Ltd.",
+    "image": "carpark",
+    "url": "https://play.google.com/store/apps/details?id=com.nostel.parking.car",
+    "source": "",
+    "description": "Another game that I worked on during the apprenticeship period, I did very little in this game, all I did was add new car skins and added the guard robot.",
     "type": "Contributed",
     "technology": "Unity, C#"
   },
@@ -151,6 +178,15 @@
     "description": "This is the algorithm that I talked about in the \"Mummy maze by Offline Strategy Games\", this was undoubtedly the hardest project that I've ever worked on, there is very little if not non-existent information about a Mummy maze solver online, and I'm not talking about Theseus and the minotaur maze problem (it has way fewer mechanic than mummy maze). But after some months, I think it is not so hard if I truly understood what A* is (it's not a path-finding algorithm, it's a solution-finding algorithm)",
     "type": "Personal",
     "technology": "C++"
+  },
+  {
+    "title": "Mummy maze solver website",
+    "image": "mummymazesolverweb",
+    "url": "https://mummy-maze-solver.herokuapp.com",
+    "source": "",
+    "description": "After developing the mummy maze solving algorithm and having a bit of knowledge about web development. I decided to make a website so that everyone can use it to solve any level of the mummy maze game. But along the way, I also discovered some major flaws with my old algorithms so I improved it even more, and now I think it's perfect.",
+    "type": "Personal",
+    "technology": "NodeJS, Bootstrap"
   },
   {
     "title": "Minecraft's replica",

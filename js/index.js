@@ -20,7 +20,7 @@ window.onload = async () => {
         `;
     }
 
-    const projectData = await loadData('project.json');
+    const projectData = await loadData('projects.json');
     for (var i = 0; i < projectData.length; i++) {
         project.innerHTML += `
             <div class="project-item row">
