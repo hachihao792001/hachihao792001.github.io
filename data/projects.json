@@ -110,9 +110,9 @@
   {
     "title": "Zombie Defense",
     "image": "zombiedefense",
-    "url": "https://www.facebook.com/hachihao792001/videos/557631142811972",
+    "url": "https://zombie-defense.vercel.app/",
     "source": "https://github.com/hachihao792001/ZombieDefense",
-    "description": "This is a game that I have to make in 3 days to finish the training program at Madpoly Studio - VNG. I'm surprised that I can do this much in 3 days and how far I have come.",
+    "description": "This is a game that I have to make in 3 days to finish the training program at Madpoly Studio - VNG. I'm surprised that I can do this much in 3 days and how far I have come. This project was also used as the final projet for the Game Development course at my University, by converting it into a multiplayer game using Photon PUN 2.",
     "type": "Personal",
     "technology": "Unity, C#"
   },
@@ -182,7 +182,7 @@
   {
     "title": "Mummy maze solver website",
     "image": "mummymazesolverweb",
-    "url": "https://mummy-maze-solver.herokuapp.com",
+    "url": "https://mummymazesolver.onrender.com",
     "source": "",
     "description": "After developing the mummy maze solving algorithm and having a bit of knowledge about web development. I decided to make a website so that everyone can use it to solve any level of the mummy maze game. But along the way, I also discovered some major flaws with my old algorithms so I improved it even more, and now I think it's perfect.",
     "type": "Personal",
@@ -250,6 +250,15 @@
     "description": "Another chance for me to practice my Socket programming skills, and I am proud of this project because I only made it in 8 days (the teacher gave us about a month) but I got a perfect score.",
     "type": "University",
     "technology": "Java"
+  },
+  {
+    "title": "Survival Land",
+    "image": "survivalland",
+    "url": "https://www.facebook.com/hachihao792001/videos/669307834781146",
+    "source": "https://github.com/hachihao792001/GameMiniProject2D",
+    "description": "A project I made with 2 other teammates during the Game Development course, taken inspiration from Survivor.io, it was a memorable experience because I got to use everything I've learned about the Unity engine over the past few years into a single project without too much time constraint.",
+    "type": "University",
+    "technology": "Unity, C#"
   },
   {
     "title": "Todo App with Firebase",
