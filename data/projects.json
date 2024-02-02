@@ -4,9 +4,36 @@
     "image": "dt",
     "url": "https://play.google.com/store/apps/details?id=com.vng.g6.a.zombie",
     "source": "",
-    "description": "The game that I'm currently working on in Madpoly studio - VNG Corporation. It is a big opportunity for me to work in such a big game, there are many challenges, one of them being understanding the huge and old codebase, but I will embrace it and try my best to contribute to it.",
+    "description": "A game that I worked on in Madpoly studio - VNG Corporation. It is a big opportunity for me to work in such a big game, there are many challenges, one of them being understanding the huge and old codebase, but I will embrace it and try my best to contribute to it. One of the most intricate features I've implemented is the Arch of Thunder, a unique eagle-shaped crossbow capable of firing lightning arrows. Its capabilities extend beyond my description; you must witness it firsthand here: https://www.facebook.com/hachihao792001/videos/696523142425505",
     "type": "Contributed",
     "technology": "Unity, C#"
+  },
+  {
+    "title": "Zombie Fire 3D: Offline Game by VNG GAME STUDIOS",
+    "image": "zf",
+    "url": "https://apps.apple.com/us/app/zombie-fire-3d-offline-game/id6465898418",
+    "source": "",
+    "description": "Another game that I worked on in Madpoly studio - VNG Corporation. I have the opportunity to port it from Android to iOS and take care of all the nuances such as reimplementing in-app purchase, adverstisement and resolving other iOS-specific issues",
+    "type": "Contributed",
+    "technology": "Unity, C#"
+  },
+  {
+    "title": "HCMUS Tour",
+    "image": "hcmustour",
+    "url": "https://www.facebook.com/hachihao792001/videos/791676336016821/",
+    "source": "",
+    "description": "One of the projects I built for my bachelor thesis, it involves utilizing the Microsoft Azure Kinect DK to facilitate user navigation and exploration of Ho Chi Minh City University of Science using the user's body gestures. This system seamlessly communicates with a web server to acquire essential information and assets. Additionally, an administrator web interface is integrated, allowing for the modification of pertinent information.",
+    "type": "University",
+    "technology": "Unity, C#, React, Java Spring, PostgreSQL"
+  },
+  {
+    "title": "World Tour",
+    "image": "worldtour",
+    "url": "https://www.facebook.com/hachihao792001/videos/327476716300219/",
+    "source": "",
+    "description": "Another project that I built for my bachelor thesis, it harnesses the combined capabilities of Microsoft Azure Kinect DK and Microsoft HoloLens 2, offering a fully immersive Extended Reality (XR) environment.Within this environment, users employ the HoloLens 2 to interact with a globe, selecting destinations to explore and utilizing body gestures for navigation within the chosen destination. Much like the HCMUS Tour project, this application integrates a web server and an administrator web interface to serve identical purposes.",
+    "type": "University",
+    "technology": "Unity, C#, React, Java Spring, PostgreSQL"
   },
   {
     "title": "My CatPots by MaxSRarity",
@@ -232,6 +259,15 @@
     "description": "After watching a video on this topic on the Computerphile channel, I thought it would be fun to make a project to demonstrate it.",
     "type": "Personal",
     "technology": "C++"
+  },
+  {
+    "title": "Simulate Metaballs",
+    "image": "metaballs",
+    "url": "https://www.facebook.com/hachihao792001/videos/866922477949515",
+    "source": "",
+    "description": "Inspired by the video \"How Computers Draw Weird Shapes\" by Reducible, I was motivated to undertake the reimplementations of both the Marching Cube algorithm and Metaballs. Metaballs, a fascinating concept in computer graphics, depict spheres that maintain their individual forms when separated but seamlessly merge into one another when in close proximity, resembling cohesive droplets.",
+    "type": "Personal",
+    "technology": "Unity, C#"
   },
   {
     "title": "Course registration project",
