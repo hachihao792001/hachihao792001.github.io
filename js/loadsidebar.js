@@ -1,4 +1,4 @@
-window.addEventListener(`load`, async () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const sidebarHTML = await loadHTML('/sidebar.html');
     const sidebar = document.querySelector('.sidebar');
     sidebar.innerHTML = sidebarHTML;
