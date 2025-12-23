@@ -1,16 +1,42 @@
-const blogs = document.querySelector('.blogs');
+const blogsContainer = document.querySelector('.blogs');
 
 window.onload = async () => {
     const blogsData = await loadData('blogs.json');
-    for (var i = 0; i < blogsData.length; i++) {
-        blogs.innerHTML += `
+    renderBlogs(blogsData, blogsContainer);
+}
+
+function renderBlogs(data, container) {
+    data.forEach(item => {
+        const blogItem = document.createElement('div');
+        blogItem.className = 'blogs-item-container';
+
+        const hasChildren = item.children && item.children.length > 0;
+        
+        blogItem.innerHTML = `
             <div class="blogs-item">
-                <a href="${blogsData[i].route}">${blogsData[i].title}</a>
-                <p>${blogsData[i].date}</p>
-                ${getCommingSoonHTML(blogsData[i].isWritten)}
+                ${hasChildren ? '<span class="arrow">▶</span>' : ''}
+                <a href="${item.route}">${item.title}</a>
+                <p>${item.date}</p>
+                ${getCommingSoonHTML(item.isWritten)}
             </div>
+            ${hasChildren ? `<div class="children-container" style="display: none; margin-left: 20px;"></div>` : ''}
         `;
-    }
+
+        if (hasChildren) {
+            const childTarget = blogItem.querySelector('.children-container');
+            const arrow = blogItem.querySelector('.arrow');
+            
+            renderBlogs(item.children, childTarget);
+
+            arrow.addEventListener('click', (e) => {
+                const isExpanded = childTarget.style.display === 'block';
+                childTarget.style.display = isExpanded ? 'none' : 'block';
+                arrow.classList.toggle('arrow-down', !isExpanded);
+            });
+        }
+
+        container.appendChild(blogItem);
+    });
 }
 
 function getCommingSoonHTML(isWritten) {

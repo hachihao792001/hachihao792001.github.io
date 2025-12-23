@@ -3,30 +3,50 @@
         "title": "Vì sao tôi chọn lập trình?",
         "route": "/blogs/why-choose-programming.html",
         "date": "",
-        "isWritten": "false"
+        "isWritten": "false",
+        "children": []
     },
     {
         "title": "Cách làm 1 thuật toán giải mummy maze",
         "route": "/blogs/mummy-maze-algorithm.html",
         "date": "",
-        "isWritten": "false"
+        "isWritten": "false",
+        "children": []
     },
     {
         "title": "Cách đồ họa 3D hoạt động đằng sau",
         "route": "/blogs/3d-animation.html",
         "date": "",
-        "isWritten": "false"
+        "isWritten": "false",
+        "children": []
     },
     {
         "title": "Kinh nghiệm của tôi về chương trình traing của Madpoly Studio - VNG",
         "route": "/blogs/madpoly-studio-vng.html",
         "date": "",
-        "isWritten": "false"
+        "isWritten": "false",
+        "children": []
+    },
+    {
+        "title": "Series Tất tần tật về nghĩa vụ quân sự",
+        "route": "/blogs/nvqs-intro.html",
+        "date": "2025-12-23",
+        "isWritten": "true",
+        "children": [
+            {
+                "title": "Tất tần tật về nghĩa vụ quân sự #1: Thời gian biểu",
+                "route": "/blogs/nvqs1-thoi-gian-bieu.html",
+                "date": "2025-12-23",
+                "isWritten": "true",
+                "children": []
+            }
+        ]
     },
     {
         "title": "Web Security: Common Vulnerability and Prevention",
         "route": "https://hachihao792001.github.io/WebSecurity/",
         "date": "2022-06-02",
-        "isWritten": "true"
+        "isWritten": "true",
+        "children": []
     }
 ]

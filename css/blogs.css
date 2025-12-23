@@ -5,7 +5,20 @@
     gap: 10px;
 }
 
+.arrow {
+    cursor: pointer;
+    display: inline-block;
+    margin-right: 8px;
+    transition: transform 0.2s ease;
+    user-select: none;
+}
+
+.arrow-down {
+    transform: rotate(90deg);
+}
+
 .blogs-item {
+    
     padding: 10px;
 }
 
