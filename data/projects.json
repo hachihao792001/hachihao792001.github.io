@@ -54,6 +54,15 @@
     "technology": "Unity, C#"
   },
   {
+    "title": "3D Physics Engine in pure HTML canvas",
+    "image": "3dphysicsengine",
+    "url": "https://www.facebook.com/share/v/1DgbxsPviX/",
+    "source": "",
+    "description": "A personal project that I made to learn more about 3D mathematics and physics simulation during my conscription period, it shows my dedication to self-improvement and my passion for programming even in challenging circumstances.",
+    "type": "Personal",
+    "technology": "JavaScript, HTML5 Canvas"
+  },
+  {
     "title": "Swing!",
     "image": "swing",
     "url": "https://play.google.com/store/apps/details?id=com.Hao.Swing",
