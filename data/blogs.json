@@ -21,7 +21,7 @@
         "children": []
     },
     {
-        "title": "Kinh nghiệm của tôi về chương trình traing của Madpoly Studio - VNG",
+        "title": "Kinh nghiệm của tôi về chương trình training của Madpoly Studio - VNG",
         "route": "/blogs/madpoly-studio-vng.html",
         "date": "",
         "isWritten": "false",
@@ -29,13 +29,13 @@
     },
     {
         "title": "Series Tất tần tật về nghĩa vụ quân sự",
-        "route": "/blogs/nvqs-intro.html",
+        "route": "/blogs/nvqs/nvqs-intro.html",
         "date": "2025-12-23",
         "isWritten": "true",
         "children": [
             {
                 "title": "Tất tần tật về nghĩa vụ quân sự #1: Thời gian biểu",
-                "route": "/blogs/nvqs1-thoi-gian-bieu.html",
+                "route": "/blogs/nvqs/nvqs1-thoi-gian-bieu.html",
                 "date": "2025-12-23",
                 "isWritten": "true",
                 "children": []
