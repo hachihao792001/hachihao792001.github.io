@@ -39,6 +39,20 @@
                 "date": "2025-12-23",
                 "isWritten": "true",
                 "children": []
+            },
+            {
+                "title": "Tất tần tật về nghĩa vụ quân sự #2: Đồ được cấp phát và đồ nên đem theo",
+                "route": "/blogs/nvqs/nvqs2-doduoccapphat.html",
+                "date": "2025-01-31",
+                "isWritten": "true",
+                "children": []
+            },
+            {
+                "title": "Tất tần tật về nghĩa vụ quân sự #3: Huấn luyện",
+                "route": "/blogs/nvqs/nvqs3-huanluyen.html",
+                "date": "2025-01-31",
+                "isWritten": "true",
+                "children": []
             }
         ]
     },
