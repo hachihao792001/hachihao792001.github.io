@@ -8,3 +8,21 @@
     display: block;
     margin-bottom: 0.5rem;
 }
+
+.blog-content h3 {
+    margin-top: 1rem;
+    margin-bottom: 0;
+}
+
+.blog-content h4 {
+    margin-top: 2px;
+    margin-bottom: 0;
+}
+
+.blog-content .btn-outline-primary {
+    margin-top: 4px;
+}
+
+.blog-content h2 {
+    font-style: italic;
+}
