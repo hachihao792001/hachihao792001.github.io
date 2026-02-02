@@ -1,0 +1,128 @@
+[
+    {
+        "id": "nvqs-intro",
+        "webTitle": "Tất tần tật về nghĩa vụ quân sự",
+        "title": "Tất tần tật về nghĩa vụ quân sự",
+        "route": "/blogs/nvqs/nvqs-intro.html"
+    },
+    {
+        "id": "nvqs1",
+        "webTitle": "TTTVNVQS#1: Quá trình nhập ngũ và Hiểu biết chung về Quân đội",
+        "title": "Tất tần tật về nghĩa vụ quân sự #1: Quá trình nhập ngũ và Hiểu biết chung về Quân đội",
+        "route": "/blogs/nvqs/nvqs1-hieubietchung.html"
+    },
+    {
+        "id": "nvqs2",
+        "webTitle": "TTTVNVQS#2: Đồ được cấp phát và đồ nên đem theo",
+        "title": "Tất tần tật về nghĩa vụ quân sự #2: Đồ được cấp phát và đồ nên đem theo",
+        "route": "/blogs/nvqs/nvqs2-doduoccapphat.html"
+    },
+    {
+        "id": "nvqs3",
+        "webTitle": "TTTVNVQS#3: Thời gian biểu",
+        "title": "Tất tần tật về nghĩa vụ quân sự #3: Thời gian biểu",
+        "route": "/blogs/nvqs/nvqs3-thoigianbieu.html"
+    },
+    {
+        "id": "nvqs4",
+        "webTitle": "TTTVNVQS#4: Sinh hoạt",
+        "title": "Tất tần tật về nghĩa vụ quân sự #4: Sinh hoạt",
+        "route": "/blogs/nvqs/nvqs4-sinhhoat.html"
+    },
+    {
+        "id": "nvqs5",
+        "webTitle": "TTTVNVQS#5: Nội vụ vệ sinh",
+        "title": "Tất tần tật về nghĩa vụ quân sự #5: Nội vụ vệ sinh",
+        "route": "/blogs/nvqs/nvqs5-noivuvesinh.html"
+    },
+    {
+        "id": "nvqs6",
+        "webTitle": "TTTVNVQS#6: Môi trường và văn hóa",
+        "title": "Tất tần tật về nghĩa vụ quân sự #6: Môi trường và văn hóa",
+        "route": "/blogs/nvqs/nvqs6-moitruong.html"
+    },
+    {
+        "id": "nvqs7",
+        "webTitle": "TTTVNVQS#7: Huấn luyện",
+        "title": "Tất tần tật về nghĩa vụ quân sự #7: Huấn luyện",
+        "route": "/blogs/nvqs/nvqs7-huanluyen.html"
+    },
+    {
+        "id": "nvqs8",
+        "webTitle": "TTTVNVQS#8: Công tác",
+        "title": "Tất tần tật về nghĩa vụ quân sự #8: Công tác",
+        "route": "/blogs/nvqs/nvqs8-congtac.html"
+    },
+    {
+        "id": "nvqs9",
+        "webTitle": "TTTVNVQS#9: Công tác đặc biệt",
+        "title": "Tất tần tật về nghĩa vụ quân sự #9: Công tác đặc biệt",
+        "route": "/blogs/nvqs/nvqs9-congtacdacbiet.html"
+    },
+    {
+        "id": "nvqs10",
+        "webTitle": "TTTVNVQS#10: Ăn uống và công tác bếp",
+        "title": "Tất tần tật về nghĩa vụ quân sự #10: Ăn uống và công tác bếp",
+        "route": "/blogs/nvqs/nvqs10-bep.html"
+    },
+    {
+        "id": "nvqs11",
+        "webTitle": "TTTVNVQS#11: Tuần tra, canh gác",
+        "title": "Tất tần tật về nghĩa vụ quân sự #11: Tuần tra, canh gác",
+        "route": "/blogs/nvqs/nvqs11-canhgac.html"
+    },
+    {
+        "id": "nvqs12",
+        "webTitle": "TTTVNVQS#12: Báo động",
+        "title": "Tất tần tật về nghĩa vụ quân sự #12: Báo động",
+        "route": "/blogs/nvqs/nvqs12-baodong.html"
+    },
+    {
+        "id": "nvqs13",
+        "webTitle": "TTTVNVQS#13: Hành quân rèn luyện",
+        "title": "Tất tần tật về nghĩa vụ quân sự #13: Hành quân rèn luyện",
+        "route": "/blogs/nvqs/nvqs13-hanhquanrenluyen.html"
+    },
+    {
+        "id": "nvqs14",
+        "webTitle": "TTTVNVQS#14: Công tác đảng, công tác chính trị",
+        "title": "Tất tần tật về nghĩa vụ quân sự #14: Công tác đảng, công tác chính trị",
+        "route": "/blogs/nvqs/nvqs14-ctdctct.html"
+    },
+    {
+        "id": "nvqs15",
+        "webTitle": "TTTVNVQS#15: Gọi điện thoại người thân, thăm người nhà, về phép",
+        "title": "Tất tần tật về nghĩa vụ quân sự #15: Gọi điện thoại người thân, thăm người nhà, về phép",
+        "route": "/blogs/nvqs/nvqs15-nguoithan.html"
+    },
+    {
+        "id": "nvqs16",
+        "webTitle": "TTTVNVQS#16: Sự kiện theo chu kỳ",
+        "title": "Tất tần tật về nghĩa vụ quân sự #16: Sự kiện theo chu kỳ",
+        "route": "/blogs/nvqs/nvqs16-sukienchuky.html"
+    },
+    {
+        "id": "nvqs17",
+        "webTitle": "TTTVNVQS#17: Giai đoạn cuối năm thứ nhất",
+        "title": "Tất tần tật về nghĩa vụ quân sự #17: Giai đoạn cuối năm thứ nhất",
+        "route": "/blogs/nvqs/nvqs17-cuoinamthunhat.html"
+    },
+    {
+        "id": "nvqs18",
+        "webTitle": "TTTVNVQS#18: Diễn tập chiến thuật",
+        "title": "Tất tần tật về nghĩa vụ quân sự #18: Diễn tập chiến thuật",
+        "route": "/blogs/nvqs/nvqs18-chienthuat.html"
+    },
+    {
+        "id": "nvqs19",
+        "webTitle": "TTTVNVQS#19: Timeline và cycle NVQS",
+        "title": "Tất tần tật về nghĩa vụ quân sự #19: Timeline và cycle NVQS",
+        "route": "/blogs/nvqs/nvqs19-timeline.html"
+    },
+    {
+        "id": "nvqs20",
+        "webTitle": "TTTVNVQS#20: Xuất ngũ",
+        "title": "Tất tần tật về nghĩa vụ quân sự #20: Xuất ngũ",
+        "route": "/blogs/nvqs/nvqs20-xuatngu.html"
+    }
+]
