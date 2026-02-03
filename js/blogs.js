@@ -40,7 +40,7 @@ function renderBlogs(data, container) {
 }
 
 function getCommingSoonHTML(isWritten) {
-    if (isWritten == "true") {
+    if (isWritten) {
         return '';
     } else {
         return `
