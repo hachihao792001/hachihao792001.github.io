@@ -26,7 +26,7 @@
 
     // ===== RENDER NAV =====
     const renderNav = () => {
-        let html = `<div class="d-flex gap-2 mb-3">`;
+        let html = `<div class="d-flex gap-2 mb-1">`;
 
         if (prev) {
             html += `
