@@ -342,6 +342,24 @@
     "technology": "NodeJS, ExpressJS, Bootstrap"
   },
   {
+    "title": "Cipher encryption/decryption software",
+    "image": "cipher",
+    "url": "",
+    "source": "",
+    "description": "A software I developed myself during the conscription period for training purpose. It make it easier for officers to make cipher test for telecommunications soldier to solve (this software will not be used in battle situation). This product was recognized by the Brigade as an innovation and will be show to Army Corps 34 for further evaluation.",
+    "type": "Personal",
+    "technology": "Python, Kivy"
+  },
+  {
+    "title": "Conscripts family visitation management website",
+    "image": "family",
+    "url": "",
+    "source": "",
+    "description": "Another product I developed during my military service, it's a website that allow officers to confirm the identity of the visitors using the pre-registered information in the website's database and also log visit history. This product was also recognized by the Brigade.",
+    "type": "Personal",
+    "technology": "NodeJS, ExpressJS, MongoDB"
+  },
+  {
     "title": "Portfolio website",
     "image": "portfolio",
     "url": "https://hachihao792001.github.io",
