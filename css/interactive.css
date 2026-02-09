@@ -1,0 +1,33 @@
+.interactive {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.interactive-item {
+    
+    padding: 10px;
+}
+
+.interactive-item>a {
+    text-decoration: none;
+    color: black;
+    font-size: 1.8em;
+    font-weight: 500;
+}
+
+.interactive-item>p {
+    font-size: 200;
+}
+
+.interactive-item:hover {
+    box-shadow: 0 0 10px #ccc;
+    animation-name: scaling;
+    animation-duration: 0.5s;
+    animation-fill-mode: forwards;
+}
+
+.interactive-item>div {
+    cursor: unset;
+}

@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<title>Physics engine 3D</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			text-align: center;
+			background: #f0f0f0;
+		}
+
+		canvas {
+			border: 2px solid #aaa;
+			background: #fff;
+		}
+	</style>
+</head>
+
+<body>
+	
+	<h1>Physics engine 3D</h1>
+
+	<canvas id="gameCanvas" width="600" height="300"></canvas>
+	<p id="fps"></p>
+	<p id="trisCount"></p>
+	<p>Light rotation:</p>
+	<div>
+		x
+		<input type="range" id="lightX" min="0" max="6.28" step="0.01" />
+		<span id="lightXVal" class="slider-value"></span>
+	</div>
+	<div>
+		y
+		<input type="range" id="lightY" min="0" max="6.28" step="0.01" />
+		<span id="lightYVal" class="slider-value"></span>
+	</div>
+
+	<p id="cameraInfo" class="camera-info"></p>
+
+	<script>
+		const canvas = document.getElementById("gameCanvas");
+
+		//******************************** Math *************************************
+		class Vector2Helper {
+			static add(vec1, vec2) {
+				return [vec1[0] + vec2[0], vec1[1] + vec2[1]];
+			}
+
+			static sub(vec1, vec2) {
+				return [vec1[0] - vec2[0], vec1[1] - vec2[1]];
+			}
+
+			static mulScalar(vec, k) {
+				return [vec[0] * k, vec[1] * k];
+			}
+
+			static divScalar(vec, k) {
+				return [vec[0] / k, vec[1] / k];
+			}
+
+			static scale(vec1, vec2) {
+				return [vec1[0] * vec2[0], vec1[1] * vec2[1]];
+			}
+
+			static dot(vec1, vec2) {
+				return vec1[0] * vec2[0] + vec1[1] * vec2[1];
+			}
+
+			static magnitude(vec) {
+				return Math.hypot(vec[0], vec[1]);
+			}
+		}
+
+		class Vector3 {
+			constructor(x = 0, y = 0, z = 0, w = 1) {
+				this.x = x;
+				this.y = y;
+				this.z = z;
+				this.w = w;
+			}
+
+			static zero;
+			static one;
+			static left;
+			static right;
+			static up;
+			static down;
+			static forward;
+
+			clone() {
+				return new Vector3(this.x, this.y, this.z, this.w);
+			}
+
+			static div(vec, value) {
+				return new Vector3(vec.x / value, vec.y / value, vec.z / value, vec.w);
+			}
+
+			static add(vec1, vec2) {
+				return new Vector3(vec1.x + vec2.x, vec1.y + vec2.y, vec1.z + vec2.z);
+			}
+
+			static sub(vec1, vec2) {
+				return new Vector3(vec1.x - vec2.x, vec1.y - vec2.y, vec1.z - vec2.z);
+			}
+
+			static mul(vec, value) {
+				return new Vector3(vec.x * value, vec.y * value, vec.z * value);
+			}
+
+			static scale(vec1, vec2) {
+				return new Vector3(vec1.x * vec2.x, vec1.y * vec2.y, vec1.z * vec2.z);
+			}
+
+			static dot(v1, v2) {
+				return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+			}
+
+			static cross(v1, v2) {
+				let v = new Vector3(
+					v1.y * v2.z - v1.z * v2.y,
+					v1.z * v2.x - v1.x * v2.z,
+					v1.x * v2.y - v1.y * v2.x);
+				return v;
+			}
+
+			normalize() {
+				let length = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+				if (length === 0)
+					return this;
+				this.x /= length;
+				this.y /= length;
+				this.z /= length;
+				return this;
+			}
+			magnitude() {
+				return Math.hypot(this.x, this.y, this.z);
+			}
+			reverse() {
+				return new Vector3(-this.x, -this.y, -this.z, this.w);
+			}
+
+			static mulMat4x4(vec, m) {
+				let v = vec.clone();
+				return new Vector3(
+					v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0] + v.w * m.m[3][0],
+					v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1] + v.w * m.m[3][1],
+					v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2] + v.w * m.m[3][2],
+					v.x * m.m[0][3] + v.y * m.m[1][3] + v.z * m.m[2][3] + v.w * m.m[3][3]);
+			}
+
+			static mulScalar(vec, k) {
+				return new Vector3(vec.x * k, vec.y * k, vec.z * k);
+			}
+
+			static divScalar(vec, k) {
+				return new Vector3(vec.x / k, vec.y / k, vec.z / k);
+			}
+		}
+
+		Vector3.zero = new Vector3(0, 0, 0);
+		Vector3.one = new Vector3(1, 1, 1);
+		Vector3.left = new Vector3(-1, 0, 0);
+		Vector3.right = new Vector3(1, 0, 0);
+		Vector3.up = new Vector3(0, 1, 0);
+		Vector3.down = new Vector3(0, -1, 0);
+		Vector3.forward = new Vector3(0, 0, 1);
+
+		class Mat4x4 {
+			constructor() {
+				this.m = [
+					[0, 0, 0, 0],
+					[0, 0, 0, 0],
+					[0, 0, 0, 0],
+					[0, 0, 0, 0]
+				];
+			}
+
+			static Projection(fFovDegrees, fAspectRatio, fNear, fFar) {
+				let fFovRad = 1.0 / Math.tan(fFovDegrees * 0.5 / 180.0 * 3.14159);
+				let matrix = new Mat4x4();
+				matrix.m[0][0] = fAspectRatio * fFovRad;
+				matrix.m[1][1] = fFovRad;
+				matrix.m[2][2] = fFar / (fFar - fNear);
+				matrix.m[3][2] = (-fFar * fNear) / (fFar - fNear);
+				matrix.m[2][3] = 1.0;
+				matrix.m[3][3] = 0.0;
+				return matrix;
+			}
+
+			static Translation(x, y, z) {
+				let matrix = new Mat4x4();
+				matrix.m[0][0] = 1;
+				matrix.m[1][1] = 1;
+				matrix.m[2][2] = 1;
+				matrix.m[3][3] = 1;
+				matrix.m[3][0] = x;
+				matrix.m[3][1] = y;
+				matrix.m[3][2] = z;
+				return matrix;
+			}
+
+			QuickInverse() {
+				let matrix = new Mat4x4();
+
+				matrix.m[0][0] = this.m[0][0];
+				matrix.m[0][1] = this.m[1][0];
+				matrix.m[0][2] = this.m[2][0];
+				matrix.m[0][3] = 0;
+
+				matrix.m[1][0] = this.m[0][1];
+				matrix.m[1][1] = this.m[1][1];
+				matrix.m[1][2] = this.m[2][1];
+				matrix.m[1][3] = 0;
+
+				matrix.m[2][0] = this.m[0][2];
+				matrix.m[2][1] = this.m[1][2];
+				matrix.m[2][2] = this.m[2][2];
+				matrix.m[2][3] = 0;
+
+				matrix.m[3][0] = - (this.m[3][0] * matrix.m[0][0] +
+					this.m[3][1] * matrix.m[1][0] +
+					this.m[3][2] * matrix.m[2][0]);
+
+				matrix.m[3][1] = - (this.m[3][0] * matrix.m[0][1] +
+					this.m[3][1] * matrix.m[1][1] +
+					this.m[3][2] * matrix.m[2][1]);
+
+				matrix.m[3][2] = - (this.m[3][0] * matrix.m[0][2] +
+					this.m[3][1] * matrix.m[1][2] +
+					this.m[3][2] * matrix.m[2][2]);
+
+				matrix.m[3][3] = 1;
+
+				return matrix;
+			}
+
+			static PointAt(pos, target, up) {
+				let newForward = Vector3.sub(target, pos);
+				newForward.normalize();
+
+				let a = Vector3.mul(newForward, Vector3.dot(up, newForward));
+				let newUp = Vector3.sub(up, a);
+				newUp.normalize();
+
+				let newRight = Vector3.cross(newUp, newForward);
+
+				let matrix = new Mat4x4();
+				matrix.m[0][0] = newRight.x;
+				matrix.m[0][1] = newRight.y;
+				matrix.m[0][2] = newRight.z;
+				matrix.m[0][3] = 0;
+				matrix.m[1][0] = newUp.x;
+				matrix.m[1][1] = newUp.y;
+				matrix.m[1][2] = newUp.z;
+				matrix.m[1][3] = 0;
+				matrix.m[2][0] = newForward.x;
+				matrix.m[2][1] = newForward.y;
+				matrix.m[2][2] = newForward.z;
+				matrix.m[2][3] = 0;
+				matrix.m[3][0] = pos.x;
+				matrix.m[3][1] = pos.y;
+				matrix.m[3][2] = pos.z;
+				matrix.m[3][3] = 1;
+				return matrix;
+
+			}
+		}
+
+		class Quaternion {
+			constructor(w = 1, x = 0, y = 0, z = 0) {
+				this.w = w;
+				this.x = x;
+				this.y = y;
+				this.z = z;
+			}
+
+			static fromAxisAngle(axis, angle) {
+				const half = angle / 2;
+				const s = Math.sin(half);
+				return new Quaternion(
+					Math.cos(half),
+					axis.x * s,
+					axis.y * s,
+					axis.z * s);
+			}
+
+			multiply(q) {
+				const w = this.w * q.w - this.x * q.x - this.y * q.y - this.z * q.z;
+				const x = this.w * q.x + this.x * q.w + this.y * q.z - this.z * q.y;
+				const y = this.w * q.y - this.x * q.z + this.y * q.w + this.z * q.x;
+				const z = this.w * q.z + this.x * q.y - this.y * q.x + this.z * q.w;
+				return new Quaternion(w, x, y, z);
+			}
+
+			conjugate() {
+				return new Quaternion(this.w, -this.x, -this.y, -this.z);
+			}
+
+			inverse() {
+				const normSq = this.w * this.w + this.x * this.x + this.y * this.y + this.z * this.z;
+				const conj = this.conjugate();
+				return new Quaternion(conj.w / normSq, conj.x / normSq, conj.y / normSq, conj.z / normSq);
+			}
+
+			normalize() {
+				const len = Math.hypot(this.w, this.x, this.y, this.z);
+				if (len === 0)
+					return this;
+				this.w /= len;
+				this.x /= len;
+				this.y /= len;
+				this.z /= len;
+				return this;
+			}
+
+			rotateVector(v) {
+				const qVec = new Quaternion(0, v.x, v.y, v.z);
+				const res = this.multiply(qVec).multiply(this.inverse());
+				return new Vector3(
+					res.x,
+					res.y,
+					res.z);
+			}
+		}
+
+		class Plane {
+			constructor(p, normal) {
+				this.point = p;
+				this.normal = normal;
+			}
+
+			distToPoint(p) {
+				return Vector3.dot(this.normal, p) - Vector3.dot(this.normal, this.point);
+			}
+
+			intersectWithLine(lineStart, lineEnd) {
+				this.normal.normalize();
+				let plane_d = -Vector3.dot(this.normal, this.point);
+				let ad = Vector3.dot(lineStart, this.normal);
+				let bd = Vector3.dot(lineEnd, this.normal);
+				let t = (-plane_d - ad) / (bd - ad);
+				let lineStartToEnd = Vector3.sub(lineEnd, lineStart);
+				let lineToIntersect = Vector3.mul(lineStartToEnd, t);
+				return Vector3.add(lineStart, lineToIntersect);
+			}
+
+			static bottomScreenEdge() {
+				return new Plane(Vector3.createVector(0), new Vector3(0, 1, 0));
+			}
+			static topScreenEdge() {
+				return new Plane(new Vector3(0, canvasHeight - 1, 0), new Vector3(0, -1, 0));
+			}
+			static leftScreenEdge() {
+				return new Plane(Vector3.createVector(0), new Vector3(1, 0, 0));
+			}
+			static rightScreenEdge() {
+				return new Plane(new Vector3(canvasWidth - 1, 0, 0), new Vector3(-1, 0, 0));
+			}
+		};
+
+
+		//******************************** Graphics *************************************
+		const ctx = canvas.getContext("2d");
+		let screenBuffer = [];
+		let depthBuffer = [];
+		let imageData = ctx.createImageData(canvas.width, canvas.height);
+		let pixelData = imageData.data;  // Uint8ClampedArray
+
+		class Color {
+			constructor(r, g, b) {
+				this.r = r;
+				this.g = g;
+				this.b = b;
+			}
+		}
+
+		class Triangle {
+			constructor(vertices = []) {
+				if (vertices.length == 0) {
+					this.vertices = [];
+					for (let i = 0; i < 3; i++) {
+						this.vertices.push(Vector3.zero.clone());
+					}
+				} else {
+					this.vertices = vertices;
+				}
+
+				this.color = new Color(255, 255, 255);
+				this.originalColor = new Color(255, 255, 255);
+				this.depth = 0;
+			}
+
+			clone() {
+				let tri = new Triangle();
+				for (let i = 0; i < this.vertices.length; i++) {
+					tri.vertices[i] = this.vertices[i].clone();
+				}
+				tri.color = this.color;
+				tri.originalColor = this.originalColor;
+				return tri;
+			}
+
+			normalize() {
+				for (let i = 0; i < 3; i++) {
+					this.vertices[i] = Vector3.div(this.vertices[i], this.vertices[i].w);
+				}
+			}
+
+			scale(x, y) {
+				for (let i = 0; i < 3; i++) {
+					this.vertices[i].x *= x;
+					this.vertices[i].y *= y;
+				}
+			}
+
+			getNormal() {
+				let line1 = Vector3.sub(this.vertices[1], this.vertices[0]);
+				let line2 = Vector3.sub(this.vertices[2], this.vertices[0]);
+				let normal = Vector3.cross(line1, line2);
+				normal.normalize();
+				return normal;
+			}
+
+			illuminate(lightDir) {
+				let normal = this.getNormal();
+
+				let brightness = Vector3.dot(lightDir, normal);
+
+				const ambient = 0.08;
+				let intensity = Math.min(1, ambient + brightness);
+
+				// Apply intensity to original color while preserving hue
+				this.color = new Color(
+					Math.floor(this.originalColor.r * intensity),
+					Math.floor(this.originalColor.g * intensity),
+					Math.floor(this.originalColor.b * intensity)
+				);
+			}
+
+			ClipAgainstPlane(plane) {
+				let outTris = [];
+
+				plane.normal.normalize();
+
+				let inside_points = [];
+				let nInsidePointCount = 0;
+				let outside_points = [];
+				let nOutsidePointCount = 0;
+
+				let d0 = plane.distToPoint(this.vertices[0]);
+				let d1 = plane.distToPoint(this.vertices[1]);
+				let d2 = plane.distToPoint(this.vertices[2]);
+
+				if (d0 >= 0) {
+					inside_points[nInsidePointCount++] = this.vertices[0];
+				} else {
+					outside_points[nOutsidePointCount++] = this.vertices[0];
+				}
+
+				if (d1 >= 0) {
+					inside_points[nInsidePointCount++] = this.vertices[1];
+				} else {
+					outside_points[nOutsidePointCount++] = this.vertices[1];
+				}
+
+				if (d2 >= 0) {
+					inside_points[nInsidePointCount++] = this.vertices[2];
+				} else {
+					outside_points[nOutsidePointCount++] = this.vertices[2];
+				}
+
+				if (nInsidePointCount == 3) {
+					outTris.push(this);
+				}
+
+				if (nInsidePointCount == 1 && nOutsidePointCount == 2) {
+					let out_tri1 = new Triangle();
+					out_tri1.color = this.color;
+
+					out_tri1.vertices[0] = inside_points[0];
+
+					out_tri1.vertices[1] = plane.intersectWithLine(inside_points[0], outside_points[0]);
+					out_tri1.vertices[2] = plane.intersectWithLine(inside_points[0], outside_points[1]);
+
+					outTris.push(out_tri1);
+				}
+
+				if (nInsidePointCount == 2 && nOutsidePointCount == 1) {
+					let out_tri1 = new Triangle(),
+						out_tri2 = new Triangle();
+					out_tri1.color = this.color;
+					out_tri2.color = this.color;
+
+					out_tri1.vertices[0] = inside_points[0];
+					out_tri1.vertices[1] = inside_points[1];
+
+					out_tri1.vertices[2] = plane.intersectWithLine(inside_points[0], outside_points[0]);
+
+					out_tri2.vertices[0] = inside_points[1];
+					out_tri2.vertices[1] = out_tri1.vertices[2];
+					out_tri2.vertices[2] = plane.intersectWithLine(inside_points[1], outside_points[0]);
+
+					outTris.push(out_tri1);
+					outTris.push(out_tri2);
+				}
+
+				return outTris;
+			}
+		}
+
+		class Mesh {
+			constructor() {
+				this.tris = [];
+			}
+
+			getCenter() {
+				let result = Vector3.zero.clone();
+				for (let i = 0; i < this.tris.length; i++) {
+					for (let v = 0; v < 3; v++) {
+						result.x += this.tris[i].vertices[v].x;
+						result.y += this.tris[i].vertices[v].y;
+						result.z += this.tris[i].vertices[v].z;
+					}
+				}
+				result = Vector3.div(result, this.tris.length * 3.0);
+				return result;
+			}
+
+			Rotate(axes) {
+				let center = this.getCenter();
+
+				for (let i = 0; i < this.tris.length; i++) {
+					for (let v = 0; v < 3; v++) {
+						let q = Quaternion.fromAxisAngle(Vector3.right, axes.x);
+						q = q.multiply(Quaternion.fromAxisAngle(Vector3.up, axes.y));
+						q = q.multiply(Quaternion.fromAxisAngle(Vector3.forward, axes.z));
+
+						let verticesLocal = Vector3.sub(this.tris[i].vertices[v], center);
+						this.tris[i].vertices[v] = Vector3.add(center, q.rotateVector(verticesLocal));
+					}
+				}
+			}
+
+			makeCube(center, size) {
+				let halfSize = Vector3.div(size, 2);
+				this.tris = [];
+				// SOUTH
+				this.tris.push(new Triangle([
+					new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+					new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+					new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z)]));
+				this.tris.push(new Triangle([
+					new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+					new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+					new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z)]));
+
+				// EAST
+				this.tris.push(new Triangle([
+					new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+					new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+					new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z)]));
+
+				this.tris.push(new Triangle([
+					new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+					new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+					new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z)]));
+
+				// NORTH
+				this.tris.push(new Triangle([
+					new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+					new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+					new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z)]));
+
+				this.tris.push(new Triangle([
+					new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+					new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+					new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z)]));
+
+				// WEST
+				this.tris.push(new Triangle([
+					new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+					new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+					new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z)]));
+
+				this.tris.push(new Triangle([
+					new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+					new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+					new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z)]));
+
+				// TOP
+				this.tris.push(new Triangle([
+					new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+					new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+					new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z)]));
+
+				this.tris.push(new Triangle([
+					new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+					new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+					new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z)]));
+
+				// BOTTOM
+				this.tris.push(new Triangle([
+					new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+					new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+					new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z)]));
+
+				this.tris.push(new Triangle([
+					new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+					new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+					new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z)]));
+			}
+
+			makeSphere(center, radius, segments) {
+				this.tris = [];
+
+				for (let i = 0; i <= segments; i++) {
+					let theta1 = i * Math.PI / segments;
+					let theta2 = (i + 1) * Math.PI / segments;
+					for (let j = 0; j <= segments; j++) {
+						let phi1 = j * 2 * Math.PI / segments;
+						let phi2 = (j + 1) * 2 * Math.PI / segments;
+						let v1 = new Vector3(
+							center.x + radius * Math.sin(theta1) * Math.cos(phi1),
+							center.y + radius * Math.cos(theta1),
+							center.z + radius * Math.sin(theta1) * Math.sin(phi1)
+						);
+						let v2 = new Vector3(
+							center.x + radius * Math.sin(theta2) * Math.cos(phi1),
+							center.y + radius * Math.cos(theta2),
+							center.z + radius * Math.sin(theta2) * Math.sin(phi1)
+						);
+						let v3 = new Vector3(
+							center.x + radius * Math.sin(theta2) * Math.cos(phi2),
+							center.y + radius * Math.cos(theta2),
+							center.z + radius * Math.sin(theta2) * Math.sin(phi2)
+						);
+						let v4 = new Vector3(
+							center.x + radius * Math.sin(theta1) * Math.cos(phi2),
+							center.y + radius * Math.cos(theta1),
+							center.z + radius * Math.sin(theta1) * Math.sin(phi2)
+						);
+						this.tris.push(new Triangle([v3, v2, v1]));
+						this.tris.push(new Triangle([v4, v3, v1]));
+					}
+				}
+			}
+		}
+
+		class Camera {
+			constructor(p, lookDir, cameraSensitivity, cameraSpeed) {
+				this.pos = p;
+				this.lookDir = lookDir;
+				this.sensitivity = cameraSensitivity;
+				this.speed = cameraSpeed;
+				this.matView = new Mat4x4();
+				this.yaw = 0;
+				this.pitch = 0;
+			}
+
+			update(dt, keyStates) {
+
+				if (keyStates['w']) {
+					this.pos = Vector3.add(this.pos, Vector3.mul(this.lookDir, dt * this.speed));
+				}
+				if (keyStates['s']) {
+					this.pos = Vector3.sub(this.pos, Vector3.mul(this.lookDir, dt * this.speed));
+				}
+				if (keyStates['a']) {
+					this.pos = Vector3.sub(this.pos, Vector3.mul(Vector3.cross(this.lookDir, Vector3.up), dt * this.speed));
+				}
+				if (keyStates['d']) {
+					this.pos = Vector3.sub(this.pos, Vector3.mul(Vector3.cross(this.lookDir.reverse(), Vector3.up), dt * this.speed));
+				}
+				if (keyStates['Shift']) {
+					this.pos = Vector3.add(this.pos, Vector3.mul(Vector3.down, dt * this.speed));
+				}
+				if (keyStates[' ']) {
+					this.pos = Vector3.add(this.pos, Vector3.mul(Vector3.up, dt * this.speed));
+				}
+
+				let matCamera = Mat4x4.PointAt(this.pos, Vector3.add(this.pos, this.lookDir), Vector3.up);
+				this.matView = matCamera.QuickInverse();
+			}
+		};
+
+		let seeWireFrame = false;
+		function toggleWireFrame() {
+			seeWireFrame = !seeWireFrame;
+		}
+
+		function canvasSize() {
+			return [canvas.width, canvas.height];
+		}
+
+		function initScreenBuffer() {
+			for (let i = 0; i < canvas.height; i++) {
+				let screenRow = [];
+				let depthRow = [];
+				for (let j = 0; j < canvas.width; j++) {
+					screenRow.push(new Color(255, 255, 255));
+					depthRow.push(0);
+				}
+				screenBuffer.push(screenRow);
+				depthBuffer.push(depthRow);
+			}
+		}
+		function drawCall(tris) {
+			for (let i = 0; i < tris.length; i++) {
+				fillTriangle(tris[i], tris[i].color, seeWireFrame, new Color(0, 0, 0));
+			}
+
+			let index = 0;
+			for (let y = 0; y < canvas.height; y++) {
+				for (let x = 0; x < canvas.width; x++) {
+					const c = screenBuffer[y][x];
+					pixelData[index++] = c.r;
+					pixelData[index++] = c.g;
+					pixelData[index++] = c.b;
+					pixelData[index++] = 255;
+				}
+			}
+
+			ctx.putImageData(imageData, 0, 0);
+		}
+
+		function clearScreen() {
+			for (let i = 0; i < screenBuffer.length; i++) {
+				for (let j = 0; j < screenBuffer[i].length; j++) {
+					screenBuffer[i][j] = new Color(240, 240, 240);
+					depthBuffer[i][j] = 9999999;
+				}
+			}
+		}
+
+		function getTriangleScaledPoint(tri) {
+			let points = [];
+			for (let i = 0; i < 3; i++) {
+				let a = [
+					(tri.vertices[i].x * -canvas.width + canvas.width / 2) | 0,
+					(tri.vertices[i].y * -canvas.height + canvas.height / 2) | 0];
+
+				points.push(a);
+			}
+
+			return points;
+		}
+
+		function getLinePixels(a_in, b_in) {
+			let a = [a_in[0], a_in[1]];
+			let b = [b_in[0], b_in[1]];
+
+			let result = [];
+
+			if (a[0] == b[0] && a[1] == b[1]) {
+				result.push(a);
+				return result;
+			} else if (parseInt(a[0]) == parseInt(b[0])) {
+				let minY = parseInt((a[1] < b[1] ? a[1] : b[1]));
+				let maxY = parseInt((a[1] > b[1] ? a[1] : b[1]));
+				for (let i = minY; i <= maxY; i++)
+					result.push([a[0], parseFloat(i)]);
+			} else if (parseInt(a[1]) == parseInt(b[1])) {
+				let minX = parseInt((a[0] < b[0] ? a[0] : b[0]));
+				let maxX = parseInt((a[0] > b[0] ? a[0] : b[0]));
+				for (let j = minX; j <= maxX; j++)
+					result.push([parseFloat(j), a[1]]);
+			} else {
+
+				//https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+
+				if (Math.abs(b[1] - a[1]) < Math.abs(b[0] - a[0])) {
+					//góc thấp
+					if (a[0] > b[0]) {
+						let temp = a;
+						a = b;
+						b = temp;
+					}
+
+					let dx = parseInt(b[0]) - parseInt(a[0]);
+					let dy = parseInt(b[1]) - parseInt(a[1]);
+
+					let yI = 1;
+					if (dy < 0) {
+						yI = -1;
+						dy = -dy;
+					}
+
+					let D = 2 * dy - dx;
+					let y = parseInt(a[1]);
+
+					for (let x = parseInt(a[0]); x <= parseInt(b[0]); x++) {
+						result.push([x, y]);
+						if (D > 0) {
+							y += yI;
+							D += 2 * (dy - dx);
+						} else
+							D += 2 * dy;
+					}
+
+				} else {
+					//góc cao
+					if (a[1] > b[1]) {
+						let temp = a;
+						a = b;
+						b = temp;
+					}
+
+					let dx = parseInt(b[0]) - parseInt(a[0]);
+					let dy = parseInt(b[1]) - parseInt(a[1]);
+
+					let xI = 1;
+					if (dx < 0) {
+						xI = -1;
+						dx = -dx;
+					}
+
+					let D = 2 * dx - dy;
+					let x = parseInt(a[0]);
+
+					for (let y = parseInt(a[1]); y <= parseInt(b[1]); y++) {
+						result.push([x, y]);
+						if (D > 0) {
+							x += xI;
+							D += 2 * (dx - dy);
+						} else
+							D += 2 * dx;
+					}
+
+				}
+			}
+
+			return result;
+		}
+
+		function placePixel(pos, color) {
+			if (pos[1] >= 0 && pos[1] < canvas.height && pos[0] >= 0 && pos[0] < canvas.width)
+				screenBuffer[parseInt(pos[1])][parseInt(pos[0])] = color;
+		}
+
+		function placePixels(pixels, color) {
+			for (let i = 0; i < pixels.length; i++)
+				placePixel(pixels[i], color);
+		}
+
+		function fillTriangle(triangle, fillColor, hasBorder, borderColor) {
+			let vertices = getTriangleScaledPoint(triangle);
+
+			let allBorderPixels = [];
+			for (let i = 0; i < 3; i++) {
+				let linePixels = getLinePixels(vertices[i], vertices[(i + 1) % 3]);
+				for (let j = 0; j < linePixels.length; j++)
+					allBorderPixels.push(linePixels[j]);
+			}
+
+			let allXs = [];
+			for (let i = 0; i < canvas.height; i++)
+				allXs.push([]);
+			for (let i = 0; i < allBorderPixels.length; i++) {
+				if (allBorderPixels[i][1] >= 0 && allBorderPixels[i][1] < canvas.height)
+					allXs[allBorderPixels[i][1]].push(allBorderPixels[i][0]);
+			}
+
+			for (let i = 0; i < canvas.height; i++) {
+				if (allXs[i].length == 0)
+					continue;
+				let min = Math.min(...allXs[i]);
+				if (min < 0)
+					min = 0;
+				let max = Math.max(...allXs[i]);
+				if (max >= canvas.width)
+					max = canvas.width - 1;
+
+				for (let j = min; j <= max; j++) {
+					const { alpha, beta, gamma } = barycentric(vertices[0], vertices[1], vertices[2], [j, i]);
+					let invW_pixel = alpha * (1 / triangle.vertices[0].w) + beta * (1 / triangle.vertices[1].w) + gamma * (1 / triangle.vertices[2].w);
+					let z_pixel = 1 / invW_pixel;
+
+					if (z_pixel < depthBuffer[i][j]) {
+						placePixel([j, i], fillColor);
+						depthBuffer[i][j] = z_pixel;
+					}
+					//debug triangle vertices
+					//if (hasVertexApproximate(vertices, [j, i]))
+					//    placePixel([j, i], new Color(255, 0, 0));
+				}
+			}
+
+			if (hasBorder) {
+				placePixels(allBorderPixels, borderColor);
+			}
+		}
+
+		function hasVertexApproximate(vertices, v) {
+			let precision = 2;
+			for (let i = 0; i < vertices.length; i++) {
+				if (Math.abs(vertices[i].x - v.x) <= precision && Math.abs(vertices[i].y - v.y) <= precision)
+					return true;
+			}
+			return false;
+		}
+
+		function barycentric(A, B, C, P) {
+			const denom =
+				(B[1] - C[1]) * (A[0] - C[0]) +
+				(C[0] - B[0]) * (A[1] - C[1]);
+
+			const alpha =
+				((B[1] - C[1]) * (P[0] - C[0]) +
+					(C[0] - B[0]) * (P[1] - C[1])) / denom;
+
+			const beta =
+				((C[1] - A[1]) * (P[0] - C[0]) +
+					(A[0] - C[0]) * (P[1] - C[1])) / denom;
+
+			const gamma = 1 - alpha - beta;
+
+			return {
+				alpha,
+				beta,
+				gamma
+			};
+		}
+
+
+		//******************************** Physics *************************************
+
+		class AABB {
+			constructor(min, max) {
+				this.min = min;
+				this.max = max;
+			}
+
+			intersects(other) {
+				return this.min.x <= other.max.x && this.max.x >= other.min.x &&
+					this.min.y <= other.max.y && this.max.y >= other.min.y &&
+					this.min.z <= other.max.z && this.max.z >= other.min.z;
+			}
+
+			containsPoint(point) {
+				return point.x >= this.min.x && point.x <= this.max.x &&
+					point.y >= this.min.y && point.y <= this.max.y &&
+					point.z >= this.min.z && point.z <= this.max.z;
+			}
+
+			getCenter() {
+				return new Vector3(
+					(this.min.x + this.max.x) / 2,
+					(this.min.y + this.max.y) / 2,
+					(this.min.z + this.max.z) / 2
+				);
+			}
+		}
+
+		class GameObject {
+			constructor(mesh, p, v, a, m, e, isKinematic = false) {
+				this.mesh = mesh;
+				this.pos = p;
+				this.velocity = v;
+				this.acceleration = a;
+				this.mass = m;
+				this.elasticity = e;
+				this.isKinematic = isKinematic;
+				this.canBeControlled = false;
+				this.aabb = null;
+			}
+
+			setColor(color) {
+				for (let tri of this.mesh.tris) {
+					tri.color = color;
+					tri.originalColor = color;
+				}
+			}
+
+			updatePos(pos) {
+				if (this.isKinematic) return;
+				this.pos = pos;
+			}
+
+			updateVelocity(vel) {
+				if (this.isKinematic) return;
+				this.velocity = vel;
+			}
+
+			applyConstantForce(f) {
+				if (this.isKinematic) return;
+				this.acceleration = Vector3.add(this.acceleration, Vector3.divScalar(f, this.mass));
+			}
+			applyImpulse(j) {
+				if (this.isKinematic) return;
+				this.velocity = Vector3.add(this.velocity, Vector3.divScalar(j, this.mass));
+			}
+			update(dt) {
+				if (this.isKinematic) return;
+				this.velocity = Vector3.add(this.velocity, Vector3.mulScalar(this.acceleration, dt));
+				this.pos = Vector3.add(this.pos, Vector3.mulScalar(this.velocity, dt));
+				this.acceleration = new Vector3(0, 0, 0);
+			}
+
+			updateMovement(dt, keyStates) {
+				if (!this.canBeControlled) return;
+				let inputVector = new Vector3(0, 0, 0);
+
+				if (keyStates['ArrowUp'])
+					inputVector = Vector3.add(inputVector, new Vector3(0, 0, 1));
+				if (keyStates['ArrowDown'])
+					inputVector = Vector3.add(inputVector, new Vector3(0, 0, -1));
+				if (keyStates['ArrowLeft'])
+					inputVector = Vector3.add(inputVector, new Vector3(1, 0, 0));
+				if (keyStates['ArrowRight'])
+					inputVector = Vector3.add(inputVector, new Vector3(-1, 0, 0));
+
+				this.applyConstantForce(Vector3.mulScalar(inputVector, 15));
+			}
+
+			checkCollision(other) { }
+
+			updateAABB() { }
+		}
+
+		class PhysicsCube extends GameObject {
+			constructor(center, size, m, e, isKinematic = false) {
+				let cubeMesh = new Mesh();
+				cubeMesh.makeCube(new Vector3(0, 0, 0), size);
+				super(cubeMesh, center, new Vector3(0, 0, 0), new Vector3(0, 0, 0), m, e, isKinematic);
+				this.size = size;
+				this.updateAABB();
+			}
+
+			updateAABB() {
+				const halfSize = new Vector3(this.size.x / 2, this.size.y / 2, this.size.z / 2);
+				this.aabb = new AABB(
+					Vector3.sub(this.pos, halfSize),
+					Vector3.add(this.pos, halfSize)
+				);
+			}
+
+			checkCollision(other) {
+				if (!this.aabb.intersects(other.aabb)) return;
+
+				if (other instanceof PhysicsSphere) {
+					resolveCubeSphereCollision(this, other);
+				} else if (other instanceof PhysicsCube) {
+					resolveCubeCubeCollision(this, other);
+				}
+			}
+		}
+
+		class PhysicsSphere extends GameObject {
+
+			constructor(center, radius, m, e, isKinematic = false) {
+				let sphereMesh = new Mesh();
+				sphereMesh.makeSphere(new Vector3(0, 0, 0), radius, 12);
+				super(sphereMesh, center, new Vector3(0, 0, 0), new Vector3(0, 0, 0), m, e, isKinematic);
+				this.radius = radius;
+				this.updateAABB();
+			}
+
+			updateAABB() {
+				const radiusVec = new Vector3(this.radius, this.radius, this.radius);
+				this.aabb = new AABB(
+					Vector3.sub(this.pos, radiusVec),
+					Vector3.add(this.pos, radiusVec)
+				);
+			}
+
+			checkCollision(other) {
+				if (!this.aabb.intersects(other.aabb)) return;
+
+				if (other instanceof PhysicsSphere) {
+					resolveSphereSphereCollision(this, other);
+				} else if (other instanceof PhysicsCube) {
+					resolveCubeSphereCollision(other, this);
+				}
+			}
+		}
+
+		function resolveCubeSphereCollision(cube, sphere) {
+			let xAxisOverlap = sphere.pos.x - sphere.radius <= cube.pos.x + cube.size.x / 2 &&
+				sphere.pos.x + sphere.radius >= cube.pos.x - cube.size.x / 2;
+			let yAxisOverlap = sphere.pos.y - sphere.radius <= cube.pos.y + cube.size.y / 2 &&
+				sphere.pos.y + sphere.radius >= cube.pos.y - cube.size.y / 2;
+			let zAxisOverlap = sphere.pos.z - sphere.radius <= cube.pos.z + cube.size.z / 2 &&
+				sphere.pos.z + sphere.radius >= cube.pos.z - cube.size.z / 2;
+
+			if (xAxisOverlap && yAxisOverlap && zAxisOverlap) {
+				// Find the closest point on the cube to the sphere center
+				let closestPoint = new Vector3(
+					Math.max(cube.pos.x - cube.size.x / 2, Math.min(sphere.pos.x, cube.pos.x + cube.size.x / 2)),
+					Math.max(cube.pos.y - cube.size.y / 2, Math.min(sphere.pos.y, cube.pos.y + cube.size.y / 2)),
+					Math.max(cube.pos.z - cube.size.z / 2, Math.min(sphere.pos.z, cube.pos.z + cube.size.z / 2))
+				);
+				let distanceVec = Vector3.sub(sphere.pos, closestPoint);
+				let distance = Math.hypot(distanceVec.x, distanceVec.y, distanceVec.z);
+				if (distance < sphere.radius) {
+					let penetrationDepth = sphere.radius - distance;
+					let collisionNormal = distanceVec.normalize();
+					// Resolve interpenetration
+					let totalMass = sphere.mass + cube.mass;
+					sphere.pos = Vector3.add(sphere.pos, Vector3.mulScalar(collisionNormal, penetrationDepth * (cube.mass / totalMass)));
+					cube.updatePos(Vector3.sub(cube.pos, Vector3.mulScalar(collisionNormal, penetrationDepth * (sphere.mass / totalMass))));
+					// Calculate relative velocity
+					let relativeVelocity = Vector3.sub(sphere.velocity, cube.velocity);
+					let velocityAlongNormal = Vector3.dot(relativeVelocity, collisionNormal);
+					if (velocityAlongNormal < 0) {
+						// Calculate impulse scalar
+						let e = Math.min(sphere.elasticity, cube.elasticity);
+						let j = -(1 + e) * velocityAlongNormal;
+						j /= (1 / sphere.mass + 1 / cube.mass);
+						// Apply impulse
+						let impulse = Vector3.mulScalar(collisionNormal, j);
+						sphere.applyImpulse(impulse);
+						cube.applyImpulse(Vector3.mulScalar(impulse, -1));
+					}
+				}
+			}
+		}
+
+		function resolveCubeCubeCollision(cubeA, cubeB) {
+
+		}
+
+		function resolveSphereSphereCollision(sphereA, sphereB) {
+			let contactNormal = Vector3.sub(sphereB.pos, sphereA.pos);
+			let dist = contactNormal.magnitude();
+			let penetrationDepth = sphereA.radius + sphereB.radius - dist;
+
+			if (penetrationDepth > 0) {
+				let vRel = Vector3.sub(sphereA.velocity, sphereB.velocity);
+				contactNormal = Vector3.divScalar(contactNormal, dist);
+
+				let totalMass = sphereA.mass + sphereB.mass;
+				sphereA.pos = Vector3.sub(sphereA.pos, Vector3.mulScalar(contactNormal, penetrationDepth * (sphereB.mass / totalMass)));
+				sphereB.pos = Vector3.add(sphereB.pos, Vector3.mulScalar(contactNormal, penetrationDepth * (sphereA.mass / totalMass)));
+
+				let e = Math.min(sphereA.elasticity, sphereB.elasticity);
+				let impulseMagnitude = - (1 + e) * Vector3.dot(vRel, contactNormal) / (1 / sphereA.mass + 1 / sphereB.mass);
+				let impulseDirection = contactNormal;
+				sphereA.applyImpulse(Vector3.mulScalar(impulseDirection, impulseMagnitude));
+				sphereB.applyImpulse(Vector3.mulScalar(impulseDirection, -impulseMagnitude));
+			}
+		}
+		//******************************** Main *************************************
+
+		let fps = 0, frames = 0;
+
+		const lightXSlider = document.getElementById("lightX");
+		const lightYSlider = document.getElementById("lightY");
+		const lightXVal = document.getElementById("lightXVal");
+		const lightYVal = document.getElementById("lightYVal");
+		const cameraInfo = document.getElementById("cameraInfo");
+		const fpsInfo = document.getElementById("fps");
+		const trisCountInfo = document.getElementById("trisCount");
+
+		let lastTime = performance.now();
+		let dt = 0;
+		let fpsTimeCounter = 0;
+
+		let keyStates = [];
+		let objects = [
+			new PhysicsCube(new Vector3(0, -5, 15), new Vector3(30, 1, 30), 1, 1, true),
+			new PhysicsCube(new Vector3(-16, -4, 15), new Vector3(1, 4, 32), 1, 1, true),
+			new PhysicsCube(new Vector3(16, -4, 15), new Vector3(1, 4, 32), 1, 1, true),
+			new PhysicsCube(new Vector3(0, -4, 0), new Vector3(30, 4, 1), 1, 1, true),
+			new PhysicsCube(new Vector3(0, -4, 30), new Vector3(30, 4, 1), 1, 1, true),
+
+			new PhysicsSphere(new Vector3(0, 5, 15), 0.5, 1, 1),
+			new PhysicsSphere(new Vector3(2, 10, 15), 1, 1, 1),
+			new PhysicsSphere(new Vector3(-4, 15, 15), 2, 1, 1),
+			new PhysicsSphere(new Vector3(6, 20, 15), 1.5, 1, 1),
+			new PhysicsSphere(new Vector3(-8, 25, 15), 1, 1, 1),
+		];
+
+		let matProj = Mat4x4.Projection(60.0, canvas.height / canvas.width, 0.04, 1000.0);
+		let lightRotation = new Vector3(1.96, 6.14, 0);
+		lightXSlider.value = lightRotation.x;
+		lightYSlider.value = lightRotation.y;
+		if (lightXVal) lightXVal.textContent = Number(lightRotation.x).toFixed(2);
+		if (lightYVal) lightYVal.textContent = Number(lightRotation.y).toFixed(2);
+
+		let camera = new Camera(new Vector3(0, 23, -16), new Vector3(0, -0.7, 0.7), 0.05, 8);
+
+		function start() {
+			initScreenBuffer();
+		}
+
+		function updatePhysics(dt) {
+			for (let i = 0; i < objects.length; i++) {
+				objects[i].applyConstantForce(new Vector3(0, -9.8, 0));
+				for (let j = 0; j < objects.length; j++) {
+					if (i != j)
+						objects[i].checkCollision(objects[j]);
+				}
+			}
+
+			for (let obj of objects) {
+				obj.update(dt);
+				obj.updateAABB();
+			}
+			objects[5].canBeControlled = true;
+			objects[5].updateMovement(dt, keyStates);
+			objects[5].setColor(new Color(255, 0, 0));
+		}
+
+		function update(time = performance.now()) {
+			dt = (time - lastTime) / 1000;
+			lastTime = time;
+
+			fpsTimeCounter += dt;
+			frames++;
+			if (fpsTimeCounter >= 1) {
+				fps = frames;
+				frames = 0;
+				fpsTimeCounter = 0;
+			}
+
+			clearScreen();
+			camera.update(dt, keyStates);
+			updatePhysics(dt);
+
+			const pitch = lightRotation.x;
+			const yaw = lightRotation.y;
+			const lx = Math.sin(yaw) * Math.cos(pitch);
+			const ly = Math.sin(pitch);
+			const lz = Math.cos(yaw) * Math.cos(pitch);
+			let lightDir = new Vector3(lx, ly, lz);
+			lightDir.normalize();
+
+			let translatedTris = [];
+			for (let obj of objects) {
+				let translationMat = Mat4x4.Translation(obj.pos.x, obj.pos.y, obj.pos.z);
+				for (let i = 0; i < obj.mesh.tris.length; i++) {
+					let currentTri = obj.mesh.tris[i].clone();
+					for (let j = 0; j < currentTri.vertices.length; j++) {
+						currentTri.vertices[j] = Vector3.mulMat4x4(currentTri.vertices[j], translationMat);
+					}
+					translatedTris.push(currentTri);
+				}
+			}
+
+			let viewedTris = [];
+			for (let i = 0; i < translatedTris.length; i++) {
+				let currentTri = translatedTris[i].clone();
+				if (Vector3.dot(currentTri.getNormal(), Vector3.sub(currentTri.vertices[0], camera.pos)) < 0) {
+
+					currentTri.illuminate(lightDir);
+
+					for (let j = 0; j < currentTri.vertices.length; j++) {
+						currentTri.vertices[j] = Vector3.mulMat4x4(currentTri.vertices[j], camera.matView);
+					}
+					viewedTris.push(currentTri);
+				}
+			}
+
+			let clippedTris = [];
+			for (let i = 0; i < viewedTris.length; i++)
+				clippedTris.push(...viewedTris[i].ClipAgainstPlane(new Plane(new Vector3(0, 0, 0.1), new Vector3(0, 0, 1))));
+
+			let projectedTris = [];
+			for (let i = 0; i < clippedTris.length; i++) {
+				let currentTri = clippedTris[i].clone();
+				for (let j = 0; j < currentTri.vertices.length; j++) {
+					currentTri.vertices[j] = Vector3.mulMat4x4(currentTri.vertices[j], matProj);
+				}
+				currentTri.normalize();
+				projectedTris.push(currentTri);
+			}
+
+			drawCall(projectedTris);
+
+			if (cameraInfo) {
+				const fmt = (v) => `${v.x.toFixed(2)}, ${v.y.toFixed(2)}, ${v.z.toFixed(2)}`;
+				cameraInfo.textContent = `Camera pos: ${fmt(camera.pos)} | look: ${fmt(camera.lookDir)}`;
+			}
+			fpsInfo.textContent = `fps: ${fps}`;
+			trisCountInfo.textContent = `Tris count: ${projectedTris.length}`;
+
+			requestAnimationFrame(update);
+		}
+
+		canvas.addEventListener("click", async () => {
+			await canvas.requestPointerLock({
+				unadjustedMovement: true,
+			});
+		});
+
+		canvas.addEventListener("mousemove", (e) => {
+			if (document.pointerLockElement === canvas) {
+				let deltaMousePos = [e.movementX, e.movementY];
+
+				let up = new Vector3(0, 1, 0);
+				let q = Quaternion.fromAxisAngle(Vector3.cross(camera.lookDir, up), -deltaMousePos[1] * camera.sensitivity * dt);
+				q = q.multiply(Quaternion.fromAxisAngle(new Vector3(0, 1, 0), -deltaMousePos[0] * camera.sensitivity * dt));
+
+				camera.yaw += deltaMousePos[0] * camera.sensitivity * dt;
+				camera.pitch += deltaMousePos[1] * camera.sensitivity * dt;
+
+				camera.lookDir = q.rotateVector(camera.lookDir);
+				camera.lookDir.normalize();
+			}
+		});
+
+		window.addEventListener('keydown', (e) => {
+			keyStates[e.key] = true;
+			if (e.key == "t")
+				toggleWireFrame();
+			if (e.key == "f") {
+				for (let obj of objects) {
+					if (obj instanceof PhysicsSphere) {
+						let randomImpulse = new Vector3((Math.random() - 0.5) * 2, Math.random() * 5 + 5, (Math.random() - 0.5) * 2);
+						obj.applyImpulse(randomImpulse);
+					}
+				}
+			}
+		});
+
+		window.addEventListener('keyup', (e) => {
+			keyStates[e.key] = false;
+		});
+
+		lightXSlider.addEventListener('input', (e) => {
+			lightRotation.x = parseFloat(lightXSlider.value);
+			if (lightXVal) lightXVal.textContent = parseFloat(lightXSlider.value).toFixed(2);
+		});
+		lightYSlider.addEventListener('input', (e) => {
+			lightRotation.y = parseFloat(lightYSlider.value);
+			if (lightYVal) lightYVal.textContent = parseFloat(lightYSlider.value).toFixed(2);
+		});
+
+		// prevent dt spikes when switching tabs
+		document.addEventListener('visibilitychange', () => {
+			if (!document.hidden) {
+				lastTime = performance.now();
+			}
+		});
+
+		start();
+		update();
+
+
+	</script>
+</body>
+
+</html>
