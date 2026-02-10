@@ -8,7 +8,7 @@
     }
 
     // Load json
-    const res = await fetch("/data/nvqs.json");
+    const res = await fetch("nvqs.json");
     const list = await res.json();
 
     const index = list.findIndex(item => item.id === currentId);
