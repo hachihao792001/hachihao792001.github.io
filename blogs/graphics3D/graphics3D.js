@@ -1,26 +1,41 @@
-const codeBlockDivs = document.querySelectorAll(".codeBlock");
+const htmlPreviewDivs = document.querySelectorAll(".htmlPreview");
 
 async function updatePreview() {
-    for (const codeBlockDiv of codeBlockDivs) {
+    for (const htmlPreviewDiv of htmlPreviewDivs) {
+        const htmlPreviewId = htmlPreviewDiv.id;
+        const htmlCode = await fetchHTMLCode(htmlPreviewId);
+
+        const codePane = document.createElement("div");
+        codePane.className = "codePane";
+        const iframe = document.createElement("iframe");
+        iframe.srcdoc = htmlCode;
+        htmlPreviewDiv.appendChild(codePane);
+        htmlPreviewDiv.appendChild(iframe);
+
+        const copyButton = document.createElement("button");
+        copyButton.className = "copy-btn";
+        copyButton.textContent = "Copy";
+        copyButton.addEventListener("click", () => {
+            navigator.clipboard.writeText(htmlCode);
+            copyButton.textContent = "Copied!";
+            setTimeout(() => {
+                copyButton.textContent = "Copy";
+            }, 2000);
+        });
+        codePane.appendChild(copyButton);
+
         const preTag = document.createElement("pre");
+        codePane.appendChild(preTag);
         const codeTag = document.createElement("code");
         codeTag.className = "language-html";
-        preTag.appendChild(codeTag);
-        codeBlockDiv.appendChild(preTag);
-        const iframe = document.createElement("iframe");
-        codeBlockDiv.appendChild(iframe);
-        
-        const codeBlockId = codeBlockDiv.id;
-        const htmlCode = await fetchHTMLCode(codeBlockId);
-
         codeTag.innerHTML = htmlCode.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        preTag.appendChild(codeTag);
         Prism.highlightElement(codeTag);
-        iframe.srcdoc = htmlCode;
     }
 }
 
-async function fetchHTMLCode(codeBlockId) {
-    const response = await fetch("codeBlocks/" + codeBlockId + ".html");
+async function fetchHTMLCode(htmlPreviewId) {
+    const response = await fetch("htmlPreviews/" + htmlPreviewId + ".html");
     const htmlCode = await response.text();
     return htmlCode;
 }
