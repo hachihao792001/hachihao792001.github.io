@@ -148,6 +148,13 @@
         ]
     },
     {
+        "title": "Cách làm một Graphics Engine 3D bằng thuần HTML Canvas và Javascript",
+        "route": "/blogs/graphics3D/graphics3D-intro.html",
+        "date": "",
+        "isWritten": true,
+        "children": []
+    },
+    {
         "title": "Web Security: Common Vulnerability and Prevention",
         "route": "https://hachihao792001.github.io/WebSecurity/",
         "date": "02/6/2022",
@@ -164,13 +171,6 @@
     {
         "title": "Cách làm 1 thuật toán giải mummy maze",
         "route": "/blogs/mummy-maze-algorithm.html",
-        "date": "",
-        "isWritten": false,
-        "children": []
-    },
-    {
-        "title": "Cách đồ họa 3D hoạt động đằng sau",
-        "route": "/blogs/3d-animation.html",
         "date": "",
         "isWritten": false,
         "children": []
