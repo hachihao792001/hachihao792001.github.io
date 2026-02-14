@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<title>3D Engine</title>
+</head>
+
+<body style="text-align: center; background: #f0f0f0">
+	<h1>3D Engine</h1>
+	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
+	<script>
+		class Vector3 {
+			constructor(x = 0, y = 0, z = 0) {
+				this.x = x;
+				this.y = y;
+				this.z = z;
+			}
+
+			static add(vec1, vec2) {
+				return new Vector3(vec1.x + vec2.x, vec1.y + vec2.y, vec1.z + vec2.z);
+			}
+			static sub(vec1, vec2) {
+				return new Vector3(vec1.x - vec2.x, vec1.y - vec2.y, vec1.z - vec2.z);
+			}
+			static mul(vec, value) {
+				return new Vector3(vec.x * value, vec.y * value, vec.z * value);
+			}
+			static div(vec, value) {
+				return new Vector3(vec.x / value, vec.y / value, vec.z / value);
+			}
+			static scale(vec1, vec2) {
+				return new Vector3(vec1.x * vec2.x, vec1.y * vec2.y, vec1.z * vec2.z);
+			}
+			static dot(v1, v2) {
+				return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+			}
+			static cross(v1, v2) {
+				let v = new Vector3(
+					v1.y * v2.z - v1.z * v2.y,
+					v1.z * v2.x - v1.x * v2.z,
+					v1.x * v2.y - v1.y * v2.x);
+				return v;
+			}
+			magnitude() {
+				return Math.hypot(this.x, this.y, this.z);
+			}
+			normalize() {
+				let length = this.magnitude();
+				if (length === 0)
+					return this;
+				this.x /= length;
+				this.y /= length;
+				this.z /= length;
+				return this;
+			}
+		}
+
+		class Triangle {
+			constructor(vertices = []) {
+				if (vertices.length == 0) {
+					this.vertices = [];
+					for (let i = 0; i < 3; i++) {
+						this.vertices.push(new Vector3(0, 0, 0));
+					}
+				} else {
+					this.vertices = vertices;
+				}
+			}
+		}
+
+		function makeCube(center, size) {
+			let halfSize = Vector3.div(size, 2);
+			let tris = [];
+			// FRONT
+			tris.push(new Triangle([
+				new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+				new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+				new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z)]));
+			tris.push(new Triangle([
+				new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+				new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+				new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z)]));
+
+			// RIGHT
+			tris.push(new Triangle([
+				new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+				new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+				new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z)]));
+
+			tris.push(new Triangle([
+				new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+				new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+				new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z)]));
+
+			// BACK
+			tris.push(new Triangle([
+				new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+				new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+				new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z)]));
+
+			tris.push(new Triangle([
+				new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+				new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+				new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z)]));
+
+			// LEFT
+			tris.push(new Triangle([
+				new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+				new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+				new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z)]));
+
+			tris.push(new Triangle([
+				new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+				new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+				new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z)]));
+
+			// TOP
+			tris.push(new Triangle([
+				new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+				new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+				new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z)]));
+
+			tris.push(new Triangle([
+				new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+				new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+				new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z)]));
+
+			// BOTTOM
+			tris.push(new Triangle([
+				new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+				new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+				new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z)]));
+
+			tris.push(new Triangle([
+				new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+				new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+				new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z)]));
+
+			return tris;
+		}
+
+		const canvas = document.getElementById("gameCanvas");
+		const ctx = canvas.getContext("2d");
+
+		let cube1 = makeCube(new Vector3(0, 0, 2), new Vector3(0.7, 0.7, 0.7));
+		for (let tri of cube1) {
+			vertices = tri.vertices;
+			ctx.beginPath();
+			ctx.moveTo(vertices[0].x, vertices[0].y);
+			ctx.lineTo(vertices[1].x, vertices[1].y);
+			ctx.lineTo(vertices[2].x, vertices[2].y);
+			ctx.closePath();
+			ctx.stroke();
+		}
+	</script>
+</body>
+
+</html>

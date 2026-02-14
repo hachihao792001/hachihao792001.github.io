@@ -22,9 +22,6 @@
     <script src="/js/prism.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-    onload="renderMathInElement(document.body);"></script>
-
-
     <title>Graphics Engine 3D</title>
 </head>
 
@@ -50,7 +47,7 @@
                     chứ không phải trục z như trong toán học, và có chia ra làm 2 loại hệ tọa độ: Tay trái và tay phải,
                     mình thì quen hệ tọa độ tay trái hơn, lúc đó trục z sẽ hướng ra xa mình, trục x sẽ hướng sang phải,
                     và trục y sẽ hướng lên trên.
-                    <h2>2. Tam giác</h2>
+                    <h2 id="tamgiac">2. Tam giác</h2>
                     Chắc cái này bạn đã từng nghe qua, tất cả mọi thứ trong đồ họa 3D đều được làm từ nhiều hình tam
                     giác ghép lại với nhau,
                     và nó đúng là như vậy, đơn giản chỉ là vì tam giác là hình dạng cơ bản nhất mà bạn có thể tạo được
@@ -121,7 +118,7 @@
 {{0.5,-0.5,0.5}, {-0.5,-0.5,0.5}, {-0.5,-0.5,-0.5}},
 {{0.5,-0.5,0.5}, {-0.5,-0.5,-0.5}, {0.5,-0.5,-0.5}}]</code></pre>
 
-                    <h2>3. Màn hình</h2>
+                    <h2 id="manhinh">3. Màn hình</h2>
                     Đối với Game, thì người ta thường hay chuẩn hóa màn hình về giá trị từ -1 đến 1 theo cả 2 chiều x và
                     y,
                     cụ thể là điểm (-1, -1) sẽ nằm ở góc trái trên, điểm (1, 1) sẽ nằm ở góc phải dưới, và điểm (0, 0)

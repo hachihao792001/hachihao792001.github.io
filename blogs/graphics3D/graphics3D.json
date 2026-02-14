@@ -16,5 +16,11 @@
         "webTitle": "Graphics Engine 3D #2: Những khái niệm cơ bản về 3D",
         "title": "Graphics Engine 3D #2: Những khái niệm cơ bản về 3D",
         "route": "/blogs/graphics3D/graphics3D2-definitions.html"
+    },
+    {
+        "id": "graphics3D3",
+        "webTitle": "Graphics Engine 3D #3: Vẽ một hình lập phương (Projection)",
+        "title": "Graphics Engine 3D #3: Vẽ một hình lập phương (Projection)",
+        "route": "/blogs/graphics3D/graphics3D3-projection.html"
     }
 ]
