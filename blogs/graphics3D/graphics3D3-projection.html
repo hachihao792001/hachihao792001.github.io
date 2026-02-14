@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="graphics3D.css">
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Graphics Engine 3D</title>
+</head>
+
+<body data-graphics3D-id="graphics3D3">
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Vẽ một hình lập phương (Projection)</h1>
+                    Trong blog này, chúng ta sẽ cùng nhau vẽ được một hình lập phương (cube) lên canvas, sử dụng
+                    phép chiếu (Projection) trong đồ họa 3D.<br/><br/>
+                    Trước khi vẽ được 1 cục cube lên màn hình, ta cần có thông tin của cube đó trước,
+                    là tập hợp tất cả các tam giác tạo nên nó. Ta đã làm được một phần việc này ở 
+                    <a href="graphics3D2-definitions.html#tamgiac">phần 2 của blog trước</a>, nhưng ta đang mặc định
+                    tâm của cube đó ở gốc tọa độ (0, 0, 0) và có kích thước là 1. Ta cần tạo một hàm để tạo ra cube ở
+                    vị trí và kích thước bất kỳ, hàm đó sẽ như sau (mình nghĩ là không cần giải thích):
+                    <pre style="height: 400px;"><code class="language-javascript">function makeCube(center, size) {
+    let halfSize = {x: size.x / 2, y: size.y / 2, z: size.z / 2};
+    let tris = [];  //viết tắt của triangles
+    // FRONT
+    tris.push({
+        {center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z},
+        {center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z},
+        {center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z}});
+    tris.push({
+        {center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z},
+        {center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z},
+        {center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z}});
+
+    // RIGHT
+    tris.push({
+        {center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z},
+        {center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z},
+        {center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z}});
+
+    tris.push({
+        {center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z},
+        {center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z},
+        {center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z}});
+
+    // BACK
+    tris.push({
+        {center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z},
+        {center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z},
+        {center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z}});
+
+    tris.push({
+        {center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z},
+        {center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z},
+        {center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z}});
+
+    // LEFT
+    tris.push({
+        {center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z},
+        {center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z},
+        {center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z}});
+
+    tris.push({
+        {center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z},
+        {center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z},
+        {center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z}});
+
+    // TOP
+    tris.push({
+        {center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z},
+        {center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z},
+        {center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z}});
+
+    tris.push({
+        {center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z},
+        {center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z},
+        {center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z}});
+
+    // BOTTOM
+    tris.push({
+        {center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z},
+        {center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z},
+        {center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z}});
+
+    tris.push({
+        {center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z},
+        {center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z},
+        {center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z}});
+}</code></pre>
+                    Tuy nhiên, hàm này khá khó đọc và hiểu (và cũng khó bảo trì về sau), vì sử dụng javascript object lung tung mà không rõ ràng chúng
+                    là gì. Cho nên trước đó ta cần định nghĩa kiểu dữ liệu cho điểm và tam giác, trước tiên là điểm, mình đặt 
+                    tên là <i>Vector3</i> cho giống Unity, gồm các hàm cơ bản như cộng, trừ, nhân, chia, nhân vector,
+                    tích vô hướng, tích có hướng, tính độ dài và chuẩn hóa về vector đơn vị:
+                    <pre><code class="language-javascript">class Vector3 {
+    constructor(x = 0, y = 0, z = 0) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+
+    static add(vec1, vec2) {
+        return new Vector3(vec1.x + vec2.x, vec1.y + vec2.y, vec1.z + vec2.z);
+    }
+    static sub(vec1, vec2) {
+        return new Vector3(vec1.x - vec2.x, vec1.y - vec2.y, vec1.z - vec2.z);
+    }
+    static mul(vec, value) {
+        return new Vector3(vec.x * value, vec.y * value, vec.z * value);
+    }
+    static div(vec, value) {
+        return new Vector3(vec.x / value, vec.y / value, vec.z / value);
+    }
+    static scale(vec1, vec2) {
+        return new Vector3(vec1.x * vec2.x, vec1.y * vec2.y, vec1.z * vec2.z);
+    }
+    static dot(v1, v2) {
+        return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+    }
+    static cross(v1, v2) {
+        let v = new Vector3(
+                v1.y * v2.z - v1.z * v2.y,
+                v1.z * v2.x - v1.x * v2.z,
+                v1.x * v2.y - v1.y * v2.x);
+        return v;
+    }
+	magnitude(){
+		return Math.hypot(this.x, this.y, this.z);
+    }
+    normalize() {
+        let length = this.magnitude();
+        if (length === 0)
+            return this;
+        this.x /= length;
+        this.y /= length;
+        this.z /= length;
+        return this;
+    }
+}</code></pre>
+                    Đối với tam giác thì mình tạo class như bên dưới, chỉ chứa thông tin của 3 đỉnh của nó (sau này sẽ thêm các hàm khác sau):
+                    <pre><code class="language-javascript">class Triangle {
+    constructor(vertices = []) {
+        if (vertices.length == 0) {
+            this.vertices = [];
+            for (let i = 0; i < 3; i++) {
+                this.vertices.push(new Vector3(0, 0, 0));
+            }
+        } else {
+            this.vertices = vertices;
+        }
+    }
+}</code></pre>
+                    Sau khi tạo được 2 class trên, ta có thể viết lại hàm makeCube ở trên như sau:
+                    <pre style="height: 400px"><code class="language-javascript">function makeCube(center, size) {
+    let halfSize = Vector3.div(size, 2);
+    let tris = [];
+    // FRONT
+    tris.push(new Triangle([
+        new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+        new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+        new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z)]));
+    tris.push(new Triangle([
+        new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+        new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+        new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z)]));
+
+    // RIGHT
+    tris.push(new Triangle([
+        new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+        new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+        new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z)]));
+
+    tris.push(new Triangle([
+        new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+        new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+        new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z)]));
+
+    // BACK
+    tris.push(new Triangle([
+        new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+        new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+        new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z)]));
+
+    tris.push(new Triangle([
+        new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+        new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+        new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z)]));
+
+    // LEFT
+    tris.push(new Triangle([
+        new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+        new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+        new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z)]));
+
+    tris.push(new Triangle([
+        new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+        new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+        new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z)]));
+
+    // TOP
+    tris.push(new Triangle([
+        new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+        new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+        new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z)]));
+
+    tris.push(new Triangle([
+        new Vector3(center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z),
+        new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z),
+        new Vector3(center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z)]));
+
+    // BOTTOM
+    tris.push(new Triangle([
+        new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+        new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+        new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z)]));
+
+    tris.push(new Triangle([
+        new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z),
+        new Vector3(center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z),
+        new Vector3(center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z)]));
+
+    return tris;
+		}</code></pre>
+                    Có được hàm makeCube rồi, ta sẽ tiến hành vẽ, quay lại với canvas mà đã được setup ở <a href="graphics3D1-setup.html">phần 1</a>,
+                    ta tạo một cube ở vị trí (0, 0, 2) (chính giữa màn hình và cách màn hình 2 đơn vị) và có kích thước là (0.7, 0.7, 0.7):
+                    <pre><code class="language-javascript">let cube1 = makeCube(new Vector3(0, 0, 2), new Vector3(0.7, 0.7, 0.7));</code></pre>
+                    Sau đó đối với từng tam giác của cube1, ta sẽ vẽ 3 đường nối 3 đỉnh của nó lại với nhau, sử dụng các hàm của canvas 2D context:
+                    <pre><code class="language-javascript">for (let tri of cube1) {
+    vertices = tri.vertices;
+    ctx.beginPath();
+    ctx.moveTo(vertices[0].x, vertices[0].y);
+    ctx.lineTo(vertices[1].x, vertices[1].y);
+    ctx.lineTo(vertices[2].x, vertices[2].y);
+    ctx.closePath();
+    ctx.stroke();
+}</code></pre>
+                    Kết quả ra như sau:
+                    <div id="htmlPreview3" class="htmlPreview"></div>
+                    Khoan đã, sao lại không có gì hết nhỉ? Thật ra là có, nếu bạn để ý bạn sẽ thấy một dấu chấm nhỏ ở
+                    góc trái trên của canvas, đó chính là cube1 của mình, nó nhỏ như vậy vì mình đang cố vẽ một hình lập phương
+                    kích thước 0.7 trong 1 canvas 400x300. Nếu bạn nhớ lại về 
+                    <a href="graphics3D2-definitions.html#manhinh">phần màn hình của blog trước</a>, thì màn hình chuẩn mà ta muốn
+                    hiển thị là có tọa độ trong khoảng [-1; 1] theo cả 2 chiều x và y. Nên trước khi vẽ các tam giác,
+                    ta nên chuẩn hóa từng đỉnh của nó về lại khoảng hợp lý của canvas, bằng cách nhân kích thước canvas và 
+                    cộng một nửa kích thước canvas để đưa nó vào giữa. Tuy nhiên, ta nên biết rằng HTML Canvas có y hướng xuống
+                    (càng xuống càng tăng), nhưng không gian 3D của chúng ta lại có y hướng lên, cho nên ta phải đổi dấu của y trước
+                    khi nhân, như sau:
+                    <pre><code class="language-javascript">for (let tri of cube1) {
+    vertices = tri.vertices;
+    for (let i = 0; i < vertices.length; i++) {
+        vertices[i] = new Vector3(
+            vertices[i].x * canvas.width + canvas.width / 2,
+            -vertices[i].y * canvas.height + canvas.height / 2,
+            vertices[i].z);
+    }
+    ctx.beginPath();
+    ctx.moveTo(vertices[0].x, vertices[0].y);
+    ctx.lineTo(vertices[1].x, vertices[1].y);
+    ctx.lineTo(vertices[2].x, vertices[2].y);
+    ctx.closePath();
+    ctx.stroke();
+}</code></pre>
+                    Nó sẽ vẽ ra như sau:
+                    <div id="htmlPreview4" class="htmlPreview"></div>
+                    Khoan đã, tại sao:
+                    <ol>
+                        <li>Nó lại là hình chữ nhật chứ không phải hình vuông?</li>
+                        <li>Nó lại phẳng lì 2D như thế mà không phải 3D?</li>
+                        <li>Lại có hai đường chéo đó?</li>
+                    </ol>
+                    Về ý thứ nhất, đó là vì canvas cũng là hình chữ nhật, mình chỉ đang nhân đúng kích thước của nó,
+                    do đó mình phải tự sửa lại với tỉ lệ (aspect ratio) của canvas. Chỉ đơn giản là lấy x chia cho chiều rộng
+                    và nhân chiều cao canvas trước khi làm các phép tính khác:
+                    $$
+                        (x * \frac{h}{w}) * w + \frac{w}{2} = x * h + \frac{w}{2}
+                    $$
+                    Code sẽ thành:
+                    <pre><code class="language-javascript">vertices[i] = new Vector3(
+    vertices[i].x * canvas.height + canvas.width / 2,
+    -vertices[i].y * canvas.height + canvas.height / 2,
+    vertices[i].z);</code></pre>
+                    Thật ra nếu bạn giữ nguyên x và lấy y chia chiều cao nhân chiều rộng nó cũng sẽ ra được hình vuông, nhưng mà kích thước nó sẽ
+                    lớn hơn, và thêm hậu quả là khi vẽ trên canvas dài nó sẽ bự hơn rất nhiều nữa, tính theo x nó sẽ ổn định trên
+                    mọi loại resolution màn hình thông dụng.<br/><br/>
+
+                    Về ý thứ hai, lý do mình chỉ thấy hình chữ nhật 2D mà không phải hình cube 3D là vì mình đang chiếu tất cả 
+                    điểm thẳng băng tới màn hình, nói cách khác là đang sử dụng vị trí trong không gian để vẽ
+                    luôn tọa độ trên màn hình, cái này được gọi là phép chiếu
+                    <a href="https://en.wikipedia.org/wiki/Orthographic_projection">Orthographic</a>, 
+                    cái này như cách bạn hay vẽ các loại hình chiếu ở môn Công nghệ lớp 10.
+                    Còn đối với ngoài đời, bạn sẽ nhìn mọi thứ theo kiểu "càng gần càng to", đó là phép chiếu
+                    <a href="https://en.wikipedia.org/wiki/Perspective_(graphical)">Perspective</a>.
+                    <div align="center">
+                        <img style="display:block" src="https://www.tutorialspoint.com/computer_graphics/images/what_is_perspective_projection.jpg"/>
+                        <i style="font-size: 14px;">Nguồn ảnh: tutorialspoint</i>
+                    </div>
+
+                    Về ý thứ ba, hai đường chéo đó chỉ là một trong những đường tạo nên những tam giác mà tạo nên cube đó,
+                    mình đang vẽ hết tất cả các đường, nên mình thấy cả mặt FRONT lẫn mặt BACK.<br/><br/>
+
+                    Quay về Perspective Projection, cài đặt nó rất đơn giản, bạn chỉ cần dùng tới 1 giá trị mà có thể bạn đã quên khi đang
+                    theo dõi mình làm, đó chính là tọa độ z (chính là khoảng cách từ màn hình tới cube, đối với trường hợp hiện tại).
+                    Mình chỉ cần chia cả x và y cho z là sẽ tạo ra cảm giác "càng gần càng to":
+                    <pre><code class="language-javascript">for (let tri of cube1) {
+    vertices = tri.vertices;
+    for (let i = 0; i < vertices.length; i++) {
+        let v = Vector3.div(vertices[i], vertices[i].z);    // <--------------
+        vertices[i] = new Vector3(
+            v.x * canvas.height + canvas.width / 2,
+            -v.y * canvas.height + canvas.height / 2,
+            1);
+    }
+    ctx.beginPath();
+    ctx.moveTo(vertices[0].x, vertices[0].y);
+    ctx.lineTo(vertices[1].x, vertices[1].y);
+    ctx.lineTo(vertices[2].x, vertices[2].y);
+    ctx.closePath();
+    ctx.stroke();
+}</code></pre>
+                    Kết quả:
+                    <div id="htmlPreview5" class="htmlPreview"></div>
+                    Như vậy, chúng ta đã vẽ thành công một cube lên canvas, lúc này mình mới thấy hết cả đường tạo nên các tam giác mà
+                    tạo nên cube, việc mình thấy hết tam giác như vậy được gọi là cách hiển thị 
+                    <a href="https://en.wikipedia.org/wiki/Wire-frame_model">Wireframe</a>, mình sẽ chỉ cách làm mất chúng sau.<br/>
+                    Việc mình để cube ở giữa như vậy khá khó nhìn ra "cảm nhận 3D", nên mình dịch chuyển vị trí của cube một chút:
+                    <pre><code class="language-javascript">let cube1 = makeCube(new Vector3(0.1, -0.7, 2.5), new Vector3(0.7, 0.7, 0.7));</code></pre>
+                    <div id="htmlPreview6" class="htmlPreview"></div>
+
+                    Vậy là xong rồi nhỉ, ta đã vẽ được một cube lên canvas rồi, qua blog kế tiếp nhỉ? Nah sir, blog này mình nói
+                    về Projection, thì mình phải nói hết mọi thứ về Projection và đặc biệt hơn là về Projection Matrix 😳 Chúng ta còn những
+                    vấn đề sau đây cần giải quyết:
+                    <ol>
+                        <li>Chuyện gì xảy ra khi cube quá gần màn hình hoặc đằng sau màn hình?</li>
+                        <li>Làm gì nếu mình muốn chỉnh tầm nhìn (FOV) của mình?</li>
+                    </ol>
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer></footer>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+
+    <script src="graphics3D.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>
