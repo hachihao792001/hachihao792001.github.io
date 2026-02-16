@@ -19,8 +19,14 @@
     },
     {
         "id": "graphics3D3",
-        "webTitle": "Graphics Engine 3D #3: Vẽ một hình lập phương (Projection)",
-        "title": "Graphics Engine 3D #3: Vẽ một hình lập phương (Projection)",
-        "route": "/blogs/graphics3D/graphics3D3-projection.html"
+        "webTitle": "Graphics Engine 3D #3: Vẽ một hình lập phương",
+        "title": "Graphics Engine 3D #3: Vẽ một hình lập phương",
+        "route": "/blogs/graphics3D/graphics3D3-cube.html"
+    },
+    {
+        "id": "graphics3D4",
+        "webTitle": "Graphics Engine 3D #4: Projection matrix",
+        "title": "Graphics Engine 3D #4: Projection matrix",
+        "route": "/blogs/graphics3D/graphics3D4-projection.html"
     }
 ]
