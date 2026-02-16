@@ -25,7 +25,7 @@
     <title>Graphics Engine 3D</title>
 </head>
 
-<body data-graphics3D-id="graphics3D3">
+<body data-graphics3D-id="graphics3D4">
     <main>
         <div class="container-fluid ps-0">
             <div class="row">
@@ -58,11 +58,11 @@
                     tọa độ màn hình của vật sẽ càng nhỏ khi FOV càng lớn, suy ra tọa độ vật sẽ tỉ lệ nghịch với FOV và tỉ lệ nghịch
                     với cạnh đối: \(P \backsim \frac{1}{opposite}\). Đối với cạnh kề (\(adjacent\)) của 2 hình trên, đó chính là khoảng cách từ mắt đến khoảng
                     xa nhất mà ta có thể nhìn thấy được, có thể là bất kỳ hằng số nào, vì là hằng số nên ta cũng có thể suy ra rằng: \(P \backsim \frac{adjacent}{opposite}\).
-                    Và như ta biết, \(tan\) bằng đối chia kề, tức là: \(P \backsim tan(\frac{θ}{2})\).<br />
+                    Và như ta biết, \(tan\) bằng đối chia kề, tức là: \(P \backsim \frac{1}{tan(\frac{θ}{2})}\).<br />
                     Nếu bạn để ý, \(θ\) là góc ở hình thứ 2 chứ không phải hình thứ 1, vì ta đang sử dụng vertical FOV, và hầu hết game nào cũng
                     sử dụng vertical FOV, lí do giống với việc ta nhân aspect ratio ở x thay vì ở y, điều này không hề được nhắc tới trong video của javidx9 btw.<br/><br/>
 
-                    Vì \(P \backsim tan(\frac{θ}{2})\), ta sẽ nhân x, y với \(tan(\frac{θ}{2})\):
+                    Vì \(P \backsim \frac{1}{tan(\frac{θ}{2})}\), ta sẽ nhân x, y với \(\frac{1}{tan(\frac{θ}{2})}\):
                     <pre><code class="language-javascript">const fov = 90;
 let fovMultiplier = 1.0 / Math.tan(fov * 0.5 / 180.0 * Math.PI);    //hàm Math.tan nhận radian, phải chuyển độ thành radian
 ...
@@ -97,9 +97,9 @@ vertices[i] = new Vector3(
                     chia cho \(z\) sẽ biến nó thành dạng \(f(z) = a + b\frac{1}{z}\), là một hàm 
                     <a href="https://vi.wikipedia.org/wiki/Hàm_hyperbol">Hyperbol</a>. Bạn có thể xem rõ hơn khi tính nó ở excel hoặc vẽ đồ thị ra,
                     dưới đây là 2 hình so sánh 3 giá trị: \((z-z_{near})*\frac{z_{far}}{z_{far}-z_{near}}\), sau khi nhân \(z_{far}\) và sau khi chia \(z\):
-                    <div align="center">
-                        <img style="max-height: 300px;" src="images/graphics3D3/normalizedZ excel.png"/>
-                        <img style="max-height: 300px;" src="images/graphics3D3/normalizedZ desmos.png"/>
+                    <div align="center" style="gap: 10px;">
+                        <img style="max-height: 300px; border: 1px solid black;" src="images/graphics3D3/normalizedZ excel.png"/>
+                        <img style="max-height: 300px; margin-left: 40px; border: 1px solid black;" src="images/graphics3D3/normalizedZ desmos.png"/>
                     </div>
                     Bạn sẽ thấy sau khi chia z, nó về lại khoảng [0; 1], nhưng thay vì tăng lên đều, nó lại càng tăng càng chậm, được thể hiện khá rõ ở đồ thị của nó (đường hyperbol màu đỏ).
                     Việc đưa nó về lại [0; 1] thế này giúp cho z được chuẩn hóa (normalized), dễ tính toán về sau.
@@ -149,6 +149,219 @@ vertices[i] = new Vector3(
                         <img style="max-width: 400px; display:block" src="https://miro.medium.com/1*YGcMQSr0ge_DGn96WnEkZw.png"/>
                         <i>Nguồn ảnh: Medium</i>
                     </div>
+                    Ngoài ra, một điểm hay vector cũng có thể nhân với ma trận, kết quả sẽ ra một vector khác. Nhân bằng cách 
+                    để vector thành một ma trận có 1 cột và có số dòng là số chiều (3). Sau đó, ta cứ nhân theo rule bình thường (vector để sau ma trận).
+                    $$
+                    \begin{pmatrix}
+                    a_{11} & a_{12} & a_{13} \\
+                    a_{21} & a_{22} & a_{23} \\
+                    a_{31} & a_{32} & a_{33}
+                    \end{pmatrix}
+                    \begin{pmatrix}
+                    x \\
+                    y \\
+                    z
+                    \end{pmatrix}
+                    =
+                    \begin{pmatrix}
+                    a_{11}x + a_{12}y + a_{13}z \\
+                    a_{21}x + a_{22}y + a_{23}z \\
+                    a_{31}x + a_{32}y + a_{33}z
+                    \end{pmatrix} 
+                    $$
+
+                    Quay trở lại với Projection Matrix, từ blog trước tới giờ ta đã thực hiện các thứ sau:
+                    <ol>
+                        <li>Lấy x nhân chiều cao chia chiều rộng để hiển thị đúng với aspect ratio</li>
+                        <li>Chia x, y cho z để tạo cảm giác "càng gần càng to"</li>
+                        <li>Nhân x, y với \(\frac{1}{tan(\frac{θ}{2})}\) để dùng FOV</li>
+                        <li>Thay thế \(z\) bằng \(z_{normalized} = (z\frac{z_{far}}{z_{far}-z_{near}} - z_{near}\frac{z_{far}}{z_{far}-z_{near}})/z\) để giải quyết vấn đề gần camera</li>
+                    </ol>
+                    Lưu ý là bước nhân cho kích thước canvas không tính vì đó là bước mà ta làm sau khi mọi thứ đã ổn định trên màn hình chuẩn [-1; 1] và ta chỉ việc scale nó lên kích thước canvas thôi.<br/>
+                    Dựa vào 4 ý trên, ta muốn có một ma trận P sẽ thực hiện được phép biến đổi sau:
+                    $$
+                        P * 
+                        \begin{pmatrix}
+                        x \\
+                        y \\
+                        z
+                        \end{pmatrix}
+                        =
+                        \begin{pmatrix}
+                        x' \\
+                        y' \\
+                        z'
+                        \end{pmatrix}
+                        =
+                        \begin{pmatrix}
+                        (x * \frac{h}{w} * \frac{1}{tan(\frac{θ}{2})})/z \\
+                        (y * \frac{1}{tan(\frac{θ}{2})})/z\\
+                        (z\frac{z_{far}}{z_{far}-z_{near}} - z_{near}\frac{z_{far}}{z_{far}-z_{near}})/z
+                        \end{pmatrix}
+                    $$
+                    Về phép chia cho \(z\), đó là điều không thể với ma trận, cho nên ta sẽ để nó sang 1 bên và tính những cái ở trong trước. Đối với \(x'\), nó chỉ đơn giản là 
+                    \(x\) nhân với gì đó, và nó có dạng \(a_{11}x + a_{12}y + a_{13}z\), cho nên ta chỉ cần để \(a_{11} = \frac{h}{w} * \frac{1}{tan(\frac{θ}{2})}\) và 
+                    \(a_{12} = 0, a_{13} = 0\) sẽ ra được lại biểu thức trên.
+                    $$
+                        P = 
+                        \begin{pmatrix}
+                        \frac{h}{w} * \frac{1}{tan(\frac{θ}{2})} & 0 & 0 \\
+                        ? & ? & ? \\
+                        ? & ? & ?
+                        \end{pmatrix}
+                    $$
+                    Đối với \(y\) cũng tương tự, nó có dạng \(y\) nhân gì đó, ghép vào \(a_{21}x + a_{22}y + a_{23}z\) ta có:
+                    $$
+                        P = 
+                        \begin{pmatrix}
+                        \frac{h}{w} * \frac{1}{tan(\frac{θ}{2})} & 0 & 0 \\
+                        0 & \frac{1}{tan(\frac{θ}{2})} & 0 \\
+                        ? & ? & ?
+                        \end{pmatrix}
+                    $$
+                    Đối với \(z\), vấn đề trở nên phức tạp hơn, nó có dạng \(a + bz\), áp dụng kỹ thuật của \(x\) và \(y\) chỉ giải quyết được cụm \(z\frac{z_{far}}{z_{far}-z_{near}}\).
+                    Còn cụm \(-z_{near}\frac{z_{far}}{z_{far}-z_{near}}\) thì ta phải xài 1 trick mà người ta đã nghĩ ra từ thời xưa. Đó là thêm một chiều mới \(w\) cho vector, để nó
+                    = 1:
+                    $$
+                        \begin{pmatrix}
+                        x \\
+                        y \\
+                        z \\
+                        1
+                        \end{pmatrix}
+                    $$
+                    Còn ma trận thì cũng thêm một hàng một cột, và để \(-z_{near}\frac{z_{far}}{z_{far}-z_{near}}\) vào \(a_{34}\):
+                    $$
+                        P = 
+                        \begin{pmatrix}
+                        \frac{h}{w} * \frac{1}{tan(\frac{θ}{2})} & 0 & 0 & 0\\
+                        0 & \frac{1}{tan(\frac{θ}{2})} & 0 & 0\\
+                        0 & 0 & \frac{z_{far}}{z_{far}-z_{near}} & -z_{near}\frac{z_{far}}{z_{far}-z_{near}}\\
+                        ? & ? & ? & ?
+                        \end{pmatrix}
+                    $$
+                    Như vậy khi tính \(z'\):
+                    $$
+                        z' = 0x + 0y + z\frac{z_{far}}{z_{far}-z_{near}} + 1*(-z_{near}\frac{z_{far}}{z_{far}-z_{near}}) = z\frac{z_{far}}{z_{far}-z_{near}} - z_{near}\frac{z_{far}}{z_{far}-z_{near}}
+                    $$
+                    Quay trở lại với việc chia \(z\) mà ta đã bỏ qua một bên, lúc này ta sẽ để \(z\) vào trong \(w'\) để cho nó gọn trong ma trận luôn, lúc cần ta chỉ cần lấy \(x'\), \(y'\), \(z'\) chia
+                    \(w'\) là xong. Để vào thì khá đơn giản, ta chỉ cần để 1 vào trong ô \(a_{43}\) để nó giữ lại \(z\) cho \(w'\). Như vậy Projection Matrix của chúng ta sẽ có dạng:
+                    $$
+                        P = 
+                        \begin{pmatrix}
+                        \frac{h}{w} * \frac{1}{tan(\frac{θ}{2})} & 0 & 0 & 0\\
+                        0 & \frac{1}{tan(\frac{θ}{2})} & 0 & 0\\
+                        0 & 0 & \frac{z_{far}}{z_{far}-z_{near}} & -z_{near}\frac{z_{far}}{z_{far}-z_{near}}\\
+                        0 & 0 & 1 & 0
+                        \end{pmatrix}
+                    $$
+                    <br/>
+                    Cuộc hành trình toán của chúng ta đã kết thúc, bây giờ ta sẽ code Projection Matrix vào trong file HTML của chúng ta. Đầu tiên ta phải định nghĩa class
+                    cho ma trận, và viết hàm tạo Projection Matrix dựa vào các tham số mà ta đã biết:
+                    <pre><code class="language-javascript">class Mat4x4 {
+    constructor() {
+        this.m = [
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]
+        ];
+    }
+
+    static Projection(fov, h, w, zNear, zFar) {
+        let fovMultiplier = 1.0 / Math.tan(fov * 0.5 / 180.0 * Math.PI);
+        let matrix = new Mat4x4();
+        matrix.m[0][0] = h / w * fovMultiplier;
+        matrix.m[1][1] = fovMultiplier;
+        matrix.m[2][2] = zFar / (zFar - zNear);
+        matrix.m[2][3] = (-zNear * zFar) / (zFar - zNear);
+        matrix.m[3][2] = 1.0;
+        return matrix;
+    }
+}
+                    </code></pre>
+                    Ta cũng cần phải sửa lại class Vector3 vì vừa thêm một component mới là w. Lưu ý là nó vẫn là vector 3 chiều,
+                    w chỉ có tác dụng về mặt đại số, giúp ta tính toán dễ hơn, chứ không có nghĩa là nó là vector 4 chiều, vì vậy các hàm liên quan
+                    tới vector vẫn giữ nguyên. Ngoài ra ta phải thêm hàm nhân ma trận với vector.
+                    <pre><code class="language-javascript">class Vector3 {
+    constructor(x = 0, y = 0, z = 0, w = 1) {   //mặc định w = 1 để tránh chia cho 0
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.w = w;
+    }
+
+    clone() {
+        return new Vector3(this.x, this.y, this.z, this.w);
+    }
+
+    static add(vec1, vec2) {
+        return new Vector3(vec1.x + vec2.x, vec1.y + vec2.y, vec1.z + vec2.z);
+    }
+    static sub(vec1, vec2) {
+        return new Vector3(vec1.x - vec2.x, vec1.y - vec2.y, vec1.z - vec2.z);
+    }
+    static mul(vec, value) {
+        return new Vector3(vec.x * value, vec.y * value, vec.z * value);
+    }
+    static div(vec, value) {
+        return new Vector3(vec.x / value, vec.y / value, vec.z / value);
+    }
+    static scale(vec1, vec2) {
+        return new Vector3(vec1.x * vec2.x, vec1.y * vec2.y, vec1.z * vec2.z);
+    }
+    static dot(v1, v2) {
+        return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+    }
+    static cross(v1, v2) {
+        let v = new Vector3(
+            v1.y * v2.z - v1.z * v2.y,
+            v1.z * v2.x - v1.x * v2.z,
+            v1.x * v2.y - v1.y * v2.x);
+        return v;
+    }
+    magnitude() {
+        return Math.hypot(this.x, this.y, this.z);
+    }
+    normalize() {
+        let length = this.magnitude();
+        if (length === 0)
+            return this;
+        this.x /= length;
+        this.y /= length;
+        this.z /= length;
+        return this;
+    }
+
+    mulMat4x4(m) {
+        this.x = m.m[0][0] * this.x + m.m[0][1] * this.y + m.m[0][2] * this.z + m.m[0][3] * this.w;
+        this.y = m.m[1][0] * this.x + m.m[1][1] * this.y + m.m[1][2] * this.z + m.m[1][3] * this.w;
+        this.z = m.m[2][0] * this.x + m.m[2][1] * this.y + m.m[2][2] * this.z + m.m[2][3] * this.w;
+        this.w = m.m[3][0] * this.x + m.m[3][1] * this.y + m.m[3][2] * this.z + m.m[3][3] * this.w;
+    }
+}</code></pre>
+
+                    Ở khúc render, ta tạo projection matrix theo tham số ta chọn, nhân từng đỉnh một với projection matrix, và chia cho z cũ (bây giờ là w),
+                    sau đó nhân cho kích thước canvas để render:
+                    <pre><code class="language-javascript">let znear = 0.01, zfar = 1000;
+let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
+
+let cube1 = makeCube(new Vector3(0.6, -0.7, 2.5), new Vector3(0.7, 0.7, 0.7));
+for (let tri of cube1) {
+    let vertices = tri.vertices;
+    for (let i = 0; i < vertices.length; i++) {
+        vertices[i].mulMat4x4(projectionMatrix);
+        vertices[i] = Vector3.div(vertices[i], vertices[i].w);
+        vertices[i] = new Vector3(
+            vertices[i].x * canvas.width + canvas.width / 2,
+            -vertices[i].y * canvas.height + canvas.height / 2,
+            1);
+    }
+    ...
+}</code></pre>
+                    Full code hiển thị (nó phải giống hệt lúc cũ):
+                    <div class="htmlPreview" id="htmlPreview8"></div>
+                    Như vậy ta đã xử lý xong Projection Matrix 😳 Blog sau mình sẽ nói tiếp về Model Matrix.
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 
