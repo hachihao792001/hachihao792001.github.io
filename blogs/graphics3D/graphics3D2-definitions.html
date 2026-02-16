@@ -132,24 +132,6 @@
                     cách lấy chiều rộng (w) chia cho chiều cao (h)). Như vậy, để thể hiện đúng điểm \((x, y, z)\) trên màn
                     hình,
                     trước tiên ta phải áp dụng tỉ lệ khung hình vào tọa độ x: \((x*\frac{h}{w}, y, z)\).
-                    <h2>4. FOV</h2>
-                    Chắc bạn cũng đã biết FOV (Field of view) là tầm nhìn của mắt người hay camera trong game,
-                    fov càng lớn, càng nhìn được rộng.
-                    Cụ thể hơn, trong game cũng như ngoài đời, mắt mình nhìn thế giới theo hình chóp cụt (frustum), 2
-                    hình sau đại diện cho tầm nhìn của mình khi nhìn từ trên xuống và nhìn từ ngang qua:
-                    <div>
-                        <img src="images/graphics3D2/fov1.png" style="max-width: 400px;" />
-                        <img src="images/graphics3D2/fov2.png" style="max-width: 400px;" />
-                    </div>
-                    Đặt FOV là theta (\(θ\)) (hình 2), chia frustum thành 2 tam giác vuông, thấy rằng FOV càng lớn thì cạnh đối (\(opposite\)) càng lớn, và
-                    các vật càng gần tâm hơn khi hiển thị trên màn hình, mà như ta biết thì tâm màn hình chính là (0, 0), tức là
-                    tọa độ (\(P\)) của vật trên màn hình sẽ càng nhỏ khi FOV càng lớn, suy ra tọa độ vật sẽ tỉ lệ nghịch với FOV và tỉ lệ nghịch
-                    với cạnh đối: \(P \backsim \frac{1}{opposite}\). Đối với cạnh kề (\(adjacent\)) của 2 hình trên, đó chính là khoảng cách từ mắt đến khoảng
-                    xa nhất mà ta có thể nhìn thấy được, có thể là bất kỳ hằng số nào, vì là hằng số nên ta cũng có thể suy ra rằng: \(P \backsim \frac{adjacent}{opposite}\).
-                    Và như ta biết, \(tan\) bằng đối chia kề, tức là: \(P \backsim tan(\frac{θ}{2})\).<br />
-                    Nếu bạn để ý, \(θ\) là góc ở hình thứ 2 chứ không phải hình thứ 1, vì ta đang sử dụng vertical FOV để tính toán, và hầu hết game nào cũng
-                    sử dụng vertical FOV để tính toán cả (có mục đích hết, google để tìm hiểu thêm), điều này không hề được nhắc tới trong video của javidx9 btw.
-                    
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 

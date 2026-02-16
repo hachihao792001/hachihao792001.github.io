@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="graphics3D.css">
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Graphics Engine 3D</title>
+</head>
+
+<body data-graphics3D-id="graphics3D3">
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Projection matrix</h1>
+                    Trong blog trước, ta đã vẽ được một cube lên canvas rồi. Tuy nhiên ta còn những
+                    vấn đề sau đây cần giải quyết:
+                    <ol>
+                        <li>Làm gì nếu mình muốn chỉnh tầm nhìn (FOV) của mình?</li>
+                        <li>Chuyện gì xảy ra khi cube quá gần màn hình?</li>
+                    </ol>
+
+                    Chắc bạn cũng đã biết FOV (Field of view) là tầm nhìn của mắt người hay camera trong game, fov càng lớn, càng nhìn được rộng.
+                    Cụ thể hơn, trong game cũng như ngoài đời, mắt mình nhìn thế giới theo hình chóp cụt (frustum), 2
+                    hình sau đại diện cho tầm nhìn của mình khi nhìn từ trên xuống và nhìn từ ngang qua:
+                    <div align="center">
+                        <img src="images/graphics3D2/fov1.png" style="max-width: 400px;" />
+                        <img src="images/graphics3D2/fov2.png" style="max-width: 400px;" />
+                    </div>
+                    Mình để -1 và +1 ở chỗ màn hình và chỗ đáy frustum kia để bạn nhớ rằng khoảng mình nhìn được đang scale từ từ lên từ
+                    màn hình đến đáy frustum, và cũng để bạn nhớ vể giá trị chuẩn của màn hình.<br/><br/>
+                    Đặt FOV là theta (\(θ\)) (hình 2), chia tam giác tầm nhìn thành 2 tam giác vuông, thấy rằng 
+                    FOV càng lớn thì cạnh đối (\(opposite\)) càng lớn, và tọa độ màn hình (\(P\)) của
+                    các vật càng gần tâm màn hình hơn, mà như ta biết thì tâm màn hình chính là (0, 0), tức là
+                    tọa độ màn hình của vật sẽ càng nhỏ khi FOV càng lớn, suy ra tọa độ vật sẽ tỉ lệ nghịch với FOV và tỉ lệ nghịch
+                    với cạnh đối: \(P \backsim \frac{1}{opposite}\). Đối với cạnh kề (\(adjacent\)) của 2 hình trên, đó chính là khoảng cách từ mắt đến khoảng
+                    xa nhất mà ta có thể nhìn thấy được, có thể là bất kỳ hằng số nào, vì là hằng số nên ta cũng có thể suy ra rằng: \(P \backsim \frac{adjacent}{opposite}\).
+                    Và như ta biết, \(tan\) bằng đối chia kề, tức là: \(P \backsim tan(\frac{θ}{2})\).<br />
+                    Nếu bạn để ý, \(θ\) là góc ở hình thứ 2 chứ không phải hình thứ 1, vì ta đang sử dụng vertical FOV, và hầu hết game nào cũng
+                    sử dụng vertical FOV, lí do giống với việc ta nhân aspect ratio ở x thay vì ở y, điều này không hề được nhắc tới trong video của javidx9 btw.<br/><br/>
+
+                    Vì \(P \backsim tan(\frac{θ}{2})\), ta sẽ nhân x, y với \(tan(\frac{θ}{2})\):
+                    <pre><code class="language-javascript">const fov = 90;
+let fovMultiplier = 1.0 / Math.tan(fov * 0.5 / 180.0 * Math.PI);    //hàm Math.tan nhận radian, phải chuyển độ thành radian
+...
+vertices[i] = new Vector3(
+    v.x * fovMultiplier * canvas.height + canvas.width / 2,
+    -v.y * fovMultiplier * canvas.height + canvas.height / 2,
+    1);</code></pre>
+                    Hiển thị như sau (bạn tự copy về thay đổi FOV để xem khác biệt nhé):
+                    <div id="htmlPreview7" class="htmlPreview"></div><br/>
+
+                    Về vấn đề thứ hai, khi cube quá gần màn hình, thì những tam giác của nó sẽ được vẽ rất là to,
+                    vượt cả ra ngoài màn hình, gây lag máy (nếu như mình đang cố tô màu cube, sẽ làm sau).
+                    Để giải quyết vấn đề trên, ta sẽ đặt giá trị z nhỏ nhất mà vẫn được vẽ là \(z_{near}\), gọi mặt phẳng tập hợp những điểm có giá trị
+                    z nhỏ nhất đó là near plane (mặt phẳng này vuông góc với hướng nhìn camera), đồng nghĩa những gì nằm giữa camera và mặt phẳng đó sẽ không được vẽ
+                    , ngoài ra ta đặt thêm một far plane (\(z_{far}\)) ở đằng xa để không vẽ luôn những vật ở quá xa (nhỏ) để thấy.<br/>
+                    Theo lý thuyết, những thứ đằng sau camera (có z âm) sẽ không thấy được, bây giờ, nó phải là "những thứ đằng sau near plane
+                    sẽ không thấy được". Tuy nhiên, ta không nên if \(z < z_{near}\) thì không hiển thị, kiểu chấp vá này sẽ khó tính toán về sau, mà
+                    ta nên định nghĩa một \(z'\) mới theo kiểu nó sẽ bằng 0 khi ở near plane, nhưng far plane vẫn giữ nguyên.
+                    <div align="center">
+                        <img style="display:block; max-width: 300px;" src="images/graphics3D3/znearzfar.png"/>
+                    </div>
+                    Trong hình bạn đang thấy frustum mới \([z_{near}; z_{far}]\) mà ta muốn hiển thị, ta phải giãn và lùi frustum mới này 
+                    để hiển thị cho đúng rule "z âm thì không hiển thị, far plane giữ nguyên".
+                    Trước tiên ta sẽ lấy \(z - z_{near}\) để lùi frustum về 0, sau đó chia \((z_{far} - z_{near})\) và
+                    nhân \(z_{far}\) để nó giãn ra như trên đã nói, bây giờ công thức thành:
+                    $$
+                        z' = (z-z_{near})*\frac{z_{far}}{z_{far}-z_{near}} = z\frac{z_{far}}{z_{far}-z_{near}} - z_{near}\frac{z_{far}}{z_{far}-z_{near}}
+                    $$
+                    Cái người ta thường làm là lấy tất cả chia cho z ban đầu. Vì sao? Đó là do ta muốn nó có tính chất "càng gần 0 càng thay đổi nhiều",
+                    đó là vì \(z'\) là một hàm theo biến \(z\) có dạng là
+                    \(f(z) = a + bz\) với \(a = - z_{near}\frac{z_{far}}{z_{far}-z_{near}}\) và \(b = \frac{z_{far}}{z_{far}-z_{near}}\),
+                    chia cho \(z\) sẽ biến nó thành dạng \(f(z) = a + b\frac{1}{z}\), là một hàm 
+                    <a href="https://vi.wikipedia.org/wiki/Hàm_hyperbol">Hyperbol</a>. Bạn có thể xem rõ hơn khi tính nó ở excel hoặc vẽ đồ thị ra,
+                    dưới đây là 2 hình so sánh 3 giá trị: \((z-z_{near})*\frac{z_{far}}{z_{far}-z_{near}}\), sau khi nhân \(z_{far}\) và sau khi chia \(z\):
+                    <div align="center">
+                        <img style="max-height: 300px;" src="images/graphics3D3/normalizedZ excel.png"/>
+                        <img style="max-height: 300px;" src="images/graphics3D3/normalizedZ desmos.png"/>
+                    </div>
+                    Bạn sẽ thấy sau khi chia z, nó về lại khoảng [0; 1], nhưng thay vì tăng lên đều, nó lại càng tăng càng chậm, được thể hiện khá rõ ở đồ thị của nó (đường hyperbol màu đỏ).
+                    Việc đưa nó về lại [0; 1] thế này giúp cho z được chuẩn hóa (normalized), dễ tính toán về sau.
+                    <br/><br/>
+                    Tính chất "càng gần 0 càng thay đổi nhiều" sẽ giúp cho những vật gần camera sẽ hiển thị chính xác và tách biệt rõ ràng hơn khi z của chúng gần nhau
+                    (<a href="https://en.wikipedia.org/wiki/Z-fighting">z-fighting</a>). Một lí do khác để chia z là vì x, y trước đó cũng chia cho z, 
+                    việc chia phần z cho z luôn sẽ giúp đơn giản hóa vấn đề (nhất là lúc dùng ma trận).<br/><br/>
+                    Tuy nhiên, bạn để ý là nãy giờ mình chỉ thay đổi z chứ không làm gì liên quan tới x và y, cho nên khi thêm code liên quan tới \(z_{far}\), \(z_{near}\) vào thì cũng
+                    chả thay đổi gì. Đó là vì \(z_{normalized}\) mà mình vừa tính ra dùng cho các bước tính liên quan tới độ sâu trước khi thực hiện các phép tính liên quan
+                    tới màn hình, mình sẽ nói về nó sau.<br/><br/>
+                    
+                    Bây giờ, mình sẽ lùi lại một tí và quay về tiêu đề của blog này, Projection Matrix là gì? Trước hết, Projection chính là một phép biến đổi mà ta làm từ blog trước tới
+                    giờ, chuyển các tọa độ trong không gian 3D thành tọa độ màn hình 2D. Nhưng trước Projection thì ta có phép biến đối View, là chuyển đổi thế giới theo góc nhìn và vị trí
+                    của camera (từ blog trước tới giờ ta luôn mặc định camera ở (0, 0, 0)). Và trước View ta có có phép biến đổi Model, là thay đổi vị trí, độ xoay và kích thước của các
+                    vật trong không gian 3D. Ba phép biến đổi này đều có thể chuyển thành ma trận và nhân (gộp) nhau thành một ma trận duy nhất, gọi là Model View Projection Matrix,
+                    như vậy sẽ giảm phép tính phải tính đối với mọi đỉnh trong không gian 3D. Và ngoài ra việc sử dụng ma trận như vậy cũng thích hợp cho GPU, vì GPU giỏi tính
+                    song song nhiều phép toán đơn giản cùng lúc, cho nên ma trận hay được sử dụng trong đồ họa máy tính. <br/><br/>
+
+                    Nếu ngành bạn học hồi Đại học không dạy Đại số tuyến tính, hay bạn chưa từng học Đại học, thì chắc bạn sẽ không biết ma trận là gì.
+                    Ma trận đơn giản chỉ là một bảng các số, nhưng cái mình cần biết duy nhất là phép nhân ma trận. Ví dụ ta có 2 ma trận \(A\) và \(B\):
+                    $$
+                        A =
+                        \begin{pmatrix}
+                        a_{11} & a_{12} & a_{13} \\
+                        a_{21} & a_{22} & a_{23}
+                        \end{pmatrix}; 
+                        B =
+                        \begin{pmatrix}
+                        b_{11} & b_{12} \\
+                        b_{21} & b_{22} \\
+                        b_{31} & b_{32}
+                        \end{pmatrix}
+                    $$
+                    Thì phép nhân \(AB\) sẽ ra một ma trận mới:
+                    $$
+                        AB =
+                        \begin{pmatrix}
+                        a_{11}b_{11} + a_{12}b_{21} + a_{13}b_{31} &
+                        a_{11}b_{12} + a_{12}b_{22} + a_{13}b_{32} \\
+
+                        a_{21}b_{11} + a_{22}b_{21} + a_{23}b_{31} &
+                        a_{21}b_{12} + a_{22}b_{22} + a_{23}b_{32}
+                        \end{pmatrix}
+                    $$
+                    Ta lấy từng ô trên từng hàng của \(A\) nhân và cộng với từng ô trên từng cột của \(B\). Ma trận kết quả sẽ có số hàng bằng số hàng của \(A\) và số cột bằng số cột của \(B\).
+                    <div align="center">
+                        <img style="max-width: 400px; display:block" src="https://miro.medium.com/1*YGcMQSr0ge_DGn96WnEkZw.png"/>
+                        <i>Nguồn ảnh: Medium</i>
+                    </div>
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer></footer>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+
+    <script src="graphics3D.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

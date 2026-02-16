@@ -20,7 +20,6 @@
     <link rel="stylesheet" href="graphics3D.css">
 
     <script src="/js/prism.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <title>Graphics Engine 3D</title>
 </head>
@@ -35,9 +34,8 @@
 
                 <div class="blog-content col-12 col-lg-10">
                     <div id="graphics3D-nav-top"></div>
-                    <h1>Vẽ một hình lập phương (Projection)</h1>
-                    Trong blog này, chúng ta sẽ cùng nhau vẽ được một hình lập phương (cube) lên canvas, sử dụng
-                    phép chiếu (Projection) trong đồ họa 3D.<br/><br/>
+                    <h1>Vẽ một hình lập phương</h1>
+                    Trong blog này, chúng ta sẽ cùng nhau vẽ được một hình lập phương (cube) lên canvas 😳.
                     Trước khi vẽ được 1 cục cube lên màn hình, ta cần có thông tin của cube đó trước,
                     là tập hợp tất cả các tam giác tạo nên nó. Ta đã làm được một phần việc này ở 
                     <a href="graphics3D2-definitions.html#tamgiac">phần 2 của blog trước</a>, nhưng ta đang mặc định
@@ -346,17 +344,15 @@
                     tạo nên cube, việc mình thấy hết tam giác như vậy được gọi là cách hiển thị 
                     <a href="https://en.wikipedia.org/wiki/Wire-frame_model">Wireframe</a>, mình sẽ chỉ cách làm mất chúng sau.<br/>
                     Việc mình để cube ở giữa như vậy khá khó nhìn ra "cảm nhận 3D", nên mình dịch chuyển vị trí của cube một chút:
-                    <pre><code class="language-javascript">let cube1 = makeCube(new Vector3(0.1, -0.7, 2.5), new Vector3(0.7, 0.7, 0.7));</code></pre>
+                    <pre><code class="language-javascript">let cube1 = makeCube(new Vector3(0.6, -0.7, 2.5), new Vector3(0.7, 0.7, 0.7));</code></pre>
                     <div id="htmlPreview6" class="htmlPreview"></div>
-
-                    Vậy là xong rồi nhỉ, ta đã vẽ được một cube lên canvas rồi, qua blog kế tiếp nhỉ? Nah sir, blog này mình nói
-                    về Projection, thì mình phải nói hết mọi thứ về Projection và đặc biệt hơn là về Projection Matrix 😳 Chúng ta còn những
-                    vấn đề sau đây cần giải quyết:
+                    <br/>
+                    Vậy là ta đã vẽ được một cube lên canvas, tuy nhiên ta còn những vấn đề sau cần giải quyết:
                     <ol>
-                        <li>Chuyện gì xảy ra khi cube quá gần màn hình hoặc đằng sau màn hình?</li>
                         <li>Làm gì nếu mình muốn chỉnh tầm nhìn (FOV) của mình?</li>
+                        <li>Chuyện gì xảy ra khi cube quá gần màn hình?</li>
                     </ol>
-
+                    Ta sẽ cùng nhau giải quyết 2 vấn đề này ở blog sau, và hệ thống hết mọi thứ thành một cái gọi là Projection Matrix 😳.
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 
