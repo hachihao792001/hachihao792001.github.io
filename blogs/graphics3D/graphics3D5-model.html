@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="graphics3D.css">
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Graphics Engine 3D</title>
+</head>
+
+<body data-graphics3D-id="graphics3D5">
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Model matrix</h1>
+                    Model matrix là một trong 3 thành phần tạo nên Model View Projection matrix, model matrix tập hợp tất cả các biến đổi liên quan tới mọi vật thể trong không
+                    gian 3D, những biến đổi này là dịch chuyển, xoay và phóng to/nhỏ. Nếu bạn nhớ, thì hồi lớp 11 bạn có học về Phép biến hình, trong đó có phép tịnh tiến,
+                    phép xoay và phép vị tự, đó chính là 3 phép biến đổi mà mình vừa nói 😳.<br/><br/>
+
+                    Đầu tiên là phép dịch chuyển, được gọi là Translation matrix, sau khi nhân một vector (điểm) \(v\) với nó thì \(v\) sẽ được di chuyển theo một hướng nào đó, gọi
+                    vector đại diện hướng đó là \(t\), ta cần tìm ma trận có thể làm được điều sau:
+                    $$
+                        A*
+                        \begin{pmatrix}
+                        x \\
+                        y \\
+                        z \\
+                        1
+                        \end{pmatrix}
+                        =
+                        \begin{pmatrix}
+                        x + t_{x}\\
+                        y + t_{y}\\
+                        z + t_{z}\\
+                        1
+                        \end{pmatrix}
+                    $$
+                    Ta để ý là cả 3 chiều của \(t\) đều có dạng biến nhân gì đó cộng gì đó, như vậy ở mỗi hàng của ma trận ta chỉ cần để số 1 ở chỗ biến cần giữ, và để chiều
+                    tương tự của \(t\) ở cột thứ 4 (\(w\)) là sẽ ra lại được \(t\). Như vậy ma trận của chúng ta sẽ có dạng:
+                    $$
+                        \begin{pmatrix}
+                        1 & 0 & 0 & t_{x}\\
+                        0 & 1 & 0 & t_{y}\\
+                        0 & 0 & 1 & t_{z}\\
+                        0 & 0 & 0 & 1
+                        \end{pmatrix}
+                    $$
+
+                    Tiếp theo ta sẽ nói về phép phóng to/nhỏ, gọi vector đại diện cho giá trị ta muốn scale ở 3 chiều là \(s\), ta cần một ma trận có thể làm được điều sau:
+                    $$
+                        A *
+                        \begin{pmatrix}
+                        x \\
+                        y \\
+                        z \\
+                        1
+                        \end{pmatrix}
+                        =
+                        \begin{pmatrix}
+                        x * s_{x}\\
+                        y * s_{y}\\
+                        z * s_{z}\\
+                        1
+                        \end{pmatrix}
+                    $$
+                    Như vậy thì càng dễ, mỗi hàng của ma trận ta chỉ cần để chiều tương ứng của \(s\) vào chiều của \(v\) là ra:
+                    $$
+                        \begin{pmatrix}
+                        s_{x} & 0 & 0 & 0\\
+                        0 & s_{y} & 0 & 0\\
+                        0 & 0 & s_{z} & 0\\
+                        0 & 0 & 0 & 1
+                        \end{pmatrix}
+                    $$
+
+                    Cuối cùng đến với phép xoay, là Rotation Matrix, cái này sẽ hơi khó tí. Cho nên ta hãy nói về nó ở 2D trước, ta muốn xoay một vector \(v\) một góc
+                    (\(θ\)) xung quanh gốc tọa độ (0; 0) thành vector \(v'\). Để cho đúng Đại số tuyến tính (và cũng để dễ tính), ta sẽ vẽ luôn trục x, y sau khi xoay xong,
+                    cái này người ta gọi là chuyển hệ quy chiếu, hay chuyển cơ sở sao đó mình cũng quên rồi. Mình tô màu hệ quy chiếu của \(v\) là màu đen và hệ quy chiếu
+                    của \(v'\) là đỏ để cho bạn dễ nhìn.
+                    <div align="center">
+                        <img style="max-width: 500px;" src="images/graphics3D5/rotation.png"/>
+                    </div>
+
+                    Mục tiêu của ta là tìm được tọa độ của \(v'\) trên hệ quy chiếu đen dựa vào tọa độ của \(v\) và (\(θ\)). Bạn có thể tự làm thử, đối với mình
+                    thì mình vẽ các đường và các ký hiệu sau:
+                    <div align="center">
+                        <img style="max-width: 600px;" src="images/graphics3D5/rotation2.png"/>
+                    </div>
+
+                    Lấy \(\vec{v_{y}}\) trên hệ quy chiếu đỏ chiếu lên trục \(x\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(A\), lấy \(\vec{v_{x}}\) trên hệ quy chiếu
+                    đỏ chiếu lên trục \(x\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(B\). Ta thấy \(|\vec{v'_{x}}| = A + B\), và \(A = |v_y|\sin{θ}, B=|v_x|\cos{θ}\), suy ra
+                    \(|\vec{v'_{x}}| = |v_y|\sin{θ} + |v_x|\cos{θ}\).<br/>
+                    Lấy \(\vec{v_{y}}\) trên hệ quy chiếu đỏ chiếu lên trục \(y\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(C\), lấy \(\vec{v_{x}}\) trên hệ quy chiếu
+                    đỏ chiếu lên trục \(y\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(D\). Ta thấy \(|\vec{v'_{y}}| = C - D\), và \(C = |v_y|\cos{θ}, D=|v_x|\sin{θ}\), suy ra
+                    \(|\vec{v'_{x}}| = |v_y|\cos{θ} - |v_x|\sin{θ}\).<br/><br/>
+
+                    Mình khuyến khích bạn nên làm thử lại từ hình ban đầu để thật sự hiểu và nhớ, hình sau vẽ hết các đường nét đứt và đánh dấu các góc bằng nhau nên bạn nhìn ra rất dễ.
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer></footer>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+
+    <script src="graphics3D.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>
