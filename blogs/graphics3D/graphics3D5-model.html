@@ -97,9 +97,9 @@
                     $$
 
                     Cuối cùng đến với phép xoay, là Rotation Matrix, cái này sẽ hơi khó tí. Cho nên ta hãy nói về nó ở 2D trước, ta muốn xoay một vector \(v\) một góc
-                    (\(θ\)) xung quanh gốc tọa độ (0; 0) thành vector \(v'\). Để cho đúng Đại số tuyến tính (và cũng để dễ tính), ta sẽ vẽ luôn trục x, y sau khi xoay xong,
-                    cái này người ta gọi là chuyển hệ quy chiếu, hay chuyển cơ sở sao đó mình cũng quên rồi. Mình tô màu hệ quy chiếu của \(v\) là màu đen và hệ quy chiếu
-                    của \(v'\) là đỏ để cho bạn dễ nhìn.
+                    (\(θ\)) xung quanh gốc tọa độ (0; 0) thành vector \(v'\) (lưu ý là xoay ngược chiều kim đồng hồ). Để cho đúng Đại số tuyến tính (và cũng để dễ tính),
+                    ta sẽ vẽ luôn trục x, y sau khi xoay xong, cái này người ta gọi là chuyển hệ quy chiếu, hay chuyển cơ sở sao đó mình cũng quên rồi. 
+                    Mình tô màu hệ quy chiếu của \(v\) là màu đen và hệ quy chiếu của \(v'\) là đỏ để cho bạn dễ nhìn.
                     <div align="center">
                         <img style="max-width: 500px;" src="images/graphics3D5/rotation.png"/>
                     </div>
@@ -110,15 +110,260 @@
                         <img style="max-width: 600px;" src="images/graphics3D5/rotation2.png"/>
                     </div>
 
-                    Lấy \(\vec{v_{y}}\) trên hệ quy chiếu đỏ chiếu lên trục \(x\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(A\), lấy \(\vec{v_{x}}\) trên hệ quy chiếu
-                    đỏ chiếu lên trục \(x\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(B\). Ta thấy \(|\vec{v'_{x}}| = A + B\), và \(A = |v_y|\sin{θ}, B=|v_x|\cos{θ}\), suy ra
-                    \(|\vec{v'_{x}}| = |v_y|\sin{θ} + |v_x|\cos{θ}\).<br/>
-                    Lấy \(\vec{v_{y}}\) trên hệ quy chiếu đỏ chiếu lên trục \(y\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(C\), lấy \(\vec{v_{x}}\) trên hệ quy chiếu
-                    đỏ chiếu lên trục \(y\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(D\). Ta thấy \(|\vec{v'_{y}}| = C - D\), và \(C = |v_y|\cos{θ}, D=|v_x|\sin{θ}\), suy ra
-                    \(|\vec{v'_{x}}| = |v_y|\cos{θ} - |v_x|\sin{θ}\).<br/><br/>
+                    Lấy \(\vec{v_{x}}\) trên hệ quy chiếu đỏ chiếu lên trục \(x\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(A\),
+                    lấy \(\vec{v_{y}}\) trên hệ quy chiếu đỏ chiếu lên trục \(x\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(B\).
+                    Ta thấy \(|\vec{v'_{x}}| = A - B\), và \(A = |v_x|\cos{θ}, B=|v_y|\sin{θ}\), suy ra
+                    \(|\vec{v'_{x}}| = |v_x|\cos{θ} - |v_y|\sin{θ}\).<br/>
+                    Lấy \(\vec{v_{x}}\) trên hệ quy chiếu đỏ chiếu lên trục \(y\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(C\),
+                    lấy \(\vec{v_{y}}\) trên hệ quy chiếu đỏ chiếu lên trục \(y\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(D\).
+                    Ta thấy \(|\vec{v'_{y}}| = C + D\), và \(C = |v_x|\sin{θ}, D=|v_y|\cos{θ}\), suy ra
+                    \(|\vec{v'_{y}}| = |v_x|\sin{θ} + |v_y|\cos{θ}\).<br/><br/>
 
-                    Mình khuyến khích bạn nên làm thử lại từ hình ban đầu để thật sự hiểu và nhớ, hình sau vẽ hết các đường nét đứt và đánh dấu các góc bằng nhau nên bạn nhìn ra rất dễ.
+                    Mình khuyến khích bạn nên làm thử lại từ hình ban đầu để thật sự hiểu và nhớ, hình trên vẽ hết các đường nét đứt và đánh dấu các góc bằng nhau nên bạn nhìn ra rất dễ.
+                    Bây giờ mình sẽ chuyển nó thành ma trận, mình cần một ma trận \(A\) làm được điều như sau:
+                    $$
+                        A *
+                        \begin{pmatrix}
+                        v_x \\
+                        v_y \\
+                        \end{pmatrix}
+                        =
+                        \begin{pmatrix}
+                        |v_x|\cos{θ} - |v_y|\sin{θ} \\
+                        |v_x|\sin{θ} + |v_y|\cos{θ} \\
+                        \end{pmatrix}
+                    $$
+                    Nó đúng luôn dạng nhân từng ô trên 1 hàng và cộng lại với nhau, nên ta suy ra được luôn ma trận:
+                    $$
+                        \begin{pmatrix}
+                        cos{θ} & -sin{θ} \\
+                        \sin{θ} & \cos{θ} \\
+                        \end{pmatrix}
+                    $$
+                    Bây giờ ta sẽ chuyển nó qua 3D, thay vì làm hết tất cả 3 chiều, ta sẽ làm từng chiều một. Đầu tiên là khi ta muốn xoay 1 điểm quanh trục \(x\), ta suy nghĩ sẽ 
+                    thấy là \(x\) của điểm đó sẽ giữ nguyên, và \(y\), \(z\) sẽ thay đổi như cách xoay 2 chiều bình thường. Cho nên khi ta xây ma trận, với hàng 1 ta sẽ để số 1 
+                    ở cột 1 để giữ lại x, hàng 2 và 3 ta sẽ để cột 1 là 0 và cột 2, 3 sẽ như ma trận cho 2D ở trên.
+                    $$
+                        \begin{pmatrix}
+                        1 & 0 & 0\\
+                        0 & cos{θ} & -sin{θ} \\
+                        0 & \sin{θ} & \cos{θ} \\
+                        \end{pmatrix}
+                    $$
+                    Tương tự đối với xoay quanh trục \(y\) và \(z\):
+                    $$
+                        \begin{pmatrix}
+                        cos{θ} & 0 & -sin{θ}\\
+                        0 & 1 & 0 \\
+                        \sin{θ} & 0 & \cos{θ} \\
+                        \end{pmatrix};
 
+                        \begin{pmatrix}
+                        cos{θ} & -sin{θ} & 0\\
+                        \sin{θ} & \cos{θ} & 0 \\
+                        0 & 0 & 1 \\
+                        \end{pmatrix}
+                    $$
+                    Ta có thể gộp 3 ma trận này với nhau thành một ma trận duy nhất, tuy nhiên ta không nên làm vậy vì sẽ ra một ma trận khá rối (\(θ\) ở 3 ma trận đều khác nhau), với
+                    lại thứ tự mà ta nhân 3 ma trận này với nhau cũng quan trọng, \(XYZ \neq ZYX\) (nếu bạn không biết, ma trận không có tính chất giao hoán).<br/>
+                    Ngoài ra có một thứ khác mà bạn cần biết, trước hết 3 ma trận này đều quay theo trục thế giới (hệ quy chiếu đen), nhưng mà nếu bạn muốn xoay theo trục cục bộ của cube 
+                    (hệ quy chiếu đỏ) thì sao? Nghĩa là sau khi bạn quay xong theo trục \(x\), bạn sẽ quay tiếp theo trục \(y\) mới của cube chứ không quay theo \(y\) thế giới nữa,
+                    nó gọi là <b>intrinsic rotation</b>, còn quay theo trục thế giới thì được gọi là <b>extrinsic rotation</b>.<br/>
+                    Để quay được theo intrinsic rotation, bạn nên biết một định lý là: Xoay \(x \rightarrow y \rightarrow z\) thế giới sẽ ra kết quả giống hệt xoay 
+                    \(z \rightarrow y \rightarrow x\) cục bộ (và ngược lại cũng đúng). 
+                    Về bản chất toán học mình sẽ không nói tới vì mình không giỏi toán chứng minh cũng như Đại số tuyến tính 😅, bạn có thể xem gif dưới đây mà mình làm trong Unity để hình dung rõ hơn:
+                    <div align="center">
+                        <img style="max-width: 400px;" src="images/graphics3D5/xyz.gif"/>
+                    </div>
+
+                    Toán đã đủ, bây giờ là code time 😳 Đầu tiên ta tạo những hàm xây dựng các ma trận mà ta đã tìm ra, để hết trong class Mat4x4. Lưu ý là đối với 3 cái rotation
+                    matrix nó vẫn là ma trận 4 chiều, để dòng 4 cột 4 là 1 để giữ nguyên \(w\) là được:
+                    <pre><code class="language-javascript">class Mat4x4 {
+    ...
+
+    static Translation(x, y, z) {
+        let matrix = new Mat4x4();
+        matrix.m[0][0] = 1;
+        matrix.m[1][1] = 1;
+        matrix.m[2][2] = 1;
+        matrix.m[3][3] = 1;
+        matrix.m[0][3] = x;
+        matrix.m[1][3] = y;
+        matrix.m[2][3] = z;
+        return matrix;
+    }
+
+    static Scale(x, y, z) {
+        let matrix = new Mat4x4();
+        matrix.m[0][0] = x;
+        matrix.m[1][1] = y;
+        matrix.m[2][2] = z;
+        matrix.m[3][3] = 1;
+        return matrix;
+    }
+
+    static RotationX(angle) {
+        let radian = angle / 180.0 * Math.PI;
+        let matrix = new Mat4x4();
+        matrix.m[0][0] = 1;
+        matrix.m[1][1] = Math.cos(radian);
+        matrix.m[1][2] = -Math.sin(radian);
+        matrix.m[2][1] = Math.sin(radian);
+        matrix.m[2][2] = Math.cos(radian);
+        matrix.m[3][3] = 1;
+        return matrix;
+    }
+
+    static RotationY(angle) {
+        let radian = angle / 180.0 * Math.PI;
+        let matrix = new Mat4x4();
+        matrix.m[0][0] = Math.cos(radian);
+        matrix.m[0][2] = -Math.sin(radian);
+        matrix.m[1][1] = 1;
+        matrix.m[2][0] = Math.sin(radian);
+        matrix.m[2][2] = Math.cos(radian);
+        matrix.m[3][3] = 1;
+        return matrix;
+    }
+
+    static RotationZ(angle) {
+        let radian = angle / 180.0 * Math.PI;
+        let matrix = new Mat4x4();
+        matrix.m[0][0] = Math.cos(radian);
+        matrix.m[0][1] = -Math.sin(radian);
+        matrix.m[1][0] = Math.sin(radian);
+        matrix.m[1][1] = Math.cos(radian);
+        matrix.m[2][2] = 1;
+        matrix.m[3][3] = 1;
+        return matrix;
+    }
+}</code></pre>
+                    Trước khi sử dụng những ma trận này, mình sẽ nói thêm về cách dùng Model matrix. Giả sử nếu bạn muốn di chuyển một vật nhiều lần trước khi
+                    vẽ (trong 1 frame) thì sao, bạn sẽ không nhân Translation matrix mỗi lần di chuyển đâu. Cái bạn cần làm là thay đổi thuộc tính vị trí của vật bao nhiêu lần đó, sau đó bạn mới 
+                    nhân Translation ở bước cuối cùng, tương tự đối với Rotation và Scale. Và thứ tự nhân sẽ là Scale -> Rotation -> Translation, thật ra Scale và Rotation cái nào trước cũng được,
+                    nhưng quan trọng là Translation phải cuối cùng, vì nếu bạn di chuyển xong mới xoay thì nó sẽ xoay vật quanh gốc tọa độ chứ ko xoay quanh chính giữa của vật đâu, tương tự với Scale,
+                    nếu bạn di chuyển xong mới scale thì nó sẽ scale không gian ra từ gốc tọa độ, chứ ko scale ra từ chính giữa vật. Trước khi di chuyển vật thì chính giữa của vật sẽ trùng với gốc tọa độ,
+                    Rotation và Scale sẽ áp dụng với chính giữa vật. Một cái (khá hiển nhiên) nữa là Model matrix sẽ khác nhau đối với từng vật, chứ không phải dùng chung hết
+                    như Projection matrix hay View matrix.<br/><br/>
+                    Tiếp theo, mình sẽ tạo một Cube để đại diện cho một khối lập phương có đầy đủ đặc tính vị trí, độ xoay và tỉ lệ trong không gian, mình sẽ chuyển hàm makeCube vào
+                    trong class này, đổi tên thành generateInitialTriangles (các tam giác của cube trước khi được biến đổi bởi Model matrix). Ngoài ra tạo thêm một hàm transformTriangles
+                    để biến đổi những tam giác đó bằng các ma trận trong Model Matrix.
+                    <pre><code class="language-javascript">class Cube {
+    constructor(pos, rotation, scale) {
+        this.tris = [];
+        this.pos = pos;
+        this.rotation = rotation;
+        this.scale = scale;
+        this.generateInitialTriangles();
+    }
+
+    generateInitialTriangles() {
+        // FRONT
+        this.tris.push(new Triangle([
+            new Vector3(-0.5, -0.5, -0.5),
+            new Vector3(-0.5, 0.5, -0.5),
+            new Vector3(0.5, 0.5, -0.5)]));
+        this.tris.push(new Triangle([
+            new Vector3(-0.5, -0.5, -0.5),
+            new Vector3(0.5, 0.5, -0.5),
+            new Vector3(0.5, -0.5, -0.5)]));
+
+        // RIGHT
+        this.tris.push(new Triangle([
+            new Vector3(0.5, -0.5, -0.5),
+            new Vector3(0.5, 0.5, -0.5),
+            new Vector3(0.5, 0.5, 0.5)]));
+
+        this.tris.push(new Triangle([
+            new Vector3(0.5, -0.5, -0.5),
+            new Vector3(0.5, 0.5, 0.5),
+            new Vector3(0.5, -0.5, 0.5)]));
+
+        // BACK
+        this.tris.push(new Triangle([
+            new Vector3(0.5, -0.5, 0.5),
+            new Vector3(0.5, 0.5, 0.5),
+            new Vector3(-0.5, 0.5, 0.5)]));
+
+        this.tris.push(new Triangle([
+            new Vector3(0.5, -0.5, 0.5),
+            new Vector3(-0.5, 0.5, 0.5),
+            new Vector3(-0.5, -0.5, 0.5)]));
+
+        // LEFT
+        this.tris.push(new Triangle([
+            new Vector3(-0.5, -0.5, 0.5),
+            new Vector3(-0.5, 0.5, 0.5),
+            new Vector3(-0.5, 0.5, -0.5)]));
+
+        this.tris.push(new Triangle([
+            new Vector3(-0.5, -0.5, 0.5),
+            new Vector3(-0.5, 0.5, -0.5),
+            new Vector3(-0.5, -0.5, -0.5)]));
+
+        // TOP
+        this.tris.push(new Triangle([
+            new Vector3(-0.5, 0.5, -0.5),
+            new Vector3(-0.5, 0.5, 0.5),
+            new Vector3(0.5, 0.5, 0.5)]));
+
+        this.tris.push(new Triangle([
+            new Vector3(-0.5, 0.5, -0.5),
+            new Vector3(0.5, 0.5, 0.5),
+            new Vector3(0.5, 0.5, -0.5)]));
+
+        // BOTTOM
+        this.tris.push(new Triangle([
+            new Vector3(0.5, -0.5, 0.5),
+            new Vector3(-0.5, -0.5, 0.5),
+            new Vector3(-0.5, -0.5, -0.5)]));
+
+        this.tris.push(new Triangle([
+            new Vector3(0.5, -0.5, 0.5),
+            new Vector3(-0.5, -0.5, -0.5),
+            new Vector3(0.5, -0.5, -0.5)]));
+    }
+
+    transformTriangles() {
+        for (let tri of this.tris) {
+            tri.mulMat4x4(Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z));
+            tri.mulMat4x4(Mat4x4.RotationX(this.rotation.x));
+            tri.mulMat4x4(Mat4x4.RotationY(this.rotation.y));
+            tri.mulMat4x4(Mat4x4.RotationZ(this.rotation.z));
+            tri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
+        }
+    }
+}</code></pre>
+
+                    Bạn để ý là mình đang xài tri.mulMat4x4 cho gọn, class Triangle chưa có hàm mulMat4x4 nên mình thêm nó vào (nhân từng đỉnh cho ma trận):
+                    <pre><code class="language-javascript">class Triangle {
+    ...
+
+    mulMat4x4(m) {
+        for (let v of this.vertices) {
+            v.mulMat4x4(m);
+        }
+    }
+}</code></pre>
+                    Tới khúc vẽ chính, mình sẽ tạo 2 cube, cube1 ở vị trí cũ nhưng xoay trục x 45 độ, cube2 lúc đầu mình tạo ở x=1 nhưng sau đó mình trừ đi 1.6, là cuối cùng
+                    nó sẽ ở x=-0.6, là sẽ ở bên trái màn hình. Sau đó mình sẽ gọi hàm transformTriangles cho 2 cube
+                    <pre><code class="language-javascript">let cube1 = new Cube(new Vector3(0.6, -0.7, 2.5), new Vector3(45, 0, 0), new Vector3(0.7, 0.7, 0.7));
+let cube2 = new Cube(new Vector3(1, 0, 2.5), new Vector3(0, 0, 15), new Vector3(1, 0.7, 0.7));
+cube2.pos = Vector3.sub(cube2.pos, new Vector3(1.6, 0, 0));
+
+cube1.transformTriangles();
+cube2.transformTriangles();</code></pre>
+
+                    Sau đó mình gộp lại hết tam giác của 2 cube trong 1 mảng, và sau đó gọi vòng lặp for vẽ từng tam giác như cũ:
+                    <pre><code class="language-javascript">let allTris = [];
+allTris.push(...cube1.tris);
+allTris.push(...cube2.tris);
+
+for (let tri of allTris) {
+    ...
+}</code></pre>
+                    Code full:
+                    <div class="htmlPreview" id="htmlPreview9"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 
