@@ -34,5 +34,11 @@
         "webTitle": "Graphics Engine 3D #5: Model matrix",
         "title": "Graphics Engine 3D #5: Model matrix",
         "route": "/blogs/graphics3D/graphics3D5-model.html"
+    },
+    {
+        "id": "graphics3D6",
+        "webTitle": "Graphics Engine 3D #6: Game loop",
+        "title": "Graphics Engine 3D #6: Game loop",
+        "route": "/blogs/graphics3D/graphics3D6-gameloop.html"
     }
 ]

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="graphics3D.css">
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Graphics Engine 3D</title>
+</head>
+
+<body data-graphics3D-id="graphics3D6">
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Game loop</h1>
+                    
+                    Từ blog đầu tiên tới giờ ta chỉ có tạo và hiển thị object lên màn hình, nhưng chúng không hề di chuyển, khá chán.
+                    Cho nên blog này ta sẽ cài đặt một hệ thống Game loop, nói nôm na là cập nhật frame theo thời gian một cách ổn định. Blog này sẽ khá ngắn và dễ
+                    hiểu, là một breath of fresh air sau vài blog nặng về toán vừa rồi 🥵<br/><br/>
+
+                    Đầu tiên bạn nên biết là không có máy tính nào có tốc độ xử lý giống nhau, nếu bạn làm game mà không để ý tới fact đó, thì nó sẽ bị hiện tượng
+                    slow motion trên máy chậm, và chạy như flash trên máy nhanh, điển hình là Dark souls remastered bị vấn đề này (bản cũ thì không bị). Ví dụ đơn giản với
+                    vị trí của object, lý do xảy ra vấn đề trên là mọi frame bạn đều cộng 1 khoảng giống nhau, máy nhanh xử lý xong 1 frame trong 0.03s bạn cộng 2m, máy chậm
+                    xử lý xong 1 frame trong 0.07s bạn cũng cộng 2m, thì tất nhiên là nó sẽ bị chạy chậm hơn trên máy chậm và nhanh hơn trên máy nhanh. Nếu ngày xưa bạn từng 
+                    làm game console bằng C++, bạn sẽ gặp qua vấn đề này khi cứ cộng khoảng y hệt mỗi vòng lặp while loop 😅.<br/><br/>
+                    
+                    Cách giải quyết vấn
+                    đề này khá dễ, bạn chỉ cần đặt clock đếm xem frame trước xử lý xong trong bao lâu (khoảng thời gian này được gọi là delta time (\(\Delta t\))),
+                    rồi sau đó cộng khoảng phù hợp với \(\Delta t\): frame trước xong trong 0.03s thì cộng 2 * 0.03 m, frame trước xong trong 0.07s thì cộng 2 * 0.07m 
+                    (mất thời gian lâu hơn để xử lý thì cho di chuyển xa hơn để bù lại khoảng thời gian đó). 
+                    Như vậy sẽ giải quyết được vấn đề slow motion, nhưng bây giờ vị trí vật trên máy chậm sẽ bị giật giật, nhưng mà vẫn đảm bảo vật sẽ luôn ở chung vị trí với 
+                    máy nhanh.<br/><br/>
+
+                    Để đếm thời gian trong javascript khá dễ, ta chỉ cần xài <a href="https://developer.mozilla.org/en-US/docs/Web/API/Performance/now">performance.now()</a>,
+                    là hàm đếm số mili giây từ kể từ <a href="https://developer.mozilla.org/en-US/docs/Web/API/Performance/timeOrigin">Performance.timeOrigin</a>.
+                    Đối với loop frame thì sử dụng hàm 
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame">requestAnimationFrame()</a>, là hàm yêu cầu browser gọi một hàm
+                    callback trước lần vẽ kế tiếp, hàm callback đó phải có tham số đầu tiên là một biến đại diện cho số mili giây kể từ <a href="https://developer.mozilla.org/en-US/docs/Web/API/Performance/timeOrigin">timeOrigin</a>,
+                    chính là thứ mà ta vừa nói tới. Ta sẽ tạo một hàm update, và ở cuối hàm ta dùng requestAnimationFrame để gọi callback là chính nó 
+                    (đừng lo, nó không phải đệ quy đâu nên không bị stack overflow). Code cụ thể như sau:
+
+                    <pre><code class="language-javascript">let lastTime = performance.now();
+let dt = 0; // delta time
+
+function update(time = performance.now()) {
+    dt = (time - lastTime) / 1000;  //dt tính theo giây cho dễ hình dung
+    lastTime = time;
+
+    // làm gì đó mỗi frame (nhớ sử dụng dt)
+
+    requestAnimationFrame(update);
+}
+
+update();   //gọi hàm để bắt đầu loop</code></pre>
+                    
+                    Ở giữa hàm update đó ta sẽ để đoạn code thay đổi các thuộc tính của 2 cube (xoay 2 cube theo dt),
+                    tập hợp các tam giác xong project và vẽ chúng. Nhưng trước khi vẽ, ta cần phải clear màn
+                    hình để tránh vẽ chồng lặp lên nhau:
+                    <pre><code class="language-javascript">let lastTime = performance.now();
+let dt = 0;
+
+function update(time = performance.now()) {
+    dt = (time - lastTime) / 1000;
+    lastTime = time;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    cube1.rotation = new Vector3(cube1.rotation.x, cube1.rotation.y + 50 * dt, cube1.rotation.z);
+    cube2.rotation = new Vector3(cube2.rotation.x + 50 * dt, cube2.rotation.y, cube2.rotation.z + 50 * dt);
+
+    let allTris = [];
+    allTris.push(...cube1.getTransformTriangles());
+    allTris.push(...cube2.getTransformTriangles());
+    for (let tri of allTris) {
+        ...
+    }
+
+    requestAnimationFrame(update);
+}
+
+update();</code></pre>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview10"></div>
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer></footer>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+
+    <script src="graphics3D.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>
