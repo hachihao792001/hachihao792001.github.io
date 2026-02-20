@@ -35,7 +35,7 @@
 
                 <div class="blog-content col-12 col-lg-10">
                     <div id="graphics3D-nav-top"></div>
-                    <h1>Game loop</h1>
+                    <h1>Game loop và face culling</h1>
                     
                     Từ blog đầu tiên tới giờ ta chỉ có tạo và hiển thị object lên màn hình, nhưng chúng không hề di chuyển, khá chán.
                     Cho nên blog này ta sẽ cài đặt một hệ thống Game loop, nói nôm na là cập nhật frame theo thời gian một cách ổn định. Blog này sẽ khá ngắn và dễ
@@ -104,6 +104,106 @@ function update(time = performance.now()) {
 update();</code></pre>
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview10"></div>
+
+                    Sẽ hay hơn nếu ta tính luôn fps nhỉ 😳 cũng khá đơn giản, chỉ cần vừa đếm số frame đã qua vừa đếm thời gian (bằng dt), nếu đủ 1s thì cập nhật số frame
+                    trong 1s vừa rồi lên màn hình, xong reset lại số frame đã đếm là oke:
+                    <pre><code class="language-html">&lt;h2 id="fps"&gt;FPS: 0&lt;/h2&gt;</code></pre>
+                    <pre><code class="language-javascript">const fpsInfo = document.getElementById("fps");
+let fps = 0, frames = 0, fpsTimeCounter = 0;
+    
+function update(time = performance.now()) {
+    dt = (time - lastTime) / 1000;
+    lastTime = time;
+
+    fpsTimeCounter += dt;
+    frames++;
+    if (fpsTimeCounter >= 1) {
+        fpsInfo.textContent = `FPS: ${frames}`;
+        frames = 0;
+        fpsTimeCounter = 0;
+    }
+
+    ...
+}</code></pre>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview11"></div>
+
+                    Bạn nhìn nó xoay lâu lâu sẽ thấy illusion là mặt đằng sau là mặt đằng trước, sẽ thấy nó bị méo mó. Vì vậy tiếp theo mình sẽ nói cho bạn về face culling,
+                    là một kỹ thuật giấu đi những tam giác đang không hướng về phía camera, nói cách khác là những tam giác có mặt "đằng sau" quay về phía mình. Chắc bạn cũng
+                    từng thấy hiện tượng này trong game, khi bạn noclip vào trong 1 vật nào đó, bạn vẫn thấy được thế giới bên ngoài, vì mặc định mặt "đằng sau" của các tam
+                    giác sẽ không được hiển thị.<br/><br/>
+                    Face culling khá dễ, trước tiên, đối với từng tam giác, bạn phải tìm được vector pháp tuyến \(\vec{n}\) của nó, sau đó so sánh với vector từ camera hướng lên tâm của tam giác đó \(a\),
+                    nếu góc hợp giữa \(\vec{n}\) và \(a\) nhỏ hơn 90, thì tức là tam giác đó đang nhìn "theo hướng" camera, là mình sẽ thấy được "đằng sau" của nó, ngược lại
+                    nếu góc đó lớn hơn 90, là tam giác đang quay "về phía" camera.<br/>
+                    Đầu tiên để tìm được \(\vec{n}\) của một tam giác, ta sẽ sử dụng một khái niệm mà ta đã từng học ở cấp 3, đó chính là tích có hướng. Nếu bạn không nhớ thì tích có hướng
+                    của 2 vector sẽ ra kết quả là một vector thứ 3 vuông góc với cả 2 vector đó, và được tính như sau:
+                    $$
+\vec{a} \times \vec{b} = 
+\begin{pmatrix}
+a_x\\
+a_y\\
+a_z
+\end{pmatrix}
+\times
+\begin{pmatrix}
+b_x\\
+b_y\\
+b_z
+\end{pmatrix}
+=
+\begin{pmatrix}
+a_y b_z - a_z b_y \\
+a_z b_x - a_x b_z \\
+a_x b_y - a_y b_x
+\end{pmatrix}
+                    $$
+                    Đối với một tam giác, ta chỉ cần lấy tích có hướng của 2 cạnh bất kỳ là sẽ ra vector pháp tuyến của tam giác đó. Tuy nhiên bạn nên biết là khi bạn đảo chiều một
+                    trong 2 vector, nó vẫn sẽ ra một vector vuông góc với 2 vector ban đầu, nhưng sẽ bị ngược chiều. Đó là lí do ở <a href="graphics3D2-definitions.html">blog 2</a>
+                    mình nói là thứ tự các đỉnh của tam giác phải thống nhất cùng chiều hay ngược chiều kim đồng hồ, để tam giác nào cũng thống nhất một kiểu
+                    vector pháp tuyến.<br/><br/>
+                    Bây giờ vấn đề tiếp theo ta cần giải quyết là xác định xem vector pháp tuyến của tam giác có "hướng về" camera hay không, để làm được điều này ta cũng sử dụng một 
+                    khái niệm mà ta học hồi cấp 2, đó chính là tích vô hướng. Được tính bằng cách sau:
+                    $$
+                        \vec{a} \cdot \vec{b}= a_x b_x + a_y b_y + a_z b_z
+                    $$
+                    Ngoài ra tích vô hướng cũng có công thức sau, \(\theta\) là góc hợp giữa \(\vec{a}\) và \(\vec{b}\):
+                    $$
+                        \vec{a} \cdot \vec{b}= |a||b|cos\theta
+                    $$
+                    Vì trong công thức trên có \(cos\theta\), nên \(\vec{a} \cdot \vec{b} > 0\) khi \(\theta < 90\), \(\vec{a} \cdot \vec{b} < 0\) khi  \(\theta > 90\). Đúng cái ta cần,
+                    \(\theta < 90\) nghĩa là \(\vec{a}\) và \(\vec{b}\) đang "hướng cùng nhau" và \(\theta > 90\) nghĩa là \(\vec{a}\) và \(\vec{b}\) đang "hướng ngược nhau".<br/><br/>
+
+                    Hàm tính tích vô hướng (dot) và tích có hướng (cross) ta đã làm sẵn ở class Vector3. Đói với class Triangle ta sẽ thêm hàm tìm tâm getCenter và hàm tìm vector pháp tuyến
+                    getNormal:
+                    <pre><code class="language-javascript">getCenter() {
+    let x = (this.vertices[0].x + this.vertices[1].x + this.vertices[2].x) / 3.0;
+    let y = (this.vertices[0].y + this.vertices[1].y + this.vertices[2].y) / 3.0;
+    let z = (this.vertices[0].z + this.vertices[1].z + this.vertices[2].z) / 3.0;
+    return new Vector3(x, y, z);
+}
+
+getNormal() {
+    let v1 = Vector3.sub(this.vertices[0], this.vertices[1]);
+    let v2 = Vector3.sub(this.vertices[1], this.vertices[2]);
+    let normal = Vector3.cross(v1, v2);
+    normal.normalize();
+    return normal;
+}</code></pre>
+                    
+                    Ở đoạn code vẽ chính, trước khi xử lý 1 tam giác, ta cần xét điều kiện tích vô hướng trước:
+                    <pre><code class="language-javascript">let cameraPos = new Vector3(0, 0, 0);
+...
+                        
+for (let tri of allTris) {
+    if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), cameraPos)) < 0) {
+        ...    
+    }
+}</code></pre>
+                    Kết quả như sau:
+                    <div class="htmlPreview" id="htmlPreview12"></div>
+
+                    Bạn cũng thấy là ngoài giúp hiển thị đồ vật hợp lý ra thì face culling cũng làm giảm số tam giác phải vẽ, giúp cải thiện performance khá nhiều.
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 
