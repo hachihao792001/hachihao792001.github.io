@@ -25,7 +25,7 @@
     <title>Graphics Engine 3D</title>
 </head>
 
-<body data-graphics3D-id="graphics3D6">
+<body data-graphics3D-id="graphics3D7">
     <main>
         <div class="container-fluid ps-0">
             <div class="row">
@@ -51,21 +51,28 @@
                     Sử dụng Quaternion sẽ giải quyết được vấn đề này, còn tại sao thì mình không hiểu đủ bản chất của nó để hiểu 😅 mình chỉ hiểu tại sao các tính chất
                     đại số của nó lại liên quan tới việc xoay trong 3D. Nếu bạn xài qua Unity thì chắc cũng gặp qua nó, và cũng được khuyên là đừng nên tìm hiểu quá sâu mà
                     chỉ nên biết cách dùng nó, nhưng mà ở đây mình đang viết một thứ gần giống như Game engine nên cài đặt được nó là điều tất yếu.<br/><br/>
+                    <h2>2. Định nghĩa và cài đặt</h2>
+                    Nếu bạn lướt qua thử blog này và thấy số lượng công thức làm bạn overwhelm, bạn có thể dừng sau khi xong phần này, phần này mình chỉ nói cho bạn biết những
+                    thứ cốt lõi nhất để cài đặt được Quaternion vào engine 😳<br/><br/>
 
-                    Những gì mình nói trong blog này dựa vào blog 
-                    <a href="https://lisyarus.github.io/blog/posts/introduction-to-quaternions.html">(Yet another) Introduction to quaternions của lisyarus</a>. Bạn có thể
-                    xem blog đó thay vì blog của mình nếu muốn hiểu sâu hơn, blog này mình chỉ nói về những gì thật sự cần thiết cho việc xoay 3D.<br/><br/>
+                    Quaternion có 3 cách biểu diễn (3 "định nghĩa"):
+                    <ol>
+                        <li>\((a, b, c, d)\). Cách biểu diễn này bạn có thể hiểu nó là vector 4 chiều</li>
+                        <li>\(a + bi + cj + dk\). Cách biểu diễn này bạn có thể hiểu nó là "số phức nhưng có thêm \(j\) và \(k\)"</li>
+                        <li>\(a + v\). Trong đó \(a\) là một số thực (phần scalar), và \(v = (b, c, d)\) là một vector (phần vector). Cách biểu diễn này được 
+                        gọi là biểu diễn Scalar-vector, nhìn một số cộng một vector khá là vô nghĩa nhưng ta vừa định nghĩa nó, kết quả của phép 
+                        cộng một số với một vector là một Quaternion 😳.</li>
+                    </ol>
 
-                    <h2>2. Định nghĩa và tính chất</h2>
-                    Nói một cách đơn giản nhất, Quaternion là một tập giá trị (tuple) có 4 số:
+                    Với dạng đầu tiên, nó cũng có những tính chất đại số của vector 4 chiều, điển hình như phép cộng, trừ và nhân hằng số:
                     $$
-                    (a, b, c, d)
+                    (a,b,c,d)\pm(e,f,g,h) = (a\pm e,b\pm f,c\pm g,d\pm h)
                     $$
-                    Cụ thể hơn thì nó là một sự mở rộng của số phức, ngoài \(i\) thì có thêm \(j\) và \(k\):
                     $$
-                    a + bi + cj + dk
+                    k\cdot(a,b,c,d) = (ka,kb,kc,kd)
                     $$
-                    Trong đó:
+                    Ở dạng thứ hai \(a + bi + cj + dk\), \(a\) thật ra đang nhân với số \(1\) (nhưng số gì nhân \(1\) cũng bằng chính nó nên không ghi), 
+                    số \(1\) cũng có thể được xem là Quaternion với dạng \((1,0,0,0)\). Điều này cũng đúng với mọi số thực. Ngoài ra, ta có định nghĩa của \(i,j,k\)
                     $$
                     \begin{eqnarray} 
                     i = (0,1,0,0) \\
@@ -73,31 +80,197 @@
                     k = (0,0,0,1)
                     \end{eqnarray}
                     $$
-                    \(a\) thật ra nhân với số \(1\) (nhưng số gì nhân 1 cũng bằng chính nó nên không ghi), số \(1\) cũng có thể được xem là Quaternion với dạng \((1,0,0,0)\). Điều
-                    này cũng đúng với mọi số thực.<br/><br/>
-                    Với dạng đầu tiên, ta cũng có thể hiểu Quaternion như một vector 4 chiều, có những tính chất đại số của vector 4 chiều, điển hình như phép cộng, trừ và nhân hằng số:
+                    
+                    Kết quả phép nhân 2 Quaternion (nếu bạn muốn biết tại sao nó ra vậy thì hãy đọc tiếp sau phần này):
                     $$
-                    (a,b,c,d)\pm(e,f,g,h) = (a\pm e,b\pm f,c\pm g,d\pm h)
+                    \begin{eqnarray}
+                    (a,b,c,d) \cdot (w,x,y,z) = \\
+                                    = (aw - bx - cy - dz, \\
+                                    ax + bw + cz - dy, \\
+                                    ay - bz + cw + dx, \\
+                                    az + by - cx + dw)
+                    \end{eqnarray}
                     $$
-                    $$
-                    k\cdot(a,b,c,d) = (ka,kb,kc,kd)
-                    $$
-                    Ngoài ra, phép nhân 2 Quaternion không có tính chất giao hoán, nhưng lại có tính chất kết hợp (associative):
+                    Với phép nhân, Quaternion không có tính chất giao hoán (commutative), nhưng lại có tính chất kết hợp (associative):
                     $$
                     \begin{eqnarray}
                         p\cdot q \, \neq \, q\cdot p\\
                         p\cdot(q\cdot r) = (p\cdot q)\cdot r
                     \end{eqnarray}
                     $$
-                    Cuối cùng, Quaternion có tính phân phối (distributive):
+                    Ngoài ra, Quaternion có tính phân phối (distributive):
                     $$
                     \begin{eqnarray}
                     p\cdot(q+s) = p\cdot q + p\cdot s \\
                     (q+s)\cdot p = q\cdot p + s\cdot p
                     \end{eqnarray}
                     $$
-                    <i>2 biểu thức trên khác nhau vì phép nhân không có tính chất giao hoán</i><br/><br/>
-                    <h2>3. Phép nhân và biểu diễn Scalar-vector</h2>
+                    <div align="center" style="font-size: 14px;"> <i>2 biểu thức trên khác nhau vì phép nhân không có tính chất giao hoán</i></div>
+                    Phần liên hợp (conjugate) của Quaternion \(q=a+v\) có dạng sau:
+                    $$
+                        q^* = a - v
+                    $$
+                    <div align="center" style="font-size: 14px;"> <i>Xem rõ hơn ở phần 4</i></div>
+                    <div style="color: red;"><i>Nếu bạn đang thấy mình lướt và đi quá nhanh, vì đúng là mình đang làm vậy. Đó là mục đích của phần này, chỉ giúp bạn cài đặt nhưng bỏ việc giải thích lí do các 
+                    thứ, bạn sẽ hiểu rõ hơn nếu bạn đọc tiếp từ phần 3 trở đi.</i></div><br/>
+                    Ta đã xong phần "định nghĩa và tính chất", ta sẽ tới phần chính là quan hệ của Quaternion với xoay 3D. Biểu thức sau đại diện cho một phép xoay 3D:
+                    $$
+                        pvp^*
+                    $$
+                    Trong đó \(v\) là một Quaternion thuần vector (có phần scalar = 0), cũng có thể hiểu nó là một vector. Và \(p\) có dạng sau:
+                    $$
+                    p = \cos\frac{\theta}{2} - \sin\frac{\theta}{2}n
+                    $$
+                    Trong đó \(n\) là một vector cùng phương cùng chiều với trục xoay của phép xoay, và \(\theta\) chính là góc xoay. Phép xoay trên có tính chất:
+                    $$
+                        p(qvq^*)p^* = (pq)v(pq)^*
+                    $$
+                    Nghĩa là thực hiện phép xoay của \(q\) rồi \(p\) cũng giống như thực hiện 1 phép xoay \(pq\) vậy (lưu ý là nó ngược).<br/><br/>
+                    Như vậy ta đã có được mọi thứ ta cần, bắt đầu cài đặt 😳 Class Quaternion của chúng ta sẽ khá ngắn:
+                    <pre><code class="language-javascript">class Quaternion {
+    constructor(a = 1, b = 0, c = 0, d = 0) {
+        this.a = a;
+        this.b = b;
+        this.c = c;
+        this.d = d;
+    }
+
+    static buildQuaternion(axis, angle) { // xây dựng Quaternion theo dạng p = cos(θ/2) - sin(θ/2)n
+        let radian = angle / 180.0 * Math.PI;
+        const half = radian / 2;
+        const s = -Math.sin(half);
+        return new Quaternion(
+            Math.cos(half),
+            axis.x * s,
+            axis.y * s,
+            axis.z * s);
+    }
+
+    static multiply(p, q) { //nhân 2 Quatenrion theo công thức trên
+        let a = p.a * q.a - p.b * q.b - p.c * q.c - p.d * q.d;
+        let b = p.a * q.b + p.b * q.a + p.c * q.d - p.d * q.c;
+        let c = p.a * q.c - p.b * q.d + p.c * q.a + p.d * q.b;
+        let d = p.a * q.d + p.b * q.c - p.c * q.b + p.d * q.a;
+        return new Quaternion(a, b, c, d);
+    }
+
+    conjugate() {   //liên hợp
+        return new Quaternion(this.a, -this.b, -this.c, -this.d);
+    }
+
+    rotateVector(v) { //xoay vector bằng Quaternion này, sử dụng qvq*
+        const qVec = new Quaternion(0, v.x, v.y, v.z);
+        const res = Quaternion.multiply(Quaternion.multiply(this, qVec), this.conjugate());
+        return new Vector3(
+            res.b,
+            res.c,
+            res.d);
+    }
+    static RotateVectorAxisAngle(v, axis, angle) {   //xoay vector quanh trục axis 1 góc angle, sử dụng axis và angle để xây dựng Quaternion và dùng Quaternion đó để xoay 
+        let radian = angle / 180.0 * Math.PI;
+        return buildQuaternion(axis, radian).rotateVector(v);
+    }
+}</code></pre>
+                    Cách sử dụng Quaternion vào việc xoay cũng giống như cách ta sử dụng Rotation matrix. Ở cách Rotation matrix, ta không liên tục thay đổi tọa độ của tất cả
+                    các đỉnh của object, mà chỉ thay đổi thuộc tính rotation (là 1 euler angles) rồi cuối mỗi frame mới biến nó thành rotation matrix và áp dụng vào các đỉnh.
+                    Bây giờ cũng thế, nhưng thay vì lưu rotation là một euler angles thì ta lưu nó là một Quaternion, mỗi lần ta muốn xoay ta chỉ cần nhân thêm Quaternion xoay
+                    đó vào trong Quaternion rotation đã có sẵn, rồi cuối mỗi frame cứ lấy Quaternion cuối cùng đó áp vào từng đỉnh.<br/><br/>
+
+                    Trước khi tiếp tục, có một thứ mà đáng lẽ mình phải làm lâu rồi, đó chính là tạo sẵn các Vector3 thường dùng như Unity để code được clean:
+                    <pre><code class="language-javascript">class Vector3 {
+    ...
+
+    static zero;
+    static one;
+    static left;
+    static right;
+    static up;
+    static down;
+    static forward;
+
+    ...
+}
+Vector3.zero = new Vector3(0, 0, 0);
+Vector3.one = new Vector3(1, 1, 1);
+Vector3.left = new Vector3(-1, 0, 0);
+Vector3.right = new Vector3(1, 0, 0);
+Vector3.up = new Vector3(0, 1, 0);
+Vector3.down = new Vector3(0, -1, 0);
+Vector3.forward = new Vector3(0, 0, 1);</code></pre> 
+
+                    Trước tiên ta thêm một hàm xoay theo Quaternion cho class Triangle (áp dụng xoay cho 3 đỉnh của nó):
+                    <pre><code class="language-javascript">class Triangle {
+    ...
+
+    rotate(q) {
+        for (let i = 0; i < this.vertices.length; i++) {
+            this.vertices[i] = q.rotateVector(this.vertices[i]);
+        }
+    }
+
+    ...
+}</code></pre>
+                    
+                    Ở class Cube, ta phải làm những thứ sau:
+                    <ul>
+                        <li>Thay đổi constructor để chuyển kiểu của rotation thành Quaternion, nhưng vẫn nhận tham số là euler angles để dễ hiểu. Ta sẽ phải dùng
+                    Quaternion để xoay theo 3 trục tương ứng, và xoay theo thứ tự \(x \rightarrow y \rightarrow z\) như cách rotation matrix, nhưng khi nhân Quaternion ta phải
+                    nhân ngược lại (đã nói ở trên).</li>
+                        <li>Thêm một hàm rotate (cũng nhận tham số là euler angles), để áp phép xoay mới (nhân Quaternion) vào rotation.</li>
+                        <li>Thay đổi hàm getTransformedTriangles, thay vì nhân 3 ma trận rotation matrix, ta chỉ cần 1 dòng duy nhất là áp dụng Quaternion rotation vào đỉnh hiện tại</li>
+                    </ul>
+                    <pre><code class="language-javascript">class Cube {
+    constructor(pos, eulerAngles, scale) {
+        this.tris = [];
+        this.pos = pos;
+        this.scale = scale;
+
+        let q = Quaternion.buildQuaternion(Vector3.forward, eulerAngles.z);
+        q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.up, eulerAngles.y));
+        q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.right, eulerAngles.x));
+        this.rotation = q;
+
+        this.generateInitialTriangles();
+    }
+
+    ...
+
+    rotate(eulerX, eulerY, eulerZ) {
+        let q = Quaternion.buildQuaternion(Vector3.forward, eulerZ);
+        q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.up, eulerY));
+        q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.right, eulerX));
+
+        this.rotation = Quaternion.multiply(q, this.rotation);
+    }
+    
+    ...
+
+    getTransformedTriangles() {
+        let transformedTris = [];
+        for (let tri of this.tris) {
+            let transformedTri = tri.clone();
+            transformedTri.mulMat4x4(Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z));
+            transformedTri.rotate(this.rotation);   // <--------------------------
+            transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
+            transformedTris.push(transformedTri);
+        }
+        return transformedTris;
+    }
+}
+                    </code></pre>
+                    <i>Nếu javascript có operator overloading thì code sẽ nhìn khá dễ đọc chứ ko phải hàm lồng hàm như trên 🥵</i><br/><br/>
+                    Cuối cùng, đối với 2 cube, thay vì dùng rotation matrix để xoay thì ta dùng hàm rotate của Cube:
+                    <pre><code class="language-javascript">cube1.rotate(0, 50 * dt, 0);
+cube2.rotate(50 * dt, 0, 50 * dt);</code></pre>
+                    Full code, bạn có thể giữ lại 3 hàm rotation matrix ở class Mat4x4 nếu muốn, mình thì bỏ đi cho code bớt dài (cũng ko bớt mấy):
+                    <div class="htmlPreview" id="htmlPreview13"></div>
+                    Như vậy là bạn đã cài đặt được Quaternion vào engine của mình, nếu bạn muốn thì có thể đọc tiếp blog để xem cách chứng minh từ đầu tới cuối sao cho ra
+                    được phép xoay 3D trong Quaternion.<br/><br/>
+                    <h2>3. Phép nhân Quaternion</h2>
+                    Trước khi bắt đầu phần "chứng minh mọi thứ", mình muốn nói là những gì mình viết trong blog này đều dựa vào blog 
+                    <a href="https://lisyarus.github.io/blog/posts/introduction-to-quaternions.html">(Yet another) Introduction to quaternions của lisyarus</a>. Bạn có thể
+                    xem blog đó thay vì blog của mình nếu muốn hiểu sâu hơn, blog này mình chỉ nói về những gì mình thật sự thấy cần thiết, và chứng minh rõ thêm một số thứ.<br/><br/>
+
                     Đối với phép nhân 2 Quaternion, ta thử nhân dạng số phức của nó và triển khai ra:
                     $$
                     \begin{eqnarray} 
@@ -130,11 +303,8 @@
                     + cz\cdot i - dy\cdot i + dx\cdot j - bz\cdot j + by\cdot k - cx\cdot k 
                     \end{eqnarray}
                     $$
-                    Nhìn cũng khá rối và khó nhớ, nhưng nó sẽ có tác dụng vào lúc sau 😳 <br/><br/>
-                    Ngoài ra, Quaternion còn có một cách biểu diễn khác, với \(a + bi + cj + dk\), ta có thể gọi \(a\) là phần vô hướng (scalar) trong Quaternion 
-                    và \((b, c, d)\) là phần có hướng (vector), đặt là \(u\), như vậy Quaternion còn được biểu diễn như sau: \(a + u\). Cách biểu diễn này được 
-                    gọi là biểu diễn Scalar-vector, nhìn một số cộng một vector khá là vô nghĩa nhưng ta vừa định nghĩa nó, kết quả của phép cộng một số với một vector là một Quaternion 😳.<br/><br/>
-                    Ta biểu diễn lại phép nhân theo Scalar-vector như sau:
+                    <div align="center" style="font-size: 14px;"><i>Nếu bạn gom theo \(i, j, k\), bạn sẽ ra lại kết quả phép nhân mà mình ghi ở phần 2, nhưng mình không làm vậy vì muốn làm gọn thêm</i></div>
+                    Nhìn cũng khá rối và khó nhớ, ta sẽ đơn giản hóa nó với dạng biểu diễn scalar-vector:
                     $$
                     (a + u)(w + v)
                     $$
@@ -283,9 +453,9 @@
                     $$
                         |u| = |q\cdot v\cdot q^*| = |q|\cdot|v|\cdot|q^*| = |q|\cdot|v|\cdot|q| = |q|^2\cdot|v|
                     $$
-                    <i>(Chiều dài tích bằng tích chiều dài, chiều dài liên hợp q bằng chiều dài q)</i>
-                    Như vậy nếu chiều dài của \(q = 1\), thì công thức \(q\cdot v\cdot q^*\) sẽ giữ nguyên chiều dài \(v\). Ta sẽ áp đặt Quaternion trong công thức đó
-                    là một Quaternion đơn vì (chiều dài bằng 1) từ bước này<br/><br/>
+                    <div align="center" style="font-size:14px"><i>(Chiều dài tích bằng tích chiều dài, chiều dài liên hợp q bằng chiều dài q)</i></div>
+                    Như vậy nếu chiều dài của \(q = 1\), thì công thức \(q\cdot v\cdot q^*\) sẽ giữ nguyên chiều dài \(v\). Như vậy ta sẽ bắt đầu ràng buộc Quaternion trong công thức
+                    \(q\cdot v\cdot q^*\) là một Quaternion đơn vị (chiều dài bằng 1) từ bước này<br/><br/>
                     Tiếp theo là tới tích vô hướng:
                     $$
                     \begin{eqnarray}
@@ -347,49 +517,51 @@
                     <i>Nhớ là \(p\) là một Quaternion đơn vị, chiều dài bằng 1</i><br/>
                     Điều này có nghĩa là phép biến đổi đó không thay đổi \(v\), nghĩa là xoay \(v\) xong nó vẫn như cũ, nghĩa là \(v\) song song với trục xoay và chiều của
                     \(v\) cũng là chiều của trục xoay.<br/><br/>
-                    Để đơn giản hóa vấn đề, ta xét thử phép xoay trên mặt phẳng \(XY\) sẽ ra sao, nghĩa là xoay quanh trục \(Z\), khi đó \(v\) sẽ cùng phương cùng chiều với \(k\),
+                    Để đơn giản hóa vấn đề, ta xét thử phép xoay trên mặt phẳng \(XZ\) sẽ ra sao, nghĩa là xoay quanh trục \(Y\), khi đó \(v\) sẽ cùng phương cùng chiều với \(j\),
                     và Quaternion \(p\) có dạng:
                     $$
-                        p = a+bk (1)
+                        p = a+bj (1)
                     $$
                     Ta hãy xem nó làm gì với trục \(X\), nghĩa là Quaternion \(i\):
                     $$
-                    pip^* = (a+bk)i(a-bk) = (ai+bki)(a-bk) = (ai+bj)(a-bk) =\\
-                        = a^2i-abik+abj-b^2jk = a^2i+abj+abj-b^2i = (a^2-b^2)i+2abj
+                    pip^* = (a+bj)i(a-bj) = (ai+bji)(a-bj) = (ai-bk)(a-bj) =
+                         a^2i-abij-abk+b^2kj = a^2i - abk - abk - b^2i = (a^2-b^2)i - 2abk
                     $$
                     Ở <a href="graphics3D5-model.html">blog 5</a>, trong lúc ta đang tìm rotation matrix, ta đã biết ở 2D, khi xoay \(v\) một góc \(\theta\) thành \(v'\),
                     thì \(|\vec{v'_{x}}| = |v_x|\cos{θ} - |v_y|\sin{θ}\) và \(|\vec{v'_{y}}| = |v_x|\sin{θ} + |v_y|\cos{θ}\). Như vậy sau khi xoay xong \(i\), thì \(i'\)
                     có \(i'_x = |i_x|\cos{θ} - |i_y|\sin{θ} = \cos{\theta}\) và \(i'_y = |i_x|\sin{θ} + |i_y|\cos{θ} = \sin{\theta}\). Nghĩa là \(i'\) có dạng:
                     $$
-                        \cos\theta i + \sin\theta j
+                        \cos\theta i + \sin\theta k
                     $$
-                    Nó có cùng dạng với \((a^2-b^2)i+2abj\), suy ra:
+                    Nó có cùng dạng với \((a^2-b^2)i-2abk\), suy ra:
                     $$
                         a^2-b^2 = \cos\theta \\
                     $$
                     $$
-                        2ab = \sin\theta
+                        -2ab = \sin\theta
                     $$
-                    Có nhiều cách để tìm được \(a, b\), cách gọn nhất là dùng các luật lượng giác mà ta đã học hồi cấp 3, cụ thể là \(\sin{2\theta} = 2\sin{\theta}\cos{\theta}\)
-                    và \(\cos{2\theta} = \cos{\theta}^2 - \sin{\theta}^2\). Suy ra:
+                    Có nhiều cách để tìm được \(a, b\), cách gọn nhất là dùng các phép tính lượng giác mà ta đã học hồi cấp 3, cụ thể là \(\sin{(2\theta)} = 2\sin{\theta}\cos{\theta}\)
+                    và \(\cos{(2\theta)} = \cos{\theta}^2 - \sin{\theta}^2\). Suy ra:
                     $$
                         a = \cos\frac{\theta}{2}
                     $$
                     $$
-                        b = \sin\frac{\theta}{2}
+                        b = -\sin\frac{\theta}{2}
                     $$
                     Theo (1), suy ra \(p\) có dạng:
                     $$
-                        p = \cos\frac{\theta}{2} + \sin\frac{\theta}{2}k
+                        p = \cos\frac{\theta}{2} - \sin\frac{\theta}{2}k
                     $$
-                    Đó chỉ là phép xoay xung quanh \(k\) - xung quanh trục \(Z\), nhưng thật ra ta có thể để bất kỳ Quaternion đơn vị \(n\) nào vào vị trí của \(k\), gọi nó 
-                    là trục \(Z\) và tìm 2 trục \(X\) \(Y\) của trục \(Z\) đó là cũng sẽ ra. Như vậy ta có Quaternion được dùng trong phép xoay góc \(theta\) xung quanh trục cùng chiều với vector \(n\) là:
+                    Đó chỉ là phép xoay xung quanh \(j\) - xung quanh trục \(Y\), nhưng thật ra ta có thể để bất kỳ Quaternion đơn vị \(n\) nào vào vị trí của \(j\), gọi nó 
+                    là trục \(Y\) và tìm 2 trục \(X\) \(Z\) của trục \(Y\) đó là cũng sẽ ra. Như vậy ta có Quaternion được dùng trong phép xoay góc \(\theta\) xung quanh trục cùng chiều với vector \(n\) là:
                     $$
-                        p = \cos\frac{\theta}{2} + \sin\frac{\theta}{2}n
+                        p = \cos\frac{\theta}{2} - \sin\frac{\theta}{2}n
                     $$
-                    Theo <a href="https://en.wikipedia.org/wiki/Euler%27s_rotation_theorem">định lý xoay của Euler</a>, sự kết hợp của nhiều phép xoay đều thành một phép xoay quanh
-                    một trục nào đó trong không gian, nghĩa là phép xoay trên có thể đại diện cho mọi phép xoay trong không gian 3D.<br/><br/>
-                    Giả sử ta muốn xoay theo Quaternion \(q\), xong rồi xoay theo Quaternion \(p\) nữa thì sao? Ta xem thử:
+                    <i>Bạn để ý là <a href="https://lisyarus.github.io/blog/posts/introduction-to-quaternions.html#section-constructing-specific-rotations">Blog của lisyarus</a> dùng 
+                    ví dụ là \(k\) chứ không phải \(j\), và ra kết quả khác mình, đó là vì mình xài hệ tọa độ tay trái (left-handed coordinate). Nếu bạn nhớ, đó cũng là lí do tại sao mình lại xét trục \(y\)
+                    trước ở <a href="graphics3D5-model.html">blog 5</a>.</i><br/><br/>
+                    Theo <a href="https://en.wikipedia.org/wiki/Euler%27s_rotation_theorem">định lý xoay của Euler</a>, sự kết hợp của nhiều phép xoay đều ra kết quả là một phép xoay quanh
+                    một trục nào đó trong không gian, nghĩa là phép xoay trên có thể đại diện cho mọi phép xoay trong không gian 3D. Giả sử ta muốn xoay theo Quaternion \(q\), xong rồi xoay theo Quaternion \(p\) nữa thì sao? Ta xem thử:
                     $$
                         p(qvq^*)p^* = (pq)v(q^*p^*) = (pq)v(pq)^*
                     $$

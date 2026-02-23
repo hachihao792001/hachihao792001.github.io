@@ -250,7 +250,7 @@
                     Rotation và Scale sẽ áp dụng với chính giữa vật. Một cái (khá hiển nhiên) nữa là Model matrix sẽ khác nhau đối với từng vật, chứ không phải dùng chung hết
                     như Projection matrix hay View matrix.<br/><br/>
                     Tiếp theo, mình sẽ tạo một Cube để đại diện cho một khối lập phương có đầy đủ đặc tính vị trí, độ xoay và tỉ lệ trong không gian, mình sẽ chuyển hàm makeCube vào
-                    trong class này, đổi tên thành generateInitialTriangles (các tam giác của cube trước khi được biến đổi bởi Model matrix). Ngoài ra tạo thêm một hàm getTransformTriangles
+                    trong class này, đổi tên thành generateInitialTriangles (các tam giác của cube trước khi được biến đổi bởi Model matrix). Ngoài ra tạo thêm một hàm getTransformedTriangles
                     để trả về những tam giác đó sau khi bị biến đổi. Lí do mình không thay đổi trực tiếp trên mấy tam giác đó luôn mà phải clone ra biến đổi rồi trả về là vì mình luôn phải
                     giữ trạng thái ban đầu của chúng, như trên mình nói thì mình muốn thay đổi gì chỉ thay đổi trên mấy thuộc tính của vật thôi, còn việc nhân ma trận sẽ làm cuối cùng ở mỗi 
                     frame, phải luôn có cái ban đầu để nhân.
@@ -330,7 +330,7 @@
             new Vector3(0.5, -0.5, -0.5)]));
     }
 
-    getTransformTriangles() {
+    getTransformedTriangles() {
         let transformedTris = [];
         for (let tri of this.tris) {
             let transformedTri = tri.clone();

@@ -254,7 +254,7 @@
 					new Vector3(0.5, -0.5, -0.5)]));
 			}
 
-			getTransformTriangles() {
+			getTransformedTriangles() {
 				let transformedTris = [];
 				for (let tri of this.tris) {
 					let transformedTri = tri.clone();
@@ -303,8 +303,8 @@
 			cube2.rotation = new Vector3(cube2.rotation.x + 50 * dt, cube2.rotation.y, cube2.rotation.z + 50 * dt);
 
 			let allTris = [];
-			allTris.push(...cube1.getTransformTriangles());
-			allTris.push(...cube2.getTransformTriangles());
+			allTris.push(...cube1.getTransformedTriangles());
+			allTris.push(...cube2.getTransformedTriangles());
 			for (let tri of allTris) {
 				let vertices = tri.vertices;
 				for (let i = 0; i < vertices.length; i++) {
