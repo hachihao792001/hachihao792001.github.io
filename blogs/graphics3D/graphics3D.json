@@ -40,5 +40,11 @@
         "webTitle": "Graphics Engine 3D #6: Game loop và face culling",
         "title": "Graphics Engine 3D #6: Game loop và face culling",
         "route": "/blogs/graphics3D/graphics3D6-gameloop.html"
+    },
+    {
+        "id": "graphics3D7",
+        "webTitle": "Graphics Engine 3D #7: Quaternion",
+        "title": "Graphics Engine 3D #7: Quaternion",
+        "route": "/blogs/graphics3D/graphics3D7-quaternion.html"
     }
 ]
