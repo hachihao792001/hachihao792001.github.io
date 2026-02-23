@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="graphics3D.css">
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Graphics Engine 3D</title>
+</head>
+
+<body data-graphics3D-id="graphics3D6">
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Quaternion</h1>
+
+                    Blog trước mình vừa nói là nghỉ một chút sau các blog nặng về toán, nhưng blog này sẽ là blog nặng về toán nhất trong series này 🥵<br/><br/>
+                    <h2>1. Lí do</h2>
+                    Ở blog <a href="graphics3D5-model.html">Model Matrix</a> mình đã cùng nhau tìm được 3 rotation matrix cho 3 trục trong không gian, thật ra phép
+                    xoay như vậy được gọi là Euler rotation và những góc xoay đó được gọi là <a href="https://en.wikipedia.org/wiki/Euler_angles">Euler angles</a>.
+                    Nhưng Euler angles có nhiều điểm bất cập, điểm bất cập lớn nhất là nó sẽ bị <a href="https://en.wikipedia.org/wiki/Gimbal_lock">Gimbal lock</a>,
+                    là hiện tượng là khi bạn xoay 1 trục nào đó làm cho 2 trục còn lại "song song" với nhau, dẫn tới kết quả của việc xoay 2 trục đó giống y hệt nhau.
+                    Bạn có thể xem gif này của Wiki để hiểu rõ hơn:
+                    <div align="center">
+                        <a href="https://en.wikipedia.org/wiki/Gimbal_lock#/media/File:Gimbal_Lock_Plane.gif">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/4/49/Gimbal_Lock_Plane.gif"/></a>
+                    </div>
+                    Sử dụng Quaternion sẽ giải quyết được vấn đề này, còn tại sao thì mình không hiểu đủ bản chất của nó để hiểu 😅 mình chỉ hiểu tại sao các tính chất
+                    đại số của nó lại liên quan tới việc xoay trong 3D. Nếu bạn xài qua Unity thì chắc cũng gặp qua nó, và cũng được khuyên là đừng nên tìm hiểu quá sâu mà
+                    chỉ nên biết cách dùng nó, nhưng mà ở đây mình đang viết một thứ gần giống như Game engine nên cài đặt được nó là điều tất yếu.<br/><br/>
+
+                    Những gì mình nói trong blog này dựa vào blog 
+                    <a href="https://lisyarus.github.io/blog/posts/introduction-to-quaternions.html">(Yet another) Introduction to quaternions của lisyarus</a>. Bạn có thể
+                    xem blog đó thay vì blog của mình nếu muốn hiểu sâu hơn, blog này mình chỉ nói về những gì thật sự cần thiết cho việc xoay 3D.<br/><br/>
+
+                    <h2>2. Định nghĩa và tính chất</h2>
+                    Nói một cách đơn giản nhất, Quaternion là một tập giá trị (tuple) có 4 số:
+                    $$
+                    (a, b, c, d)
+                    $$
+                    Cụ thể hơn thì nó là một sự mở rộng của số phức, ngoài \(i\) thì có thêm \(j\) và \(k\):
+                    $$
+                    a + bi + cj + dk
+                    $$
+                    Trong đó:
+                    $$
+                    \begin{eqnarray} 
+                    i = (0,1,0,0) \\
+                    j = (0,0,1,0) \\
+                    k = (0,0,0,1)
+                    \end{eqnarray}
+                    $$
+                    \(a\) thật ra nhân với số \(1\) (nhưng số gì nhân 1 cũng bằng chính nó nên không ghi), số \(1\) cũng có thể được xem là Quaternion với dạng \((1,0,0,0)\). Điều
+                    này cũng đúng với mọi số thực.<br/><br/>
+                    Với dạng đầu tiên, ta cũng có thể hiểu Quaternion như một vector 4 chiều, có những tính chất đại số của vector 4 chiều, điển hình như phép cộng, trừ và nhân hằng số:
+                    $$
+                    (a,b,c,d)\pm(e,f,g,h) = (a\pm e,b\pm f,c\pm g,d\pm h)
+                    $$
+                    $$
+                    k\cdot(a,b,c,d) = (ka,kb,kc,kd)
+                    $$
+                    Ngoài ra, phép nhân 2 Quaternion không có tính chất giao hoán, nhưng lại có tính chất kết hợp (associative):
+                    $$
+                    \begin{eqnarray}
+                        p\cdot q \, \neq \, q\cdot p\\
+                        p\cdot(q\cdot r) = (p\cdot q)\cdot r
+                    \end{eqnarray}
+                    $$
+                    Cuối cùng, Quaternion có tính phân phối (distributive):
+                    $$
+                    \begin{eqnarray}
+                    p\cdot(q+s) = p\cdot q + p\cdot s \\
+                    (q+s)\cdot p = q\cdot p + s\cdot p
+                    \end{eqnarray}
+                    $$
+                    <i>2 biểu thức trên khác nhau vì phép nhân không có tính chất giao hoán</i><br/><br/>
+                    <h2>3. Phép nhân và biểu diễn Scalar-vector</h2>
+                    Đối với phép nhân 2 Quaternion, ta thử nhân dạng số phức của nó và triển khai ra:
+                    $$
+                    \begin{eqnarray} 
+                    (a,b,c,d)\cdot(w,x,y,z) = (a+bi+cj+dk) \cdot (w+xi+yj+zk) = \\
+                        = aw + ax\cdot i+ ay\cdot j+ az\cdot k+ \\
+                        bw\cdot i + bx\cdot i^2 + by\cdot ij + bz\cdot ik + \\
+                        cw\cdot j + cx\cdot ji +cy\cdot j^2 + cz\cdot jk +  \\
+                        dw\cdot k + dx\cdot ki + dy\cdot kj + dz\cdot k^2
+                    \end{eqnarray}
+                    $$
+                    Nhìn khá là rối, tuy nhiên ta có thể đơn giản hóa nó bằng các luật sau của Quaternion:
+                    $$
+                    \begin{eqnarray} 
+                    i^2=j^2=k^2=-1\\
+                    ij=-ji=k \\
+                    jk=-kj=i\\
+                    ki=-ik=j
+                    \end{eqnarray}
+                    $$
+                    Sau khi áp dụng các luật trên và triệt tiêu các thứ, ta có:
+                    $$
+                    \begin{eqnarray} 
+                    aw + ax\cdot i+ ay\cdot j+ az\cdot k+ \\
+                    bw\cdot i + bx\cdot i^2 + by\cdot ij + bz\cdot ik  \\
+                    cw\cdot j + cx\cdot ji + cy\cdot j^2 + cz\cdot jk +  \\
+                    dw\cdot k + dx\cdot ki + dy\cdot kj + dz\cdot k^2 = \\
+                    = (aw - bx - cy - dz)\\
+                    + (ax\cdot i + ay\cdot j + az\cdot k)\\
+                    + (wb\cdot i + wc\cdot j + wd\cdot k)\\
+                    + cz\cdot i - dy\cdot i + dx\cdot j - bz\cdot j + by\cdot k - cx\cdot k 
+                    \end{eqnarray}
+                    $$
+                    Nhìn cũng khá rối và khó nhớ, nhưng nó sẽ có tác dụng vào lúc sau 😳 <br/><br/>
+                    Ngoài ra, Quaternion còn có một cách biểu diễn khác, với \(a + bi + cj + dk\), ta có thể gọi \(a\) là phần vô hướng (scalar) trong Quaternion 
+                    và \((b, c, d)\) là phần có hướng (vector), đặt là \(u\), như vậy Quaternion còn được biểu diễn như sau: \(a + u\). Cách biểu diễn này được 
+                    gọi là biểu diễn Scalar-vector, nhìn một số cộng một vector khá là vô nghĩa nhưng ta vừa định nghĩa nó, kết quả của phép cộng một số với một vector là một Quaternion 😳.<br/><br/>
+                    Ta biểu diễn lại phép nhân theo Scalar-vector như sau:
+                    $$
+                    (a + u)(w + v)
+                    $$
+                    với \(u = (b, c, d), v = (x, y, z)\) <br/><br/>
+                    Ta quay lại phép nhân đang dở ở phía trên:
+                    $$          
+                    \begin{eqnarray} 
+                    (a + u)\cdot (w + v) = (a+bi+cj+dk) \cdot (w+xi+yj+zk) \\
+                    = (aw - bx - cy - dz)\\
+                    + (ax\cdot i + ay\cdot j + az\cdot k)\\
+                    + (wb\cdot i + wc\cdot j + wd\cdot k)\\
+                    + cz\cdot i - dy\cdot i + dx\cdot j - bz\cdot j + by\cdot k - cx\cdot k  \\
+                    = [aw - (bx + cy + dz)] \\
+                    + a\cdot v \\
+                    + w\cdot u \\
+                    + (cz-dy)\cdot i + (dx-bz)\cdot j + (by-cx)\cdot k\\
+                    = (aw - \langle u,v\rangle) + (a\cdot v + w\cdot u + u \times v)
+                    \end{eqnarray}
+                    $$
+                    (\(\langle u,v\rangle\) là tích vô hướng của \(u\) và \(v\))<br/>
+                    Như vậy ta có thể thực hiện phép nhân 2 Quaternion bằng các phép tính với vector 3D (tích vô hướng, tích có hướng) và scalar. Điều này sẽ đơn giản hóa
+                    mọi thứ ta muốn làm về sau.<br/><br/>
+
+                    <h2>4. Liên hợp (Conjugate) và chiều dài của Quaternion</h2>
+                    Bạn đã học hồi cấp 2, liên hợp của 1 biểu thức \(a + b\) là \(a - b\). Trong Quaternion cũng tương tự, liên hợp của Quaternion \(q = a + v\) là \(q^* = a - v\), không
+                    vì lí do gì cả, ta tính thử \(q\cdot q^*\) (sử dụng phép nhân scalar-vector ta đã chứng minh được ở trên):
+                    $$
+                        (a+u)\cdot(a-u) = (a^2 - \langle u,-u\rangle) + (au-au+u\times(-u)) = (a^2+\langle u,u \rangle) + 0 = a^2 + |u|^2
+                    $$
+                    (Tích vô hướng đổi dấu khi đổi chiều 1 vector, tích có hướng = 0 khi 2 vector cùng phương, tích vô hướng của 2 vector giống nhau ra độ dài của vector đó * 2).<br/>
+                    Nếu bạn viết lại Quaternion kết quả ra dạng số phức mở rộng, bạn sẽ thấy một thứ quen thuộc:
+                    $$
+                        a^2 + |u|^2 = a^2 + x^2 + y^2 + z^2
+                    $$
+                    Nó chính là công thức chiều dài của vector 4 chiều bình phương, suy ra ta có công thức sau:
+                    $$
+                    |q|^2 = q\cdot q^*
+                    $$
+                    Ngoài tính được chiều dài Quaternion, liên hợp còn có các tính chất sau:
+                    $$
+                    (q^*)^*=q
+                    $$
+                    (đổi chiều phần vector \(u\) xong đổi chiều lần nữa nó sẽ ra lại vector ban đầu)<br/>
+                    Thử dùng công thức chiều dài Quaternion lên \(q^*\):
+                    $$
+                        |q*|^2=q^* \cdot (q^*)^* = q^* \cdot q
+                    $$
+                    Ta cũng thử dùng công thức nhân Quaternion với \(|q^*|^2\):
+                    $$
+                        |q^*|^2 = a^2 + \langle -u,-u \rangle + 0 = a^2 + (-x)^2 + (-y)^2 + (-z)^2 = a^2+x^2+y^2+z^2 = |q|^2
+                    $$
+                    Từ đó ta suy ra được:
+                    $$
+                        q\cdot q^* = |q|^2 = |q^*|^2 = q^*\cdot q
+                    $$
+                    Suy ra tích \(q\cdot q^*\) có tính chất giao hoán, và chiều dài của liên hợp của Quaternion bằng chiều dài của chính Quaternion đó 😳
+
+                    <h2>5. Liên hợp và chiều dài của tích Quaternion</h2>
+                    Tính được liên hợp của tích Quaternion cũng khá là hữu dụng, cho nên sau đây ta sẽ cùng nhau tính nó 😳
+                    (<a href="https://lisyarus.github.io/blog/posts/introduction-to-quaternions.html#section-conjugate-and-length-of-a-product">Blog của lisyarus</a> không tính mà chỉ kêu mình
+                    "tự nhân sẽ thấy"):
+                    $$
+                    \begin{eqnarray} 
+                    (p\cdot q)^* \\
+                    = ((aw - \langle u,v\rangle) + (a\cdot v + w\cdot u + u \times v))^* \\
+                    = (aw - \langle u,v\rangle) - (a\cdot v + w\cdot u + u \times v)\\
+                    = (wa - \langle v,u\rangle) + (-w\cdot u - a\cdot v - u \times v) \\
+                    = (wa - \langle -v,-u\rangle) + (w\cdot (-u) + a \cdot (-v) + v \times u) \\
+                    = (wa - \langle -v,-u\rangle) + (w\cdot (-u) + a \cdot (-v) + (-v) \times (-u)) \\
+                    = (w - v) \cdot (a - u)
+                    \end{eqnarray}
+                    $$
+                    Như vậy: \((p\cdot q)^* = q^* \cdot p^*\)<br/>
+                    Tiếp theo ta thử tính chiều dài của 1 tích Quaternion:
+                    $$
+                        |p\cdot q|^2 = (p\cdot q)\cdot (p\cdot q)^* = (p\cdot q)\cdot(q^*\cdot p^*) = \\
+                            = p\cdot (q\cdot q^*)\cdot p^* = p\cdot |q|^2 \cdot p^* = |q|^2 p\cdot p^* = |q|^2 |p|^2
+                    $$
+                    Điều này có nghĩa là chiều dài của tích là tích của chiều dài 😳<br/>
+                    Hai thứ ta vừa chứng minh ở trên cũng áp dụng cho \(n\) Quaternion, vì Quaternion có tính chất kết hợp:
+                    $$
+                        (p_1\cdot p_2\cdot\dots\cdot p_n)^* = p_n^*\cdot\dots\cdot p_2^* \cdot p_1^*
+                    $$
+                    $$
+                        |p_1\cdot\dots\cdot p_n| = |p_1|\cdot\dots\cdot|p_n|
+                    $$
+                    <h2>6. Trích xuất phần scalar và vector của Quaternion</h2>
+                    Ta có thể trích xuất phần scalar và vector của Quaternion bằng cộng trừ với liên hợp:
+                    $$
+                    q+q^* = (a+u) + (a-u) = 2a \Rightarrow a = \frac{q+q^*}{2}
+                    $$
+                    $$
+                    q-q^* = (a+u) - (a-u) = 2u \Rightarrow u = \frac{q-q^*}{2}
+                    $$
+                    Ngoài ra ta cũng có thể chứng minh nếu một Quaternion là thuần scalar hay thuần vector, thuần scalar thì phần vector = 0, thuần vector thì phần scalar = 0:
+                    $$
+                    q-q^*=0 \Longleftrightarrow q^*=q
+                    $$
+                    $$
+                    q+q^*=0 \Longleftrightarrow q^*=-q
+                    $$
+                    <h2>7. Tích vô hướng với Quaternion</h2>
+                    Đặt 2 Quaternion \(p=a+u=(a,b,c,d)\) và \(q=w+v=(w,x,y,z)\), ta thử tính tích vô hướng của 2 Quaternion dưới dạng vector 4 chiều:
+                    $$
+                    (a,b,c,d)\cdot(w,x,y,z) = aw+bx+cy+dz = aw+\langle u,v\rangle = aw-\langle u,-v\rangle
+                    $$
+                    Nếu bạn nhìn lại phép nhân của phép biểu diễn scalar-quaternion, thì đó chính là phần scalar của phép nhân \((a+u)\cdot(w-v) = p\cdot q^*\)! Sử dụng
+                    lại công thức trích xuất phần scalar ở phần 6, ta có:
+                    $$
+                    \langle p,q \rangle = \frac{p\cdot q^* + (p\cdot q^*)^*}{2} = \frac{1}{2}\left(p\cdot q^* + q\cdot p^*\right)
+                    $$
+                    Bây giờ giả sử \(p, q\) đều là Quaternion thuần vector, đồng nghĩa \(p^* = -p, q^* = -q\):
+                    $$
+                    \langle p,q \rangle = \frac{1}{2}\left(p\cdot q^* + q\cdot p^*\right) = \frac{1}{2}\left(p\cdot (-q) + q\cdot (-p)\right) = -\frac{1}{2}(p\cdot q + q\cdot p)
+                    =-\frac{1}{2}(u\cdot v + v\cdot u)
+                    $$
+                    <h2 id="crossproduct">8. Tích có hướng với Quaternion</h2>
+                    Ta lại giả sử \(p, q\) đều là Quaternion thuần vector, ta thử nhân 2 Quaternion này:
+                    $$
+                    p\cdot q = (0 - \langle u, v\rangle) + (0 + 0 + u\times v) = -\langle u, v\rangle + u\times v 
+                    $$
+                    \(u\times v\) chính là phần vector của \(p\cdot q\), sử dụng công thức trích xuất phần vector:
+                    $$
+                    u\times v = \frac{p\cdot q - (p\cdot q)^*}{2} = \frac{p\cdot q - q^*\cdot p^*}{2} = \frac{p\cdot q - (-q)\cdot (-p)}{2} = \frac{1}{2}(p\cdot q - q\cdot p)
+                    = \frac{1}{2}(u\cdot v - v\cdot u)
+                    $$
+                    <i>Lưu ý: Nếu bạn so sánh với phần này của <a href="https://lisyarus.github.io/blog/posts/introduction-to-quaternions.html#section-cross-product-via-conjugation">Blog của lisyarus</a>,
+                    bạn sẽ thấy nó bị ngược nhau, đó là vì tự nhiên lisyarus vì một lí do nào đó đặt \(p=v\) và \(q=u\), ngược lại với những gì từ đầu tới giờ</i>
+
+                    <h2>9. Vì sao Quaternion liên quan tới xoay 3D</h2>
+                    Cuối cùng ta cũng đã tới phần chính bài blog này, tới được lí do mà ta phải lăn lộn với một đống toán 4D 🥵<br/>
+                    Ta cần tìm một công thức Quaternion có tính chất y hệt một phép xoay 3D, nghĩa là công thức đó phải:
+                    <ol>
+                        <li>Chuyển một vector thành một vector</li>
+                        <li>Giữ nguyên chiều dài của vector đó</li>
+                        <li>Chuyển 2 vector thành 2 vector mới, 2 vector đó phải giữ nguyên tích vô hướng</li>
+                        <li>Chuyển 2 vector thành 2 vector mới, tích có hướng của 2 vector cũng phải xoay tương tự như 2 vector đó</li>
+                    </ol>
+                    Công thức thỏa hết những điều kiện trên chính là \(u = q\cdot v\cdot q^*\), trong đó v là một Quaternion thuần vector (cũng có thể hiểu nó là một vector).
+                    Nó từ đâu ra, vì sao người ta tìm ra nó? Mình cũng chả biết, nhưng cái mình có thể làm là chứng minh hết những điều trên 😅<br/><br/>
+                    Đầu tiên ta cần chứng minh \(u\) cũng là một Quaternion thuần vector (là một vector), điều này đúng khi \(u^* = -u\):
+                    $$
+                        u^* = (q\cdot v\cdot q^*)^* = (q^*)^*\cdot v^*\cdot q^* = q\cdot (-v)\cdot q^* = -q\cdot v\cdot q^*=-u
+                    $$
+                    Tiếp theo là chiều dài:
+                    $$
+                        |u| = |q\cdot v\cdot q^*| = |q|\cdot|v|\cdot|q^*| = |q|\cdot|v|\cdot|q| = |q|^2\cdot|v|
+                    $$
+                    <i>(Chiều dài tích bằng tích chiều dài, chiều dài liên hợp q bằng chiều dài q)</i>
+                    Như vậy nếu chiều dài của \(q = 1\), thì công thức \(q\cdot v\cdot q^*\) sẽ giữ nguyên chiều dài \(v\). Ta sẽ áp đặt Quaternion trong công thức đó
+                    là một Quaternion đơn vì (chiều dài bằng 1) từ bước này<br/><br/>
+                    Tiếp theo là tới tích vô hướng:
+                    $$
+                    \begin{eqnarray}
+                    \langle pvp^*, pup^* \rangle
+                    = -\frac{1}{2}\left((pvp^*)\cdot(pup^*)+(pup^*)\cdot(pvp^*)\right) \\
+                    = -\frac{1}{2}\left(pv(p^*p)up^* + pu(p^*p)vp^*\right) \\
+                    = -\frac{1}{2}\left(pv\cdot |p|^2\cdot up^* + pu\cdot |p|^2 \cdot vp^*\right) \\
+                    = -\frac{1}{2}\left(pvup^*+puvp^*\right) \\
+                    = -\frac{1}{2}\left(p(vu)p^*+p(uv)p^*\right) \\
+                    = -p\frac{1}{2}\left(vu + uv\right)p^* \\
+                    = p\cdot\langle v,u\rangle\cdot p^* \\
+                    = \langle v,u\rangle\cdot p\cdot p^* \\
+                    = \langle v,u\rangle \cdot |p|^2 \\
+                    = \langle v,u\rangle
+                    \end{eqnarray}
+                    $$
+                    Như vậy phép tính \(q\cdot v\cdot q^*\) giữ nguyên tích vô hướng.<br/><br/>
+
+                    Cuối cùng là chứng minh xem nó có biến đổi tích có hướng của \(u, v\) như cách nó biến đổi 2 vector \(u, v\) không. Nó sẽ đúng khi tích có hướng của \(u, v\) lúc đầu sau khi 
+                    biến đổi sẽ bằng với tích có hướng của 2 vector mới đã biến đổi, tức là ta cần chứng minh:
+                    $$
+                        p(u\times v)p^* = (pup^*)\times(pvp^*) (1)
+                    $$
+                    Đầu tiên ta xét phép nhân Quaternion bình thường:
+                    $$
+                        p(uv)p^* = (pup^*)(pvp^*) (2)
+                    $$
+                    Dựa vào tính chất kết hợp của Quaternion, ta có vế phải:
+                    $$
+                        (pup^*)(pvp^*) = pu(p^*p)vp^* = pu|p|^2vp^* = puvp^* = p(uv)p^*
+                    $$
+                    Vậy là 2 vế trên bằng nhau.<br/>
+                    Xét vế trái của (2), ta biết ở <a href="#crossproduct">phần 8</a> là kết quả nhân của 2 Quaternion thuần vector là \(-\langle u, v\rangle + u\times v\):
+                    $$
+                    p(uv)p^* = p(-\langle u, v\rangle + u\times v)p^* = p(-\langle u, v\rangle)p^*  + p(u\times v)p^* = (-\langle u, v\rangle)pp^* + p(u\times v)p^*
+                    =-\langle u, v\rangle + p(u\times v)p^*
+                    $$
+                    Như vậy phần vector của \(p(uv)p^*\) là \(p(u\times v)p^*\)<br/><br/>
+                    Vì kết quả nhân 2 Quaternion thuần vector \(uv = -\langle u, v\rangle + u\times v\), suy ra phần vector của một tích Quaternion
+                    thuần vector là tích có hướng của phần vector của 2 Quaternion đó. \((pup^*)\) và \((pvp^*)\) đều ra kết quả là một Quaternion thuần vector.
+                    Suy ra phần vector của \((pup^*)(pvp^*)\) là \((pup^*)\times(pvp^*)\).<br/><br/>
+
+                    Vì \(p(uv)p^* = (pup^*)(pvp^*)\) nên phần vector của chúng cũng bằng nhau, suy ra \(p(u\times v)p^* = (pup^*)\times(pvp^*)\), đó chính là (1), thứ mà ta cần chứng minh 😳<br/><br/>
+
+                    Cách chứng minh của lisyarus sử dụng 3 Quaternion cơ bản \(i, j, k\), mà nghe nó khá mơ hồ, chắc phải ngầm hiểu nhiều thứ và một người làm việc với toán
+                    lâu năm mới ngầm hiểu được. Nên mình chứng minh bằng cách dài thòn lòn ở trên cho bạn thấy rõ hơn 🥵
+
+                    <h2>10. Xoay một vector với Quaternion</h2>
+                    Sau khi lăn lộn thêm một chút thì cuối cùng ta đã tới được thứ ta thật sự cần 🥵<br/>
+                    Ta cần biết những thứ sau về phép biến đổi \(pvp^*\):
+                    <ol>
+                        <li>Nó xoay quanh trục nào?</li>
+                        <li>Nó xoay bao nhiêu độ?</li>
+                    </ol>
+                    Đặt \(p=a+v\), ta thử áp dụng phép biến đổi trên với chính phần vector \(v\) của \(p\):
+                    $$
+                    pvp^* = (a+v)v(a-v) = (a+v)(a-v)v = pp^*v = |p|^2v = v
+                    $$
+                    <i>Nhớ là \(p\) là một Quaternion đơn vị, chiều dài bằng 1</i><br/>
+                    Điều này có nghĩa là phép biến đổi đó không thay đổi \(v\), nghĩa là xoay \(v\) xong nó vẫn như cũ, nghĩa là \(v\) song song với trục xoay và chiều của
+                    \(v\) cũng là chiều của trục xoay.<br/><br/>
+                    Để đơn giản hóa vấn đề, ta xét thử phép xoay trên mặt phẳng \(XY\) sẽ ra sao, nghĩa là xoay quanh trục \(Z\), khi đó \(v\) sẽ cùng phương cùng chiều với \(k\),
+                    và Quaternion \(p\) có dạng:
+                    $$
+                        p = a+bk (1)
+                    $$
+                    Ta hãy xem nó làm gì với trục \(X\), nghĩa là Quaternion \(i\):
+                    $$
+                    pip^* = (a+bk)i(a-bk) = (ai+bki)(a-bk) = (ai+bj)(a-bk) =\\
+                        = a^2i-abik+abj-b^2jk = a^2i+abj+abj-b^2i = (a^2-b^2)i+2abj
+                    $$
+                    Ở <a href="graphics3D5-model.html">blog 5</a>, trong lúc ta đang tìm rotation matrix, ta đã biết ở 2D, khi xoay \(v\) một góc \(\theta\) thành \(v'\),
+                    thì \(|\vec{v'_{x}}| = |v_x|\cos{θ} - |v_y|\sin{θ}\) và \(|\vec{v'_{y}}| = |v_x|\sin{θ} + |v_y|\cos{θ}\). Như vậy sau khi xoay xong \(i\), thì \(i'\)
+                    có \(i'_x = |i_x|\cos{θ} - |i_y|\sin{θ} = \cos{\theta}\) và \(i'_y = |i_x|\sin{θ} + |i_y|\cos{θ} = \sin{\theta}\). Nghĩa là \(i'\) có dạng:
+                    $$
+                        \cos\theta i + \sin\theta j
+                    $$
+                    Nó có cùng dạng với \((a^2-b^2)i+2abj\), suy ra:
+                    $$
+                        a^2-b^2 = \cos\theta \\
+                    $$
+                    $$
+                        2ab = \sin\theta
+                    $$
+                    Có nhiều cách để tìm được \(a, b\), cách gọn nhất là dùng các luật lượng giác mà ta đã học hồi cấp 3, cụ thể là \(\sin{2\theta} = 2\sin{\theta}\cos{\theta}\)
+                    và \(\cos{2\theta} = \cos{\theta}^2 - \sin{\theta}^2\). Suy ra:
+                    $$
+                        a = \cos\frac{\theta}{2}
+                    $$
+                    $$
+                        b = \sin\frac{\theta}{2}
+                    $$
+                    Theo (1), suy ra \(p\) có dạng:
+                    $$
+                        p = \cos\frac{\theta}{2} + \sin\frac{\theta}{2}k
+                    $$
+                    Đó chỉ là phép xoay xung quanh \(k\) - xung quanh trục \(Z\), nhưng thật ra ta có thể để bất kỳ Quaternion đơn vị \(n\) nào vào vị trí của \(k\), gọi nó 
+                    là trục \(Z\) và tìm 2 trục \(X\) \(Y\) của trục \(Z\) đó là cũng sẽ ra. Như vậy ta có Quaternion được dùng trong phép xoay góc \(theta\) xung quanh trục cùng chiều với vector \(n\) là:
+                    $$
+                        p = \cos\frac{\theta}{2} + \sin\frac{\theta}{2}n
+                    $$
+                    Theo <a href="https://en.wikipedia.org/wiki/Euler%27s_rotation_theorem">định lý xoay của Euler</a>, sự kết hợp của nhiều phép xoay đều thành một phép xoay quanh
+                    một trục nào đó trong không gian, nghĩa là phép xoay trên có thể đại diện cho mọi phép xoay trong không gian 3D.<br/><br/>
+                    Giả sử ta muốn xoay theo Quaternion \(q\), xong rồi xoay theo Quaternion \(p\) nữa thì sao? Ta xem thử:
+                    $$
+                        p(qvq^*)p^* = (pq)v(q^*p^*) = (pq)v(pq)^*
+                    $$
+                    Nghĩa là thực hiện phép xoay của \(q\) rồi \(p\) cũng giống như thực hiện 1 phép xoay \(pq\) vậy 😳 Đây chính là sức mạnh của Quaternion.
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer></footer>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+
+    <script src="graphics3D.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>
