@@ -46,5 +46,11 @@
         "webTitle": "Graphics Engine 3D #7: Quaternion",
         "title": "Graphics Engine 3D #7: Quaternion",
         "route": "/blogs/graphics3D/graphics3D7-quaternion.html"
+    },
+    {
+        "id": "graphics3D8",
+        "webTitle": "Graphics Engine 3D #8: View matrix",
+        "title": "Graphics Engine 3D #8: View matrix",
+        "route": "/blogs/graphics3D/graphics3D8-view.html"
     }
 ]

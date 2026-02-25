@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="graphics3D.css">
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Graphics Engine 3D</title>
+</head>
+
+<body data-graphics3D-id="graphics3D8">
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>View matrix</h1>
+                    
+                    Ta sẽ về lại với ma trận sau một blog khủng hoảng với toán 4D 🥵 Blog này không nằm kế tiếp blog model (đủ bộ Model View Project matrix) là có lí do cả.<br/><br/>
+
+                    Từ đầu tới giờ ta chỉ "đúng một chỗ nhìn", render đúng 1 góc nhìn ở 1 vị trí cố định (0, 0, 0), nếu như ta muốn "xoay chỗ khác" hay "đi chỗ khác" thì sao? Đó chính
+                    là công dụng của View matrix, là điều khiển "camera" và hiển thị đúng những gì mà "camera" thấy.<br/><br/>
+
+                    Đầu tiên, ta phải hiểu là View matrix không di chuyển hay xoay camera, mà thật ra là đang di chuyển và xoay cả thế giới quanh camera, camera vẫn luôn ở
+                    (0, 0, 0) và luôn nhìn theo trục Z (nếu là hệ tọa độ tay trái). Ví dụ ta muốn camera ở vị trí (0, 2, -5) và euler angles của nó là (30, -50, 40), ta phải
+                    di chuyển toàn bộ object (0, -2, 5) và xoay toàn bộ object quanh gốc tọa độ (chứ ko phải quanh tâm của chính nó) (-30, 50, -40) (xoay theo thứ tự \(z \rightarrow
+                    y \rightarrow x\), ngược với lúc xoay object).<br/><br/>
+                    
+                    Theo ví dụ đó, view matrix chỉ là kết quả nhân của 3 rotation matrix và 1 translation matrix, gọi vị trí camera
+                    là \(t\) và euler angles của camera là \((\alpha, \beta, \gamma)\), view matrix sẽ có dạng như sau:
+                    $$
+                        \begin{pmatrix}
+                        1 & 0 & 0 & -t_{x}\\
+                        0 & 1 & 0 & -t_{y}\\
+                        0 & 0 & 1 & -t_{z}\\
+                        0 & 0 & 0 & 1
+                        \end{pmatrix}
+
+                        \begin{pmatrix}
+                        1 & 0 & 0 & 0\\
+                        0 & cos{(-\alpha)} & sin{(-\alpha)} & 0\\
+                        0 & -\sin{(-\alpha)} & \cos{(-\alpha)} & 0\\
+                        0 & 0 & 0 & 1
+                        \end{pmatrix}
+
+                        \begin{pmatrix}
+                        cos{(-\beta)} & 0 & -sin{(-\beta)} & 0\\
+                        0 & 1 & 0 & 0\\
+                        \sin{(-\beta)} & 0 & \cos{(-\beta)} & 0 \\
+                        0 & 0 & 0 & 1
+                        \end{pmatrix}
+                        
+                        \begin{pmatrix}
+                        cos{(-\gamma)} & sin{(-\gamma)} & 0 & 0\\
+                        -\sin{(-\gamma)} & \cos{(-\gamma)} & 0 & 0\\
+                        0 & 0 & 1 & 0\\
+                        0 & 0 & 0 & 1
+                        \end{pmatrix}
+                    $$
+                    $$
+                        =
+                        \begin{pmatrix}
+                        \cos\beta\cos\gamma &
+                        -\cos\beta\sin\gamma &
+                        \sin\beta &
+                        - t_x \\[6pt]
+
+                        \sin\alpha\sin\beta\cos\gamma+\cos\alpha\sin\gamma &
+                        -\sin\alpha\sin\beta\sin\gamma+\cos\alpha\cos\gamma &
+                        -\sin\alpha\cos\beta &
+                        - t_y \\[6pt]
+
+                        -\cos\alpha\sin\beta\cos\gamma+\sin\alpha\sin\gamma &
+                        \cos\alpha\sin\beta\sin\gamma+\sin\alpha\cos\gamma &
+                        \cos\alpha\cos\beta &
+                        - t_z \\[6pt]
+
+                        0 & 0 & 0 & 1
+                        \end{pmatrix}
+                    $$
+                    <div align="center" style="font-size: 14px"><i>Mình dùng ChatGPT để ra được kết quả trên vì nhân bằng tay chắc tới mai 🥵</i></div><br/>
+                    Nếu bạn muốn, bạn có thể xài luôn ma trận đó vào trong engine, và nó sẽ chạy đúng. Nhưng trong đồ họa 3D thì không ai biểu diễn view matrix với euler angles cả, mà
+                    thay vào đó người ta sẽ dùng 3 vector đơn vị đại diện cho trục local của camera, gọi là forward (\(\vec{f}\)), up (\(\vec{u}\)) và right (\(\vec{r}\)).
+                    Thật ra bạn có thể chuyển ma trận trên thành ma trận chỉ có forward, up, right nếu bạn đủ kiên nhẫn để làm lượng giác với không gian 3D.<br/><br/>
+                    Ta sẽ làm từ 2D trước để dễ hình dung, trong 2D thì camera chỉ còn up và right. Trước tiên ta sẽ xét rotation, ở <a href="graphics3D5-model.html">blog 5</a>
+                    ta biết là khi xoay 1 vector \(\vec{v}\) 1 góc \(\theta\) thì sẽ ra \(\vec{v'}\) với \(v'_{x} = v_x\cos{θ} - v_y\sin{θ}\) và \(v'_{y} = v_x\sin{θ} + v_y\cos{θ}\). Và ta cũng biết
+                    khi xoay vector đơn vị cùng chiều với trục \(x, y\) (chính là \(\vec{r}\) và \(\vec{u}\)) một góc \(\theta\) sẽ ra 
+                    \(\vec{r'}=(\cos{θ}, \sin{θ})\) và \(\vec{u'}=(-\sin{θ}, \cos{θ})\). Như vậy ta có:
+                    $$
+                        v'_x = v_x\cos{θ} - v_y\sin{θ} = v_x.r'_x - v_y.r'_y
+                        $$
+                        $$
+                        v'_y = v_x\sin{θ} + v_y\cos{θ} = -v_x.u'_x + v_y.u'_y
+                    $$
+                    Nhìn gần giống gì đó mà chả giống gì cả, nhưng bạn để ý là nãy giờ mình đang muốn xoay camera, trong khi thứ ta thật sự cần làm là xoay thế giới quanh camera.
+                    Như vậy ta phải xoay ngược lại là \(-\theta\), suy ra \(r'_y\) và \(u'_x\) sẽ đổi dấu (vì là sin). Hai phương trình trên thành:
+                    $$
+                        v'_x = v_x.r'_x + v_y.r'_y
+                        $$
+                        $$
+                        v'_y = v_x.u'_x + v_y.u'_y
+                    $$
+                    Đó chính là công thức tích vô hướng 😳 Thật ra mình cũng đang vòng vo over-explain giống như <a href="graphics3D5-model.html">blog 5</a>, nếu bạn hiểu bản
+                    chất của tích vô hướng thì nó sẽ khá hiển nhiên và dễ suy ra. Như vậy rotation matrix trong 2D có cách viết thứ 2 là:
+                    $$
+                    \begin{pmatrix}
+                    r'_x & r'_y\\
+                    u'_x & u'_y
+                    \end{pmatrix}
+                    $$
+                    Thật ra mình có thể nói luôn là khi qua 3D, nó sẽ theo đúng quy luật và hiển nhiên sẽ thành:
+                    $$
+                    \begin{pmatrix}
+                    r'_x & r'_y & r'_z\\
+                    u'_x & u'_y & u'_z\\
+                    f'_x & f'_y & f'_z
+                    \end{pmatrix}
+                    $$
+                    Đó cũng chính là cách mà javidx9 "giải thích", nhưng mà đối với mình thì khá khó chịu, gotta ask HOW, HOW does it become like that? Cách tốt nhất để chứng minh 
+                    là xoay 3 vector cùng chiều với trục theo thứ tự \(z \rightarrow y \rightarrow x\) (ngược với xoay object, mình đã nói ở trên) xem nó thành gì.
+                    Đầu tiên ta có:
+                    $$
+                    \begin{eqnarray}
+                    r = (1, 0, 0)\\
+                    u = (0, 1, 0)\\
+                    f = (0, 0, 1)
+                    \end{eqnarray}
+                    $$
+                    Xoay theo trục \(z\), là nhân cho z rotation matrix:
+                    $$
+                        \begin{pmatrix}
+                        cos{\gamma} & sin{\gamma} & 0\\
+                        -\sin{\gamma} & \cos{\gamma} & 0 \\
+                        0 & 0 & 1 \\
+                        \end{pmatrix}
+                        \begin{pmatrix}
+                        1\\
+                        0\\
+                        0
+                        \end{pmatrix}=
+                        \begin{pmatrix}
+                        cos{\gamma}\\
+                        -\sin{\gamma}\\
+                        0
+                        \end{pmatrix}
+                    $$
+                    $$
+                        \begin{pmatrix}
+                        cos{\gamma} & sin{\gamma} & 0\\
+                        -\sin{\gamma} & \cos{\gamma} & 0 \\
+                        0 & 0 & 1 \\
+                        \end{pmatrix}
+                        \begin{pmatrix}
+                        0\\
+                        1\\
+                        0
+                        \end{pmatrix}=
+                        \begin{pmatrix}
+                        \sin{\gamma}\\
+                        \cos{\gamma}\\
+                        0
+                        \end{pmatrix}
+                    $$
+                    $$
+                        \begin{pmatrix}
+                        cos{\gamma} & sin{\gamma} & 0\\
+                        -\sin{\gamma} & \cos{\gamma} & 0 \\
+                        0 & 0 & 1 \\
+                        \end{pmatrix}
+                        \begin{pmatrix}
+                        0\\
+                        0\\
+                        1
+                        \end{pmatrix}=
+                        \begin{pmatrix}
+                        0\\
+                        0\\
+                        1
+                        \end{pmatrix}
+                    $$
+                    Xoay theo trục \(y\):
+                    $$
+                        \begin{pmatrix}
+                        cos{\beta} & 0 & -sin{\beta}\\
+                        0 & 1 & 0 \\
+                        \sin{\beta} & 0 & \cos{\beta} \\
+                        \end{pmatrix}
+                        \begin{pmatrix}
+                        cos{\gamma}\\
+                        -\sin{\gamma}\\
+                        0
+                        \end{pmatrix}=
+                        \begin{pmatrix}
+                        \cos{\beta}\cos{\gamma}\\
+                        -\sin{\gamma}\\
+                        \sin{\beta}\cos{\gamma}
+                        \end{pmatrix}
+                    $$
+                    $$
+                        \begin{pmatrix}
+                        cos{\beta} & 0 & -sin{\beta}\\
+                        0 & 1 & 0 \\
+                        \sin{\beta} & 0 & \cos{\beta} \\
+                        \end{pmatrix}
+                        \begin{pmatrix}
+                        \sin{\gamma}\\
+                        \cos{\gamma}\\
+                        0
+                        \end{pmatrix}=
+                        \begin{pmatrix}
+                        \cos{\beta}\sin{\gamma}\\
+                        \cos{\gamma}\\
+                        \sin{\beta}\sin{\gamma}
+                        \end{pmatrix}
+                    $$
+                    $$
+                        \begin{pmatrix}
+                        cos{\beta} & 0 & -sin{\beta}\\
+                        0 & 1 & 0 \\
+                        \sin{\beta} & 0 & \cos{\beta} \\
+                        \end{pmatrix}
+                        \begin{pmatrix}
+                        0\\
+                        0\\
+                        1
+                        \end{pmatrix}=
+                        \begin{pmatrix}
+                        -\sin{\beta}\\
+                        0\\
+                        \cos{\beta}
+                        \end{pmatrix}
+                    $$
+                    Xoay theo trục x:
+                    $$
+                        \begin{pmatrix}
+                        1 & 0 & 0\\
+                        0 & cos{\alpha} & sin{\alpha} \\
+                        0 & -\sin{\alpha} & \cos{\alpha} \\
+                        \end{pmatrix}
+                        \begin{pmatrix}
+                        \cos{\beta}\cos{\gamma}\\
+                        -\sin{\gamma}\\
+                        \sin{\beta}\cos{\gamma}
+                        \end{pmatrix}=
+                        \begin{pmatrix}
+                        \cos\beta\cos\gamma \\
+                        -\cos\alpha\sin\gamma + \sin\alpha\sin\beta\cos\gamma \\
+                        \sin\alpha\sin\gamma + \cos\alpha\sin\beta\cos\gamma
+                        \end{pmatrix}
+                    $$
+                    $$
+                        \begin{pmatrix}
+                        1 & 0 & 0\\
+                        0 & cos{\alpha} & sin{\alpha} \\
+                        0 & -\sin{\alpha} & \cos{\alpha} \\
+                        \end{pmatrix}
+                        \begin{pmatrix}
+                        \cos{\beta}\sin{\gamma}\\
+                        \cos{\gamma}\\
+                        \sin{\beta}\sin{\gamma}
+                        \end{pmatrix}=
+                        \begin{pmatrix}
+                        \cos\beta\sin\gamma \\
+                        \cos\alpha\cos\gamma + \sin\alpha\sin\beta\sin\gamma \\
+                        -\sin\alpha\cos\gamma + \cos\alpha\sin\beta\sin\gamma
+                        \end{pmatrix}
+                    $$
+                    $$
+                        \begin{pmatrix}
+                        1 & 0 & 0\\
+                        0 & cos{\alpha} & sin{\alpha} \\
+                        0 & -\sin{\alpha} & \cos{\alpha} \\
+                        \end{pmatrix}
+                        \begin{pmatrix}
+                        -\sin{\beta}\\
+                        0\\
+                        \cos{\beta}
+                        \end{pmatrix}=
+                        \begin{pmatrix}
+                        -\sin\beta \\
+                        \sin\alpha\cos\beta \\
+                        \cos\alpha\cos\beta
+                        \end{pmatrix}
+                    $$
+                    Như vậy:
+                    $$
+                    r' = \begin{pmatrix}
+                        \cos\beta\cos\gamma \\
+                        -\cos\alpha\sin\gamma + \sin\alpha\sin\beta\cos\gamma \\
+                        \sin\alpha\sin\gamma + \cos\alpha\sin\beta\cos\gamma
+                        \end{pmatrix}
+                    $$
+                    $$
+                    u' = \begin{pmatrix}
+                        \cos\beta\sin\gamma \\
+                        \cos\alpha\cos\gamma + \sin\alpha\sin\beta\sin\gamma \\
+                        -\sin\alpha\cos\gamma + \cos\alpha\sin\beta\sin\gamma
+                        \end{pmatrix}
+                    $$
+                    $$
+                    f' = \begin{pmatrix}
+                        -\sin\beta \\
+                        \sin\alpha\cos\beta \\
+                        \cos\alpha\cos\beta
+                        \end{pmatrix}
+                    $$
+                    
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer></footer>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+
+    <script src="graphics3D.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

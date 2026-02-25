@@ -113,11 +113,11 @@
                     Lấy \(\vec{v_{x}}\) trên hệ quy chiếu đỏ chiếu lên trục \(x\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(A\),
                     lấy \(\vec{v_{y}}\) trên hệ quy chiếu đỏ chiếu lên trục \(x\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(B\).
                     Ta thấy \(|\vec{v'_{x}}| = A - B\), và \(A = |v_x|\cos{θ}, B=|v_y|\sin{θ}\), suy ra
-                    \(|\vec{v'_{x}}| = |v_x|\cos{θ} - |v_y|\sin{θ}\).<br/>
+                    \(v'_{x} = v_x\cos{θ} - v_y\sin{θ}\). (\(|\vec{v'_{x}}|\) là độ dài hình chiếu của \(v'\) lên trục \(x\), \(v'_x\) là giá trị \(x\) của \(v'\), cơ bản là giống nhau)<br/>
                     Lấy \(\vec{v_{x}}\) trên hệ quy chiếu đỏ chiếu lên trục \(y\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(C\),
                     lấy \(\vec{v_{y}}\) trên hệ quy chiếu đỏ chiếu lên trục \(y\) của hệ quy chiếu đen, gọi độ dài hình chiếu đó là \(D\).
                     Ta thấy \(|\vec{v'_{y}}| = C + D\), và \(C = |v_x|\sin{θ}, D=|v_y|\cos{θ}\), suy ra
-                    \(|\vec{v'_{y}}| = |v_x|\sin{θ} + |v_y|\cos{θ}\).<br/><br/>
+                    \(v'_{y} = v_x\sin{θ} + v_y\cos{θ}\).<br/><br/>
 
                     Mình khuyến khích bạn nên làm thử lại từ hình ban đầu để thật sự hiểu và nhớ, hình trên vẽ hết các đường nét đứt và đánh dấu các góc bằng nhau nên bạn nhìn ra rất dễ.
                     Bây giờ mình sẽ chuyển nó thành ma trận, mình cần một ma trận \(A\) làm được điều như sau:
@@ -129,8 +129,8 @@
                         \end{pmatrix}
                         =
                         \begin{pmatrix}
-                        |v_x|\cos{θ} - |v_y|\sin{θ} \\
-                        |v_x|\sin{θ} + |v_y|\cos{θ} \\
+                        v_x\cos{θ} - v_y\sin{θ} \\
+                        v_x\sin{θ} + v_y\cos{θ} \\
                         \end{pmatrix}
                     $$
                     Nó đúng luôn dạng nhân từng ô trên 1 hàng và cộng lại với nhau, nên ta suy ra được luôn ma trận:
@@ -140,6 +140,10 @@
                         \sin{θ} & \cos{θ} \\
                         \end{pmatrix}
                     $$
+                    Thật ra ta không cần phải chứng minh khổ như thế đâu, nếu bạn hiểu bản chất của hàm \(cos\) và \(sin\) là độ dài hình chiếu của 1 vector đơn vị lên trục \(x\) và \(y\),
+                    thì bạn sẽ suy ra được ngay khi xoay vector đơn vị cùng chiều với trục \(x\) 1 góc \(\theta\), tọa độ mới của nó sẽ là \((\cos{θ}, \sin{θ})\), 
+                    và xoay vector đơn vị cùng chiều với trục y 1 góc \(\theta\) thì tọa độ mới của nó là \((\cos{(θ+90)}, \sin{(θ+90)}) = (-\sin{θ}, \cos{θ})\). Mình chứng mình bằng hình vẽ
+                    loằn ngoằn ở trên là vì muốn over-explain mọi thứ để cho người chỉ biết "sin = đối / huyền, cos = kề / huyền" cũng hiểu được.<br/><br/>
                     Bây giờ ta sẽ chuyển nó qua 3D, thay vì làm hết tất cả 3 chiều, ta sẽ làm từng chiều một. Đầu tiên là khi ta muốn xoay 1 điểm quanh trục \(y\), ta suy nghĩ sẽ 
                     thấy là \(y\) của điểm đó sẽ giữ nguyên, và \(x\), \(z\) sẽ thay đổi như cách xoay 2 chiều bình thường. Cho nên khi ta xây ma trận, với hàng 2 ta sẽ để số 1 
                     ở cột 2 để giữ lại x, hàng 1 và 3 ta sẽ để cột 2 là 0 và cột 1, 3 sẽ như ma trận cho 2D ở trên.
@@ -148,7 +152,7 @@
                         cos{θ} & 0 & -sin{θ}\\
                         0 & 1 & 0 \\
                         \sin{θ} & 0 & \cos{θ} \\
-                        \end{pmatrix};
+                        \end{pmatrix}
                         
                     $$
                     Đối với \(x\) và \(z\), vì mình chọn hệ tọa độ tay trái (left-handed coordinate) như đã nói ở <a href="graphics3D2-definitions.html">blog 2</a>, đối với trục
@@ -160,7 +164,7 @@
                         1 & 0 & 0\\
                         0 & cos{θ} & sin{θ} \\
                         0 & -\sin{θ} & \cos{θ} \\
-                        \end{pmatrix}
+                        \end{pmatrix};
 
                         \begin{pmatrix}
                         cos{θ} & sin{θ} & 0\\
