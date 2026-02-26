@@ -139,7 +139,7 @@
 				this.d = d;
 			}
 
-			static buildQuaternion(axis, angle) {
+			static buildQuaternionAxisAngle(axis, angle) {
 				let radian = angle / 180.0 * Math.PI;
 				const half = radian / 2;
 				const s = -Math.sin(half);
@@ -148,6 +148,26 @@
 					axis.x * s,
 					axis.y * s,
 					axis.z * s);
+			}
+			
+			static buildQuaternionEuler(eulerAngles) {
+				const a = eulerAngles.x / 180 * Math.PI * 0.5;
+				const b = eulerAngles.y / 180 * Math.PI * 0.5;
+				const c = eulerAngles.z / 180 * Math.PI * 0.5;
+
+				const cosA = Math.cos(a);
+				const sinA = Math.sin(a);
+				const cosB = Math.cos(b);
+				const sinB = Math.sin(b);
+				const cosC = Math.cos(c);
+				const sinC = Math.sin(c);
+
+				return new Quaternion(
+					cosC * cosB * cosA + sinC * sinB * sinA,
+					-cosC * cosB * sinA + sinC * sinB * cosA,
+					-cosC * sinB * cosA - sinC * cosB * sinA,
+					-sinC * cosB * cosA + cosC * sinB * sinA
+				);
 			}
 
 			static multiply(p, q) {
@@ -172,7 +192,7 @@
 			}
 			static RotateVectorAxisAngle(v, axis, angle) {
 				let radian = angle / 180.0 * Math.PI;
-				return buildQuaternion(axis, radian).rotateVector(v);
+				return buildQuaternionAxisAngle(axis, radian).rotateVector(v);
 			}
 		}
 
@@ -228,11 +248,7 @@
 				this.tris = [];
 				this.pos = pos;
 				this.scale = scale;
-
-				let q = Quaternion.buildQuaternion(Vector3.forward, eulerAngles.z);
-				q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.up, eulerAngles.y));
-				q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.right, eulerAngles.x));
-				this.rotation = q;
+				this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
 
 				this.generateInitialTriangles();
 			}
@@ -305,10 +321,7 @@
 			}
 
 			rotate(eulerX, eulerY, eulerZ) {
-				let q = Quaternion.buildQuaternion(Vector3.forward, eulerZ);
-				q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.up, eulerY));
-				q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.right, eulerX));
-
+				let q = Quaternion.buildQuaternionEuler(new Vector3(eulerX, eulerY, eulerZ));
 				this.rotation = Quaternion.multiply(q, this.rotation);
 			}
 
@@ -357,7 +370,7 @@
 
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
 			cube1.rotate(0, 50 * dt, 0);
-			cube2.rotate(50 * dt, 0, 50 * dt);
+			cube2.rotate(50 * dt, 0, 0);
 
 			let allTris = [];
 			allTris.push(...cube1.getTransformedTriangles());

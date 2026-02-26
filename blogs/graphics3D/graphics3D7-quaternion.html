@@ -125,7 +125,34 @@
                     $$
                         p(qvq^*)p^* = (pq)v(pq)^*
                     $$
-                    Nghĩa là thực hiện phép xoay của \(q\) rồi \(p\) cũng giống như thực hiện 1 phép xoay \(pq\) vậy (lưu ý là nó ngược).<br/><br/>
+                    Nghĩa là thực hiện phép xoay của \(q\) rồi \(p\) cũng giống như thực hiện 1 phép xoay \(pq\) vậy (lưu ý là nó ngược).<br/>
+                    Gọi \(\alpha\) là phép xoay quanh trục \(x\), \(\beta\) là phép xoay quanh trục \(y\), \(\gamma\) là phép xoay quanh trục \(z\). 
+                    Phép xoay theo euler angles có \(p\) có dạng như sau:
+                    $$
+\left(
+\cos\frac{\gamma}{2}\cos\frac{\beta}{2}\cos\frac{\alpha}{2}
++
+\sin\frac{\gamma}{2}\sin\frac{\beta}{2}\sin\frac{\alpha}{2}
+\right)
++
+\left(
+-\cos\frac{\gamma}{2}\cos\frac{\beta}{2}\sin\frac{\alpha}{2}
++
+\sin\frac{\gamma}{2}\sin\frac{\beta}{2}\cos\frac{\alpha}{2}
+\right)i
++
+\left(
+-\cos\frac{\gamma}{2}\sin\frac{\beta}{2}\cos\frac{\alpha}{2}
+-
+\sin\frac{\gamma}{2}\cos\frac{\beta}{2}\sin\frac{\alpha}{2}
+\right)j
++
+\left(
+-\sin\frac{\gamma}{2}\cos\frac{\beta}{2}\cos\frac{\alpha}{2}
++
+\cos\frac{\gamma}{2}\sin\frac{\beta}{2}\sin\frac{\alpha}{2}
+\right)k
+                    $$
                     Như vậy ta đã có được mọi thứ ta cần, bắt đầu cài đặt 😳 Class Quaternion của chúng ta sẽ khá ngắn:
                     <pre><code class="language-javascript">class Quaternion {
     constructor(a = 1, b = 0, c = 0, d = 0) {
@@ -135,7 +162,7 @@
         this.d = d;
     }
 
-    static buildQuaternion(axis, angle) { // xây dựng Quaternion theo dạng p = cos(θ/2) - sin(θ/2)n
+    static buildQuaternionAxisAngle(axis, angle) { // xây dựng Quaternion theo dạng p = cos(θ/2) - sin(θ/2)n
         let radian = angle / 180.0 * Math.PI;
         const half = radian / 2;
         const s = -Math.sin(half);
@@ -144,6 +171,26 @@
             axis.x * s,
             axis.y * s,
             axis.z * s);
+    }
+
+    static buildQuaternionEuler(eulerAngles) {  // xây dựng Quaternion theo eulerAngles
+		const a = eulerAngles.x / 180 * Math.PI * 0.5;
+        const b = eulerAngles.y / 180 * Math.PI * 0.5;
+        const c = eulerAngles.z / 180 * Math.PI * 0.5;
+
+        const cosA = Math.cos(a);
+        const sinA = Math.sin(a);
+        const cosB = Math.cos(b);
+        const sinB = Math.sin(b);
+        const cosC = Math.cos(c);
+        const sinC = Math.sin(c);
+
+        return new Quaternion(
+            cosC * cosB * cosA + sinC * sinB * sinA,
+            -cosC * cosB * sinA + sinC * sinB * cosA,
+            -cosC * sinB * cosA - sinC * cosB * sinA,
+            -sinC * cosB * cosA + cosC * sinB * sinA
+        );
     }
 
     static multiply(p, q) { //nhân 2 Quatenrion theo công thức trên
@@ -158,7 +205,7 @@
         return new Quaternion(this.a, -this.b, -this.c, -this.d);
     }
 
-    rotateVector(v) { //xoay vector bằng Quaternion này, sử dụng qvq*
+    rotateVector(v) { //xoay vector bằng Quaternion này, sử dụng pvp*
         const qVec = new Quaternion(0, v.x, v.y, v.z);
         const res = Quaternion.multiply(Quaternion.multiply(this, qVec), this.conjugate());
         return new Vector3(
@@ -168,12 +215,12 @@
     }
     static RotateVectorAxisAngle(v, axis, angle) {   //xoay vector quanh trục axis 1 góc angle, sử dụng axis và angle để xây dựng Quaternion và dùng Quaternion đó để xoay 
         let radian = angle / 180.0 * Math.PI;
-        return buildQuaternion(axis, radian).rotateVector(v);
+        return buildQuaternionAxisAngle(axis, radian).rotateVector(v);
     }
 }</code></pre>
                     Cách sử dụng Quaternion vào việc xoay cũng giống như cách ta sử dụng Rotation matrix. Ở cách Rotation matrix, ta không liên tục thay đổi tọa độ của tất cả
-                    các đỉnh của object, mà chỉ thay đổi thuộc tính rotation (là 1 euler angles) rồi cuối mỗi frame mới biến nó thành rotation matrix và áp dụng vào các đỉnh.
-                    Bây giờ cũng thế, nhưng thay vì lưu rotation là một euler angles thì ta lưu nó là một Quaternion, mỗi lần ta muốn xoay ta chỉ cần nhân thêm Quaternion xoay
+                    các đỉnh của object, mà chỉ thay đổi rotation matrix rồi cuối mỗi frame mới áp dụng vào các đỉnh.
+                    Bây giờ cũng thế, nhưng thay vì lưu rotation matrix thì ta lưu một Quaternion, mỗi lần ta muốn xoay ta chỉ cần nhân thêm Quaternion xoay
                     đó vào trong Quaternion rotation đã có sẵn, rồi cuối mỗi frame cứ lấy Quaternion cuối cùng đó áp vào từng đỉnh.<br/><br/>
 
                     Trước khi tiếp tục, có một thứ mà đáng lẽ mình phải làm lâu rồi, đó chính là tạo sẵn các Vector3 thường dùng như Unity để code được clean:
@@ -213,22 +260,17 @@ Vector3.forward = new Vector3(0, 0, 1);</code></pre>
                     
                     Ở class Cube, ta phải làm những thứ sau:
                     <ul>
-                        <li>Thay đổi constructor để chuyển kiểu của rotation thành Quaternion, nhưng vẫn nhận tham số là euler angles để dễ hiểu. Ta sẽ phải dùng
-                    Quaternion để xoay theo 3 trục tương ứng, và xoay theo thứ tự \(x \rightarrow y \rightarrow z\) như cách rotation matrix, nhưng khi nhân Quaternion ta phải
-                    nhân ngược lại (đã nói ở trên).</li>
+                        <li>Bỏ 3 hàm rotate theo rotation matrix</li>
+                        <li>Thay đổi constructor để dùng Quaternion thay vì matrix, nhưng vẫn nhận tham số là euler angles để dễ hiểu, sử dụng euler angles đó để xây dựng Quaternion.</li>
                         <li>Thêm một hàm rotate (cũng nhận tham số là euler angles), để áp phép xoay mới (nhân Quaternion) vào rotation.</li>
-                        <li>Thay đổi hàm getTransformedTriangles, thay vì nhân 3 ma trận rotation matrix, ta chỉ cần 1 dòng duy nhất là áp dụng Quaternion rotation vào đỉnh hiện tại</li>
+                        <li>Thay đổi hàm getTransformedTriangles, thay vì nhân rotation matrix, ta áp dụng Quaternion rotation vào đỉnh hiện tại</li>
                     </ul>
                     <pre><code class="language-javascript">class Cube {
     constructor(pos, eulerAngles, scale) {
         this.tris = [];
         this.pos = pos;
         this.scale = scale;
-
-        let q = Quaternion.buildQuaternion(Vector3.forward, eulerAngles.z);
-        q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.up, eulerAngles.y));
-        q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.right, eulerAngles.x));
-        this.rotation = q;
+        this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
 
         this.generateInitialTriangles();
     }
@@ -236,10 +278,7 @@ Vector3.forward = new Vector3(0, 0, 1);</code></pre>
     ...
 
     rotate(eulerX, eulerY, eulerZ) {
-        let q = Quaternion.buildQuaternion(Vector3.forward, eulerZ);
-        q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.up, eulerY));
-        q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.right, eulerX));
-
+        let q = Quaternion.buildQuaternionEuler(new Vector3(eulerX, eulerY, eulerZ));
         this.rotation = Quaternion.multiply(q, this.rotation);
     }
     
@@ -256,10 +295,9 @@ Vector3.forward = new Vector3(0, 0, 1);</code></pre>
         }
         return transformedTris;
     }
-}
-                    </code></pre>
-                    <i>Nếu javascript có operator overloading thì code sẽ nhìn khá dễ đọc chứ ko phải hàm lồng hàm như trên 🥵</i><br/><br/>
-                    Cuối cùng, đối với 2 cube, thay vì dùng rotation matrix để xoay thì ta dùng hàm rotate của Cube:
+}</code></pre>
+
+                    Cuối cùng, đối với 2 cube, ta dùng hàm rotate mới:
                     <pre><code class="language-javascript">cube1.rotate(0, 50 * dt, 0);
 cube2.rotate(50 * dt, 0, 50 * dt);</code></pre>
                     Full code, bạn có thể giữ lại 3 hàm rotation matrix ở class Mat4x4 nếu muốn, mình thì bỏ đi cho code bớt dài (cũng ko bớt mấy):
@@ -565,8 +603,39 @@ cube2.rotate(50 * dt, 0, 50 * dt);</code></pre>
                     $$
                         p(qvq^*)p^* = (pq)v(q^*p^*) = (pq)v(pq)^*
                     $$
-                    Nghĩa là thực hiện phép xoay của \(q\) rồi \(p\) cũng giống như thực hiện 1 phép xoay \(pq\) vậy 😳 Đây chính là sức mạnh của Quaternion.
-
+                    Nghĩa là thực hiện phép xoay của \(q\) rồi \(p\) cũng giống như thực hiện 1 phép xoay \(pq\) vậy 😳 Đây chính là sức mạnh của Quaternion.<br/><br/>
+                    Sẽ tốt hơn nếu ta tìm ra luôn Quaternion để xoay theo 1 euler angles theo thứ tự \(x \rightarrow y \rightarrow z\) (giống với thứ tự ta xoay object ở 
+                    <a href="graphics3D5-model.html">blog 5</a>), ta chỉ cần nhân 3 Quaternion đại diện cho
+                    3 phép xoay đó (nhớ là nhân ngược lại). Gọi \(\alpha\) là phép xoay quanh trục \(x\), \(\beta\) là phép xoay quanh trục \(y\), \(\gamma\) là phép xoay quanh trục \(z\):
+                    $$
+                    (\cos\frac{\gamma}{2} - \sin\frac{\gamma}{2}k)(\cos\frac{\beta}{2} - \sin\frac{\beta}{2}j) (\cos\frac{\alpha}{2} - \sin\frac{\alpha}{2}i)=
+                    $$
+                    $$
+\left(
+\cos\frac{\gamma}{2}\cos\frac{\beta}{2}\cos\frac{\alpha}{2}
++
+\sin\frac{\gamma}{2}\sin\frac{\beta}{2}\sin\frac{\alpha}{2}
+\right)
++
+\left(
+-\cos\frac{\gamma}{2}\cos\frac{\beta}{2}\sin\frac{\alpha}{2}
++
+\sin\frac{\gamma}{2}\sin\frac{\beta}{2}\cos\frac{\alpha}{2}
+\right)i
++
+\left(
+-\cos\frac{\gamma}{2}\sin\frac{\beta}{2}\cos\frac{\alpha}{2}
+-
+\sin\frac{\gamma}{2}\cos\frac{\beta}{2}\sin\frac{\alpha}{2}
+\right)j
++
+\left(
+-\sin\frac{\gamma}{2}\cos\frac{\beta}{2}\cos\frac{\alpha}{2}
++
+\cos\frac{\gamma}{2}\sin\frac{\beta}{2}\sin\frac{\alpha}{2}
+\right)k
+                    $$
+                    Nhìn có vẻ khoai để biến nó thành code nhưng tốc độ sẽ tăng đáng kể so với nếu bạn nhân trong code (tạo 3 quaternion rồi nhân 3 quaternion đó).
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 

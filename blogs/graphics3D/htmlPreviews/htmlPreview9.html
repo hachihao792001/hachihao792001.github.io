@@ -81,6 +81,21 @@
 					[0, 0, 0, 0]
 				];
 			}
+			static Identity;
+
+			static Multiply(m1, m2) {
+				let result = new Mat4x4();
+				for (let r = 0; r < 4; r++) {
+					for (let c = 0; c < 4; c++) {
+						result.m[r][c] =
+							m1.m[r][0] * m2.m[0][c] +
+							m1.m[r][1] * m2.m[1][c] +
+							m1.m[r][2] * m2.m[2][c] +
+							m1.m[r][3] * m2.m[3][c];
+					}
+				}
+				return result;
+			}
 
 			static Projection(fov, h, w, zNear, zFar) {
 				let fovMultiplier = 1.0 / Math.tan(fov * 0.5 / 180.0 * Math.PI);
@@ -150,6 +165,11 @@
 				return matrix;
 			}
 		}
+		Mat4x4.Identity = new Mat4x4();
+		Mat4x4.Identity.m[0][0] = 1;
+		Mat4x4.Identity.m[1][1] = 1;
+		Mat4x4.Identity.m[2][2] = 1;
+		Mat4x4.Identity.m[3][3] = 1;
 
 		class Triangle {
 			constructor(vertices = []) {
@@ -181,8 +201,12 @@
 			constructor(pos, rotation, scale) {
 				this.tris = [];
 				this.pos = pos;
-				this.rotation = rotation;
 				this.scale = scale;
+
+				this.rotationMatrix = Mat4x4.Multiply(Mat4x4.RotationX(rotation.x), Mat4x4.Identity);
+				this.rotateY(rotation.y);
+				this.rotateZ(rotation.z);
+
 				this.generateInitialTriangles();
 			}
 
@@ -253,14 +277,22 @@
 					new Vector3(0.5, -0.5, -0.5)]));
 			}
 
+			rotateX(angle) {
+				this.rotationMatrix = Mat4x4.Multiply(Mat4x4.RotationX(angle), this.rotationMatrix);
+			}
+			rotateY(angle) {
+				this.rotationMatrix = Mat4x4.Multiply(Mat4x4.RotationY(angle), this.rotationMatrix);
+			}
+			rotateZ(angle) {
+				this.rotationMatrix = Mat4x4.Multiply(Mat4x4.RotationZ(angle), this.rotationMatrix);
+			}
+
 			getTransformedTriangles() {
 				let transformedTris = [];
 				for (let tri of this.tris) {
 					let transformedTri = tri.clone();
 					transformedTri.mulMat4x4(Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z));
-					transformedTri.mulMat4x4(Mat4x4.RotationX(this.rotation.x));
-					transformedTri.mulMat4x4(Mat4x4.RotationY(this.rotation.y));
-					transformedTri.mulMat4x4(Mat4x4.RotationZ(this.rotation.z));
+					transformedTri.mulMat4x4(this.rotationMatrix);
 					transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
 					transformedTris.push(transformedTri);
 				}
