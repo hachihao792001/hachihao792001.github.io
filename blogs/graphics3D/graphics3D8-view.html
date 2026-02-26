@@ -51,13 +51,6 @@
                     là \(t\) và euler angles của camera là \((\alpha, \beta, \gamma)\), view matrix sẽ có dạng như sau:
                     $$
                         \begin{pmatrix}
-                        1 & 0 & 0 & -t_{x}\\
-                        0 & 1 & 0 & -t_{y}\\
-                        0 & 0 & 1 & -t_{z}\\
-                        0 & 0 & 0 & 1
-                        \end{pmatrix}
-
-                        \begin{pmatrix}
                         1 & 0 & 0 & 0\\
                         0 & cos{(-\alpha)} & sin{(-\alpha)} & 0\\
                         0 & -\sin{(-\alpha)} & \cos{(-\alpha)} & 0\\
@@ -77,6 +70,13 @@
                         0 & 0 & 1 & 0\\
                         0 & 0 & 0 & 1
                         \end{pmatrix}
+
+                        \begin{pmatrix}
+                        1 & 0 & 0 & -t_{x}\\
+                        0 & 1 & 0 & -t_{y}\\
+                        0 & 0 & 1 & -t_{z}\\
+                        0 & 0 & 0 & 1
+                        \end{pmatrix}
                     $$
                     $$
                         =
@@ -84,61 +84,35 @@
                         \cos\beta\cos\gamma &
                         -\cos\beta\sin\gamma &
                         \sin\beta &
-                        - t_x \\[6pt]
-
-                        \sin\alpha\sin\beta\cos\gamma+\cos\alpha\sin\gamma &
-                        -\sin\alpha\sin\beta\sin\gamma+\cos\alpha\cos\gamma &
+                        -(\cos\beta\cos\gamma\,t_x
+                        -\cos\beta\sin\gamma\,t_y
+                        +\sin\beta\,t_z)
+                        \\
+                        \sin\alpha\sin\beta\cos\gamma + \cos\alpha\sin\gamma &
+                        -\sin\alpha\sin\beta\sin\gamma + \cos\alpha\cos\gamma &
                         -\sin\alpha\cos\beta &
-                        - t_y \\[6pt]
-
-                        -\cos\alpha\sin\beta\cos\gamma+\sin\alpha\sin\gamma &
-                        \cos\alpha\sin\beta\sin\gamma+\sin\alpha\cos\gamma &
+                        -( (\sin\alpha\sin\beta\cos\gamma + \cos\alpha\sin\gamma)t_x
+                        +(-\sin\alpha\sin\beta\sin\gamma + \cos\alpha\cos\gamma)t_y
+                        -\sin\alpha\cos\beta\,t_z )
+                        \\
+                        -\cos\alpha\sin\beta\cos\gamma + \sin\alpha\sin\gamma &
+                        \cos\alpha\sin\beta\sin\gamma + \sin\alpha\cos\gamma &
                         \cos\alpha\cos\beta &
-                        - t_z \\[6pt]
-
+                        -( (-\cos\alpha\sin\beta\cos\gamma + \sin\alpha\sin\gamma)t_x
+                        +(\cos\alpha\sin\beta\sin\gamma + \sin\alpha\cos\gamma)t_y
+                        +\cos\alpha\cos\beta\,t_z )
+                        \\
                         0 & 0 & 0 & 1
                         \end{pmatrix}
                     $$
                     <div align="center" style="font-size: 14px"><i>Mình dùng ChatGPT để ra được kết quả trên vì nhân bằng tay chắc tới mai 🥵</i></div><br/>
-                    Nếu bạn muốn, bạn có thể xài luôn ma trận đó vào trong engine, và nó sẽ chạy đúng. Nhưng trong đồ họa 3D thì không ai biểu diễn view matrix với euler angles cả, mà
+                    Nếu bạn thấy rối vì ở trên mình nói là theo thứ tự \(z \rightarrow y \rightarrow x\) nhưng lúc nhân lại là ngược lại, đó là vì ta đang applied ma trận từ phải sang
+                    trái, xem lại code của <a href="graphics3D5-model.html">blog 5</a>, ma trận nằm bên trái vector, và ma trận nào được làm trước sẽ nằm bên phải.<br/><br/>
+                    Nếu bạn muốn, bạn có thể xài luôn ma trận bùi nhùi đó vào trong engine 😂, và nó sẽ chạy đúng. Nhưng trong đồ họa 3D thì không ai biểu diễn view matrix với euler angles cả, mà
                     thay vào đó người ta sẽ dùng 3 vector đơn vị đại diện cho trục local của camera, gọi là forward (\(\vec{f}\)), up (\(\vec{u}\)) và right (\(\vec{r}\)).
                     Thật ra bạn có thể chuyển ma trận trên thành ma trận chỉ có forward, up, right nếu bạn đủ kiên nhẫn để làm lượng giác với không gian 3D.<br/><br/>
-                    Ta sẽ làm từ 2D trước để dễ hình dung, trong 2D thì camera chỉ còn up và right. Trước tiên ta sẽ xét rotation, ở <a href="graphics3D5-model.html">blog 5</a>
-                    ta biết là khi xoay 1 vector \(\vec{v}\) 1 góc \(\theta\) thì sẽ ra \(\vec{v'}\) với \(v'_{x} = v_x\cos{θ} - v_y\sin{θ}\) và \(v'_{y} = v_x\sin{θ} + v_y\cos{θ}\). Và ta cũng biết
-                    khi xoay vector đơn vị cùng chiều với trục \(x, y\) (chính là \(\vec{r}\) và \(\vec{u}\)) một góc \(\theta\) sẽ ra 
-                    \(\vec{r'}=(\cos{θ}, \sin{θ})\) và \(\vec{u'}=(-\sin{θ}, \cos{θ})\). Như vậy ta có:
-                    $$
-                        v'_x = v_x\cos{θ} - v_y\sin{θ} = v_x.r'_x - v_y.r'_y
-                        $$
-                        $$
-                        v'_y = v_x\sin{θ} + v_y\cos{θ} = -v_x.u'_x + v_y.u'_y
-                    $$
-                    Nhìn gần giống gì đó mà chả giống gì cả, nhưng bạn để ý là nãy giờ mình đang muốn xoay camera, trong khi thứ ta thật sự cần làm là xoay thế giới quanh camera.
-                    Như vậy ta phải xoay ngược lại là \(-\theta\), suy ra \(r'_y\) và \(u'_x\) sẽ đổi dấu (vì là sin). Hai phương trình trên thành:
-                    $$
-                        v'_x = v_x.r'_x + v_y.r'_y
-                        $$
-                        $$
-                        v'_y = v_x.u'_x + v_y.u'_y
-                    $$
-                    Đó chính là công thức tích vô hướng 😳 Thật ra mình cũng đang vòng vo over-explain giống như <a href="graphics3D5-model.html">blog 5</a>, nếu bạn hiểu bản
-                    chất của tích vô hướng thì nó sẽ khá hiển nhiên và dễ suy ra. Như vậy rotation matrix trong 2D có cách viết thứ 2 là:
-                    $$
-                    \begin{pmatrix}
-                    r'_x & r'_y\\
-                    u'_x & u'_y
-                    \end{pmatrix}
-                    $$
-                    Thật ra mình có thể nói luôn là khi qua 3D, nó sẽ theo đúng quy luật và hiển nhiên sẽ thành:
-                    $$
-                    \begin{pmatrix}
-                    r'_x & r'_y & r'_z\\
-                    u'_x & u'_y & u'_z\\
-                    f'_x & f'_y & f'_z
-                    \end{pmatrix}
-                    $$
-                    Đó cũng chính là cách mà javidx9 "giải thích", nhưng mà đối với mình thì khá khó chịu, gotta ask HOW, HOW does it become like that? Cách tốt nhất để chứng minh 
-                    là xoay 3 vector cùng chiều với trục theo thứ tự \(z \rightarrow y \rightarrow x\) (ngược với xoay object, mình đã nói ở trên) xem nó thành gì.
+                    Cách tốt nhất là từ forward, up, right làm lên, ta sẽ xoay 3 vector đó lần lượt theo từng trục xem nó thành gì, bây giờ thì ta lại xoay nó như xoay object (\(x \rightarrow y \rightarrow z\)),
+                    vì ta cũng có thể xem camera như một object.<br/><br/>
                     Đầu tiên ta có:
                     $$
                     \begin{eqnarray}
@@ -147,184 +121,237 @@
                     f = (0, 0, 1)
                     \end{eqnarray}
                     $$
-                    Xoay theo trục \(z\), là nhân cho z rotation matrix:
+                    Xoay theo trục \(x\), là nhân cho x rotation matrix:
                     $$
                         \begin{pmatrix}
-                        cos{\gamma} & sin{\gamma} & 0\\
-                        -\sin{\gamma} & \cos{\gamma} & 0 \\
-                        0 & 0 & 1 \\
+                        1 & 0 & 0 & 0\\
+                        0 & cos\alpha & sin\alpha & 0\\
+                        0 & -\sin\alpha & \cos\alpha & 0\\
+                        0 & 0 & 0 & 1
                         \end{pmatrix}
                         \begin{pmatrix}
+                        1\\
+                        0\\
+                        0\\
+                        0
+                        \end{pmatrix}=
+                        \begin{pmatrix}
+                        1\\
+                        0\\
+                        0\\
+                        0
+                        \end{pmatrix}
+                    $$
+                    $$
+                        \begin{pmatrix}
+                        1 & 0 & 0 & 0\\
+                        0 & cos\alpha & sin\alpha & 0\\
+                        0 & -\sin\alpha & \cos\alpha & 0\\
+                        0 & 0 & 0 & 1
+                        \end{pmatrix}
+                        \begin{pmatrix}
+                        0\\
                         1\\
                         0\\
                         0
                         \end{pmatrix}=
                         \begin{pmatrix}
-                        cos{\gamma}\\
-                        -\sin{\gamma}\\
+                        0\\
+                        \cos{\alpha}\\
+                        -\sin{\alpha}\\
                         0
                         \end{pmatrix}
                     $$
                     $$
                         \begin{pmatrix}
-                        cos{\gamma} & sin{\gamma} & 0\\
-                        -\sin{\gamma} & \cos{\gamma} & 0 \\
-                        0 & 0 & 1 \\
+                        1 & 0 & 0 & 0\\
+                        0 & cos\alpha & \sin\alpha & 0\\
+                        0 & -\sin\alpha & \cos\alpha & 0\\
+                        0 & 0 & 0 & 1
                         \end{pmatrix}
                         \begin{pmatrix}
+                        0\\
                         0\\
                         1\\
                         0
                         \end{pmatrix}=
                         \begin{pmatrix}
-                        \sin{\gamma}\\
-                        \cos{\gamma}\\
+                        0\\
+                        \sin\alpha\\
+                        \cos\alpha\\
                         0
-                        \end{pmatrix}
-                    $$
-                    $$
-                        \begin{pmatrix}
-                        cos{\gamma} & sin{\gamma} & 0\\
-                        -\sin{\gamma} & \cos{\gamma} & 0 \\
-                        0 & 0 & 1 \\
-                        \end{pmatrix}
-                        \begin{pmatrix}
-                        0\\
-                        0\\
-                        1
-                        \end{pmatrix}=
-                        \begin{pmatrix}
-                        0\\
-                        0\\
-                        1
                         \end{pmatrix}
                     $$
                     Xoay theo trục \(y\):
                     $$
                         \begin{pmatrix}
-                        cos{\beta} & 0 & -sin{\beta}\\
-                        0 & 1 & 0 \\
-                        \sin{\beta} & 0 & \cos{\beta} \\
+                        cos{\beta} & 0 & -\sin{\beta} & 0\\
+                        0 & 1 & 0 & 0\\
+                        \sin{\beta} & 0 & \cos{\beta} & 0 \\
+                        0 & 0 & 0 & 1
                         \end{pmatrix}
                         \begin{pmatrix}
-                        cos{\gamma}\\
-                        -\sin{\gamma}\\
+                        1\\
+                        0\\
+                        0\\
                         0
                         \end{pmatrix}=
                         \begin{pmatrix}
-                        \cos{\beta}\cos{\gamma}\\
-                        -\sin{\gamma}\\
-                        \sin{\beta}\cos{\gamma}
+                        \cos{\beta}\\
+                        0\\
+                        \sin{\beta}\\
+                        0\\
                         \end{pmatrix}
                     $$
                     $$
                         \begin{pmatrix}
-                        cos{\beta} & 0 & -sin{\beta}\\
-                        0 & 1 & 0 \\
-                        \sin{\beta} & 0 & \cos{\beta} \\
+                        cos{\beta} & 0 & -\sin{\beta} & 0\\
+                        0 & 1 & 0 & 0\\
+                        \sin{\beta} & 0 & \cos{\beta} & 0 \\
+                        0 & 0 & 0 & 1
                         \end{pmatrix}
                         \begin{pmatrix}
-                        \sin{\gamma}\\
-                        \cos{\gamma}\\
+                        0\\
+                        \cos{\alpha}\\
+                        -\sin{\alpha}\\
                         0
                         \end{pmatrix}=
                         \begin{pmatrix}
-                        \cos{\beta}\sin{\gamma}\\
-                        \cos{\gamma}\\
-                        \sin{\beta}\sin{\gamma}
+                        \sin\alpha\sin\beta\\
+                        \cos\alpha\\
+                        -sin\alpha\cos\beta\\
+                        0
                         \end{pmatrix}
                     $$
                     $$
                         \begin{pmatrix}
-                        cos{\beta} & 0 & -sin{\beta}\\
-                        0 & 1 & 0 \\
-                        \sin{\beta} & 0 & \cos{\beta} \\
+                        cos{\beta} & 0 & -\sin{\beta} & 0\\
+                        0 & 1 & 0 & 0\\
+                        \sin{\beta} & 0 & \cos{\beta} & 0 \\
+                        0 & 0 & 0 & 1
                         \end{pmatrix}
                         \begin{pmatrix}
                         0\\
-                        0\\
-                        1
+                        \sin\alpha\\
+                        \cos\alpha\\
+                        0
                         \end{pmatrix}=
                         \begin{pmatrix}
-                        -\sin{\beta}\\
-                        0\\
-                        \cos{\beta}
+                        -\cos\alpha\sin\beta\\
+                        \sin\alpha\\
+                        \cos\alpha\cos\beta\\
+                        0
                         \end{pmatrix}
                     $$
-                    Xoay theo trục x:
+                    Xoay theo trục \(z\):
                     $$
                         \begin{pmatrix}
-                        1 & 0 & 0\\
-                        0 & cos{\alpha} & sin{\alpha} \\
-                        0 & -\sin{\alpha} & \cos{\alpha} \\
+                        cos{\gamma} & \sin{\gamma} & 0 & 0\\
+                        -\sin{\gamma} & \cos{\gamma} & 0 & 0\\
+                        0 & 0 & 1 & 0\\
+                        0 & 0 & 0 & 1
                         \end{pmatrix}
+                        \begin{pmatrix}
+                        \cos{\beta}\\
+                        0\\
+                        \sin{\beta}\\
+                        0\\
+                        \end{pmatrix}=
                         \begin{pmatrix}
                         \cos{\beta}\cos{\gamma}\\
-                        -\sin{\gamma}\\
-                        \sin{\beta}\cos{\gamma}
+                        -\cos{\beta}\sin{\gamma}\\
+                        \sin{\beta}\\
+                        0
+                        \end{pmatrix}
+                    $$
+                    $$
+                        \begin{pmatrix}
+                        cos{\gamma} & \sin{\gamma} & 0 & 0\\
+                        -\sin{\gamma} & \cos{\gamma} & 0 & 0\\
+                        0 & 0 & 1 & 0\\
+                        0 & 0 & 0 & 1
+                        \end{pmatrix}
+                        \begin{pmatrix}
+                        \sin{\beta}\sin{\alpha}\\
+                        \cos{\alpha}\\
+                        -\sin{\alpha}\cos{\beta}\\
+                        0
                         \end{pmatrix}=
                         \begin{pmatrix}
-                        \cos\beta\cos\gamma \\
-                        -\cos\alpha\sin\gamma + \sin\alpha\sin\beta\cos\gamma \\
-                        \sin\alpha\sin\gamma + \cos\alpha\sin\beta\cos\gamma
+                        \sin{\alpha}\sin{\beta}\cos{\gamma} + \cos{\alpha}\sin{\gamma}\\
+                        -\sin{\alpha}\sin{\beta}\sin{\gamma} + \cos{\alpha}\cos{\gamma}\\
+                        -\sin{\alpha}\cos{\beta}\\
+                        0
                         \end{pmatrix}
                     $$
                     $$
                         \begin{pmatrix}
-                        1 & 0 & 0\\
-                        0 & cos{\alpha} & sin{\alpha} \\
-                        0 & -\sin{\alpha} & \cos{\alpha} \\
+                        cos{\gamma} & \sin{\gamma} & 0 & 0\\
+                        -\sin{\gamma} & \cos{\gamma} & 0 & 0\\
+                        0 & 0 & 1 & 0\\
+                        0 & 0 & 0 & 1
                         \end{pmatrix}
                         \begin{pmatrix}
-                        \cos{\beta}\sin{\gamma}\\
-                        \cos{\gamma}\\
-                        \sin{\beta}\sin{\gamma}
+                        -\cos\alpha\sin{\beta}\\
+                        \sin\alpha\\
+                        \cos\alpha\cos\beta\\
+                        0
                         \end{pmatrix}=
                         \begin{pmatrix}
-                        \cos\beta\sin\gamma \\
-                        \cos\alpha\cos\gamma + \sin\alpha\sin\beta\sin\gamma \\
-                        -\sin\alpha\cos\gamma + \cos\alpha\sin\beta\sin\gamma
-                        \end{pmatrix}
-                    $$
-                    $$
-                        \begin{pmatrix}
-                        1 & 0 & 0\\
-                        0 & cos{\alpha} & sin{\alpha} \\
-                        0 & -\sin{\alpha} & \cos{\alpha} \\
-                        \end{pmatrix}
-                        \begin{pmatrix}
-                        -\sin{\beta}\\
-                        0\\
-                        \cos{\beta}
-                        \end{pmatrix}=
-                        \begin{pmatrix}
-                        -\sin\beta \\
-                        \sin\alpha\cos\beta \\
-                        \cos\alpha\cos\beta
+                        -\cos\alpha\sin\beta\cos\gamma + \sin\alpha\sin\gamma\\
+                        \cos\alpha\sin\beta\sin\gamma + \sin\alpha\cos\gamma\\
+                        \cos\alpha\cos\beta\\
+                        0
                         \end{pmatrix}
                     $$
                     Như vậy:
                     $$
                     r' = \begin{pmatrix}
-                        \cos\beta\cos\gamma \\
-                        -\cos\alpha\sin\gamma + \sin\alpha\sin\beta\cos\gamma \\
-                        \sin\alpha\sin\gamma + \cos\alpha\sin\beta\cos\gamma
+                        \cos{\beta}\cos{\gamma}\\
+                        -\cos{\beta}\sin{\gamma}\\
+                        \sin{\beta}
                         \end{pmatrix}
                     $$
                     $$
                     u' = \begin{pmatrix}
-                        \cos\beta\sin\gamma \\
-                        \cos\alpha\cos\gamma + \sin\alpha\sin\beta\sin\gamma \\
-                        -\sin\alpha\cos\gamma + \cos\alpha\sin\beta\sin\gamma
+                        \sin{\alpha}\sin{\beta}\cos{\gamma} + \cos{\alpha}\sin{\gamma}\\
+                        -\sin{\alpha}\sin{\beta}\sin{\gamma} + \cos{\alpha}\cos{\gamma}\\
+                        -\sin{\alpha}\cos{\beta}
                         \end{pmatrix}
                     $$
                     $$
                     f' = \begin{pmatrix}
-                        -\sin\beta \\
-                        \sin\alpha\cos\beta \\
+                        -\cos\alpha\sin\beta\cos\gamma + \sin\alpha\sin\gamma\\
+                        \cos\alpha\sin\beta\sin\gamma + \sin\alpha\cos\gamma\\
                         \cos\alpha\cos\beta
                         \end{pmatrix}
                     $$
+                    Gán vào ma trận bùi nhùi ở trên, thế là ta có view matrix mà ta muốn:
+                    $$
+                        \begin{pmatrix}
+                        r'_x & r'_y & r'_z & -r'_x.t_x -r'_y.t_x-r'_z.t_z\\
+                        u'_x & u'_y & u'_z & -u'_x.t_x -u'_y.t_x-u'_z.t_z \\
+                        f'_x & f'_y & f'_z & -f'_x.t_x -f'_y.t_x-f'_z.t_z \\
+                        0 & 0 & 0 & 1
+                        \end{pmatrix}=
+                        \begin{pmatrix}
+                        r'_x & r'_y & r'_z & -\langle r, t \rangle\\
+                        u'_x & u'_y & u'_z & -\langle u, t \rangle\\
+                        f'_x & f'_y & f'_z & -\langle f, t \rangle\\
+                        0 & 0 & 0 & 1
+                        \end{pmatrix}
+                    $$
+                    Nếu bạn tìm google về View matrix, thường thì người ta sẽ nhắc tới LookAt matrix (đơn giản chỉ là ma trận kết hợp xoay và di chuyển, ma trận này cũng theo
+                    forward, up, right). Nghịch đảo ma trận LookAt sẽ ra View matrix, thật ra về bản chất cũng không khác những gì mình làm, nghịch đảo của rotation matrix sẽ ra
+                    lại rotation matrix đó nhưng đối dấu góc, nghịch đảo translation matrix cũng ra lại ma trận đó nhưng đổi dấu \(t\). Nếu bạn hiểu bản chất của nghịch đảo ma trận
+                    thì hiểu theo cách đó cũng được 😳 Ngoài ra khi tìm google bạn sẽ thấy nhiều phiên
+                    bản khác nhau của View Matrix, đó là vì nó khác nhau về handedness của hệ tọa độ (trái hay phải) và vector ở dạng ma trận là column hay row, với engine mình đang
+                    làm thì nó là hệ tọa độ tay trái (left-handed coordinate) và vector là column vector nếu bạn không nhớ.<br/>
+                    Nhìn vào view matrix, bạn cũng phần nào đoán được nó làm gì, khối 3x3 ở góc trái khi nhân với \(v\) nó sẽ ra tích có hướng của \(v\) với \(r, u, f\), đồng nghĩa
+                    "hình chiếu của \(v\) trên 3 trục mới \(r, u, f\)". Và 3 cái tích vô hướng với \(t\) là "cộng vào \(v\) một vector \(t'\) đã được biến đổi theo trục mới".<br/><br/>
+
+                    Có được View matrix rồi, ta bắt tay vào code thôi, ta sẽ làm luôn một hệ thống di chuyển camera như FPS, dùng chuột để nhìn qua lại, WASD để di chuyển, ngoài ra Space
+                    để bay lên và Shift để bay xuống.
                     
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
