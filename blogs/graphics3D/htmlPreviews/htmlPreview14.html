@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<title>3D Engine</title>
+</head>
+
+<body style="text-align: center; background: #f0f0f0">
+	<h1>3D Engine</h1>
+	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
+	<h2 id="fps">FPS: 0</h2>
+	<script>
+		class Vector3 {
+			constructor(x = 0, y = 0, z = 0, w = 1) {
+				this.x = x;
+				this.y = y;
+				this.z = z;
+				this.w = w;
+			}
+
+			static zero;
+			static one;
+			static left;
+			static right;
+			static up;
+			static down;
+			static forward;
+
+			clone() {
+				return new Vector3(this.x, this.y, this.z, this.w);
+			}
+
+			static add(vec1, vec2) {
+				return new Vector3(vec1.x + vec2.x, vec1.y + vec2.y, vec1.z + vec2.z);
+			}
+			static sub(vec1, vec2) {
+				return new Vector3(vec1.x - vec2.x, vec1.y - vec2.y, vec1.z - vec2.z);
+			}
+			static mul(vec, value) {
+				return new Vector3(vec.x * value, vec.y * value, vec.z * value);
+			}
+			static div(vec, value) {
+				return new Vector3(vec.x / value, vec.y / value, vec.z / value);
+			}
+			static scale(vec1, vec2) {
+				return new Vector3(vec1.x * vec2.x, vec1.y * vec2.y, vec1.z * vec2.z);
+			}
+			static dot(v1, v2) {
+				return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+			}
+			static cross(v1, v2) {
+				let v = new Vector3(
+					v1.y * v2.z - v1.z * v2.y,
+					v1.z * v2.x - v1.x * v2.z,
+					v1.x * v2.y - v1.y * v2.x);
+				return v;
+			}
+			magnitude() {
+				return Math.hypot(this.x, this.y, this.z);
+			}
+			normalize() {
+				let length = this.magnitude();
+				if (length === 0)
+					return this;
+				this.x /= length;
+				this.y /= length;
+				this.z /= length;
+				return this;
+			}
+			getReverse() {
+				return new Vector3(-this.x, -this.y, -this.z, this.w);
+			}
+			mulMat4x4(m) {
+				let x = this.x;
+				let y = this.y;
+				let z = this.z;
+				let w = this.w;
+				this.x = m.m[0][0] * x + m.m[0][1] * y + m.m[0][2] * z + m.m[0][3] * w;
+				this.y = m.m[1][0] * x + m.m[1][1] * y + m.m[1][2] * z + m.m[1][3] * w;
+				this.z = m.m[2][0] * x + m.m[2][1] * y + m.m[2][2] * z + m.m[2][3] * w;
+				this.w = m.m[3][0] * x + m.m[3][1] * y + m.m[3][2] * z + m.m[3][3] * w;
+			}
+		}
+		Vector3.zero = new Vector3(0, 0, 0);
+		Vector3.one = new Vector3(1, 1, 1);
+		Vector3.left = new Vector3(-1, 0, 0);
+		Vector3.right = new Vector3(1, 0, 0);
+		Vector3.up = new Vector3(0, 1, 0);
+		Vector3.down = new Vector3(0, -1, 0);
+		Vector3.forward = new Vector3(0, 0, 1);
+
+		class Mat4x4 {
+			constructor() {
+				this.m = [
+					[0, 0, 0, 0],
+					[0, 0, 0, 0],
+					[0, 0, 0, 0],
+					[0, 0, 0, 0]
+				];
+			}
+
+			static Projection(fov, h, w, zNear, zFar) {
+				let fovMultiplier = 1.0 / Math.tan(fov * 0.5 / 180.0 * Math.PI);
+				let matrix = new Mat4x4();
+				matrix.m[0][0] = h / w * fovMultiplier;
+				matrix.m[1][1] = fovMultiplier;
+				matrix.m[2][2] = zFar / (zFar - zNear);
+				matrix.m[2][3] = (-zNear * zFar) / (zFar - zNear);
+				matrix.m[3][2] = 1.0;
+				return matrix;
+			}
+
+			static View(r, u, f, t) {
+				let matrix = new Mat4x4();
+				matrix.m[0][0] = r.x;
+				matrix.m[0][1] = r.y;
+				matrix.m[0][2] = r.z;
+				matrix.m[1][0] = u.x;
+				matrix.m[1][1] = u.y;
+				matrix.m[1][2] = u.z;
+				matrix.m[2][0] = f.x;
+				matrix.m[2][1] = f.y;
+				matrix.m[2][2] = f.z;
+				matrix.m[0][3] = -Vector3.dot(r,t);
+				matrix.m[1][3] = -Vector3.dot(u,t);
+				matrix.m[2][3] = -Vector3.dot(f,t);
+				matrix.m[3][3] = 1;
+				return matrix;
+			}
+
+			static Translation(x, y, z) {
+				let matrix = new Mat4x4();
+				matrix.m[0][0] = 1;
+				matrix.m[1][1] = 1;
+				matrix.m[2][2] = 1;
+				matrix.m[3][3] = 1;
+				matrix.m[0][3] = x;
+				matrix.m[1][3] = y;
+				matrix.m[2][3] = z;
+				return matrix;
+			}
+
+			static Scale(x, y, z) {
+				let matrix = new Mat4x4();
+				matrix.m[0][0] = x;
+				matrix.m[1][1] = y;
+				matrix.m[2][2] = z;
+				matrix.m[3][3] = 1;
+				return matrix;
+			}
+		}
+
+		class Quaternion {
+			constructor(a = 1, b = 0, c = 0, d = 0) {
+				this.a = a;
+				this.b = b;
+				this.c = c;
+				this.d = d;
+			}
+
+			static buildQuaternion(axis, angle) {
+				let radian = angle / 180.0 * Math.PI;
+				const half = radian / 2;
+				const s = -Math.sin(half);
+				return new Quaternion(
+					Math.cos(half),
+					axis.x * s,
+					axis.y * s,
+					axis.z * s);
+			}
+
+			static multiply(p, q) {
+				let a = p.a * q.a - p.b * q.b - p.c * q.c - p.d * q.d;
+				let b = p.a * q.b + p.b * q.a + p.c * q.d - p.d * q.c;
+				let c = p.a * q.c - p.b * q.d + p.c * q.a + p.d * q.b;
+				let d = p.a * q.d + p.b * q.c - p.c * q.b + p.d * q.a;
+				return new Quaternion(a, b, c, d);
+			}
+
+			conjugate() {
+				return new Quaternion(this.a, -this.b, -this.c, -this.d);
+			}
+
+			rotateVector(v) {
+				const qVec = new Quaternion(0, v.x, v.y, v.z);
+				const res = Quaternion.multiply(Quaternion.multiply(this, qVec), this.conjugate());
+				return new Vector3(
+					res.b,
+					res.c,
+					res.d);
+			}
+			static RotateVectorAxisAngle(v, axis, angle) {
+				let radian = angle / 180.0 * Math.PI;
+				return buildQuaternion(axis, radian).rotateVector(v);
+			}
+		}
+
+		class Triangle {
+			constructor(vertices = []) {
+				if (vertices.length == 0) {
+					this.vertices = [];
+					for (let i = 0; i < 3; i++) {
+						this.vertices.push(new Vector3(0, 0, 0));
+					}
+				} else {
+					this.vertices = vertices;
+				}
+			}
+
+			clone() {
+				let tri = new Triangle();
+				for (let i = 0; i < this.vertices.length; i++)
+					tri.vertices[i] = this.vertices[i].clone();
+				return tri;
+			}
+
+			mulMat4x4(m) {
+				for (let v of this.vertices) {
+					v.mulMat4x4(m);
+				}
+			}
+
+			rotate(q) {
+				for (let i = 0; i < this.vertices.length; i++) {
+					this.vertices[i] = q.rotateVector(this.vertices[i]);
+				}
+			}
+
+			getCenter() {
+				let x = (this.vertices[0].x + this.vertices[1].x + this.vertices[2].x) / 3.0;
+				let y = (this.vertices[0].y + this.vertices[1].y + this.vertices[2].y) / 3.0;
+				let z = (this.vertices[0].z + this.vertices[1].z + this.vertices[2].z) / 3.0;
+				return new Vector3(x, y, z);
+			}
+
+			getNormal() {
+				let v1 = Vector3.sub(this.vertices[0], this.vertices[1]);
+				let v2 = Vector3.sub(this.vertices[1], this.vertices[2]);
+				let normal = Vector3.cross(v1, v2);
+				normal.normalize();
+				return normal;
+			}
+		}
+
+		class Camera {
+			constructor(pos, forward, speed, sensitivity) {
+				this.pos = pos;
+				this.forward = forward;
+				this.speed = speed;
+				this.sensitivity = sensitivity;
+
+				this.updateRightAndUp();
+			}
+
+			updateRightAndUp() {
+				this.right = Vector3.cross(this.forward, Vector3.up).normalize();
+				this.up = Vector3.cross(this.right, this.forward).normalize();
+			}
+
+			updateForward(mouseMovementX, mouseMovementY) {
+				this.updateRightAndUp();
+
+				let q = Quaternion.buildQuaternion(this.up, mouseMovementX * this.sensitivity);
+				q = Quaternion.multiply(q, Quaternion.buildQuaternion(this.right, mouseMovementY * this.sensitivity));
+
+				this.forward = q.rotateVector(this.forward).normalize();
+			}
+
+			updateMovement(dt, keyStates) {
+				if (keyStates['w']) {
+					this.pos = Vector3.add(this.pos, Vector3.mul(this.forward, dt * this.speed));
+				}
+				if (keyStates['s']) {
+					this.pos = Vector3.sub(this.pos, Vector3.mul(this.forward, dt * this.speed));
+				}
+				if (keyStates['a']) {
+					this.pos = Vector3.sub(this.pos, Vector3.mul(this.right, dt * this.speed));
+				}
+				if (keyStates['d']) {
+					this.pos = Vector3.add(this.pos, Vector3.mul(this.right, dt * this.speed));
+				}
+				if (keyStates['Shift']) {
+					this.pos = Vector3.add(this.pos, Vector3.mul(Vector3.down, dt * this.speed));
+				}
+				if (keyStates[' ']) {
+					this.pos = Vector3.add(this.pos, Vector3.mul(Vector3.up, dt * this.speed));
+				}
+			}
+
+			getViewMatrix() {
+				return Mat4x4.View(this.right, this.up, this.forward, this.pos);
+			}
+		}
+
+		class Cube {
+			constructor(pos, eulerAngles, scale) {
+				this.tris = [];
+				this.pos = pos;
+				this.scale = scale;
+
+				let q = Quaternion.buildQuaternion(Vector3.forward, eulerAngles.z);
+				q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.up, eulerAngles.y));
+				q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.right, eulerAngles.x));
+				this.rotation = q;
+
+				this.generateInitialTriangles();
+			}
+
+			generateInitialTriangles() {
+				// FRONT
+				this.tris.push(new Triangle([
+					new Vector3(-0.5, -0.5, -0.5),
+					new Vector3(-0.5, 0.5, -0.5),
+					new Vector3(0.5, 0.5, -0.5)]));
+				this.tris.push(new Triangle([
+					new Vector3(-0.5, -0.5, -0.5),
+					new Vector3(0.5, 0.5, -0.5),
+					new Vector3(0.5, -0.5, -0.5)]));
+
+				// RIGHT
+				this.tris.push(new Triangle([
+					new Vector3(0.5, -0.5, -0.5),
+					new Vector3(0.5, 0.5, -0.5),
+					new Vector3(0.5, 0.5, 0.5)]));
+
+				this.tris.push(new Triangle([
+					new Vector3(0.5, -0.5, -0.5),
+					new Vector3(0.5, 0.5, 0.5),
+					new Vector3(0.5, -0.5, 0.5)]));
+
+				// BACK
+				this.tris.push(new Triangle([
+					new Vector3(0.5, -0.5, 0.5),
+					new Vector3(0.5, 0.5, 0.5),
+					new Vector3(-0.5, 0.5, 0.5)]));
+
+				this.tris.push(new Triangle([
+					new Vector3(0.5, -0.5, 0.5),
+					new Vector3(-0.5, 0.5, 0.5),
+					new Vector3(-0.5, -0.5, 0.5)]));
+
+				// LEFT
+				this.tris.push(new Triangle([
+					new Vector3(-0.5, -0.5, 0.5),
+					new Vector3(-0.5, 0.5, 0.5),
+					new Vector3(-0.5, 0.5, -0.5)]));
+
+				this.tris.push(new Triangle([
+					new Vector3(-0.5, -0.5, 0.5),
+					new Vector3(-0.5, 0.5, -0.5),
+					new Vector3(-0.5, -0.5, -0.5)]));
+
+				// TOP
+				this.tris.push(new Triangle([
+					new Vector3(-0.5, 0.5, -0.5),
+					new Vector3(-0.5, 0.5, 0.5),
+					new Vector3(0.5, 0.5, 0.5)]));
+
+				this.tris.push(new Triangle([
+					new Vector3(-0.5, 0.5, -0.5),
+					new Vector3(0.5, 0.5, 0.5),
+					new Vector3(0.5, 0.5, -0.5)]));
+
+				// BOTTOM
+				this.tris.push(new Triangle([
+					new Vector3(0.5, -0.5, 0.5),
+					new Vector3(-0.5, -0.5, 0.5),
+					new Vector3(-0.5, -0.5, -0.5)]));
+
+				this.tris.push(new Triangle([
+					new Vector3(0.5, -0.5, 0.5),
+					new Vector3(-0.5, -0.5, -0.5),
+					new Vector3(0.5, -0.5, -0.5)]));
+			}
+
+			rotate(eulerX, eulerY, eulerZ) {
+				let q = Quaternion.buildQuaternion(Vector3.forward, eulerZ);
+				q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.up, eulerY));
+				q = Quaternion.multiply(q, Quaternion.buildQuaternion(Vector3.right, eulerX));
+
+				this.rotation = Quaternion.multiply(q, this.rotation);
+			}
+
+			getTransformedTriangles() {
+				let transformedTris = [];
+				for (let tri of this.tris) {
+					let transformedTri = tri.clone();
+					transformedTri.mulMat4x4(Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z));
+					transformedTri.rotate(this.rotation);
+					transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
+					transformedTris.push(transformedTri);
+				}
+				return transformedTris;
+			}
+		}
+
+
+		const canvas = document.getElementById("gameCanvas");
+		const ctx = canvas.getContext("2d");
+		const fov = 60;
+		let znear = 0.01, zfar = 1000;
+		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
+		let camera = new Camera(Vector3.zero, Vector3.forward, 2, 0.2);
+		let keyStates = [];
+
+		const fpsInfo = document.getElementById("fps");
+		let frames = 0, fpsTimeCounter = 0;
+
+		let cube1 = new Cube(new Vector3(0.6, -0.7, 2.5), new Vector3(45, 0, 0), new Vector3(0.7, 0.7, 0.7));
+		let cube2 = new Cube(new Vector3(1, 0, 2.5), new Vector3(0, 0, 15), new Vector3(1, 0.7, 0.7));
+		cube2.pos = Vector3.sub(cube2.pos, new Vector3(1.6, 0, 0));
+
+		let lastTime = performance.now();
+		let dt = 0;
+
+		function update(time = performance.now()) {
+			dt = (time - lastTime) / 1000;
+			lastTime = time;
+
+			fpsTimeCounter += dt;
+			frames++;
+			if (fpsTimeCounter >= 1) {
+				fpsInfo.textContent = `FPS: ${frames}`;
+				frames = 0;
+				fpsTimeCounter = 0;
+			}
+
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+			camera.updateMovement(dt, keyStates);
+			const viewMat = camera.getViewMatrix();
+
+			cube1.rotate(0, 50 * dt, 0);
+			cube2.rotate(50 * dt, 0, 50 * dt);
+
+			let allTris = [];
+			allTris.push(...cube1.getTransformedTriangles());
+			allTris.push(...cube2.getTransformedTriangles());
+			for (let tri of allTris) {
+				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
+					let vertices = tri.vertices;
+					for (let i = 0; i < vertices.length; i++) {
+						vertices[i].mulMat4x4(viewMat);
+						vertices[i].mulMat4x4(projectionMatrix);
+						vertices[i] = Vector3.div(vertices[i], vertices[i].w);
+						vertices[i] = new Vector3(
+							vertices[i].x * canvas.width + canvas.width / 2,
+							-vertices[i].y * canvas.height + canvas.height / 2,
+							1);
+					}
+					ctx.beginPath();
+					ctx.moveTo(vertices[0].x, vertices[0].y);
+					ctx.lineTo(vertices[1].x, vertices[1].y);
+					ctx.lineTo(vertices[2].x, vertices[2].y);
+					ctx.closePath();
+					ctx.stroke();
+				}
+			}
+
+			requestAnimationFrame(update);
+		}
+
+		update();
+
+		canvas.addEventListener("click", async () => {
+			await canvas.requestPointerLock({
+				unadjustedMovement: true,
+			});
+		});
+
+		canvas.addEventListener("mousemove", (e) => {
+			if (document.pointerLockElement === canvas) {
+				camera.updateForward(e.movementX, e.movementY);
+			}
+		});
+
+		window.addEventListener('keydown', (e) => {
+			keyStates[e.key] = true;
+		});
+		window.addEventListener('keyup', (e) => {
+			keyStates[e.key] = false;
+		});
+	</script>
+</body>
+
+</html>
