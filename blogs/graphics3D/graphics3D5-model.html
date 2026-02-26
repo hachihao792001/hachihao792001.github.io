@@ -173,20 +173,43 @@
                         \end{pmatrix}
                     $$
                     Ta có thể gộp 3 ma trận này với nhau thành một ma trận duy nhất, tuy nhiên ta không nên làm vậy vì sẽ ra một ma trận khá rối (\(θ\) ở 3 ma trận đều khác nhau), với
-                    lại thứ tự mà ta nhân 3 ma trận này với nhau cũng quan trọng, \(XYZ \neq ZYX\) (nếu bạn không biết, ma trận không có tính chất giao hoán).<br/>
+                    lại thứ tự mà ta nhân 3 ma trận này với nhau cũng quan trọng, \(XYZ \neq ZYX\) (nếu bạn không biết, phép nhân ma trận không có tính chất giao hoán).<br/>
                     Ngoài ra có một thứ khác mà bạn cần biết, trước hết 3 ma trận này đều quay theo trục thế giới (hệ quy chiếu đen), nhưng mà nếu bạn muốn xoay theo trục cục bộ của cube 
                     (hệ quy chiếu đỏ) thì sao? Nghĩa là sau khi bạn quay xong theo trục \(x\), bạn sẽ quay tiếp theo trục \(y\) mới của cube chứ không quay theo \(y\) thế giới nữa,
                     nó gọi là <b>intrinsic rotation</b>, còn quay theo trục thế giới thì được gọi là <b>extrinsic rotation</b>.<br/>
                     Để quay được theo intrinsic rotation, bạn nên biết một định lý là: Xoay \(x \rightarrow y \rightarrow z\) thế giới sẽ ra kết quả giống hệt xoay 
                     \(z \rightarrow y \rightarrow x\) cục bộ (và ngược lại cũng đúng). 
-                    Về bản chất toán học mình sẽ không nói tới vì mình không giỏi toán chứng minh cũng như Đại số tuyến tính 😅, bạn có thể xem gif dưới đây mà mình làm trong Unity để hình dung rõ hơn:
+                    Về bản chất toán học mình sẽ không nói tới vì mình không giỏi toán chứng minh cũng như Đại số tuyến tính 😅. Bạn có thể tưởng tượng là khi bạn ngẩng đầu lên
+                    15 độ và xoay đầu qua phải 45 độ, nó sẽ giống như bạn xoay đầu qua phải 45 độ và ngẩng đầu lên theo chiều sống mũi của bạn 15 độ (chứ không phải theo chiều song song với
+                    thân bạn), hoặc bạn có thể xem gif dưới đây mà mình làm trong Unity để hình dung rõ hơn:
                     <div align="center">
                         <img style="max-width: 400px;" src="images/graphics3D5/xyz.gif"/>
                     </div>
+                    Bạn cần lưu ý là nhân theo thứ tự \(XYZ\) hay \(ZYX\) đều không quyết định được ngay nó là intrinsic hay extrinsic, còn tùy vào cách mình sử dụng nó nữa
+                    (mình xin nhắc lại là cả 3 rotation matrix mình tìm được ở trên đều là extrinsic rotation <b>nếu nó ở riêng</b>),
+                    nhưng mà dám chắc một điều là bạn phải thống nhất trong toàn engine về thứ tự nhân, đối với mình thì mình chọn \(XYZ\).<br/><br/>
 
                     Toán đã đủ, bây giờ là code time 😳 Đầu tiên ta tạo những hàm xây dựng các ma trận mà ta đã tìm ra, để hết trong class Mat4x4. Lưu ý là đối với 3 cái rotation
-                    matrix nó vẫn là ma trận 4 chiều, để dòng 4 cột 4 là 1 để giữ nguyên \(w\) là được:
+                    matrix nó vẫn là ma trận 4 chiều, để dòng 4 cột 4 là 1 để giữ nguyên \(w\) là được. Ngoài ra ta thêm một hàm nhân 2 ma trận, và ma trận đơn vị (là ma trận behave giống
+                    như số 1, ma trận nào nhân nó cũng thành chính nó):
                     <pre><code class="language-javascript">class Mat4x4 {
+    ...
+    static Identity;
+
+    static Multiply(m1, m2) {
+        let result = new Mat4x4();
+        for (let r = 0; r < 4; r++) {
+            for (let c = 0; c < 4; c++) {
+                result.m[r][c] =
+                    m1.m[r][0] * m2.m[0][c] +
+                    m1.m[r][1] * m2.m[1][c] +
+                    m1.m[r][2] * m2.m[2][c] +
+                    m1.m[r][3] * m2.m[3][c];
+            }
+        }
+        return result;
+    }
+
     ...
 
     static Translation(x, y, z) {
@@ -245,25 +268,45 @@
         matrix.m[3][3] = 1;
         return matrix;
     }
-}</code></pre>
+}
+Mat4x4.Identity = new Mat4x4();
+Mat4x4.Identity.m[0][0] = 1;
+Mat4x4.Identity.m[1][1] = 1;
+Mat4x4.Identity.m[2][2] = 1;
+Mat4x4.Identity.m[3][3] = 1;</code></pre>
+
                     Trước khi sử dụng những ma trận này, mình sẽ nói thêm về cách dùng Model matrix. Giả sử nếu bạn muốn di chuyển một vật nhiều lần trước khi
                     vẽ (trong 1 frame) thì sao, bạn sẽ không nhân Translation matrix mỗi lần di chuyển đâu. Cái bạn cần làm là thay đổi thuộc tính vị trí của vật bao nhiêu lần đó, sau đó bạn mới 
                     nhân Translation ở bước cuối cùng, tương tự đối với Rotation và Scale. Và thứ tự nhân sẽ là Scale -> Rotation -> Translation, thật ra Scale và Rotation cái nào trước cũng được,
                     nhưng quan trọng là Translation phải cuối cùng, vì nếu bạn di chuyển xong mới xoay thì nó sẽ xoay vật quanh gốc tọa độ chứ ko xoay quanh chính giữa của vật đâu, tương tự với Scale,
                     nếu bạn di chuyển xong mới scale thì nó sẽ scale không gian ra từ gốc tọa độ, chứ ko scale ra từ chính giữa vật. Trước khi di chuyển vật thì chính giữa của vật sẽ trùng với gốc tọa độ,
-                    Rotation và Scale sẽ áp dụng với chính giữa vật. Một cái (khá hiển nhiên) nữa là Model matrix sẽ khác nhau đối với từng vật, chứ không phải dùng chung hết
-                    như Projection matrix hay View matrix.<br/><br/>
-                    Tiếp theo, mình sẽ tạo một Cube để đại diện cho một khối lập phương có đầy đủ đặc tính vị trí, độ xoay và tỉ lệ trong không gian, mình sẽ chuyển hàm makeCube vào
+                    Rotation và Scale sẽ áp dụng với chính giữa vật. Lí do ta cần phải "tổng hợp biến đổi trong 1 frame rồi áp dụng cho trạng thái ban đầu", là vì thông
+                    tin của mesh (đỉnh, cạnh, tam giác, ...) là một thông tin "cứng", ta luôn phải có được thông tin đó để sử dụng, ngoài ra một lí do khác nữa là nếu bạn liên tục
+                    nhân ma trận vào thì sai số sẽ càng ngày càng nhiều (đặc điểm của float).<br/><br/>
+
+                    Về "tổng hợp biến đổi" của translation và scale khá đơn giản, bạn chỉ cần lưu thuộc tính vị trí và scale dưới dạng Vector3, rồi khi cần (cuối frame) 
+                    thì tạo thành ma trận rồi xài luôn. Riêng đối với Rotation là một chuyện khác, nếu bạn nghĩ là chỉ cần tạo một thuộc tính Vector3 lưu độ xoay của vật ở 3 trục,
+                    rồi nhân rotation matrix tương ứng ở cuối frame, thì nó sẽ có khá nhiều vấn đề. Ví dụ 1 vật lúc đầu có rotation là (30, 0, 0),
+                    trong 1 frame bạn muốn xoay một vật 45 độ ở trục Y, thì bạn cộng nó vô rotation là thành (30, 45, 0), tức là tổng hợp biến đổi là xoay X 30 độ, xong rồi
+                    xoay Y 45 độ, thì thật ra nó vẫn hiển thị đúng. Tuy nhiên, nếu lúc đầu là (0, 30, 0), và xoay 45 độ ở trục X \(\rightarrow\) tổng hợp biến đổi là xoay
+                    Y 30 độ xong rồi xoay X 45 độ, thì ở cuối frame bạn thực hiện phép nhân ma trận \(XYZ\) (mình đã thống nhất ở trên) thì nó sẽ xoay kiểu intrinsic ngay. Giải pháp là
+                    thay vì lưu rotation như một Vector3, bạn hãy lưu luôn nguyên cái rotation matrix, có thay đổi gì cứ nhân thêm vào nó (nhân vào đằng trước) là nó sẽ luôn
+                    extrinsic.<br/><br/>
+
+                    Tiếp theo, mình sẽ tạo một Cube để đại diện cho một khối lập phương có đầy đủ đặc tính vị trí, độ xoay (ma trận) và tỉ lệ trong không gian, mình sẽ chuyển hàm makeCube vào
                     trong class này, đổi tên thành generateInitialTriangles (các tam giác của cube trước khi được biến đổi bởi Model matrix). Ngoài ra tạo thêm một hàm getTransformedTriangles
-                    để trả về những tam giác đó sau khi bị biến đổi. Lí do mình không thay đổi trực tiếp trên mấy tam giác đó luôn mà phải clone ra biến đổi rồi trả về là vì mình luôn phải
-                    giữ trạng thái ban đầu của chúng, như trên mình nói thì mình muốn thay đổi gì chỉ thay đổi trên mấy thuộc tính của vật thôi, còn việc nhân ma trận sẽ làm cuối cùng ở mỗi 
-                    frame, phải luôn có cái ban đầu để nhân.
+                    để trả về những tam giác đó sau khi bị biến đổi. Ở constructor thì nhận vào rotation ban đầu (dưới dạng 3 góc để dễ hiểu), áp dụng nó tạo 3 rotation matrix và 
+                    xoay ma trận đơn vị theo thứ tự \(XYZ\) .
                     <pre><code class="language-javascript">class Cube {
     constructor(pos, rotation, scale) {
         this.tris = [];
         this.pos = pos;
-        this.rotation = rotation;
         this.scale = scale;
+
+        this.rotationMatrix = Mat4x4.Multiply(Mat4x4.RotationX(rotation.x), Mat4x4.Identity);
+        this.rotateY(rotation.y);
+        this.rotateZ(rotation.z);
+
         this.generateInitialTriangles();
     }
 
@@ -334,14 +377,22 @@
             new Vector3(0.5, -0.5, -0.5)]));
     }
 
+    rotateX(angle) {
+        this.rotationMatrix = Mat4x4.Multiply(Mat4x4.RotationX(angle), this.rotationMatrix);
+    }
+    rotateY(angle) {
+        this.rotationMatrix = Mat4x4.Multiply(Mat4x4.RotationY(angle), this.rotationMatrix);
+    }
+    rotateZ(angle) {
+        this.rotationMatrix = Mat4x4.Multiply(Mat4x4.RotationZ(angle), this.rotationMatrix);
+    }
+
     getTransformedTriangles() {
         let transformedTris = [];
         for (let tri of this.tris) {
             let transformedTri = tri.clone();
             transformedTri.mulMat4x4(Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z));
-            transformedTri.mulMat4x4(Mat4x4.RotationX(this.rotation.x));
-            transformedTri.mulMat4x4(Mat4x4.RotationY(this.rotation.y));
-            transformedTri.mulMat4x4(Mat4x4.RotationZ(this.rotation.z));
+            transformedTri.mulMat4x4(this.rotationMatrix);
             transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
             transformedTris.push(transformedTri);
         }
@@ -367,18 +418,15 @@
     }
 }</code></pre>
                     Tới khúc vẽ chính, mình sẽ tạo 2 cube, cube1 ở vị trí cũ nhưng xoay trục x 45 độ, cube2 lúc đầu mình tạo ở x=1 nhưng sau đó mình trừ đi 1.6, là cuối cùng
-                    nó sẽ ở x=-0.6, là sẽ ở bên trái màn hình. Sau đó mình sẽ gọi hàm transformTriangles cho 2 cube
+                    nó sẽ ở x=-0.6, là sẽ ở bên trái màn hình.
                     <pre><code class="language-javascript">let cube1 = new Cube(new Vector3(0.6, -0.7, 2.5), new Vector3(45, 0, 0), new Vector3(0.7, 0.7, 0.7));
 let cube2 = new Cube(new Vector3(1, 0, 2.5), new Vector3(0, 0, 15), new Vector3(1, 0.7, 0.7));
-cube2.pos = Vector3.sub(cube2.pos, new Vector3(1.6, 0, 0));
+cube2.pos = Vector3.sub(cube2.pos, new Vector3(1.6, 0, 0));</code></pre>
 
-cube1.transformTriangles();
-cube2.transformTriangles();</code></pre>
-
-                    Sau đó mình gộp lại hết tam giác của 2 cube trong 1 mảng, và sau đó gọi vòng lặp for vẽ từng tam giác như cũ:
+                    Sau đó mình gộp lại hết tam giác (đã được biến đổi) của 2 cube trong 1 mảng, và sau đó gọi vòng lặp for vẽ từng tam giác như cũ:
                     <pre><code class="language-javascript">let allTris = [];
-allTris.push(...cube1.tris);
-allTris.push(...cube2.tris);
+allTris.push(...cube1.getTransformedTriangles());
+allTris.push(...cube2.getTransformedTriangles());
 
 for (let tri of allTris) {
     ...
