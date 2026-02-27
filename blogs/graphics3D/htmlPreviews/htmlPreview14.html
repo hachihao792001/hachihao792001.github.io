@@ -68,7 +68,7 @@
 				this.z /= length;
 				return this;
 			}
-			
+
 			mulMat4x4(m) {
 				let x = this.x;
 				let y = this.y;
@@ -120,9 +120,9 @@
 				matrix.m[2][0] = f.x;
 				matrix.m[2][1] = f.y;
 				matrix.m[2][2] = f.z;
-				matrix.m[0][3] = -Vector3.dot(r,t);
-				matrix.m[1][3] = -Vector3.dot(u,t);
-				matrix.m[2][3] = -Vector3.dot(f,t);
+				matrix.m[0][3] = -Vector3.dot(r, t);
+				matrix.m[1][3] = -Vector3.dot(u, t);
+				matrix.m[2][3] = -Vector3.dot(f, t);
 				matrix.m[3][3] = 1;
 				return matrix;
 			}
@@ -167,7 +167,7 @@
 					axis.y * s,
 					axis.z * s);
 			}
-
+			
 			static buildQuaternionEuler(eulerAngles) {
 				const a = eulerAngles.x / 180 * Math.PI * 0.5;
 				const b = eulerAngles.y / 180 * Math.PI * 0.5;
@@ -262,41 +262,37 @@
 		}
 
 		class Camera {
-			constructor(pos, forward, speed, sensitivity) {
+			constructor(pos, euler, speed, sensitivity) {
 				this.pos = pos;
-				this.forward = forward;
+				this.rotation = Quaternion.buildQuaternionEuler(euler);
 				this.speed = speed;
 				this.sensitivity = sensitivity;
-
-				this.updateRightAndUp();
 			}
 
-			updateRightAndUp() {
-				this.right = Vector3.cross(this.forward, Vector3.up).normalize();
-				this.up = Vector3.cross(this.right, this.forward).normalize();
-			}
+			updateRotation(mouseMovementX, mouseMovementY) {
+				let q = Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity);
 
-			updateForward(mouseMovementX, mouseMovementY) {
-				this.updateRightAndUp();
+				let right = this.rotation.rotateVector(Vector3.right);
+				q = Quaternion.multiply(q, Quaternion.buildQuaternionAxisAngle(right, -mouseMovementY * this.sensitivity));
 
-				let q = Quaternion.buildQuaternionAxisAngle(this.up, mouseMovementX * this.sensitivity);
-				q = Quaternion.multiply(q, Quaternion.buildQuaternionAxisAngle(this.right, mouseMovementY * this.sensitivity));
-
-				this.forward = q.rotateVector(this.forward).normalize();
+				this.rotation = Quaternion.multiply(q, this.rotation);
 			}
 
 			updateMovement(dt, keyStates) {
+				let forward = this.rotation.rotateVector(Vector3.forward);
+				let right = this.rotation.rotateVector(Vector3.right);
+
 				if (keyStates['w']) {
-					this.pos = Vector3.add(this.pos, Vector3.mul(this.forward, dt * this.speed));
+					this.pos = Vector3.add(this.pos, Vector3.mul(forward, dt * this.speed));
 				}
 				if (keyStates['s']) {
-					this.pos = Vector3.sub(this.pos, Vector3.mul(this.forward, dt * this.speed));
+					this.pos = Vector3.sub(this.pos, Vector3.mul(forward, dt * this.speed));
 				}
 				if (keyStates['a']) {
-					this.pos = Vector3.sub(this.pos, Vector3.mul(this.right, dt * this.speed));
+					this.pos = Vector3.sub(this.pos, Vector3.mul(right, dt * this.speed));
 				}
 				if (keyStates['d']) {
-					this.pos = Vector3.add(this.pos, Vector3.mul(this.right, dt * this.speed));
+					this.pos = Vector3.add(this.pos, Vector3.mul(right, dt * this.speed));
 				}
 				if (keyStates['Shift']) {
 					this.pos = Vector3.add(this.pos, Vector3.mul(Vector3.down, dt * this.speed));
@@ -307,7 +303,10 @@
 			}
 
 			getViewMatrix() {
-				return Mat4x4.View(this.right, this.up, this.forward, this.pos);
+				let forward = this.rotation.rotateVector(Vector3.forward);
+				let right = this.rotation.rotateVector(Vector3.right);
+				let up = this.rotation.rotateVector(Vector3.up);
+				return Mat4x4.View(right, up, forward, this.pos);
 			}
 		}
 
@@ -316,7 +315,6 @@
 				this.tris = [];
 				this.pos = pos;
 				this.scale = scale;
-
 				this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
 
 				this.generateInitialTriangles();
@@ -410,10 +408,10 @@
 
 		const canvas = document.getElementById("gameCanvas");
 		const ctx = canvas.getContext("2d");
-		const fov = 60;
+		const fov = 90;
 		let znear = 0.01, zfar = 1000;
 		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
-		let camera = new Camera(Vector3.zero, Vector3.forward, 2, 0.2);
+		let camera = new Camera(Vector3.zero, Vector3.zero, 2, 0.2);
 		let keyStates = [];
 
 		const fpsInfo = document.getElementById("fps");
@@ -444,7 +442,7 @@
 			const viewMat = camera.getViewMatrix();
 
 			cube1.rotate(0, 50 * dt, 0);
-			cube2.rotate(50 * dt, 0, 50 * dt);
+			cube2.rotate(50 * dt, 0, 0);
 
 			let allTris = [];
 			allTris.push(...cube1.getTransformedTriangles());
@@ -483,7 +481,7 @@
 
 		canvas.addEventListener("mousemove", (e) => {
 			if (document.pointerLockElement === canvas) {
-				camera.updateForward(e.movementX, e.movementY);
+				camera.updateRotation(e.movementX, e.movementY);
 			}
 		});
 

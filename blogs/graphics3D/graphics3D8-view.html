@@ -373,44 +373,45 @@
     }
     ...
 }</code></pre>
-                    Sau đó ta sẽ tạo một class đại diện cho camera, có thuộc tính vị trí và forward của camera (từ forward ta có thể suy ra được up và right),
-                    đồng thời tích hợp luôn các thuộc tính liên quan tới điều khiển FPS vào class đó là tốc độ di chuyển và sensitivity của chuột. 
+                    Sau đó ta sẽ tạo một class đại diện cho camera, có thuộc tính vị trí và rotation của camera (cũng là một Quaternion), từ rotation này ta có thể suy ra
+                    right, up, forward bất kỳ lúc nào, bằng cách áp dụng Quaternion rotation đó vào right, up, forward thế giới. Class camera này sẽ đảm nhiệm luôn việc xử lý input chuột và bàn phím để nhìn và di chuyển, bên ngoài chỉ có nhiệm vụ truyền
+                    thông tin input vào, và truyền luôn dt để cập nhật vị trí theo tốc độ thống nhất. Hàm updateRotation sẽ nhận vào tham số là sự thay đổi của vị trí con chuột so với
+                    frame trước (sẽ nói rõ hơn ở phần dưới): (mouseMovementX, mouseMovementY). Sử dụng mouseMovementX để quay theo trục up (qua trái qua phải), chuột qua phải thì ta muốn
+                    xoay camera theo cùng chiều kim đồng, tuy nhiên engine ta làm phép xoay theo ngược chiều kim đồng hồ, cho nên ta phải đổi dấu mouseMovementX. Với nhìn lên xuống, thì
+                    ta xoay theo trục right, cũng đổi dấu mouseMovementY với lí do tương tự. Hàm updateMovement nhận vào dt của frame hiện tại, và keyStates, là một mảng đánh dấu phím nào
+                    đang được nhấn trong frame hiện tại, dựa vào keystates để cộng trừ pos tương ứng.
                     <pre><code class="language-javascript">class Camera {
-    constructor(pos, forward, speed, sensitivity) {
+    constructor(pos, euler, speed, sensitivity) {
         this.pos = pos;
-        this.forward = forward;
+        this.rotation = Quaternion.buildQuaternionEuler(euler);
         this.speed = speed;
         this.sensitivity = sensitivity;
-
-        this.updateRightAndUp();
     }
 
-    updateRightAndUp() {
-        this.right = Vector3.cross(this.forward, Vector3.up).normalize();
-        this.up = Vector3.cross(this.right, this.forward).normalize();
-    }
+    updateRotation(mouseMovementX, mouseMovementY) {
+        let q = Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity);
 
-    updateForward(mouseMovementX, mouseMovementY) {
-        this.updateRightAndUp();
+        let right = this.rotation.rotateVector(Vector3.right);
+        q = Quaternion.multiply(q, Quaternion.buildQuaternionAxisAngle(right, -mouseMovementY * this.sensitivity));
 
-        let q = Quaternion.buildQuaternionAxisAngle(this.up, mouseMovementX * this.sensitivity);
-        q = Quaternion.multiply(q, Quaternion.buildQuaternionAxisAngle(this.right, mouseMovementY * this.sensitivity));
-
-        this.forward = q.rotateVector(this.forward).normalize();
+        this.rotation = Quaternion.multiply(q, this.rotation);
     }
 
     updateMovement(dt, keyStates) {
+        let forward = this.rotation.rotateVector(Vector3.forward);
+        let right = this.rotation.rotateVector(Vector3.right);
+
         if (keyStates['w']) {
-            this.pos = Vector3.add(this.pos, Vector3.mul(this.forward, dt * this.speed));
+            this.pos = Vector3.add(this.pos, Vector3.mul(forward, dt * this.speed));
         }
         if (keyStates['s']) {
-            this.pos = Vector3.sub(this.pos, Vector3.mul(this.forward, dt * this.speed));
+            this.pos = Vector3.sub(this.pos, Vector3.mul(forward, dt * this.speed));
         }
         if (keyStates['a']) {
-            this.pos = Vector3.sub(this.pos, Vector3.mul(this.right, dt * this.speed));
+            this.pos = Vector3.sub(this.pos, Vector3.mul(right, dt * this.speed));
         }
         if (keyStates['d']) {
-            this.pos = Vector3.add(this.pos, Vector3.mul(this.right, dt * this.speed));
+            this.pos = Vector3.add(this.pos, Vector3.mul(right, dt * this.speed));
         }
         if (keyStates['Shift']) {
             this.pos = Vector3.add(this.pos, Vector3.mul(Vector3.down, dt * this.speed));
@@ -421,9 +422,87 @@
     }
 
     getViewMatrix() {
-        return Mat4x4.View(this.right, this.up, this.forward, this.pos);
+        let forward = this.rotation.rotateVector(Vector3.forward);
+        let right = this.rotation.rotateVector(Vector3.right);
+        let up = this.rotation.rotateVector(Vector3.up);
+        return Mat4x4.View(right, up, forward, this.pos);
     }
 }</code></pre>
+                    Ở bên ngoài, ta tạo một object camera với speed là 2 và sensitivity là 0.2 (bạn có thể thử và điều chỉnh theo số bạn muốn):
+                    <pre><code class="language-javascript">let camera = new Camera(Vector3.zero, Vector3.zero, 2, 0.2);</code></pre>
+                    Trong hàm update, ở mỗi frame ta tính lại view matrix, sau đó nhân view matrix đó với từng đỉnh trước khi nhân projection matrix, nhớ bỏ
+                    biến cameraPos mà ta xài để thực hiện face culling và thay bằng camera.pos:
+                    <pre><code class="language-javascript">function update(time = performance.now()) {
+    ...
+    const viewMat = camera.getViewMatrix();
+    ...
+
+    for (let tri of allTris) {
+        if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
+            let vertices = tri.vertices;
+            for (let i = 0; i < vertices.length; i++) {
+                vertices[i].mulMat4x4(viewMat);
+                vertices[i].mulMat4x4(projectionMatrix);
+                ...
+            }
+            ...
+        }
+    }
+}</code></pre>
+
+                    Đối với di chuyển camera thì ta khai báo keyStates, đăng ký 2 event 
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event">keydown</a> và 
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/keyup_event">keyup</a> để nhận event nhấn phím xuống và thả phím ra,
+                    lấy phím đang nhấn bằng e.key và set thành true hoặc false tương ứng.
+                    <pre><code class="language-javascript">let keyStates = [];
+
+...
+                        
+window.addEventListener('keydown', (e) => {
+    keyStates[e.key] = true;
+});
+window.addEventListener('keyup', (e) => {
+    keyStates[e.key] = false;
+});</code></pre>
+                    Ở hàm update thì gọi hàm updateMovement ở frame hiện tại (trước khi tính view matrix):
+                    <pre><code class="language-javascript">function update(time = performance.now()) {
+                        
+    ...
+
+    camera.updateMovement(dt, keyStates);
+    const viewMat = camera.getViewMatrix();
+
+    ...
+
+}</code></pre>
+                    Đối với xoay camera, trước tiên ta phải lock chuột lại ở vị trí chính giữa màn hình để cho cảm giác y hệt game FPS, ta check khi user
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/click_event">click</a> vào canvas thì gọi hàm 
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/requestPointerLock">requestPointerLock</a> để lock chuột và set
+                    unadjustedMovement thành true để bỏ mouse acceleration. Ta đăng ký thêm event <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/mousemove_event">mousemove</a>,
+                    nếu chuột đang được lock trong canvas thì lấy movementX và movementY từ e làm tham số để gọi updateRotation. 
+                    Khi ta di chuyển chuột thì movementX và movementY sẽ thay đổi tùy vào tốc độ ta di chuột (nếu
+                    bạn muốn xem cụ thể thì có thể console.log nó ra), còn khi chuột đứng yên thì nó cũng đứng yên. Lưu ý là ta không sử dụng xử lý deltaTime vì sự kiện mouseMove được
+                    gọi dựa vào con chuột được di chuyển bao nhiêu, nó sẽ khá giống nhau trên mọi thiết bị, cũng tùy vào phần cứng và setting của chuột.
+
+                    <pre><code class="language-javascript">canvas.addEventListener("click", async () => {
+    await canvas.requestPointerLock({
+        unadjustedMovement: true,
+    });
+});
+
+canvas.addEventListener("mousemove", (e) => {
+    if (document.pointerLockElement === canvas) {
+        camera.updateRotation(e.movementX, e.movementY);
+    }
+});</code></pre>
+                    Full code (nhấn vào canvas để thử):
+                    <div class="htmlPreview" id="htmlPreview14"></div>
+                    Khi bạn di chuyển qua lại bạn sẽ thấy ngay 2 vấn đề lớn:
+                    <ol>
+                        <li>Di chuyển sao cho 2 cube align với nhau sẽ thấy được cube đằng sau mặc dù bị cube đằng trước che</li>
+                        <li>Khi bạn đi xuyên qua cube và đi thêm một đoạn nữa, bạn lại thấy được 2 cube nhưng lúc này bạn càng đi nó càng xa (thật ra bạn đang thấy được đằng sau bạn)</li>
+                    </ol>
+                    Đừng lo, 2 cái này không liên quan tới View matrix, ta đã xong với view matrix rồi 😳
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 
