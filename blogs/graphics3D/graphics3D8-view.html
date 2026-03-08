@@ -502,7 +502,64 @@ canvas.addEventListener("mousemove", (e) => {
                         <li>Di chuyển sao cho 2 cube align với nhau sẽ thấy được cube đằng sau mặc dù bị cube đằng trước che</li>
                         <li>Khi bạn đi xuyên qua cube và đi thêm một đoạn nữa, bạn lại thấy được 2 cube nhưng lúc này bạn càng đi nó càng xa (thật ra bạn đang thấy được đằng sau bạn)</li>
                     </ol>
-                    Đừng lo, 2 cái này không liên quan tới View matrix, ta đã xong với view matrix rồi 😳
+                    Đừng lo, 2 cái này không liên quan tới View matrix, ta đã xong với view matrix rồi 😳<br/><br/>
+                    Vấn đề đầu tiên thật ra cũng đơn giản, đó là vì trước giờ ta chỉ vẽ viền của các tam giác chứ chưa hề tô màu cho nó, nên cái nào đứng trước cũng như vậy. Ta sẽ
+                    tô một màu xám xám cho các tam giác bằng hàm ctx.fill(), nhưng vẫn vẽ viền để thấy được wireframe của cube:
+                    <pre><code class="language-javascript">for (let tri of allTris) {
+    if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
+        ...
+        ctx.fillStyle = "#ccc";
+        ctx.fill();
+        ctx.strokeStyle = "#000";
+        ctx.stroke();
+    }
+}</code></pre>
+                    Để giải quyết được vấn đề "đằng sau che đằng trước", ta chỉ cần sort lại các tam giác theo khoảng cách từ nó tới camera:
+                    <pre><code class="language-javascript">let allTris = [];
+allTris.push(...cube1.getTransformedTriangles());
+allTris.push(...cube2.getTransformedTriangles());
+allTris.sort((a, b) => {
+    let distA = Vector3.sub(a.getCenter(), camera.pos).magnitude();
+    let distB = Vector3.sub(b.getCenter(), camera.pos).magnitude();
+    return distB - distA;
+});</code></pre>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview15"></div>
+                    Về vấn đề thứ hai, lí do ta lại nhìn được cube khi cube ở đằng sau ta là vì ta chưa check trường hợp z âm trong việc hiển thị, cho nên nó ở z=5 cũng giống y hệt như
+                    nó ở z=-5. Nếu bạn nhớ thì hồi làm projection matrix ta có xử lí việc này bằng near plane, nhưng thật ra cái đó chỉ là dùng để "chuẩn hóa" z từ khoảng [near plane, far plane]
+                    tới khoảng [0; 1], để cho z < near plane là sẽ không thấy được, nhưng ta chưa thật sự cài đặt việc "không thấy được" đó. Với cách làm thì thoạt nghĩ ta chỉ cần 
+                    không render những tam giác có z âm, nhưng giá trị z chỉ đại diện cho một điểm trên tam giác (cụ thể là chính giữa tam giác), nên không loại bỏ được trường hợp tam giác nằm
+                    giữa near plane. Cho nên ta cần có một thuật toán để "cắt" những tam giác nào mà đi xuyên qua near plane, đó gọi là kỹ thuật clipping.<br/><br/>
+                    Việc cắt một tam giác bằng một mặt phẳng nghe có vẻ phức tạp, nhưng ta có thể phân tích nó từ từ. Đầu tiên, ta có thể tưởng tượng được là một tam
+                    giác và một mặt phẳng giao nhau sẽ thành một đoạn thẳng, mà một đoạn thẳng thì được định nghĩa bằng 2 điểm, 
+                    2 điểm đó chính là giao điểm của 2 cạnh tam giác với mặt phẳng đó, nghĩa là ta chỉ cần giải quyết bài toán tìm giao điểm giữa một đoạn thẳng với một mặt phẳng.<br/><br/>
+                    Ở cấp 3 bạn đã học phương trình mặt phẳng là \(Ax+By+Cz+D=0\),
+                    trong đó vector pháp tuyến \(\vec{n}=(A,B,C)\). Bạn để ý là \(Ax+By+Cz\) chính là tích vô hướng giữa \(\vec{n}\) và một điểm \(P=(x,y,z)\). Ta có thể viết
+                    phương trình trên thành \(\vec{n}.P=D\) (\(D\) là hằng số bất kỳ nên đổi dấu hay không cũng vậy), bạn có thể hiểu phương trình này là "tập hợp các điểm \(P\)
+                    có độ dài hình chiếu lên vector pháp tuyến \(\vec{n}\) là \(D\) sẽ tạo ra một mặt phẳng".
+                    Từ kỹ thuật "chiếu lên pháp tuyến" này, ta cũng có thể giải quyết được bài toán tìm giao điểm giữa đoạn thẳng và mặt phẳng. Gọi 2 điểm ở 2 đầu đoạn thẳng là 
+                    \(A\) và \(B\). Gọi hình chiếu của điểm \(A\) và \(B\) lên \(\vec{n}\) là \(A_n\) và \(B_n\), đoạn thẳng \(AB\) sẽ giao với mặt phẳng khi \(|\vec{A_n}| < D < |\vec{B_n}|\)
+                    hoặc \(|\vec{A_n}| > D > |\vec{B_n}|\). Nhìn hình dưới đây để thấy rõ hơn, bạn nên nhớ là \(\vec{n}\) có thể được vẽ ở đâu cũng được chứ không nhất thiết phải
+                    ở đúng trục đi qua gốc tọa độ.
+                    <div align="center"><img style="max-height: 500px;" src="images/graphics3D8/LinePlaneIntersection.png"/></div>
+                    Gọi \(M\) là giao điểm của \(AB\) và mặt phẳng, gọi \(N\) là hình chiếu của gốc tọa độ lên thẳng mặt phẳng (\(ON = D\)), ta thấy rằng \(\frac{AM}{AB}=\frac{A_nN}{A_nB_n}\)
+                    (mình cũng chả biết chứng minh sao ngoài việc nói do \(AA_n, NM, BB_n\) song song nhau). \(\frac{AM}{AB}\) là tỉ lệ của \(AM\) so với \(AB\), nghĩa là ta sẽ có
+                    \(\vec{AM} = \vec{AB} * \frac{AM}{AB}\), có được \(\vec{AM}\) ta lấy điểm \(A + \vec{AM}\) sẽ ra tọa độ điểm \(M\), chính là thứ ta cần tìm 😳 <br/><br/>
+
+                    Sau khi biết cách cắt tam giác bằng mặt phẳng rồi, ta quay lại với trường hợp near plane. Ta muốn loại bỏ những phần đằng sau near plane, chỉ hiển thị phần đằng trước.
+                    Ta sẽ xem vector pháp tuyến của một mặt phẳng là "hướng nhìn" của nó, những điểm mặt phẳng đó đang "nhìn" sẽ nằm "đằng trước" mặt phẳng, còn ngược lại thì nằm "đằng sau" 
+                    mặt phẳng. Một điểm sẽ nằm đằng trước mặt phẳng nếu góc hợp giữa "vector từ một điểm trên mặt phẳng tới điểm đó" với vector pháp tuyến của mặt phẳng nhỏ hơn 90, đồng nghĩa với
+                    việc tích vô hướng của 2 vector đó phải lớn hơn 0 😳 Tuy nhiên, ta để ý là sau khi cắt một tam giác bằng một mặt phẳng, nó sẽ ra một tam giác nhỏ hơn và một tứ giác (quad), 4
+                    vì engine ta chỉ hiểu tam giác nên ta phải cắt tứ giác đó thành 2 tam giác nữa, ta chỉ cần lấy 1 trong 2 đường chéo của tứ giác đó để cắt, không quan trọng đường chéo nào, 
+                    nhưng cái quan trọng là sau khi cắt ta phải ghi thứ tự đỉnh theo chiều kim đồng hồ như đã thống nhất.<br/><br/>
+                    Nhìn tổng thể, đối với mỗi tam giác, ta sẽ có 4 trường hợp:
+                    <img style="max-height: 400px; float:right" src="images/graphics3D8/TrianglePlane4Cases.png"/>
+                    <ol>
+                        <li>Cả 3 điểm đều nằm đằng trước near plane</li>
+                        <li>Cả 3 điểm đều nằm đằng sau near plane</li>
+                        <li>Có 1 điểm nằm đằng trước và 2 điểm nằm đằng sau near plane, ta phải cắt tam giác, lúc này ta chỉ cần hiển thị phần tam giác nhỏ</li>
+                        <li>Có 2 điểm nằm đằng trước và 1 điểm nằm đằng sau near plane, ta phải cắt tam giác, lúc này phần quad sẽ nhìn thấy được, ta phải cắt quad đó ra thành 2 tam giác để hiển thị</li>
+                    </ol>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 

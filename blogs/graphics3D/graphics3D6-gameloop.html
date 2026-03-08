@@ -171,8 +171,10 @@ a_x b_y - a_y b_x
                     $$
                     Vì trong công thức trên có \(cos\theta\), nên \(\vec{a} \cdot \vec{b} > 0\) khi \(\theta < 90\), \(\vec{a} \cdot \vec{b} < 0\) khi  \(\theta > 90\). Đúng cái ta cần,
                     \(\theta < 90\) nghĩa là \(\vec{a}\) và \(\vec{b}\) đang "hướng cùng nhau" và \(\theta > 90\) nghĩa là \(\vec{a}\) và \(\vec{b}\) đang "hướng ngược nhau".<br/><br/>
+                    Nhân tiện đang nói về tích vô hướng, mình sẽ nói luôn về một tính chất khác của nó, nếu một trong 2 vector là vector đơn vị (độ dài = 1),
+                    thì tích vô hướng của 2 vector đó sẽ là độ dài hình chiếu của vector còn lại lên vector đơn vị đó. Tính chất này không relevant hiện giờ nhưng sẽ hữu dụng về sau.<br/><br/>
 
-                    Hàm tính tích vô hướng (dot) và tích có hướng (cross) ta đã làm sẵn ở class Vector3. Đói với class Triangle ta sẽ thêm hàm tìm tâm getCenter và hàm tìm vector pháp tuyến
+                    Hàm tính tích vô hướng (dot) và tích có hướng (cross) ta đã làm sẵn ở class Vector3. Đối với class Triangle ta sẽ thêm hàm tìm tâm getCenter và hàm tìm vector pháp tuyến
                     getNormal:
                     <pre><code class="language-javascript">getCenter() {
     let x = (this.vertices[0].x + this.vertices[1].x + this.vertices[2].x) / 3.0;
