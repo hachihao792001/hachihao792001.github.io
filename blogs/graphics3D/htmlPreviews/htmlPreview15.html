@@ -208,10 +208,6 @@
 					res.c,
 					res.d);
 			}
-			static RotateVectorAxisAngle(v, axis, angle) {
-				let radian = angle / 180.0 * Math.PI;
-				return buildQuaternionAxisAngle(axis, radian).rotateVector(v);
-			}
 		}
 
 		class Triangle {

@@ -213,10 +213,6 @@
             res.c,
             res.d);
     }
-    static RotateVectorAxisAngle(v, axis, angle) {   //xoay vector quanh trục axis 1 góc angle, sử dụng axis và angle để xây dựng Quaternion và dùng Quaternion đó để xoay 
-        let radian = angle / 180.0 * Math.PI;
-        return buildQuaternionAxisAngle(axis, radian).rotateVector(v);
-    }
 }</code></pre>
                     Cách sử dụng Quaternion vào việc xoay cũng giống như cách ta sử dụng Rotation matrix. Ở cách Rotation matrix, ta không liên tục thay đổi tọa độ của tất cả
                     các đỉnh của object, mà chỉ thay đổi rotation matrix rồi cuối mỗi frame mới áp dụng vào các đỉnh.
