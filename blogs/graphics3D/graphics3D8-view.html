@@ -35,7 +35,7 @@
 
                 <div class="blog-content col-12 col-lg-10">
                     <div id="graphics3D-nav-top"></div>
-                    <h1>View matrix</h1>
+                    <h1>View matrix và Clipping</h1>
                     
                     Ta sẽ về lại với ma trận sau một blog khủng hoảng với toán 4D 🥵 Blog này không nằm kế tiếp blog model (đủ bộ Model View Project matrix) là có lí do cả.<br/><br/>
 
@@ -374,7 +374,8 @@
     ...
 }</code></pre>
                     Sau đó ta sẽ tạo một class đại diện cho camera, có thuộc tính vị trí và rotation của camera (cũng là một Quaternion), từ rotation này ta có thể suy ra
-                    right, up, forward bất kỳ lúc nào, bằng cách áp dụng Quaternion rotation đó vào right, up, forward thế giới. Class camera này sẽ đảm nhiệm luôn việc xử lý input chuột và bàn phím để nhìn và di chuyển, bên ngoài chỉ có nhiệm vụ truyền
+                    right, up, forward bất kỳ lúc nào, bằng cách áp dụng Quaternion rotation đó vào right, up, forward thế giới (đó cũng là lí do tại sao mình phải viết blog Quaternion trước
+                    blog này, vì sử dụng euler angles cho camera sẽ rất là bủh lmao). Class camera này sẽ đảm nhiệm luôn việc xử lý input chuột và bàn phím để nhìn và di chuyển, bên ngoài chỉ có nhiệm vụ truyền
                     thông tin input vào, và truyền luôn dt để cập nhật vị trí theo tốc độ thống nhất. Hàm updateRotation sẽ nhận vào tham số là sự thay đổi của vị trí con chuột so với
                     frame trước (sẽ nói rõ hơn ở phần dưới): (mouseMovementX, mouseMovementY). Sử dụng mouseMovementX để quay theo trục up (qua trái qua phải), chuột qua phải thì ta muốn
                     xoay camera theo cùng chiều kim đồng, tuy nhiên engine ta làm phép xoay theo ngược chiều kim đồng hồ, cho nên ta phải đổi dấu mouseMovementX. Với nhìn lên xuống, thì
@@ -546,12 +547,14 @@ allTris.sort((a, b) => {
                     (mình cũng chả biết chứng minh sao ngoài việc nói do \(AA_n, NM, BB_n\) song song nhau). \(\frac{AM}{AB}\) là tỉ lệ của \(AM\) so với \(AB\), nghĩa là ta sẽ có
                     \(\vec{AM} = \vec{AB} * \frac{AM}{AB}\), có được \(\vec{AM}\) ta lấy điểm \(A + \vec{AM}\) sẽ ra tọa độ điểm \(M\), chính là thứ ta cần tìm 😳 <br/><br/>
 
-                    Sau khi biết cách cắt tam giác bằng mặt phẳng rồi, ta quay lại với trường hợp near plane. Ta muốn loại bỏ những phần đằng sau near plane, chỉ hiển thị phần đằng trước.
+                    Sau khi biết cách cắt tam giác bằng mặt phẳng rồi, ta để ý là sau khi cắt một tam giác bằng một mặt phẳng, nó sẽ ra một tam giác nhỏ hơn và một tứ giác (quad).
+                    Vì engine ta chỉ hiểu tam giác nên ta phải cắt tứ giác đó thành 2 tam giác nữa, ta chỉ cần lấy 1 trong 2 đường chéo của tứ giác đó để cắt, không quan trọng đường chéo nào, 
+                    nhưng cái quan trọng là sau khi cắt ta phải ghi thứ tự đỉnh theo chiều kim đồng hồ như đã thống nhất ở <a href="graphics3D2-definitions.html">blog 2</a>.<br/><br/>
+
+                    Quay trở lại với engine chúng ta, ta muốn loại bỏ những phần đằng sau near plane, chỉ hiển thị phần đằng trước.
                     Ta sẽ xem vector pháp tuyến của một mặt phẳng là "hướng nhìn" của nó, những điểm mặt phẳng đó đang "nhìn" sẽ nằm "đằng trước" mặt phẳng, còn ngược lại thì nằm "đằng sau" 
-                    mặt phẳng. Một điểm sẽ nằm đằng trước mặt phẳng nếu góc hợp giữa "vector từ một điểm trên mặt phẳng tới điểm đó" với vector pháp tuyến của mặt phẳng nhỏ hơn 90, đồng nghĩa với
-                    việc tích vô hướng của 2 vector đó phải lớn hơn 0 😳 Tuy nhiên, ta để ý là sau khi cắt một tam giác bằng một mặt phẳng, nó sẽ ra một tam giác nhỏ hơn và một tứ giác (quad), 4
-                    vì engine ta chỉ hiểu tam giác nên ta phải cắt tứ giác đó thành 2 tam giác nữa, ta chỉ cần lấy 1 trong 2 đường chéo của tứ giác đó để cắt, không quan trọng đường chéo nào, 
-                    nhưng cái quan trọng là sau khi cắt ta phải ghi thứ tự đỉnh theo chiều kim đồng hồ như đã thống nhất.<br/><br/>
+                    mặt phẳng. Một điểm \(P\) sẽ nằm đằng trước mặt phẳng nếu hình chiếu của \(P\) lên \( \vec{n} \) có độ dài lớn hơn \(D\) (bạn nên nhớ rằng độ dài hình chiếu đó và \(D\) đều có
+                    dấu). Đồng nghĩa với việc điểm \(P\) nằm đằng trước mặt phẳng nếu \( \vec{P} \cdot \vec{n} \geq D \) (có dấu bằng hay không tùy bạn).<br/><br/>
                     Nhìn tổng thể, đối với mỗi tam giác, ta sẽ có 4 trường hợp:
                     <div align="center"><img style="max-height: 300px;" src="images/graphics3D8/TrianglePlane4Cases.png"/></div>
                     <ol>
@@ -560,6 +563,231 @@ allTris.sort((a, b) => {
                         <li>Có 1 điểm nằm đằng trước và 2 điểm nằm đằng sau near plane, ta phải cắt tam giác, lúc này ta chỉ cần hiển thị phần tam giác nhỏ</li>
                         <li>Có 2 điểm nằm đằng trước và 1 điểm nằm đằng sau near plane, ta phải cắt tam giác, lúc này phần quad sẽ nhìn thấy được, ta phải cắt quad đó ra thành 2 tam giác để hiển thị</li>
                     </ol>
+
+                    Về việc cài đặt, ý tưởng chung là ta sẽ for qua 3 đỉnh của tam giác
+                    và check xem từng đỉnh có nằm trước near plane hay không, và add vào 2 mảng chứa các điểm nằm trước (frontPoints) và nằm sau (behindPoints), 
+                    rồi dựa vào độ dài 2 mảng để xét trường hợp.
+                    Nếu nằm vào 2 trường hợp đầu thì khá dễ, trả về tam giác cũ hoặc không trả về gì.
+                    Nếu nằm vào trường hợp 3 và 4 thì ta phải tìm thêm 2 giao điểm của 2 cạnh tam giác với mặt phẳng, và dựng các tam giác mới bằng các đỉnh cũ nằm trước near plane
+                    và 2 giao điểm mới vừa tìm được, và phải dựng nó theo chiều kim đồng hồ.
+                    <div align="center"><img style="max-height: 500px;" src="images/graphics3D8/Clipping.png"/></div>
+                    Hình này mình sẽ nói hơi vòng vo, nên bạn cần ngẫm thêm chút để hiểu 😅 Cái ta cần lưu ý là thứ tự ta đánh dấu 2 giao điểm, trong hình thì mình đánh dấu thứ tự giao điểm 
+                    theo thứ tự nối frontPoints với các behindPoints. Ví dụ với trường hợp frontPoints = [v0], behindPoints = [v1, v2], thì I1 = intersection(v0, v1), I2 = intersection(v0, v2),
+                    tương tự với 2 trường hợp còn lại. Đối với 2 trường hợp đầu, ta dựng tam giác với thứ tự đỉnh [frontPoints[0], I1, I2].
+                    Tuy nhiên, đối với trường hợp frontPoints = [v1], behindPoints = [v0, v2], thì bạn thấy I1 và I2 bị ngược lại, vì lúc này behindPoints đã bị đứt thứ tự, ta phải chỉnh lại thứ tự 
+                    cho đúng là [v2, v0] (v2 quay trở lại v0 theo chiều kim đồng hồ).<br/>
+                    <i>Javidx9 không hề nói tới vụ này và code của ổng cũng không có, mình đang nghi ngờ ổng đã code sai, video ổng vẫn
+                    chạy đúng có thể vì chỉ gặp đúng 2 trường hợp đầu trong lúc clip tam giác, mình chưa clone code ổng về chạy thử nên chưa chắc chắn được.</i><br/><br/>
+                    Đối với trường hợp 4 cũng tương tự thôi, nhìn hình, ta dựng 2 tam giác mới theo thứ tự [frontPoints[0], frontPoints[1], I1] và [frontPoints[1], I2, I1]. Với
+                    trường hợp behindPoints = [v1] thì swap 2 frontPoints.
+                    <div align="center"><img style="max-height: 500px;" src="images/graphics3D8/Clipping2.png"/></div><br/><br/>
+
+                    Bây giờ ta sẽ bắt đầu code Clipping vào engine của chúng ta. Đầu tiên mình định nghĩa class Plane, constructor truyền vào vector pháp tuyến và một điểm bất kỳ
+                    trên plane (cũng là cách ta xác định một mặt phẳng trong toán học), dùng 2 cái đó ta có thể tính được D. Thêm hàm isPointInFrontOfPlane để check xem một điểm có nằm trước plane hay không,
+                    và hàm intersectWithLine để tìm giao điểm của một đoạn thẳng AB với plane, với cơ sở toán học như trên đã nói:
+                    <pre><code class="language-javascript">class Plane {
+    constructor(normal, P) {
+        this.normal = normal.normalize();
+        this.P = P;
+        this.D = Vector3.dot(this.normal, this.P);
+    }
+
+    isPointInFrontOfPlane(p) {
+        return Vector3.dot(p, this.normal) >= this.D;
+    }
+
+    intersectWithLine(A, B) {
+        let An = Vector3.dot(A, this.normal);
+        let Bn = Vector3.dot(B, this.normal);
+        let vectorAB = Vector3.sub(B, A);
+        let vectorAM = Vector3.mul(vectorAB, (this.D - An) / (Bn - An));
+        return Vector3.add(A, vectorAM);
+    }
+}</code></pre>
+
+                    Trong class Triangle, ta thêm hàm cắt tam giác bằng plane và trả ra một list tam giác mới.
+                    <pre><code class="language-javascript">clipAgainstPlane(plane) {
+    let outTris = [];
+
+    let frontPoints = [];
+    let behindPoints = [];
+
+    for (let i = 0; i < this.vertices.length; i++) {    //for qua từng đỉnh check xem đỉnh nằm nằm trước plane, add vào mảng phù hợp
+        if (plane.isPointInFrontOfPlane(this.vertices[i])) {
+            frontPoints.push(i);
+        } else {
+            behindPoints.push(i);
+        }
+    }
+
+    if (frontPoints.length == 3) {  // trường hợp 1
+        outTris.push(this.clone());
+    } else if (frontPoints.length == 1 && behindPoints.length == 2) {   // trường hợp 3
+        let outTri = new Triangle();
+
+        if (behindPoints[0] == 0 && behindPoints[1] == 2) {     //swap 2 đỉnh khi gặp trường hợp thứ tự đứt
+            behindPoints[0] = 2;
+            behindPoints[1] = 0;
+        }
+
+        let f = this.vertices[frontPoints[0]];
+        let b0 = this.vertices[behindPoints[0]];
+        let b1 = this.vertices[behindPoints[1]];
+
+        outTri.vertices[0] = f;
+        outTri.vertices[1] = plane.intersectWithLine(f, b0);
+        outTri.vertices[2] = plane.intersectWithLine(f, b1);
+
+        outTris.push(outTri);
+    } else if (frontPoints.length == 2 && behindPoints.length == 1) {   // trường hợp 4
+        let outTri1 = new Triangle(), outTri2 = new Triangle();
+
+        if (frontPoints[0] == 0 && frontPoints[1] == 2) {   //swap 2 đỉnh khi gặp trường hợp thứ tự đứt
+            frontPoints[0] = 2;
+            frontPoints[1] = 0;
+        }
+
+        let f0 = this.vertices[frontPoints[0]];
+        let f1 = this.vertices[frontPoints[1]];
+        let b = this.vertices[behindPoints[0]];
+
+        let intersection1 = plane.intersectWithLine(f0, b);
+        let intersection2 = plane.intersectWithLine(f1, b);
+
+        outTri1.vertices[0] = f0;
+        outTri1.vertices[1] = f1;
+        outTri1.vertices[2] = intersection1;
+        outTris.push(outTri1);
+
+        outTri2.vertices[0] = f1.clone();   // phải clone vì 2 tam giác xài chung reference tới f1 sẽ có hệ lụy về sau
+        outTri2.vertices[1] = intersection2;
+        outTri2.vertices[2] = intersection1.clone();    // phải clone vì lí do như trên
+        outTris.push(outTri2);
+    }
+    // trường hợp 2
+    return outTris;
+}</code></pre>
+                    Trước khi ta define near plane trong code, ta phải nhớ lại là near plane là mặt phẳng nằm đằng trước camera, có vector pháp tuyến cùng chiều với forward của camera và cách
+                    camera một khoảng \(D = z_{near}\). Như vậy, mỗi thứ sẽ dễ dàng hơn nếu camera nằm ở gốc tọa độ và hướng về trục \(z\), đồng nghĩa với việc ta đã áp dụng mọi thứ với view matrix
+                    (đưa về view space).
+                    Như vậy, ta phải áp dụng view matrix trước khi thực hiện clipping 😳 Nghĩa là ta phải chuyển phần code này:
+                    <pre><code>
+lấy hết tam giác
+sort tam giác
+foreach tam giác:
+    if tam giác nhìn thấy được:
+        áp dụng view matrix
+        áp dụng projection matrix
+        chia w
+        áp dụng kích thước canvas
+        vẽ tam giác
+</code></pre>
+                    Thành:
+                    <pre><code>
+lấy hết tam giác
+foreach tam giác:
+    if tam giác nhìn thấy được:
+        áp dụng view matrix
+        cắt tam giác bằng near plane
+        thêm các tam giác mới vào list tam giác nhìn thấy được
+sort tam giác nhìn thấy được
+foreach tam giác nhìn thấy được:
+    áp dụng projection matrix
+    chia w
+    áp dụng kích thước canvas
+    vẽ tam giác
+</code></pre>
+                    Cụ thể:
+                    <pre><code class="language-javascript">let objectTris = []; //đổi tên allTris thành objectTris vì nó đúng hơn
+objectTris.push(...cube1.getTransformedTriangles());
+objectTris.push(...cube2.getTransformedTriangles());
+
+let visibleTris = [];
+for (let tri of objectTris) {
+    if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {   // backface culling ngay từ đây để đỡ tính toán dư thừa
+        tri.mulMat4x4(viewMat);
+        visibleTris.push(...tri.clipAgainstPlane(nearPlane));   // cắt bằng near plane
+    }
+}
+visibleTris.sort((a, b) => {        // sort tam giác theo khoảng cách tới camera, vì lúc này đã áp dụng view matrix rồi nên không cần phải trừ camera.pos nữa
+    let distA = a.getCenter().magnitude();
+    let distB = b.getCenter().magnitude();
+    return distB - distA;
+});
+
+for (let tri of visibleTris) {
+    tri.mulMat4x4(projectionMatrix);
+    tri.perspectiveDivide();    // viết thêm hàm chia cho w cho cả 3 đỉnh của tam giác, tách biệt khỏi phần áp dụng kích thước canvas (có lí do)
+
+    let vertices = tri.vertices;
+    for (let i = 0; i < vertices.length; i++) {
+        vertices[i] = new Vector3(
+            vertices[i].x * canvas.width + canvas.width / 2,
+            -vertices[i].y * canvas.height + canvas.height / 2,
+            1);
+    }
+    ctx.beginPath();
+    ...
+}</code></pre>
+                    Cài đặt hàm perspectiveDivide() của class Triangle:
+                    <pre><code class="language-javascript">perspectiveDivide() {
+    for (let i = 0; i < this.vertices.length; i++) {
+        this.vertices[i] = Vector3.div(this.vertices[i], this.vertices[i].w);
+    }
+}</code></pre>
+                    Định nghĩa near plane:
+                    <pre><code class="language-javascript">let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));</code></pre>
+                    Full code:
+                    <div class="htmlPreview" id="htmlPreview16"></div>
+                    Bạn thấy là nó sẽ không bị "nhìn được đằng sau" nữa, và khi lại gần cube cũng không bị hiện các đường lạ lạ. Nếu bạn muốn nhìn rõ hơn near plane cắt cube ra sao
+                    thì bạn hãy tăng znear lên.<br/><br/>
+
+                    Nhưng clipping không dừng ở đây, thật ra ta cần phải clip các tam giác với 4 cạnh màn hình nữa, để tránh các tam giác quá gần màn hình trở nên quá bự, tốn
+                    nhiều thời gian để vẽ những phần bên ngoài canvas. Mà do ta dùng ctx.fill() của javascript nên tam giác bự cỡ nào thì ta cũng không thấy fps giảm, nhưng ở blog
+                    sau sẽ khác 😳 Ở blog này ta phải làm được việc clip 4 cạnh màn hình thì ta mới dễ thở ở blog sau được 🥵<br/><br/>
+                    Về cài đặt thì cách đơn giản nhất là clip hết tam giác với 1 cạnh, lưu hết các tam giác cũ và mới vào 1 mảng, rồi dùng tiếp mảng đó để clip tiếp với cạnh tiếp theo,
+                    cho đến khi hết cạnh. Cách này sẽ sinh ra các mảng rác, cách tốt hơn là sử dụng một queue, với mỗi plane, pop từng tam giác một ra để clip với plane đó xong add
+                    các tam giác kết quả vào cuối queue, sau khi xong 1 plane thì queue đó sẽ chỉ bao gồm các tam giác kết quả, và xài tiếp queue đó cho plane tiếp theo. Nhưng mà code
+                    thêm CTDL queue vào trong engine thì sẽ làm code càng dài thêm, nên mình sẽ sử dụng cách đầu 😅<br/><br/>
+                    Định nghĩa 4 plane đại diện cho 4 cạnh màn hình:
+                    <pre><code class="language-javascript">let edgePlanes = [
+    new Plane(Vector3.down, new Vector3(0, 0.5, 0)),
+    new Plane(Vector3.up, new Vector3(0, -0.5, 0)),
+    new Plane(Vector3.right, new Vector3(-0.5, 0, 0)),
+    new Plane(Vector3.left, new Vector3(0.5, 0, 0))
+];</code></pre>
+                    Bạn để ý 4 plane mình tạo sẽ tạo thành một hình chữ nhật kéo dài từ màn hình ra phía trước camera, nghĩa là 4 plane này phải thực hiện sau khi ta áp dụng projection matrix
+                    và perspective divide. Nếu mình thực hiện nó trước khi áp dụng projection matrix, thì ta phải tạo 4 plane là 4 mặt của frustum góc nhìn, lúc đó sẽ khó tìm ra được vector pháp
+                    tuyến hơn nhiều 😳 Như vậy, ta phải lôi luôn 2 dòng áp dụng projection matrix và perspective devide ra khỏi vòng for hiển thị:
+                    <pre><code class="language-javascript">for (let tri of visibleTris) {
+    tri.mulMat4x4(projectionMatrix);
+    tri.perspectiveDivide();    //đây là lí do tại sao mình phải tạo thêm hàm này cho việc chia w
+}
+
+let clippedTris = visibleTris;
+for (let plane of edgePlanes) {
+    let newTris = [];
+    for (let tri of clippedTris) {
+        newTris.push(...tri.clipAgainstPlane(plane));
+    }
+    clippedTris = newTris;
+}
+
+for (let tri of clippedTris) {
+    let vertices = tri.vertices;
+    for (let i = 0; i < vertices.length; i++) {
+        vertices[i] = new Vector3(
+            vertices[i].x * canvas.width + canvas.width / 2,
+            -vertices[i].y * canvas.height + canvas.height / 2,
+            1);
+    }
+    ...
+}</code></pre>
+                    Full code:
+                    <div class="htmlPreview" id="htmlPreview17"></div>
+                    Di chuyển sao cho cạnh màn hình đi qua cube, bạn sẽ thấy nó clip và nhìn khá đã mắt 😳<br/><br/>
+                    Nếu bạn không biết, thì các thư viện đồ họa như OpenGL, Vulkan,... đều thực hiện việc clipping này ngầm, nếu bạn từng code qua với chúng thì bạn chỉ cần nhân 
+                    model view projection matrix, xong đưa cho nó các tam giác và vertex buffer, nó sẽ vẽ ra được một cách bình thường và hiệu quả.
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 

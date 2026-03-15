@@ -281,41 +281,42 @@
 				} else if (frontPoints.length == 1 && behindPoints.length == 2) {
 					let outTri = new Triangle();
 
-					let f = frontPoints[0];
-					let b1 = behindPoints[0];
-					let b2 = behindPoints[1];
-					if (b1 == 0 && b2 == 2) {
-						b1 = 2;
-						b2 = 0;
+					if (behindPoints[0] == 0 && behindPoints[1] == 2) {
+						behindPoints[0] = 2;
+						behindPoints[1] = 0;
 					}
-					outTri.vertices[0] = this.vertices[f];
-					outTri.vertices[1] = plane.intersectWithLine(this.vertices[f], this.vertices[b1]);
-					outTri.vertices[2] = plane.intersectWithLine(this.vertices[f], this.vertices[b2]);
 
+					let f = this.vertices[frontPoints[0]];
+					let b0 = this.vertices[behindPoints[0]];
+					let b1 = this.vertices[behindPoints[1]];
+
+					outTri.vertices[0] = f;
+					outTri.vertices[1] = plane.intersectWithLine(f, b0);
+					outTri.vertices[2] = plane.intersectWithLine(f, b1);
 					outTris.push(outTri);
 				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
 					let outTri1 = new Triangle(), outTri2 = new Triangle();
 
-					let f1 = frontPoints[0];
-					let f2 = frontPoints[1];
-					let b = behindPoints[0];
-					if (f1 == 0 && f2 == 2) {
-						f1 = 2;
-						f2 = 0;
+					if (frontPoints[0] == 0 && frontPoints[1] == 2) {
+						frontPoints[0] = 2;
+						frontPoints[1] = 0;
 					}
 
-					let intersection1 = plane.intersectWithLine(this.vertices[f1], this.vertices[b]);
-					let intersection2 = plane.intersectWithLine(this.vertices[f2], this.vertices[b]);
+					let f0 = this.vertices[frontPoints[0]];
+					let f1 = this.vertices[frontPoints[1]];
+					let b = this.vertices[behindPoints[0]];
 
-					outTri1.vertices[0] = this.vertices[f1];
-					outTri1.vertices[1] = this.vertices[f2];
+					let intersection1 = plane.intersectWithLine(f0, b);
+					let intersection2 = plane.intersectWithLine(f1, b);
+
+					outTri1.vertices[0] = f0;
+					outTri1.vertices[1] = f1;
 					outTri1.vertices[2] = intersection1;
 					outTris.push(outTri1);
 
-					outTri2.vertices[0] = this.vertices[f2].clone();
+					outTri2.vertices[0] = f1.clone();
 					outTri2.vertices[1] = intersection2;
 					outTri2.vertices[2] = intersection1.clone();
-
 					outTris.push(outTri2);
 				}
 
@@ -327,7 +328,7 @@
 			constructor(normal, P) {
 				this.normal = normal.normalize();
 				this.P = P;
-				this.D =Vector3.dot(this.normal, this.P);
+				this.D = Vector3.dot(this.normal, this.P);
 			}
 
 			isPointInFrontOfPlane(p) {

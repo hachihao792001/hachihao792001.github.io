@@ -49,8 +49,8 @@
     },
     {
         "id": "graphics3D8",
-        "webTitle": "Graphics Engine 3D #8: View matrix",
-        "title": "Graphics Engine 3D #8: View matrix",
+        "webTitle": "Graphics Engine 3D #8: View matrix và Clipping",
+        "title": "Graphics Engine 3D #8: View matrix và Clipping",
         "route": "/blogs/graphics3D/graphics3D8-view.html"
     }
 ]
