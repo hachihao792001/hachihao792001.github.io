@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<title>3D Engine</title>
+</head>
+
+<body style="text-align: center; background: #f0f0f0">
+	<h1>3D Engine</h1>
+	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
+	<h2 id="fps">FPS: 0</h2>
+	<script>
+
+		class Color {
+			constructor(r, g, b) {
+				this.r = r;
+				this.g = g;
+				this.b = b;
+			}
+		}
+
+		class Graphics {
+			constructor() {
+				this.imageData = ctx.createImageData(canvas.width, canvas.height);
+				this.screenBuffer = [];
+			}
+
+			initScreenBuffer() {
+				for (let i = 0; i < canvas.height; i++) {
+					let screenRow = [];
+					for (let j = 0; j < canvas.width; j++) {
+						screenRow.push(new Color(255, 255, 255));
+					}
+					this.screenBuffer.push(screenRow);
+				}
+			}
+
+			clearScreen() {
+				for (let i = 0; i < this.screenBuffer.length; i++) {
+					for (let j = 0; j < this.screenBuffer[i].length; j++) {
+						this.screenBuffer[i][j] = new Color(240, 240, 240);
+					}
+				}
+			}
+			placePixel(pos, color) {
+				if (pos[1] >= 0 && pos[1] < canvas.height && pos[0] >= 0 && pos[0] < canvas.width)
+					this.screenBuffer[parseInt(pos[1])][parseInt(pos[0])] = color;
+			}
+			drawCall() {
+				let index = 0;
+				for (let y = 0; y < canvas.height; y++) {
+					for (let x = 0; x < canvas.width; x++) {
+						const c = this.screenBuffer[y][x];
+						this.imageData.data[index++] = c.r;
+						this.imageData.data[index++] = c.g;
+						this.imageData.data[index++] = c.b;
+						this.imageData.data[index++] = 255;
+					}
+				}
+
+				ctx.putImageData(this.imageData, 0, 0);
+			}
+		}
+
+		const canvas = document.getElementById("gameCanvas");
+		const ctx = canvas.getContext("2d");
+		const g = new Graphics();
+
+		let keyStates = [];
+
+		const fpsInfo = document.getElementById("fps");
+		let frames = 0, fpsTimeCounter = 0;
+
+		let lastTime = performance.now();
+		let dt = 0;
+
+		function update(time = performance.now()) {
+			dt = (time - lastTime) / 1000;
+			lastTime = time;
+
+			fpsTimeCounter += dt;
+			frames++;
+			if (fpsTimeCounter >= 1) {
+				fpsInfo.textContent = `FPS: ${frames}`;
+				frames = 0;
+				fpsTimeCounter = 0;
+			}
+			g.clearScreen();
+
+			for (let i = 150; i < 250; i++) {
+				for (let j = 100; j < 200; j++) {
+					g.placePixel([i, j], new Color(255, 0, 0));
+				}
+			}
+
+			g.drawCall();
+
+			requestAnimationFrame(update);
+		}
+
+		g.initScreenBuffer();
+		update();
+
+		window.addEventListener('keydown', (e) => {
+			keyStates[e.key] = true;
+		});
+		window.addEventListener('keyup', (e) => {
+			keyStates[e.key] = false;
+		});
+	</script>
+</body>
+
+</html>
