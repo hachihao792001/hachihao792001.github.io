@@ -1,5 +1,12 @@
 [
     {
+        "image": "images/vng.png",
+        "title": "Madpoly studio - VNG Corporation",
+        "url": "https://play.google.com/store/apps/dev?id=5579086278019851339&hl=vi&gl=US",
+        "description": "After my conscription, I was welcomed to go back to work at Madpoly studio with the title Software Engineer. I am grateful for the opportunity to continue contributing to the studio's success and further develop my skills in game development.",
+        "period": "02/03/2026 - Now"
+    },
+    {
         "image": "images/noncoi.png",
         "title": "Conscription",
         "url": "#",
@@ -18,20 +25,20 @@
         "title": "RE",
         "url": "https://www.facebook.com/retryuntilrevolution",
         "description": "A startup that I temporarily work for as a web developer and helped build their main website",
-        "period": "11/2021 - 2/2022" 
+        "period": "11/2021 - 2/2022"
     },
     {
         "image": "images/freelancer.png",
         "title": "Freelancer apprenticeship",
         "url": "#",
         "description": "Assist a freelancer in his personal projects and freelancing projects, earn wisdom as well as experience from him and the projects along the way.",
-        "period": "10/2020 - 5/2022" 
+        "period": "10/2020 - 5/2022"
     },
     {
         "image": "images/hcmus.png",
         "title": "Ho Chi Minh City University of Science",
         "url": "https://www.hcmus.edu.vn",
         "description": "I graduated from this university, where I gained valuable knowledge, cherished numerous happy memories, and studied in the Honors Program, achieving a GPA of 9.07/10.",
-        "period": "8/2019 - 16/11/2023" 
+        "period": "8/2019 - 16/11/2023"
     }
 ]
