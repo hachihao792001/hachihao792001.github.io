@@ -329,10 +329,6 @@
 				return outTris;
 			}
 
-			isTopLeft(v0, v1) {
-				return (v0[1] < v1[1]) || (v0[1] === v1[1] && v0[0] < v1[0]);
-			}
-
 			isPointInTriangle(p) {
 				const v0 = [this.vertices[0].x, this.vertices[0].y];
 				const v1 = [this.vertices[1].x, this.vertices[1].y];
@@ -342,14 +338,20 @@
 				const e2 = edgeFunction(v1, v2, p);
 				const e3 = edgeFunction(v2, v0, p);
 
-				return e1 <= 0 && e2 <= 0 && e3 <= 0;
+				return e1 < 0 && e2 < 0 && e3 < 0;
 			}
 
 			boundingBox() {
-				let minX = parseInt(Math.min(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x)) + 1;
-				let maxX = parseInt(Math.max(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x)) - 1;
-				let minY = parseInt(Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y)) + 1;
-				let maxY = parseInt(Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y)) - 1;
+				let minX = Math.min(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
+				let maxX = Math.max(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
+				let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
+				let maxY = Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
+
+				minX = Math.max(0, parseInt(minX));
+				maxX = Math.min(canvas.width - 1, parseInt(maxX));
+				minY = Math.max(0, parseInt(minY));
+				maxY = Math.min(canvas.height - 1, parseInt(maxY));
+
 				return [minX, maxX, minY, maxY];
 			}
 
@@ -575,11 +577,11 @@
 					const bbox = tri.boundingBox();
 					for (let y = bbox[2]; y <= bbox[3]; y++) {
 						for (let x = bbox[0]; x <= bbox[1]; x++) {
-							if (tri.isPointInTriangle([x + 0.5, y + 0.5])) {
-								const baryCoords = tri.barycentricCoords([x + 0.5, y + 0.5]);
+							if (tri.isPointInTriangle([x, y])) {
+								const baryCoords = tri.barycentricCoords([x, y]);
 								const z = tri.vertices[0].z * baryCoords[0] + tri.vertices[1].z * baryCoords[1] + tri.vertices[2].z * baryCoords[2];
 
-								if (z < this.depthBuffer[y][x] + 1e-5) {
+								if (z < this.depthBuffer[y][x]) {
 									this.depthBuffer[y][x] = z;
 									this.placePixel([x, y], tri.color);
 								}
@@ -663,11 +665,6 @@
 					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
 				}
 			}
-			visibleTris.sort((a, b) => {
-				let distA = a.getCenter().magnitude();
-				let distB = b.getCenter().magnitude();
-				return distB - distA;
-			});
 
 			for (let tri of visibleTris) {
 				tri.mulMat4x4(projectionMatrix);
