@@ -41,7 +41,7 @@
 				return new Vector3(vec.x * value, vec.y * value, vec.z * value);
 			}
 			static div(vec, value) {
-				return new Vector3(vec.x / value, vec.y / value, vec.z / value);
+				return new Vector3(vec.x / value, vec.y / value, vec.z / value, vec.w);
 			}
 			static scale(vec1, vec2) {
 				return new Vector3(vec1.x * vec2.x, vec1.y * vec2.y, vec1.z * vec2.z);
@@ -55,6 +55,12 @@
 					v1.z * v2.x - v1.x * v2.z,
 					v1.x * v2.y - v1.y * v2.x);
 				return v;
+			}
+			static lerp(v1, v2, t) {
+				return new Vector3(
+					v1.x + (v2.x - v1.x) * t,
+					v1.y + (v2.y - v1.y) * t,
+					v1.z + (v2.z - v1.z) * t);
 			}
 			magnitude() {
 				return Math.hypot(this.x, this.y, this.z);
@@ -221,15 +227,24 @@
 					this.vertices = vertices;
 				}
 
+				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
 				this.color = color;
 			}
 
 			clone() {
 				let tri = new Triangle();
-				for (let i = 0; i < this.vertices.length; i++)
+				for (let i = 0; i < this.vertices.length; i++) {
 					tri.vertices[i] = this.vertices[i].clone();
+					tri.worldVertices[i] = this.worldVertices[i].clone();
+				}
 				tri.color = this.color;
 				return tri;
+			}
+
+			updateWorldVertices() {
+				for (let i = 0; i < this.vertices.length; i++) {
+					this.worldVertices[i] = this.vertices[i].clone();
+				}
 			}
 
 			mulMat4x4(m) {
@@ -254,6 +269,14 @@
 			getNormal() {
 				let v1 = Vector3.sub(this.vertices[0], this.vertices[1]);
 				let v2 = Vector3.sub(this.vertices[1], this.vertices[2]);
+				let normal = Vector3.cross(v1, v2);
+				normal.normalize();
+				return normal;
+			}
+
+			getWorldNormal() {
+				let v1 = Vector3.sub(this.worldVertices[0], this.worldVertices[1]);
+				let v2 = Vector3.sub(this.worldVertices[1], this.worldVertices[2]);
 				let normal = Vector3.cross(v1, v2);
 				normal.normalize();
 				return normal;
@@ -293,9 +316,15 @@
 					let b0 = this.vertices[behindPoints[0]];
 					let b1 = this.vertices[behindPoints[1]];
 
+					let [t1, intersection1] = plane.intersectWithLine(f, b0);
+					let [t2, intersection2] = plane.intersectWithLine(f, b1);
+
 					outTri.vertices[0] = f;
-					outTri.vertices[1] = plane.intersectWithLine(f, b0);
-					outTri.vertices[2] = plane.intersectWithLine(f, b1);
+					outTri.vertices[1] = intersection1;
+					outTri.vertices[2] = intersection2;
+					outTri.worldVertices[0] = this.worldVertices[frontPoints[0]];
+					outTri.worldVertices[1] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
+					outTri.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[1]], t2);
 					outTri.color = this.color;
 					outTris.push(outTri);
 				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
@@ -310,18 +339,24 @@
 					let f1 = this.vertices[frontPoints[1]];
 					let b = this.vertices[behindPoints[0]];
 
-					let intersection1 = plane.intersectWithLine(f0, b);
-					let intersection2 = plane.intersectWithLine(f1, b);
+					let [t1, intersection1] = plane.intersectWithLine(f0, b);
+					let [t2, intersection2] = plane.intersectWithLine(f1, b);
 
 					outTri1.vertices[0] = f0;
 					outTri1.vertices[1] = f1;
 					outTri1.vertices[2] = intersection1;
+					outTri1.worldVertices[0] = this.worldVertices[frontPoints[0]];
+					outTri1.worldVertices[1] = this.worldVertices[frontPoints[1]];
+					outTri1.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
 					outTri1.color = this.color;
 					outTris.push(outTri1);
 
 					outTri2.vertices[0] = f1.clone();
 					outTri2.vertices[1] = intersection2;
 					outTri2.vertices[2] = intersection1.clone();
+					outTri2.worldVertices[0] = this.worldVertices[frontPoints[1]];
+					outTri2.worldVertices[1] = Vector3.lerp(this.worldVertices[frontPoints[1]], this.worldVertices[behindPoints[0]], t2);
+					outTri2.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
 					outTri2.color = this.color;
 					outTris.push(outTri2);
 				}
@@ -354,6 +389,18 @@
 
 				return [minX, maxX, minY, maxY];
 			}
+
+			barycentricCoords(p) {
+				const v0 = [this.vertices[0].x, this.vertices[0].y];
+				const v1 = [this.vertices[1].x, this.vertices[1].y];
+				const v2 = [this.vertices[2].x, this.vertices[2].y];
+
+				const area = edgeFunction(v0, v1, v2);
+				const w0 = edgeFunction(v1, v2, p) / area;
+				const w1 = edgeFunction(v2, v0, p) / area;
+				const w2 = edgeFunction(v0, v1, p) / area;
+				return [w0, w1, w2];
+			}
 		}
 
 		class Plane {
@@ -371,8 +418,9 @@
 				let An = Vector3.dot(A, this.normal);
 				let Bn = Vector3.dot(B, this.normal);
 				let vectorAB = Vector3.sub(B, A);
-				let vectorAM = Vector3.mul(vectorAB, (this.D - An) / (Bn - An));
-				return Vector3.add(A, vectorAM);
+				let t = (this.D - An) / (Bn - An);
+				let vectorAM = Vector3.mul(vectorAB, t);
+				return [t, Vector3.add(A, vectorAM)];
 			}
 		}
 
@@ -515,6 +563,7 @@
 					transformedTri.mulMat4x4(Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z));
 					transformedTri.rotate(this.rotation);
 					transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
+					transformedTri.updateWorldVertices();
 					transformedTris.push(transformedTri);
 				}
 				return transformedTris;
@@ -533,13 +582,17 @@
 			constructor() {
 				this.imageData = ctx.createImageData(canvas.width, canvas.height);
 				this.screenBuffer = [];
+				this.depthBuffer = [];
 
 				for (let i = 0; i < canvas.height; i++) {
 					let screenRow = [];
+					let depthRow = [];
 					for (let j = 0; j < canvas.width; j++) {
 						screenRow.push(new Color(255, 255, 255));
+						depthRow.push(Infinity);
 					}
 					this.screenBuffer.push(screenRow);
+					this.depthBuffer.push(depthRow);
 				}
 			}
 
@@ -547,6 +600,7 @@
 				for (let i = 0; i < this.screenBuffer.length; i++) {
 					for (let j = 0; j < this.screenBuffer[i].length; j++) {
 						this.screenBuffer[i][j] = new Color(240, 240, 240);
+						this.depthBuffer[i][j] = Infinity;
 					}
 				}
 			}
@@ -557,11 +611,44 @@
 
 			processTriangles(tris) {
 				for (let tri of tris) {
+					let triWorldNormal = tri.getWorldNormal();
 					const bbox = tri.boundingBox();
 					for (let y = bbox[2]; y <= bbox[3]; y++) {
 						for (let x = bbox[0]; x <= bbox[1]; x++) {
 							if (tri.isPointInTriangle([x, y])) {
-								this.placePixel([x, y], tri.color);
+								const baryCoords = tri.barycentricCoords([x, y]);
+								const z = tri.vertices[0].z * baryCoords[0] + tri.vertices[1].z * baryCoords[1] + tri.vertices[2].z * baryCoords[2];
+
+								if (z < this.depthBuffer[y][x]) {
+									this.depthBuffer[y][x] = z;
+
+									let wv0 = tri.worldVertices[0];
+									let wv1 = tri.worldVertices[1];
+									let wv2 = tri.worldVertices[2];
+
+									let pixelWorldPos = new Vector3(
+										wv0.x * baryCoords[0] + wv1.x * baryCoords[1] + wv2.x * baryCoords[2],
+										wv0.y * baryCoords[0] + wv1.y * baryCoords[1] + wv2.y * baryCoords[2],
+										wv0.z * baryCoords[0] + wv1.z * baryCoords[1] + wv2.z * baryCoords[2]
+									);
+
+									let dirLightDiffuse = Math.max(0, Vector3.dot(triWorldNormal, reverseLightDir)) * dirLightIntensity;
+
+									let pointLightVec = Vector3.sub(pointLightPos, pixelWorldPos);
+									let distance = pointLightVec.magnitude();
+									pointLightVec.normalize();
+									let pointLightDiffuse = Math.max(0, Vector3.dot(triWorldNormal, pointLightVec));
+									let attenuation = 1 / (1 + 0.1 * distance * distance);
+									pointLightDiffuse *= attenuation;
+
+									let lightIntensity = ambientLight + dirLightDiffuse + pointLightDiffuse;
+
+									this.placePixel([x, y], new Color(
+										Math.min(255, tri.color.r * lightIntensity),
+										Math.min(255, tri.color.g * lightIntensity),
+										Math.min(255, tri.color.b * lightIntensity)
+									));
+								}
 							}
 						}
 					}
@@ -606,8 +693,15 @@
 		const fpsInfo = document.getElementById("fps");
 		let frames = 0, fpsTimeCounter = 0;
 
+		let lightDir = new Vector3(-1, -1, -1).normalize();
+		let reverseLightDir = Vector3.mul(lightDir, -1);
+		let dirLightIntensity = 0.4;
+		let ambientLight = 0.08;
+
+		let pointLightPos = new Vector3(0, 2, 5);
 		let cube1 = new Cube(new Vector3(0, 0, 5), new Vector3(45, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0));
 		let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0));
+		let lightCube = new Cube(pointLightPos, Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255));
 
 		let lastTime = performance.now();
 		let dt = 0;
@@ -630,10 +724,25 @@
 			const viewMat = camera.getViewMatrix();
 
 			cube1.rotate(0, 50 * dt, 0);
+			if (keyStates['i']) {
+				pointLightPos.z += dt * 2;
+			} else if (keyStates['k']) {
+				pointLightPos.z -= dt * 2;
+			} else if (keyStates['j']) {
+				pointLightPos.x -= dt * 2;
+			} else if (keyStates['l']) {
+				pointLightPos.x += dt * 2;
+			} else if (keyStates['u']) {
+				pointLightPos.y += dt * 2;
+			} else if (keyStates['o']) {
+				pointLightPos.y -= dt * 2;
+			}
+			lightCube.pos = pointLightPos.clone();
 
 			let objectTris = [];
 			objectTris.push(...cube1.getTransformedTriangles());
 			objectTris.push(...cube2.getTransformedTriangles());
+			objectTris.push(...lightCube.getTransformedTriangles());
 
 			let visibleTris = [];
 			for (let tri of objectTris) {
@@ -642,11 +751,6 @@
 					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
 				}
 			}
-			visibleTris.sort((a, b) => {
-				let distA = a.getCenter().magnitude();
-				let distB = b.getCenter().magnitude();
-				return distB - distA;
-			});
 
 			for (let tri of visibleTris) {
 				tri.mulMat4x4(projectionMatrix);
@@ -668,23 +772,23 @@
 					vertices[i] = new Vector3(
 						vertices[i].x * canvas.width + canvas.width / 2,
 						-vertices[i].y * canvas.height + canvas.height / 2,
-						1);
+						vertices[i].z, vertices[i].w);
 				}
 			}
 
 			g.processTriangles(clippedTris);
 			g.drawCall();
 
-			for (let tri of clippedTris) {
-				let vertices = tri.vertices;
-				ctx.strokeStyle = "black";
-				ctx.beginPath();
-				ctx.moveTo(vertices[0].x, vertices[0].y);
-				ctx.lineTo(vertices[1].x, vertices[1].y);
-				ctx.lineTo(vertices[2].x, vertices[2].y);
-				ctx.closePath();
-				ctx.stroke();
-			}
+			// for (let tri of clippedTris) {
+			// 	let vertices = tri.vertices;
+			// 	ctx.strokeStyle = "black";
+			// 	ctx.beginPath();
+			// 	ctx.moveTo(vertices[0].x, vertices[0].y);
+			// 	ctx.lineTo(vertices[1].x, vertices[1].y);
+			// 	ctx.lineTo(vertices[2].x, vertices[2].y);
+			// 	ctx.closePath();
+			// 	ctx.stroke();
+			// }
 
 			requestAnimationFrame(update);
 		}
