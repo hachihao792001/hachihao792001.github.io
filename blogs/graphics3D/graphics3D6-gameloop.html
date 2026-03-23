@@ -35,7 +35,7 @@
 
                 <div class="blog-content col-12 col-lg-10">
                     <div id="graphics3D-nav-top"></div>
-                    <h1>Game loop và face culling</h1>
+                    <h1>Game loop và backface culling</h1>
                     
                     Từ blog đầu tiên tới giờ ta chỉ có tạo và hiển thị object lên màn hình, nhưng chúng không hề di chuyển, khá chán.
                     Cho nên blog này ta sẽ cài đặt một hệ thống Game loop, nói nôm na là cập nhật frame theo thời gian một cách ổn định. Blog này sẽ khá ngắn và dễ
@@ -127,11 +127,11 @@ function update(time = performance.now()) {
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview11"></div>
 
-                    Bạn nhìn nó xoay lâu lâu sẽ thấy illusion là mặt đằng sau là mặt đằng trước, sẽ thấy nó bị méo mó. Vì vậy tiếp theo mình sẽ nói cho bạn về face culling,
+                    Bạn nhìn nó xoay lâu lâu sẽ thấy illusion là mặt đằng sau là mặt đằng trước, sẽ thấy nó bị méo mó. Vì vậy tiếp theo mình sẽ nói cho bạn về backface culling,
                     là một kỹ thuật giấu đi những tam giác đang không hướng về phía camera, nói cách khác là những tam giác có mặt "đằng sau" quay về phía mình. Chắc bạn cũng
                     từng thấy hiện tượng này trong game, khi bạn noclip vào trong 1 vật nào đó, bạn vẫn thấy được thế giới bên ngoài, vì mặc định mặt "đằng sau" của các tam
                     giác sẽ không được hiển thị.<br/><br/>
-                    Face culling khá dễ, trước tiên, đối với từng tam giác, bạn phải tìm được vector pháp tuyến \(\vec{n}\) của nó, sau đó so sánh với vector từ camera hướng lên tâm của tam giác đó \(a\),
+                    Backface culling khá dễ, trước tiên, đối với từng tam giác, bạn phải tìm được vector pháp tuyến \(\vec{n}\) của nó, sau đó so sánh với vector từ camera hướng lên tâm của tam giác đó \(a\),
                     nếu góc hợp giữa \(\vec{n}\) và \(a\) nhỏ hơn 90, thì tức là tam giác đó đang nhìn "theo hướng" camera, là mình sẽ thấy được "đằng sau" của nó, ngược lại
                     nếu góc đó lớn hơn 90, là tam giác đang quay "về phía" camera.<br/>
                     Đầu tiên để tìm được \(\vec{n}\) của một tam giác, ta sẽ sử dụng một khái niệm mà ta đã từng học ở cấp 3, đó chính là tích có hướng. Nếu bạn không nhớ thì tích có hướng
@@ -203,7 +203,7 @@ for (let tri of allTris) {
                     Kết quả như sau:
                     <div class="htmlPreview" id="htmlPreview12"></div>
 
-                    Bạn cũng thấy là ngoài giúp hiển thị đồ vật hợp lý ra thì face culling cũng làm giảm số tam giác phải vẽ, giúp cải thiện performance khá nhiều.
+                    Bạn cũng thấy là ngoài giúp hiển thị đồ vật hợp lý ra thì backface culling cũng làm giảm số tam giác phải vẽ, giúp cải thiện performance khá nhiều.
 
                     <div id="graphics3D-nav-bottom"></div>
                 </div>

@@ -67,8 +67,6 @@
 		const ctx = canvas.getContext("2d");
 		const g = new Graphics();
 
-		let keyStates = [];
-
 		const fpsInfo = document.getElementById("fps");
 		let frames = 0, fpsTimeCounter = 0;
 
@@ -101,13 +99,6 @@
 
 		g.initScreenBuffer();
 		update();
-
-		window.addEventListener('keydown', (e) => {
-			keyStates[e.key] = true;
-		});
-		window.addEventListener('keyup', (e) => {
-			keyStates[e.key] = false;
-		});
 	</script>
 </body>
 
