@@ -787,7 +787,22 @@ for (let tri of clippedTris) {
                     <div class="htmlPreview" id="htmlPreview17"></div>
                     Di chuyển sao cho cạnh màn hình đi qua cube, bạn sẽ thấy nó clip và nhìn khá đã mắt 😳<br/><br/>
                     Nếu bạn không biết, thì các thư viện đồ họa như OpenGL, Vulkan,... đều thực hiện việc clipping này ngầm, nếu bạn từng code qua với chúng thì bạn chỉ cần nhân 
-                    model view projection matrix, xong đưa cho nó các tam giác và vertex buffer, nó sẽ vẽ ra được một cách bình thường và hiệu quả.
+                    model view projection matrix, xong đưa cho nó các tam giác và vertex buffer, nó sẽ vẽ ra được một cách bình thường và hiệu quả.<br/><br/>
+
+                    Recap lại những gì mà engine ta làm mỗi frame, gọi chung là render pipeline của chúng ta:
+                    <ol>
+                        <li>Áp dụng các phép biến đổi cho các object và camera</li>
+                        <li>Áp dụng model matrix</li>
+                        <li>Backface culling</li>
+                        <li>Áp dụng view matrix (chuyển về view space)</li>
+                        <li>Clip với near plane</li>
+                        <li>Sort tam giác theo khoảng cách tới camera</li>
+                        <li>Áp dụng projection matrix (chuyển về clip space)</li>
+                        <li>Perspective divide</li>
+                        <li>Clip với 4 cạnh màn hình</li>
+                        <li>Scale lên cho khớp với kích thước canvas (chuyển về screen space) và vẽ</li>
+                    </ol>
+                    Mình phải recap ở đây vì bắt đầu từ blog sau nó sẽ trở nên rất thú vị 😳
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 

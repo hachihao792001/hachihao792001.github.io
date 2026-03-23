@@ -52,5 +52,11 @@
         "webTitle": "Graphics Engine 3D #8: View matrix và Clipping",
         "title": "Graphics Engine 3D #8: View matrix và Clipping",
         "route": "/blogs/graphics3D/graphics3D8-view.html"
+    },
+    {
+        "id": "graphics3D9",
+        "webTitle": "Graphics Engine 3D #9: Software rasterizer và Depth buffer",
+        "title": "Graphics Engine 3D #9: Software rasterizer và Depth buffer",
+        "route": "/blogs/graphics3D/graphics3D9-rasterizer.html"
     }
 ]
