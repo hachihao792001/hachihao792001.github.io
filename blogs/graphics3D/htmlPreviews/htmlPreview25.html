@@ -632,7 +632,7 @@
 			}
 		}
 
-		class Graphics {
+		class Rasterizer {
 			constructor() {
 				this.imageData = ctx.createImageData(canvas.width, canvas.height);
 				this.screenBuffer = [];
@@ -740,7 +740,7 @@
 
 		const canvas = document.getElementById("gameCanvas");
 		const ctx = canvas.getContext("2d");
-		const g = new Graphics();
+		const rasterizer = new Rasterizer();
 		const fov = 90;
 		let znear = 0.01, zfar = 1000;
 		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
@@ -803,7 +803,7 @@
 				fpsTimeCounter = 0;
 			}
 
-			g.clearScreen();
+			rasterizer.clearScreen();
 
 			camera.updateMovement(dt, keyStates);
 			const viewMat = camera.getViewMatrix();
@@ -861,8 +861,8 @@
 				}
 			}
 
-			g.processTriangles(clippedTris);
-			g.drawCall();
+			rasterizer.processTriangles(clippedTris);
+			rasterizer.drawCall();
 
 			// for (let tri of clippedTris) {
 			// 	let vertices = tri.vertices;

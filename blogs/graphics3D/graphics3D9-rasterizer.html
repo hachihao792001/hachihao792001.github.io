@@ -48,14 +48,70 @@
                     ít nhất một hàm để thật sự vẽ gì đó lên canvas tho). Canvas không có hàm vẽ 1 pixel, nhưng có hàm 
                     <a href="https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/rect">rect</a> để vẽ một hình chữ nhật, trên lý thuyết ta
                     có thể dùng hàm này để vẽ từng pixel, nhưng mà nó sẽ RẤT LÀ LAG. Cách tốt hơn là ta sẽ tạo một mảng 2 chiều chứa hết các pixel trong canvas,
-                    ta sẽ thay đổi các giá trị trên mảng 2 chiều đó, sau đó cuối frame ta sẽ dùng mảng 2 chiều đó để tạo một 
+                    ta sẽ thay đổi các giá trị trên mảng 2 chiều đó, sau đó cuối frame ta sẽ dùng mảng 2 chiều đó để gán các pixel vào một 
                     <a href="https://developer.mozilla.org/en-US/docs/Web/API/ImageData">ImageData</a> rồi sau đó chỉ cần vẽ ImageData đó lên canvas.<br/><br/>
-
-                    Đầu tiên ta cần tạo một ImageData:
-                    <pre><code class="language-javascript">ctx.createImageData(canvas.width, canvas.height);</code></pre>
+                    
                     Lưu ý là ImageData là mảng một chiều, mỗi 4 giá trị liền kề nhau của nó đại diện cho giá trị RGBA (0-255) của một pixel, và mỗi lần hết số pixel
-                    của 1 hàng thì nó sẽ tới những pixel của hàng tiếp theo. 
+                    của 1 hàng thì nó sẽ tới những pixel của hàng tiếp theo. Ví dụ với canvas 400x300, pixel ở hàng 50 cột 60 sẽ có giá trị red ở 50 * 400 + 60,
+                    giá trị green ở 50 * 400 + 61, tương tự với blue và alpha.<br/><br/>
 
+                    Trước khi làm gì đó liên quan tới rasterize, ta cần tạo một class là kiểu dữ liệu cho màu:
+                    <pre><code class="language-javascript">class Color {
+    constructor(r, g, b) {
+        this.r = r;
+        this.g = g;
+        this.b = b;
+    }
+}</code></pre>
+
+                    Để cho gọn, ta sẽ tạo một class Rasterizer để quản lý mọi thứ liên quan tới việc rasterize. Đầu tiên là trong constructor ta tạo ImageData của canvas
+                    và mảng 2 chiều của chúng ta (tên gọi đúng thuật ngữ là screen buffer), cho tất cả các pixel default đều là màu trắng.
+<pre><code class="language-javascript">class Rasterizer {
+    constructor() {
+        this.imageData = ctx.createImageData(canvas.width, canvas.height);
+        this.screenBuffer = [];
+
+        for (let i = 0; i < canvas.height; i++) {
+            let screenRow = [];
+            for (let j = 0; j < canvas.width; j++) {
+                screenRow.push(new Color(255, 255, 255));
+            }
+            this.screenBuffer.push(screenRow);
+        }
+    }
+}</code></pre>
+                    Và hàm vẽ của chúng ta, gán màu từ screenBuffer qua cho imageData chỉ cần có 1 biến tăng dần trong khi đang loop qua screenBuffer là oke.
+                    <pre><code class="language-javascript">drawCall() {
+    let index = 0;
+    for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+            const c = this.screenBuffer[y][x];
+            this.imageData.data[index++] = c.r;
+            this.imageData.data[index++] = c.g;
+            this.imageData.data[index++] = c.b;
+            this.imageData.data[index++] = 255;
+        }
+    }
+
+    ctx.putImageData(this.imageData, 0, 0);
+}</code></pre>
+
+                    Ta thêm một hàm để bên ngoài class có thể gán màu cho 1 pixel dựa trên tọa độ truyền vào, ta phải chuyển tọa độ này thành int và check
+                    xem nó có nằm trong kích thước của canvas hay không:
+                    <pre><code class="language-javascript">placePixel(pos, color) {
+    if (pos[1] >= 0 && pos[1] < canvas.height && pos[0] >= 0 && pos[0] < canvas.width)
+        this.screenBuffer[parseInt(pos[1])][parseInt(pos[0])] = color;
+}</code></pre>
+
+                    Cuối cùng, ta phải thay thế thao tác clear screen hiện tại, cho nó một màu xám xám:
+                    <pre><code class="language-javascript">clearScreen() {
+    for (let i = 0; i < this.screenBuffer.length; i++) {
+        for (let j = 0; j < this.screenBuffer[i].length; j++) {
+            this.screenBuffer[i][j] = new Color(240, 240, 240);
+        }
+    }
+}</code></pre>
+                    Đây là full code với Rasterizer của chúng ta, ta sẽ vẽ ví dụ một hình vuông bằng 2 vòng for cơ bản
                     <div class="htmlPreview" id="htmlPreview18"></div>
                     
                     
