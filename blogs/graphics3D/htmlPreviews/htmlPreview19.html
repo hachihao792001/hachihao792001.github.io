@@ -9,7 +9,6 @@
 <body style="text-align: center; background: #f0f0f0">
 	<h1>3D Engine</h1>
 	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
-	<h2 id="fps">FPS: 0</h2>
 	<script>
 
 		class Color {
@@ -20,13 +19,11 @@
 			}
 		}
 
-		class Graphics {
+		class Rasterizer {
 			constructor() {
 				this.imageData = ctx.createImageData(canvas.width, canvas.height);
 				this.screenBuffer = [];
-			}
 
-			initScreenBuffer() {
 				for (let i = 0; i < canvas.height; i++) {
 					let screenRow = [];
 					for (let j = 0; j < canvas.width; j++) {
@@ -75,10 +72,7 @@
 
 		const canvas = document.getElementById("gameCanvas");
 		const ctx = canvas.getContext("2d");
-		const g = new Graphics();
-
-		const fpsInfo = document.getElementById("fps");
-		let frames = 0, fpsTimeCounter = 0;
+		const rasterizer = new Rasterizer();
 
 		let triangle1 = [[150, 200], [250, 200], [200, 100]];
 
@@ -89,29 +83,21 @@
 			dt = (time - lastTime) / 1000;
 			lastTime = time;
 
-			fpsTimeCounter += dt;
-			frames++;
-			if (fpsTimeCounter >= 1) {
-				fpsInfo.textContent = `FPS: ${frames}`;
-				frames = 0;
-				fpsTimeCounter = 0;
-			}
-			g.clearScreen();
+			rasterizer.clearScreen();
 
 			for (let y = 0; y < canvas.height; y++) {
 				for (let x = 0; x < canvas.width; x++) {
 					if (isPointInTriangle([x, y], triangle1[0], triangle1[1], triangle1[2])) {
-						g.placePixel([x, y], new Color(255, 0, 0));
+						rasterizer.placePixel([x, y], new Color(255, 0, 0));
 					}
 				}
 			}
 
-			g.drawCall();
+			rasterizer.drawCall();
 
 			requestAnimationFrame(update);
 		}
 
-		g.initScreenBuffer();
 		update();
 	</script>
 </body>
