@@ -114,6 +114,21 @@
                     Đây là full code với Rasterizer của chúng ta, ta sẽ vẽ ví dụ một hình vuông bằng 2 vòng for cơ bản
                     <div class="htmlPreview" id="htmlPreview18"></div>
                     
+                    Để có thể áp dụng rasterizer này vào engine chúng ta, ta phải vẽ được một hình tam giác cơ bản 😳 Phương pháp chung chung là ta sẽ loop qua hết các pixel,
+                    pixel nào nằm trong 1 tam giác thì sẽ vẽ pixel đó ra. Nói thì dễ nhưng làm sao để ta biết là 1 pixel nằm trong 1 tam giác?<br/><br/>
+
+                    Ta sẽ bắt đầu từ việc xét lại thứ tự các đỉnh mà ta định nghĩa cho tam giác trong engine chúng ta, cụ thể là ngược chiều kim đồng hồ như sau:
+                    <div align="center"><img style="max-height: 300px;" src="images/graphics3D9/TriangleEdges.png"/></div>
+                    Xét 3 cạnh của tam giác là vector theo chiều đó, ta nhận ra rằng một điểm sẽ nằm trong tam giác nếu nó đều nằm ở "bên trái" của 3 cạnh. Nhưng
+                    làm sao để biết một điểm nằm bên trái của 1 vector? Ta xét vector \(\vec{AB}\) và điểm \(P\) như sau:
+                    <div align="center"><img style="max-height: 300px;" src="images/graphics3D9/LeftOfVector.png"/></div>
+                    Ta xoay \(\vec{AB}\) 90 độ ngược chiều kim đồng hồ thành \(\vec{AB'}\), \(\vec{AB'}\) đang hướng về bên trái của \(\vec{AB}\). 
+                    Đồng nghĩa những điểm \(P\) nào mà \(\vec{AP}\) hướng về cùng 1 vùng với \(\vec{AB'}\), nghĩa là \(\langle \vec{AB'}, \vec{AP} \rangle > 0\), thì điểm đó sẽ nằm 
+                    bên trái \(\vec{AB}\) 😳 Xoay \(\vec{AB}\) 90 độ ngược chiều kim đồng hồ cũng khá đơn giản, giả sử \(\vec{AB}\) là \((x; y)\) thì xoay xong nó thành \((-y; x)\).<br/><br/>
+                    Bây giờ ta phải chuyển nó thành 1 công thức đơn giản để dễ cài đặt, với \(A=(a_x, a_y), B=(b_x, b_y), P=(p_x, p_y)\), ta có \(\vec{AB}=(b_x-a_x, b_y-a_y),
+                    \vec{AB'}=(a_y-b_y, b_x-a_x), \vec{AP}=(p_x-a_x, p_y-a_y)\). Suy ra \(\langle \vec{AB'}, \vec{AP} \rangle = (a_y-b_y)(p_x-a_x) + (b_x-a_x)(p_y-a_y)\). 
+                    Công thức này người ta gọi là Edge function, mình sẽ ghi tắt nó là \(E(A, B, P)\), vậy thì điểm \(P\) nằm bên trái của vector \(AB\) nếu \(E(A, B, P) > 0\).<br/><br/>
+                    Như vậy, một điểm \(P\) sẽ nằm trong tam giác \(ABC\) nếu \(E(A, B, P) > 0\), \(E(B, C, P) > 0\), và \(E(C, A, P) > 0\).<br/><br/>
                     
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
