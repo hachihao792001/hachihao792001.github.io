@@ -129,7 +129,263 @@
                     \vec{AB'}=(a_y-b_y, b_x-a_x), \vec{AP}=(p_x-a_x, p_y-a_y)\). Suy ra \(\langle \vec{AB'}, \vec{AP} \rangle = (a_y-b_y)(p_x-a_x) + (b_x-a_x)(p_y-a_y)\). 
                     Công thức này người ta gọi là Edge function, mình sẽ ghi tắt nó là \(E(A, B, P)\), vậy thì điểm \(P\) nằm bên trái của vector \(AB\) nếu \(E(A, B, P) > 0\).<br/><br/>
                     Như vậy, một điểm \(P\) sẽ nằm trong tam giác \(ABC\) nếu \(E(A, B, P) > 0\), \(E(B, C, P) > 0\), và \(E(C, A, P) > 0\).<br/><br/>
-                    
+
+                    Ta bắt tay vào việc code thôi 😳 đầu tiên là edge function của chúng ta:
+                    <pre><code class="language-javascript">function edgeFunction(a, b, p) {
+    return (a[1] - b[1]) * (p[0] - a[0]) + (b[0] - a[0]) * (p[1] - a[1]);
+}</code></pre>
+                    Ta đừng nên tạo một class Vector2 mới làm gì, cứ xem tọa độ 2 chiều là một mảng, như thế nó sẽ đỡ sinh ra rác, đặc biệt là khi ta bắt đầu chạy cho từng pixel.<br/><br/>
+                    Ta tạo lại class Triangle, nhưng lúc này constructor sẽ xem mỗi đỉnh như 1 mảng như trên, thay vì là Vector3. Có hàm isPointInTriangle để check nếu 1 điểm nằm trong tam giác đó:
+                    <pre><code class="language-javascript">class Triangle {
+    constructor(vertices = []) {
+        if (vertices.length == 0) {
+            this.vertices = [];
+            for (let i = 0; i < 3; i++) {
+                this.vertices.push([0, 0]);
+            }
+        } else {
+            this.vertices = vertices;
+        }
+    }
+
+    isPointInTriangle(p) {
+        const e1 = edgeFunction(this.vertices[0], this.vertices[1], p);
+        const e2 = edgeFunction(this.vertices[1], this.vertices[2], p);
+        const e3 = edgeFunction(this.vertices[2], this.vertices[0], p);
+        return e1 < 0 && e2 < 0 && e3 < 0;
+    }
+}</code></pre>
+                    Khoan đã, ở trên mình nói một điểm nằm trong tam giác nếu 3 edge function của 3 cạnh > 0, nhưng tại sao mình lại check < 0? Đó là tại vì ở <a href="graphics3D3-cube.html">blog 3</a>,
+                    mình có nói là do chiều dọc của canvas (càng xuống càng tăng) ngược với chiều y của toán (càng lên càng tăng) nên ta phải đổi dấu y trước khi nhân cho kích thước canvas.
+                    Khi lật ngược mọi thứ lại như vậy thì các đỉnh tam giác từ cùng chiều kđh sẽ thành ngược chiều và ngược lại, đó giờ điều này không ảnh hưởng tới ta vì nó xảy ra
+                    ở screen space (bước cuối cùng sau tất cả các thao tác toán học), nhưng vì rasterizer hoạt động ở screen space nên ta phải "ngược" theo.<br/><br/>
+
+                    Ta tạo một tam giác ở giữa màn hình (thứ tự đỉnh ngược chiều kim đồng hồ):
+                    <pre><code class="language-javascript">let testTri = new Triangle([
+    [-0.25, -0.25],
+    [0.25, -0.25],
+    [0, 0.25],
+]);</code></pre>
+                    Sau đó ta thay phần vẽ (phần nằm giữa clear screen và draw call) thành như vậy:
+                    <pre><code class="language-javascript">let screenTri = new Triangle();
+for (let i = 0; i < testTri.vertices.length; i++) {
+    screenTri.vertices[i] = [
+        testTri.vertices[i][0] * canvas.width + canvas.width / 2,
+        -testTri.vertices[i][1] * canvas.height + canvas.height / 2
+    ];
+}
+for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+        if (screenTri.isPointInTriangle([x, y])) {
+            rasterizer.placePixel([x, y], new Color(255, 0, 0));
+        }
+    }
+}</code></pre>
+                    Như mà for hết pixel của toàn canvas chỉ để vẽ 1 tam giác sẽ hơi lâu, cách optimize tiếp theo mà ta có thể làm là tìm bounding box của triangle, và
+                    chỉ check những pixel nằm trong bounding box đó. Bounding box của 1 tam giác đơn giản chỉ là hình chữ nhật ngoại tiếp với hình tam giác đó, có thể tìm
+                    bằng cách đơn giản là tìm \(x_{min}, x_{max}, y_{min}, y_{max}\) của 3 đỉnh tam giác. Ta thêm hàm tìm bounding box vào trong class Triangle:
+                    <pre><code class="language-javascript">boundingBox() {
+    let minX = Math.min(this.vertices[0][0], this.vertices[1][0], this.vertices[2][0]);
+    let maxX = Math.max(this.vertices[0][0], this.vertices[1][0], this.vertices[2][0]);
+    let minY = Math.min(this.vertices[0][1], this.vertices[1][1], this.vertices[2][1]);
+    let maxY = Math.max(this.vertices[0][1], this.vertices[1][1], this.vertices[2][1]);
+
+    // vì sử dụng cho pixel nên phải đảm bảo kết quả là số nguyên và nằm trong kích thước canvas
+    minX = Math.max(0, parseInt(minX));
+    maxX = Math.min(canvas.width - 1, parseInt(maxX));
+    minY = Math.max(0, parseInt(minY));
+    maxY = Math.min(canvas.height - 1, parseInt(maxY));
+
+    return [minX, maxX, minY, maxY];
+}</code></pre>
+                    Và sửa 2 vòng for lặp toàn bộ pixel thành như sau:
+                    <pre><code class="language-javascript">let bbox = screenTri.boundingBox();
+for (let y = bbox[2]; y <= bbox[3]; y++) {
+    for (let x = bbox[0]; x <= bbox[1]; x++) {
+        if (screenTri.isPointInTriangle([x, y])) {
+            rasterizer.placePixel([x, y], new Color(255, 0, 0));
+        }
+    }
+}</code></pre>
+
+                    Full code:
+                    <div class="htmlPreview" id="htmlPreview19"></div>
+
+                    Xây dựng một rasterizer cơ bản đã xong, bây giờ ta phải áp dụng nó vào engine của chúng ta 🥶 Đúng ra là ta nên làm cái vụ này từ đầu, nhưng mà bắt
+                    đầu series này bằng rasterizer thì nó sẽ hơi chán hê hê, ta phải thấy được sự ảo diệu của 3D là hiện được 1 cục cube trên màn hình thì ta mới thấy có
+                    động lực để làm tiếp.<br/><br/>
+                    Đầu tiên ta cần thêm những thứ mới từ rasterizer cơ bản của chúng ta vào engine: edgeFunction (không nằm trong class nào cả vì nó thuần toán học),
+                    class Color, class Rasterizer, 2 hàm isPointInTriangle và boundingBox cho class Triangle. Sau đó ở bên dưới chỗ chạy chính, ta cũng thêm 1 object 
+                    Rasterizer và sử dụng rasterizer.clearScreen() thay vì ctx.clearRect. <br/><br/>
+
+                    Ở vòng for cuối mà ta nhân kích thước canvas và vẽ triangle, ta sẽ bỏ luôn vòng for đó và đưa cho rasterizer xử lí, 
+                    vì chức năng của rasterizer là nhận vào các tam giác ở clip space và vẽ ra màn hình các tam giác đó bằng cách nào đó ta không quan tâm.
+                    Như vậy, ta tạo thêm một hàm trong class Rasterizer để xử lí các tam giác truyền vào:
+                    <pre><code class="language-javascript">processTriangles(tris) {
+    for (let tri of tris) {
+        // nhân kích thước canvas như trước giờ ta làm
+        let vertices = tri.vertices;
+        for (let i = 0; i < vertices.length; i++) {
+            vertices[i] = new Vector3(
+                vertices[i].x * canvas.width + canvas.width / 2,
+                -vertices[i].y * canvas.height + canvas.height / 2,
+                1);
+        }
+
+        // tam giác hiện tại đã ở screen space, tìm bounding box và vẽ nó ra
+        const bbox = tri.boundingBox();
+        for (let y = bbox[2]; y <= bbox[3]; y++) {
+            for (let x = bbox[0]; x <= bbox[1]; x++) {
+                if (tri.isPointInTriangle([x, y])) {
+                    this.placePixel([x, y], new Color(204, 204, 204));
+                }
+            }
+        }
+    }
+}</code></pre>
+                    Như vậy, ở cuối hàm Update, thay vì vòng for bự cũ, ta chỉ cần gọi:
+                    <pre><code class="language-javascript">rasterizer.processTriangles(clippedTris);
+rasterizer.drawCall();</code></pre>
+                    Full code:
+                    <div class="htmlPreview" id="htmlPreview20"></div>
+                    Nó chỉ có một màu ảm đạm như vậy là do ta không vẽ outline của nó (ở version cũ ta có dùng ctx.stroke()), trong các game thì do có texture và ánh sáng 
+                    nên nó sẽ không chỉ có một màu như vậy (nếu bạn xài Unity thì nó giống shader Unlit). Nếu bạn muốn hiện lại outline thì bạn chỉ cần
+                    thêm lại vòng for bự đó đằng sau hàm drawCall và chỉ gọi ctx.stroke() chứ ko gọi ctx.fill(), vẽ ra outline như vậy được gọi là wireframe mode và
+                    bạn có thể dùng nó để debug nếu engine của bạn bị lỗi hiển thị gì đó.<br/><br/>
+
+                    Blog này đáng lẽ sẽ dừng ở đây, nhưng bạn nhìn title thì còn có 1 thứ mình chưa nói nữa 😳 Engine hiện tại vẫn đang có vấn đề, và vấn đề đó chỉ
+                    hiện rõ ra khi ta để 2 cube này khác màu nhau và overlap với nhau.<br/><br/>
+
+                    Bây giờ ta sẽ cho mỗi triangle lưu thêm một giá trị là màu, điều này nghĩa là các thao tác tạo triangle mới dựa trên triangle cũ đều phải giữ lại được giá trị
+                    màu đó. Đầu tiên là thêm cho constructor và hàm clone của class Triangle:
+                    <pre><code class="language-javascript">class Triangle {
+    constructor(vertices = [], color = new Color(255, 255, 255)) {  // <----------
+        if (vertices.length == 0) {
+            this.vertices = [];
+            for (let i = 0; i < 3; i++) {
+                this.vertices.push(new Vector3(0, 0, 0));
+            }
+        } else {
+            this.vertices = vertices;
+        }
+
+        this.color = color; // <----------
+    }
+
+    clone() {
+        let tri = new Triangle();
+        for (let i = 0; i < this.vertices.length; i++)
+            tri.vertices[i] = this.vertices[i].clone();
+        tri.color = this.color; // <----------
+        return tri;
+    }
+
+    ...
+}</code></pre>
+                    Tiếp theo là hàm clipAgainstPlane:
+                    <pre><code class="language-javascript">clipAgainstPlane(plane) {
+    ...
+
+    if (frontPoints.length == 3) {
+        outTris.push(this.clone());
+    } else if (frontPoints.length == 1 && behindPoints.length == 2) {
+        let outTri = new Triangle();
+        ...
+        outTri.color = this.color;
+        outTris.push(outTri);
+    } else if (frontPoints.length == 2 && behindPoints.length == 1) {
+        let outTri1 = new Triangle(), outTri2 = new Triangle();
+
+        ...
+        outTri1.color = this.color;
+        outTris.push(outTri1);
+
+        ...
+        outTri2.color = this.color;
+        outTris.push(outTri2);
+    }
+
+    return outTris;
+}</code></pre>
+
+                    Sau đó là tới class Cube, constructor cũng phải nhận vào và lưu 1 giá trị color, và sau đó sử dụng biến đó để truyền cho từng triangle một:
+                     <pre><code class="language-javascript">class Cube {
+    constructor(pos, eulerAngles, scale, color) {
+        this.tris = [];
+        this.pos = pos;
+        this.scale = scale;
+        this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
+        this.color = color; // <----------
+
+        this.generateInitialTriangles();
+    }
+
+    generateInitialTriangles() {
+        // FRONT
+        this.tris.push(new Triangle([
+            new Vector3(-0.5, -0.5, -0.5),
+            new Vector3(-0.5, 0.5, -0.5),
+            new Vector3(0.5, 0.5, -0.5)], this.color));
+        this.tris.push(new Triangle([
+            new Vector3(-0.5, -0.5, -0.5),
+            new Vector3(0.5, 0.5, -0.5),
+            new Vector3(0.5, -0.5, -0.5)], this.color));
+
+        ...
+    }
+}</code></pre>
+                    Cuối cùng là ở lúc rasterizer xử lý triangle, màu pixel sẽ là màu của triangle hiện tại đang xử lý thay vì là màu xám như trước:
+                    <pre><code class="language-javascript">processTriangles(tris) {
+    for (let tri of tris) {
+        ...
+
+        const bbox = tri.boundingBox();
+        for (let y = bbox[2]; y <= bbox[3]; y++) {
+            for (let x = bbox[0]; x <= bbox[1]; x++) {
+                if (tri.isPointInTriangle([x, y])) {
+                    this.placePixel([x, y], tri.color);
+                }
+            }
+        }
+    }
+}</code></pre>
+                    Mình sẽ chỉnh lại cho cube2 bự ra đại diện cho "mặt đất", cube1 sẽ nằm giữa cube2 đại diện cho việc nó đang bị chôn vào mặt đất một chút. Cho cube1 màu
+                    đỏ và cube2 màu xanh lá:
+                    <pre><code class="language-javascript">let cube1 = new Cube(new Vector3(0, 0, 5), new Vector3(45, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0));
+let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0));</code></pre>
+
+                    Đồng thời ngừng xoay cube2, nó sẽ ra như sau:
+                    <div class="htmlPreview" id="htmlPreview21"></div>
+
+                    Di chuyển sao cho nhìn 2 cube từ trên xuống là bạn sẽ thấy vấn đề, tại sao nó lại ra như vậy nhỉ? Bạn hãy nghĩ xem, ở bước sau khi chuyển các tam giác về
+                    view space, mình sort các tam giác theo khoảng cách từ center của nó tới camera. Nhưng mà center một tam giác A nằm đằng trước center một tam giác B không 
+                    đồng nghĩa tam giác A sẽ nằm hoàn toàn đằng trước B, có thể một phần nào đó sẽ nằm đằng sau tam giác B, điều này khá hiển nhiên khi 2 tam giác giao nhau.
+                    Như vậy việc check "nằm đằng trước hay sau" cũng phải thực hiện với từng pixel một, đồng nghĩa là ta phải chỉnh sửa rasterizer.<br/><br/>
+
+                    Để xử lý vấn đề này, ta phải implement một thứ gọi là depth buffer (cũng giống screen buffer, nó là một mảng 2 chiều đại diện cho mọi pixel trên canvas). Công
+                    dụng của nó là lưu lại độ sâu của từng pixel, trong quá trình vẽ, nếu độ sâu mới của 1 pixel nhỏ hơn độ sâu hiện tại của pixel đó (được lưu ở depth buffer) thì
+                    mới được vẽ chồng lên và đồng thời update depth buffer.<br/><br/>
+
+                    Nghe có vẻ đơn giản, cho tới khi bạn suy nghĩ sâu thêm là làm sao để mình biết được độ sâu của một điểm bất kỳ trên tam giác? Ta biết được độ sâu của 3 đỉnh tam giác
+                    thông qua giá trị z của từng đỉnh, nhưng mà một điểm bất kỳ trên nó thì phải làm sao? Thật ra ta cũng làm dựa trên 3 đỉnh của tam giác, một điểm bất kỳ 
+                    sẽ bị ảnh hưởng bởi 3 đỉnh nhưng gần đỉnh nào hơn thì nó sẽ bị ảnh hưởng bởi đỉnh đó nhiều hơn (độ sâu của điểm càng bằng đỉnh đó hơn). 
+                    Ta có thể tính được sự ảnh hưởng đó bằng cách tính diện tích của tam giác được tạo thành bởi điểm đó với 2 đỉnh còn lại, ví dụ với tam giác \(ABC\),
+                    điểm \(P\) càng gần điểm \(C\) hơn thì diện tích tam giác \(ABP\) càng lớn, đồng nghĩa sự ảnh hưởng của \(C\) lên \(P\) càng lớn.<br/><br/>
+                    Ta biết diện tích tam giác \(ABP\) được tính bằng công thức \(\frac{1}{2}.PM.AB\) với \(PM\) là đường cao của tam giác \(ABP\), nhưng việc tính thêm đường cao các
+                    thứ vào trong code ta thì có lẽ hơi phức tạp. Thật ra có cách dễ hơn 😳 mình sẽ quay lại hình "điểm \(P\) nằm bên trái \(\vec{AB}\)" ở trên và vẽ thêm vào:
+                    <div align="center"><img style="max-height: 300px;" src="images/graphics3D9/Area.png"/></div>
+                    Ta thử tính diện tích tam giác: \(S_{\triangle ABP} = \frac{1}{2}.PM.AB = \frac{1}{2}.AN.AB' = \frac{1}{2}.AB'.AP.\cos{\theta} = \frac{1}{2}.\langle \vec{AB'},\vec{AP} \rangle\)<br/><br/>
+                    What? Diện tích tam giác \(ABP\) bằng một nửa tích vô hướng của \(\vec{AB'}\) và \(\vec{AP}\) 😳 (đừng quên \(\vec{AB'}\) là \(\vec{AB}\) nhưng xoay 90 độ ngược chiều kđh).
+                    Và như ta đã chứng minh, tích vô hướng đó cũng là edge function của cạnh \(AB\) và điểm \(P\), như vậy là ta có thể tính được tầm ảnh hưởng của 1 đỉnh lên 1 điểm trong
+                    tam giác bằng edge function 😳<br/><br/>
+                    Vì một điểm bị ảnh hưởng bởi cả 3 đỉnh, nên tốt nhất ta nên chuẩn hóa hết 3 tầm ảnh hưởng bằng cách lấy 3 edge function với \(P\) đó chia cho \(E(A,B,C)\), 
+                    như vậy tổng của 3 tầm ảnh hưởng luôn là 1. 
+                    Xin chúc mừng, chúng ta đã reinvent lại <a href="https://en.wikipedia.org/wiki/Barycentric_coordinate_system">Barycentric Coordinate</a> của tam giác 😳 Hệ tọa độ
+                    này là hệ tọa độ trong 1 tam giác mà đại diện cho "độ gần của 1 điểm so với 3 đỉnh", có dạng \((\frac{E(B,C,P)}{E(A,B,C)};\frac{E(C,A,P)}{E(A,B,C)};\frac{E(A,B,P)}{E(A,B,C)})\).
+                    Ví dụ nếu điểm \(P\) ở ngay đỉnh \(A\) thì barycentric coordinate là
+                    \((1;0;0)\), \(B\) thì là \((0;1;0)\) và \(C\) thì là \((0;0;1)\). Với điểm cách đều ba đỉnh của một tam giác (tâm đường tròn ngoại tiếp tam giác) thì 
+                    barycentric coordinate là \((\frac{1}{3};\frac{1}{3};\frac{1}{3})\).
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 

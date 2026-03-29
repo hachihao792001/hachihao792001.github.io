@@ -337,7 +337,6 @@
 				const e1 = edgeFunction(v0, v1, p);
 				const e2 = edgeFunction(v1, v2, p);
 				const e3 = edgeFunction(v2, v0, p);
-
 				return e1 < 0 && e2 < 0 && e3 < 0;
 			}
 
@@ -574,6 +573,14 @@
 
 			processTriangles(tris) {
 				for (let tri of tris) {
+					let vertices = tri.vertices;
+					for (let i = 0; i < vertices.length; i++) {
+						vertices[i] = new Vector3(
+							vertices[i].x * canvas.width + canvas.width / 2,
+							-vertices[i].y * canvas.height + canvas.height / 2,
+							vertices[i].z, vertices[i].w);
+					}
+
 					const bbox = tri.boundingBox();
 					for (let y = bbox[2]; y <= bbox[3]; y++) {
 						for (let x = bbox[0]; x <= bbox[1]; x++) {
@@ -680,29 +687,8 @@
 				clippedTris = newTris;
 			}
 
-			for (let tri of clippedTris) {
-				let vertices = tri.vertices;
-				for (let i = 0; i < vertices.length; i++) {
-					vertices[i] = new Vector3(
-						vertices[i].x * canvas.width + canvas.width / 2,
-						-vertices[i].y * canvas.height + canvas.height / 2,
-						vertices[i].z, vertices[i].w);
-				}
-			}
-
 			rasterizer.processTriangles(clippedTris);
 			rasterizer.drawCall();
-
-			// for (let tri of clippedTris) {
-			// 	let vertices = tri.vertices;
-			// 	ctx.strokeStyle = "black";
-			// 	ctx.beginPath();
-			// 	ctx.moveTo(vertices[0].x, vertices[0].y);
-			// 	ctx.lineTo(vertices[1].x, vertices[1].y);
-			// 	ctx.lineTo(vertices[2].x, vertices[2].y);
-			// 	ctx.closePath();
-			// 	ctx.stroke();
-			// }
 
 			requestAnimationFrame(update);
 		}

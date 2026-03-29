@@ -331,14 +331,20 @@
 				const e1 = edgeFunction(v0, v1, p);
 				const e2 = edgeFunction(v1, v2, p);
 				const e3 = edgeFunction(v2, v0, p);
-				return (e1 < 0 && e2 < 0 && e3 < 0);
+				return e1 < 0 && e2 < 0 && e3 < 0;
 			}
 
 			boundingBox() {
-				let minX = parseInt(Math.min(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x));
-				let maxX = parseInt(Math.max(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x));
-				let minY = parseInt(Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y));
-				let maxY = parseInt(Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y));
+				let minX = Math.min(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
+				let maxX = Math.max(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
+				let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
+				let maxY = Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
+
+				minX = Math.max(0, parseInt(minX));
+				maxX = Math.min(canvas.width - 1, parseInt(maxX));
+				minY = Math.max(0, parseInt(minY));
+				maxY = Math.min(canvas.height - 1, parseInt(maxY));
+
 				return [minX, maxX, minY, maxY];
 			}
 		}
@@ -543,6 +549,14 @@
 
 			processTriangles(tris) {
 				for (let tri of tris) {
+					let vertices = tri.vertices;
+					for (let i = 0; i < vertices.length; i++) {
+						vertices[i] = new Vector3(
+							vertices[i].x * canvas.width + canvas.width / 2,
+							-vertices[i].y * canvas.height + canvas.height / 2,
+							1);
+					}
+
 					const bbox = tri.boundingBox();
 					for (let y = bbox[2]; y <= bbox[3]; y++) {
 						for (let x = bbox[0]; x <= bbox[1]; x++) {
@@ -650,29 +664,8 @@
 				clippedTris = newTris;
 			}
 
-			for (let tri of clippedTris) {
-				let vertices = tri.vertices;
-				for (let i = 0; i < vertices.length; i++) {
-					vertices[i] = new Vector3(
-						vertices[i].x * canvas.width + canvas.width / 2,
-						-vertices[i].y * canvas.height + canvas.height / 2,
-						1);
-				}
-			}
-
 			rasterizer.processTriangles(clippedTris);
 			rasterizer.drawCall();
-
-			for (let tri of clippedTris) {
-				let vertices = tri.vertices;
-				ctx.strokeStyle = "black";
-				ctx.beginPath();
-				ctx.moveTo(vertices[0].x, vertices[0].y);
-				ctx.lineTo(vertices[1].x, vertices[1].y);
-				ctx.lineTo(vertices[2].x, vertices[2].y);
-				ctx.closePath();
-				ctx.stroke();
-			}
 
 			requestAnimationFrame(update);
 		}
