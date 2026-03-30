@@ -41,7 +41,7 @@
 				return new Vector3(vec.x * value, vec.y * value, vec.z * value);
 			}
 			static div(vec, value) {
-				return new Vector3(vec.x / value, vec.y / value, vec.z / value, vec.w);
+				return new Vector3(vec.x / value, vec.y / value, vec.z / value);
 			}
 			static scale(vec1, vec2) {
 				return new Vector3(vec1.x * vec2.x, vec1.y * vec2.y, vec1.z * vec2.z);
@@ -578,7 +578,7 @@
 						vertices[i] = new Vector3(
 							vertices[i].x * canvas.width + canvas.width / 2,
 							-vertices[i].y * canvas.height + canvas.height / 2,
-							vertices[i].z, vertices[i].w);
+							vertices[i].z);
 					}
 
 					const bbox = tri.boundingBox();
