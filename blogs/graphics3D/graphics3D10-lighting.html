@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="graphics3D.css">
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Graphics Engine 3D</title>
+</head>
+
+<body data-graphics3D-id="graphics3D10">
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Lighting</h1>
+                    Nhìn cube chỉ với một màu từ đầu tới cuối thì hơi chán, đã tới lúc ta thêm vào một chút gì đó, điển hình như là ánh sáng 😳
+                    Ánh sáng mà ta gặp nhiều nhất trong cuộc sống là ánh sáng mặt trời, vì mặt trời ở rất xa nên ta có thể xem mọi tia sáng đều song song với nhau, và 
+                    khoảng cách tới mặt trời không thay đổi cường độ của nó là mấy. Nghĩa là độ sáng của một mặt phẳng chỉ dựa vào việc nó đang hướng đi đâu chứ không liên
+                    quan tới khoảng cách, ánh sáng hoạt động theo kiểu này được gọi là Directional Light.<br/><br/>
+                    Implement cái này khá dễ, thậm chỉ không cần đụng tới Rasterizer, vì tam giác nào cũng sẽ chỉ có một màu duy nhất. Ta biết là khi một mặt phẳng hướng thẳng về phía
+                    mặt trời thì nó sẽ sáng nhất, hướng ngược lại thì nó sẽ tối nhất, như vậy ta chỉ cần tính tích vô hướng giữa pháp tuyến của mặt phẳng với hướng của ánh sáng
+                    là sẽ ra được cường độ ánh sáng lên mặt phẳng đó 😳
+                    Đầu tiên ta tạo một hướng chung chung cho ánh sáng:
+                    <pre><code class="language-javascript">let lightDir = new Vector3(-1, -1, -1).normalize();</code></pre>
+                    Khi một mặt phẳng hướng về mặt trời, điều đó đồng nghĩa là pháp tuyến của mặt phẳng đó đang ngược chiều với chiều ánh sáng, như vậy ánh sáng sẽ mạnh nhất
+                    khi tích vô hướng = -1 và yếu nhất khi tích vô hướng = 1 (tích vô hướng càng giảm thì cường độ ánh sáng càng tăng).
+                    Để cho hợp lý thì khi trước khi áp dụng cường độ ánh sáng vào màu của tam giác, 
+                    ta lấy kết quả tích vô hướng +1 để đẩy nó lên khoảng [0; 2] sau đó /2 để về lại khoảng [0;1] và lấy 1 - cục đó để nó từ giảm dần thành tăng dần.
+                    Như vậy, hàm áp dụng ánh sáng vào màu của tam giác sẽ như sau:
+                    <pre><code class="language-javascript">applyDirectionalLight(lightDir) {
+    let dirLightDiffuse = (1 - (Vector3.dot(this.getNormal(), lightDir) + 1) / 2);
+    this.color = new Color(this.color.r * dirLightDiffuse, this.color.g * dirLightDiffuse, this.color.b * dirLightDiffuse);
+}</code></pre>
+					Ta sẽ gọi hàm này trước khi nhân view matrix vì lúc đó tọa độ thế giới còn giữ nguyên:
+                    <pre><code class="language-javascript">let visibleTris = [];
+for (let tri of objectTris) {
+    if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
+        tri.applyDirectionalLight(lightDir);    // <------------------------------
+        tri.mulMat4x4(viewMat);
+        visibleTris.push(...tri.clipAgainstPlane(nearPlane));
+    }
+}</code></pre>
+                    Sẽ tốt hơn nếu ta có thể điều chỉnh được độ sáng 😳 Ta sẽ tạo một slider (input loại range) bên dưới chỗ ghi FPS, mặc định cho value là 1. Thêm kế bên nó 1 số ghi độ sáng hiện tại:
+                    <pre><code class="language-html">&lt;div&gt;
+    Directional light intensity:
+    &lt;input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" /&gt;
+    &lt;span id="dirIntensityText" class="slider-value">1.0&lt;/span&gt;
+&lt;/div&gt;</code></pre> 
+                    Ta lấy reference tới 2 cái trên, đồng thời tạo một biến cập nhật cường độ sáng hiện tại theo đúng giá trị trên slider.
+                    <pre><code class="language-javascript">const lightDirIntensitySlider = document.getElementById("dirIntensity");
+const lightDirIntensityText = document.getElementById("dirIntensityText");
+let dirLightIntensity = parseFloat(lightDirIntensitySlider.value);
+
+...
+
+lightDirIntensitySlider.addEventListener("input", () => {
+    dirLightIntensity = parseFloat(lightDirIntensitySlider.value);
+    lightDirIntensityText.textContent = dirLightIntensity.toFixed(2);
+});</code></pre>
+                    Trong hàm applyDirectionLight ta chỉ cần nhân thêm dirLightIntensity vào là xong:
+                    <pre><code class="language-javascript">applyDirectionalLight(lightDir) {
+    let dirLightDiffuse = (1 - (Vector3.dot(this.getNormal(), lightDir) + 1) / 2) * dirLightIntensity;
+    this.color = new Color(this.color.r * dirLightDiffuse, this.color.g * dirLightDiffuse, this.color.b * dirLightDiffuse);
+}</code></pre>
+                    Full code (mình chỉnh rotation ban đầu của cube1 thành 0 hết cho dễ nhìn thấy ánh sáng):
+                    <div class="htmlPreview" id="htmlPreview23"></div>
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer></footer>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+
+    <script src="graphics3D.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>
