@@ -51,7 +51,7 @@
                     ta lấy kết quả tích vô hướng +1 để đẩy nó lên khoảng [0; 2] sau đó /2 để về lại khoảng [0;1] và lấy 1 - cục đó để nó từ giảm dần thành tăng dần.
                     Như vậy, hàm áp dụng ánh sáng vào màu của tam giác sẽ như sau:
                     <pre><code class="language-javascript">applyDirectionalLight(lightDir) {
-    let dirLightDiffuse = (1 - (Vector3.dot(this.getNormal(), lightDir) + 1) / 2);
+    let dirLightDiffuse = (1 - (Vector3.dot(this.getNormal(), lightDir) + 1) / 2);  // diffuse là một từ khóa đại diện cho "màu cơ bản" của một tam giác
     this.color = new Color(this.color.r * dirLightDiffuse, this.color.g * dirLightDiffuse, this.color.b * dirLightDiffuse);
 }</code></pre>
 					Ta sẽ gọi hàm này trước khi nhân view matrix vì lúc đó tọa độ thế giới còn giữ nguyên:
@@ -87,6 +87,253 @@ lightDirIntensitySlider.addEventListener("input", () => {
 }</code></pre>
                     Full code (mình chỉnh rotation ban đầu của cube1 thành 0 hết cho dễ nhìn thấy ánh sáng):
                     <div class="htmlPreview" id="htmlPreview23"></div>
+                    <br/>
+                    Nhưng mà Directional light là loại ánh sáng "chán" (vì dễ làm hê hê), để engine trông thực tế hơn, ta cần một loại ánh sáng mà càng xa nó càng tối, như
+                    một bóng đèn, nó gọi là point light 😳 <br/><br/>
+                    Nhưng trước khi làm gì liên quan tới nó, vì tính chất của point light là cường độ ánh sáng sẽ dựa vào khoảng cách, cho nên việc tính màu phải tính theo từng
+                    pixel một, là ta sẽ phải xử lý ở rasterizer. Tuy nhiên, bạn cũng biết khi làm việc ánh sáng thì ta phải làm với tọa độ thế giới, cho nên ta phải lưu lại
+                    tọa độ thế giới ban đầu trước khi áp dụng view matrix và những bước tiếp theo.<br/><br/>
+                    Cũng giống như việc lưu lại màu, ta cũng tạo tọa độ thế giới ở constructor, và copy nó ở hàm clone:
+                    <pre><code class="language-javascript">class Triangle {
+    constructor(vertices = [], color = new Color(255, 255, 255)) {
+        ...
+
+        this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
+    }
+
+    clone() {
+        let tri = new Triangle();
+        for (let i = 0; i < this.vertices.length; i++) {
+            tri.vertices[i] = this.vertices[i].clone();
+            tri.worldVertices[i] = this.worldVertices[i].clone();   // <-----------------------
+        }
+        tri.color = this.color;
+        return tri;
+    }
+    ...
+}</code></pre>
+                    Tới hàm clipAgainstPlane thì nó sẽ hơi phức tạp chút, bạn biết là ta thực hiện clipping ở view space, nhưng khi ta tạo tam giác mới sau khi cắt tam giác cũ,
+                    ta cũng phải tạo worldVertices thích hợp cho các tam giác mới. Như vậy ta cũng phải nội suy worldVertices như cách ta nội suy vertices, vì vậy ta phải chỉnh sửa
+                    lại hàm plane.intersectWithLine, thay vì chỉ trả về giao điểm giữa plane và đoạn thẳng, ta trả về luôn giá trị t nội suy của giao điểm đó:
+                    <pre><code class="language-javascript">intersectWithLine(A, B) {
+    let An = Vector3.dot(A, this.normal);
+    let Bn = Vector3.dot(B, this.normal);
+    let vectorAB = Vector3.sub(B, A);
+    let t = (this.D - An) / (Bn - An);     // <----------------------------
+    let vectorAM = Vector3.mul(vectorAB, t);
+    return [t, Vector3.add(A, vectorAM)];   // trả về dạng mảng vì javascript không có tuple
+}</code></pre>
+                    Thay vì viết lại công thức nội suy nhiều lần ở hàm clipAgainstPlane, mình tạo luôn hàm cho nó trong Vector3 (thật ra không cần nội suy w vì w chỉ được
+                    dùng sau khi ta nhân projection matrix, nhưng nội suy luôn cho an toàn):
+                    <pre><code class="language-javascript">class Vector3 {
+    ...
+    static lerp(v1, v2, t) {
+        return new Vector3(
+            v1.x + (v2.x - v1.x) * t,
+            v1.y + (v2.y - v1.y) * t,
+            v1.z + (v2.z - v1.z) * t,
+            v1.w + (v2.w - v1.w) * t);
+    }
+    ...
+}</code></pre>
+                    Hàm clipAgainstPlane của chúng ta như sau (bắt đầu hơi dài rồi đấy 🥵):
+                    <pre><code class="language-javascript">clipAgainstPlane(plane) {
+    ...
+
+    if (frontPoints.length == 3) {
+        outTris.push(this.clone());
+    } else if (frontPoints.length == 1 && behindPoints.length == 2) {
+        let outTri = new Triangle();
+
+        if (behindPoints[0] == 0 && behindPoints[1] == 2) {
+            behindPoints[0] = 2;
+            behindPoints[1] = 0;
+        }
+
+        let f = this.vertices[frontPoints[0]];
+        let b0 = this.vertices[behindPoints[0]];
+        let b1 = this.vertices[behindPoints[1]];
+
+        let [t1, intersection1] = plane.intersectWithLine(f, b0);   // lấy ra giá trị t nội suy luôn
+        let [t2, intersection2] = plane.intersectWithLine(f, b1);   // lấy ra giá trị t nội suy luôn
+
+        outTri.vertices[0] = f;
+        outTri.vertices[1] = intersection1;
+        outTri.vertices[2] = intersection2;
+        // tạo các worldVertices mới y như vertices, cái nào lấy điểm cũ thì lấy điểm cũ, cái nào nội suy thì nội suy
+        outTri.worldVertices[0] = this.worldVertices[frontPoints[0]];
+        outTri.worldVertices[1] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
+        outTri.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[1]], t2);
+        outTri.color = this.color;
+        outTris.push(outTri);
+    } else if (frontPoints.length == 2 && behindPoints.length == 1) {
+        let outTri1 = new Triangle(), outTri2 = new Triangle();
+
+        if (frontPoints[0] == 0 && frontPoints[1] == 2) {
+            frontPoints[0] = 2;
+            frontPoints[1] = 0;
+        }
+
+        let f0 = this.vertices[frontPoints[0]];
+        let f1 = this.vertices[frontPoints[1]];
+        let b = this.vertices[behindPoints[0]];
+
+        let [t1, intersection1] = plane.intersectWithLine(f0, b);   // lấy ra giá trị t nội suy luôn
+        let [t2, intersection2] = plane.intersectWithLine(f1, b);   // lấy ra giá trị t nội suy luôn
+
+        outTri1.vertices[0] = f0;
+        outTri1.vertices[1] = f1;
+        outTri1.vertices[2] = intersection1;
+        // tạo các worldVertices mới y như vertices, cái nào lấy điểm cũ thì lấy điểm cũ, cái nào nội suy thì nội suy
+        outTri1.worldVertices[0] = this.worldVertices[frontPoints[0]];
+        outTri1.worldVertices[1] = this.worldVertices[frontPoints[1]];
+        outTri1.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
+        outTri1.color = this.color;
+        outTris.push(outTri1);
+
+        outTri2.vertices[0] = f1.clone();
+        outTri2.vertices[1] = intersection2;
+        outTri2.vertices[2] = intersection1.clone();
+        // tạo các worldVertices mới y như vertices, cái nào lấy điểm cũ thì lấy điểm cũ, cái nào nội suy thì nội suy
+        outTri2.worldVertices[0] = this.worldVertices[frontPoints[1]].clone();
+        outTri2.worldVertices[1] = Vector3.lerp(this.worldVertices[frontPoints[1]], this.worldVertices[behindPoints[0]], t2);
+        outTri2.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
+        outTri2.color = this.color;
+        outTris.push(outTri2);
+    }
+
+    return outTris;
+}</code></pre>
+                    Ta tạo thêm một hàm trong Triangle để copy giá trị của vertices sang worldVertices khi cần (cụ thể là sau khi nhân model matrix), và một hàm để tính
+                    vector pháp tuyến với worldVertices:
+                    <pre><code class="language-javascript">class Triangle{
+    ...
+    updateWorldVertices() {
+        for (let i = 0; i < this.vertices.length; i++) {
+            this.worldVertices[i] = this.vertices[i].clone();
+        }
+    }
+    getWorldNormal() {
+        let v1 = Vector3.sub(this.worldVertices[0], this.worldVertices[1]);
+        let v2 = Vector3.sub(this.worldVertices[1], this.worldVertices[2]);
+        let normal = Vector3.cross(v1, v2);
+        normal.normalize();
+        return normal;
+    }
+    ...
+}</code></pre>
+                    Ta dùng hàm updateWorldVertices bên trong hàm getTransformedTriangles của Cube:
+                    <pre><code class="language-javascript">getTransformedTriangles() {
+    let transformedTris = [];
+    for (let tri of this.tris) {
+        let transformedTri = tri.clone();
+        transformedTri.mulMat4x4(Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z));
+        transformedTri.rotate(this.rotation);
+        transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
+        transformedTri.updateWorldVertices();   // <-------------------------------
+        transformedTris.push(transformedTri);
+    }
+    return transformedTris;
+}</code></pre>
+                    Thế là việc giữ được tọa độ thế giới đã xong, trước khi code gì liên quan tới point light, ta cần có một thứ đại diện cho point light đó, cho đơn giản
+                    thì để nó thành 1 cube mới (vì engine của chúng ta chỉ có cube 😅).
+                    <pre><code class="language-javascript">let lightCube = new Cube(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255));</code></pre>
+                    Ta cũng đẩy hết tam giác của nó vào objectTris ở đầu render pipeline, ngoài ra để cho sinh động thì ta thêm các phím để điều khiển nó xung quanh:
+                    <pre><code class="language-javascript">function update(time = performance.now()) {
+    ...
+
+    if (keyStates['i']) {
+        lightCube.pos.z += dt * 2;
+    } else if (keyStates['k']) {
+        lightCube.pos.z -= dt * 2;
+    } else if (keyStates['j']) {
+        lightCube.pos.x -= dt * 2;
+    } else if (keyStates['l']) {
+        lightCube.pos.x += dt * 2;
+    } else if (keyStates['u']) {
+        lightCube.pos.y += dt * 2;
+    } else if (keyStates['o']) {
+        lightCube.pos.y -= dt * 2;
+    }
+
+    ...
+
+    objectTris.push(...lightCube.getTransformedTriangles());
+
+    ...
+}</code></pre>
+                    Ta cũng thêm slider chỉnh intensity cho point light y hệt directional light:
+                    <pre><code class="language-html">&lt;div&gt;
+    Point light intensity:
+    &lt;input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" /&gt;
+    &lt;span id="pointIntensityText" class="slider-value"&gt;1.0&lt;/span&gt;
+&lt;/div&gt;</code></pre>
+                    <pre><code class="language-javascript">const pointLightIntensitySlider = document.getElementById("pointIntensity");
+const pointLightIntensityText = document.getElementById("pointIntensityText");
+let pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
+
+...
+
+pointLightIntensitySlider.addEventListener("input", () => {
+    pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
+    pointLightIntensityText.textContent = pointLightIntensity.toFixed(2);
+});</code></pre>
+                    Để tính được màu của 1 điểm trên 1 triangle khi bị point light tác động, ta dựa vào 2 yếu tố, một là góc hợp giữa ánh sáng với pháp tuyến tam giác, cái này tính y hệt
+                    như Directional Light (vì nó không liên quan tới pixel). Yếu tố thứ 2 đó chính là khoảng cách, bạn cần biết là ngoài đời, ánh sáng hoạt động theo nguyên tắc nghịch đảo bình phương (inverse-square law),
+                    nghĩa là càng xa thì ánh sáng giảm càng nhanh (giảm theo bình phương khoảng cách) chứ nó không tuyến tính. Nghĩa là sau khi ta tính được diffuse dựa vào góc hợp giữa
+                    ánh sáng và pháp tuyến, ta nhân tiếp nó với một giá trị nào đó có dạng\(\frac{1}{distance^2}\), tuy nhiên khi distance = 0 thì nó sẽ bị chia cho 0, cho nên ta cần phải sửa
+                    nó thành \(\frac{1}{1+k*distance^2}\) trong đó \(k\) được gọi là "độ lan xa" của ánh sáng (càng nhỏ càng lan xa). Kết quả công thức này được gọi là attenuation - độ suy
+                    giảm của ánh sáng.<br/><br/>
+                    Vì ta vẫn muốn giữ Directional Light, nên ta cần cộng thêm ánh sáng của Point light vào Directional light, nên tốt nhất là ta xử lý luôn directional light
+                    ở rasterizer, như vậy ta xóa hàm applyDirectionalLight và chỗ gọi nó (trước khi nhân view matrix). Và hàm processTriangles sẽ trở thành như sau:
+                    <pre><code class="language-javascript">processTriangles(tris) {
+    for (let tri of tris) {
+        ...
+
+        // tính pháp tuyến tam giác hiện tại dựa trên tọa độ thế giới đã được lưu
+        let triWorldNormal = tri.getWorldNormal();
+        // chuyển phần code tính cường độ Directional Light vào đây, để cộng vào cường độ của point light
+        let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, lightDir) + 1) / 2) * dirLightIntensity;
+        const bbox = tri.boundingBox();
+        for (let y = bbox[2]; y <= bbox[3]; y++) {
+            for (let x = bbox[0]; x <= bbox[1]; x++) {
+                if (tri.isPointInTriangle([x, y])) {
+                    const baryCoords = tri.barycentricCoords([x, y]);
+                    const z = tri.vertices[0].z * baryCoords[0] + tri.vertices[1].z * baryCoords[1] + tri.vertices[2].z * baryCoords[2];
+
+                    if (z < this.depthBuffer[y][x]) {
+                        this.depthBuffer[y][x] = z;
+
+                        // tính tọa độ thế giới của pixel hiện tại dựa vào tọa độ thế giới của 3 đỉnh tam giác
+                        // (y hệt cách ta tính độ sâu của pixel hiện tại, bằng barycentric coordinates)
+                        let pixelWorldPos = new Vector3(
+                            tri.worldVertices[0].x * baryCoords[0] + tri.worldVertices[1].x * baryCoords[1] + tri.worldVertices[2].x * baryCoords[2],
+                            tri.worldVertices[0].y * baryCoords[0] + tri.worldVertices[1].y * baryCoords[1] + tri.worldVertices[2].y * baryCoords[2],
+                            tri.worldVertices[0].z * baryCoords[0] + tri.worldVertices[1].z * baryCoords[1] + tri.worldVertices[2].z * baryCoords[2]
+                        );
+
+                        let pointLightVec = Vector3.sub(pixelWorldPos, lightCube.pos);      //vector tia sáng
+                        let distance = pointLightVec.magnitude();       // tính khoảng cách giữa point light và pixel trước khi normalize vector tia sáng
+                        pointLightVec.normalize();
+                        let pointLightDiffuse = 1 - (Vector3.dot(triWorldNormal, pointLightVec) + 1) / 2; // tính cường độ ánh sáng theo góc như directional light
+                        let attenuation = 1 / (1 + 0.1 * distance * distance);  // tính độ suy giảm
+                        pointLightDiffuse *= attenuation * pointLightIntensity;// nhân độ suy giảm và đồng thời cường độ (có thể chỉnh sửa bằng slider) vào diffuse
+
+                        let lightIntensity = dirLightDiffuse + pointLightDiffuse;   // kết hợp 2 ánh sáng
+
+                        this.placePixel([x, y], new Color(
+                            Math.min(255, tri.color.r * lightIntensity),
+                            Math.min(255, tri.color.g * lightIntensity),
+                            Math.min(255, tri.color.b * lightIntensity)
+                        ));
+                    }
+                }
+            }
+        }
+    }
+}</code></pre>
+                    Kết quả (chỉnh directional light xuống để thấy rõ sự ảnh hưởng của point light, dùng i,k,j,l,u,o để di chuyển point light):
+                    <div class="htmlPreview" id="htmlPreview24"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 
