@@ -64,5 +64,11 @@
         "webTitle": "Graphics Engine 3D #10: Lighting",
         "title": "Graphics Engine 3D #10: Lighting",
         "route": "/blogs/graphics3D/graphics3D10-lighting.html"
+    },
+    {
+        "id": "graphics3D11",
+        "webTitle": "Graphics Engine 3D #11: Texture Sampling",
+        "title": "Graphics Engine 3D #11: Texture Sampling",
+        "route": "/blogs/graphics3D/graphics3D11-texture.html"
     }
 ]
