@@ -697,10 +697,12 @@
 
 									let texColor = tri.color;
 									if (imgLoaded) {
-										const u = tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2];
-										const v = tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2];
-										const texX = Math.floor(u * (img.width - 1));
-										const texY = Math.floor(v * (img.height - 1));
+										let pixelUV = new Vector2(
+											tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
+											tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2]
+										);
+										const texX = Math.floor(pixelUV.u * (img.width - 1));
+										const texY = Math.floor(pixelUV.v * (img.height - 1));
 										const texIndex = (texY * img.width + texX) * 4;
 										texColor = new Color(imgPixels[texIndex], imgPixels[texIndex + 1], imgPixels[texIndex + 2]);
 									}
@@ -772,13 +774,13 @@
 		img.crossOrigin = "anonymous";
 		img.src = "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg";
 		img.onload = () => {
-			imgLoaded = true;
 			const tempCanvas = document.createElement("canvas");
 			tempCanvas.width = img.width;
 			tempCanvas.height = img.height;
 			const tempCtx = tempCanvas.getContext("2d");
 			tempCtx.drawImage(img, 0, 0);
 			imgPixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
+			imgLoaded = true;
 		};
 		let imgLoaded = false;
 		let imgPixels = null;
