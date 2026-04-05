@@ -7,68 +7,62 @@
     },
     {
         "id": "graphics3D1",
-        "webTitle": "Graphics Engine 3D #1: Setup cơ bản",
-        "title": "Graphics Engine 3D #1: Setup cơ bản",
+        "webTitle": "Graphics Engine 3D #1: Những khái niệm cần biết và setup cơ bản",
+        "title": "Graphics Engine 3D #1: Những khái niệm cần biết và setup cơ bản",
         "route": "/blogs/graphics3D/graphics3D1-setup.html"
     },
     {
         "id": "graphics3D2",
-        "webTitle": "Graphics Engine 3D #2: Những khái niệm cơ bản",
-        "title": "Graphics Engine 3D #2: Những khái niệm cơ bản",
-        "route": "/blogs/graphics3D/graphics3D2-definitions.html"
+        "webTitle": "Graphics Engine 3D #2: Vẽ một hình lập phương",
+        "title": "Graphics Engine 3D #2: Vẽ một hình lập phương",
+        "route": "/blogs/graphics3D/graphics3D2-cube.html"
     },
     {
         "id": "graphics3D3",
-        "webTitle": "Graphics Engine 3D #3: Vẽ một hình lập phương",
-        "title": "Graphics Engine 3D #3: Vẽ một hình lập phương",
-        "route": "/blogs/graphics3D/graphics3D3-cube.html"
+        "webTitle": "Graphics Engine 3D #3: Projection matrix",
+        "title": "Graphics Engine 3D #3: Projection matrix",
+        "route": "/blogs/graphics3D/graphics3D3-projection.html"
     },
     {
         "id": "graphics3D4",
-        "webTitle": "Graphics Engine 3D #4: Projection matrix",
-        "title": "Graphics Engine 3D #4: Projection matrix",
-        "route": "/blogs/graphics3D/graphics3D4-projection.html"
+        "webTitle": "Graphics Engine 3D #4: Model matrix",
+        "title": "Graphics Engine 3D #4: Model matrix",
+        "route": "/blogs/graphics3D/graphics3D4-model.html"
     },
     {
         "id": "graphics3D5",
-        "webTitle": "Graphics Engine 3D #5: Model matrix",
-        "title": "Graphics Engine 3D #5: Model matrix",
-        "route": "/blogs/graphics3D/graphics3D5-model.html"
+        "webTitle": "Graphics Engine 3D #5: Game loop và face culling",
+        "title": "Graphics Engine 3D #5: Game loop và face culling",
+        "route": "/blogs/graphics3D/graphics3D5-gameloop.html"
     },
     {
         "id": "graphics3D6",
-        "webTitle": "Graphics Engine 3D #6: Game loop và face culling",
-        "title": "Graphics Engine 3D #6: Game loop và face culling",
-        "route": "/blogs/graphics3D/graphics3D6-gameloop.html"
+        "webTitle": "Graphics Engine 3D #6: Quaternion",
+        "title": "Graphics Engine 3D #6: Quaternion",
+        "route": "/blogs/graphics3D/graphics3D6-quaternion.html"
     },
     {
         "id": "graphics3D7",
-        "webTitle": "Graphics Engine 3D #7: Quaternion",
-        "title": "Graphics Engine 3D #7: Quaternion",
-        "route": "/blogs/graphics3D/graphics3D7-quaternion.html"
+        "webTitle": "Graphics Engine 3D #7: View matrix và Clipping",
+        "title": "Graphics Engine 3D #7: View matrix và Clipping",
+        "route": "/blogs/graphics3D/graphics3D7-view.html"
     },
     {
         "id": "graphics3D8",
-        "webTitle": "Graphics Engine 3D #8: View matrix và Clipping",
-        "title": "Graphics Engine 3D #8: View matrix và Clipping",
-        "route": "/blogs/graphics3D/graphics3D8-view.html"
+        "webTitle": "Graphics Engine 3D #8: Software rasterizer và Depth buffer",
+        "title": "Graphics Engine 3D #8: Software rasterizer và Depth buffer",
+        "route": "/blogs/graphics3D/graphics3D8-rasterizer.html"
     },
     {
         "id": "graphics3D9",
-        "webTitle": "Graphics Engine 3D #9: Software rasterizer và Depth buffer",
-        "title": "Graphics Engine 3D #9: Software rasterizer và Depth buffer",
-        "route": "/blogs/graphics3D/graphics3D9-rasterizer.html"
+        "webTitle": "Graphics Engine 3D #9: Lighting",
+        "title": "Graphics Engine 3D #9: Lighting",
+        "route": "/blogs/graphics3D/graphics3D9-lighting.html"
     },
     {
         "id": "graphics3D10",
-        "webTitle": "Graphics Engine 3D #10: Lighting",
-        "title": "Graphics Engine 3D #10: Lighting",
-        "route": "/blogs/graphics3D/graphics3D10-lighting.html"
-    },
-    {
-        "id": "graphics3D11",
-        "webTitle": "Graphics Engine 3D #11: Texture Sampling",
-        "title": "Graphics Engine 3D #11: Texture Sampling",
-        "route": "/blogs/graphics3D/graphics3D11-texture.html"
+        "webTitle": "Graphics Engine 3D #10: Texture Sampling",
+        "title": "Graphics Engine 3D #10: Texture Sampling",
+        "route": "/blogs/graphics3D/graphics3D10-texture.html"
     }
 ]

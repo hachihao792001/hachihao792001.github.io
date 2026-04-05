@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="graphics3D.css">
 
     <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <title>Graphics Engine 3D</title>
 </head>
@@ -34,10 +35,157 @@
 
                 <div class="blog-content col-12 col-lg-10">
                     <div id="graphics3D-nav-top"></div>
-                    <h1>Setup cơ bản</h1>
-                    Trước khi làm bất cứ thứ gì liên quan tới 3D, ta trước tiên phải vẽ được thứ gì đó trước,
-                    và để vẽ được thứ gì đó, ta cần có 1 cái canvas (màn hình bên phải đang hiển thị kết quả chạy
-                    của đoạn code bên trái):
+                    <h1>Những khái niệm cần biết và setup cơ bản</h1>
+                    <h2>1. Những khái niệm cần biết</h2>
+                    <h3>1. Hệ tọa độ <a href="https://vi.wikipedia.org/wiki/Hệ_tọa_độ_Descartes">Descartes</a></h3>
+                    
+                    Không cần vòng vo gì nhiều, hệ tọa độ này chính là cái mà bạn đã học trong suốt 12 năm học, còn
+                    nếu bạn muốn tìm hiểu thêm thì mình đã có link tới Wikipedia ở trên. Tuy nhiên, có
+                    một điểm mà bạn cần lưu ý là, đối với Game và đa số các phần mềm đồ họa 3D, thì trục hướng lên là
+                    trục \(y\) chứ không phải trục \(z\) như trong toán học, và có chia ra làm 2 loại hệ tọa độ: Tay trái và tay phải,
+                    mình thì quen hệ tọa độ tay trái hơn, lúc đó trục z sẽ hướng ra xa mình, trục x sẽ hướng sang phải,
+                    và trục y sẽ hướng lên trên, và mình sẽ dùng hệ tọa độ tay trái trong suốt quá trình giải thích engine của mình.
+                    <div align="center">
+                        <img src="https://www.learnopengles.com/wordpress/wp-content/uploads/2012/10/left_right_hand.gif" style="display:block; max-height: 300px;" />
+                        <i>Nguồn ảnh: <a href="https://www.learnopengles.com/tag/left-handed-coordinate-system/">learnopengles</a></i>
+                    </div>
+                    Nếu bạn thắc mắc, thì hệ trục tọa độ \(Oxyz\) mà bạn đã làm quen ở lớp 12 là hệ tọa độ tay phải, bạn xem hình trong sgk lớp 12 dưới đây để làm rõ.
+                    <div align="center">
+                        <img src="https://vietjack.com/toan-12-cd/images/hoat-dong-1-trang-74-toan-12-tap-1.PNG" style="display:block; max-height: 350px;" />
+                        <i>Nguồn ảnh: <a href="https://vietjack.com/toan-12-cd/hoat-dong-1-trang-74-toan-12-tap-1.jsp">vietjack</a>, SGK Toán lớp 12</i>
+                    </div>
+
+                    <h3>2. Nội suy tuyến tính (linear interpolation)</h3>
+                    Khái niệm này theo mình nhớ thì chưa từng giới thiệu chính thức qua ở 12 năm học, nhưng chắc chắn là bạn đã áp dụng qua nó nhiều lần rồi. Nó đơn giản chỉ
+                    là tìm một giá trị \(M\) giữa 2 giá trị \(A, B\) dựa vào giá trị \(t\), \(t\) là giá trị "phần trăm quãng đường từ \(A\) tới \(B\)". 
+                    Nghĩa là khi \(t = 0\) thì \(M = A\) và \(t = 1\) thì \(M = B\), \(t=0.5\) thì nó ngay giữa \(A, B\). Công thức của nội suy tuyến tính khá đơn giản:
+                    \(M = A + (B - A) * t\), bạn có thể xem hình dưới đây và tự ngẫm:
+                    <div align="center">
+                        <img src="images/graphics3D1/linearinterpolation.png" style="display:block; max-height: 300px;" />
+                    </div>
+                    Nội suy tuyến tính có thể áp dụng cho cả không gian 2 chiều và trở lên, xem \(A\), \(B\) là 2 điểm, thì ta vẫn có thể nội suy ra điểm \(M\) từ \(t\) bằng công thức trên 
+                    (sử dụng phép cộng trừ điểm/vector, nhân điểm/vector với hệ số).
+                    
+                    <h3>3. Bản chất sin và cos</h3>
+                    Ở cấp 2, 3, chưa từng giáo viên nào dạy mình bản chất của sin và cos là gì. Họ chỉ dạy và kêu học thuộc sin là đối chia huyền, cos là kề chia huyền, rồi
+                    các trường hợp góc đặc biệt \(\cos{0}=1\), \(\sin{0}=0\), \(\cos{90}=0\),... rồi các biểu thức lượng giác (\(\sin{\alpha}^2 + \cos{\alpha}^2 = 1\), ...) 
+                    rồi biến đổi các thứ qua lại dựa vào những biểu thức đó. Chứ không hề dạy mình tại sao bấm máy \(\cos{35} = 0.81915204428\), chả biết \(0.81915204428\) đó
+                    từ đâu ra, chỉ biết tin vào máy tính. Mãi mới tới lớp 10, khi được học về Công ở môn Vật lý, trong công thức của nó có cos, thì mình mới bắt đầu hiểu được
+                    bản chất của nó (giáo viên vẫn ko nói về nó). Có lẽ giáo viên mình nghĩ kiến thức này hiển nhiên, nhưng mình vẫn nghĩ nó cần được nhắc tới ít nhất 1 lần, hoặc
+                    có lẽ mình học sai thầy cô (sad, mình vẫn tôn trọng họ btw).<br/><br/>
+                    Bản chất của sin và cos thật ra rất đơn giản, cho một vector đơn vị \(\vec{v}\) nằm trong đường tròn đơn vị, hợp với trục hoành (trục x) một góc \(\alpha\), khi đó
+                    \(\sin{\alpha}\) chính là <b>độ dài hình chiếu của \(\vec{v}\) lên trục tung</b> và \(cos{\alpha}\) chính là <b>độ dài hình chiếu của \(\vec{v}\) lên trục hoành</b>.
+                    <div align="center">
+                        <img src="images/graphics3D1/sincos.png" style="display:block; max-height: 300px;" />
+                    </div>
+                    Tóm lại, nếu bạn muốn tìm \(\sin\alpha\) hay \(\cos\alpha\) bằng tay, bạn tìm một vector đơn vị \(\vec{v}\) hợp với trục hoành 1 góc \(\alpha\), khi đó 
+                    \(\sin\alpha = v_y\) và \(\cos\alpha = v_x\). Dựa vào hình này bạn cũng tự suy ra được tại sao \(\cos{0}=1\) hay \(\sin{\alpha}^2 + \cos{\alpha}^2 = 1\) (pytago)
+                    hay bất cứ thứ gì khác.
+                    <h3>4. Tích vô hướng</h3>
+                    Một khái niệm khác mà mình không được dạy về bản chất là tích vô hướng, mình cũng chỉ được dạy về công thức của nó và các bài tập liên quan (mình quên bài tập gì rồi).
+                    Nếu bạn không nhớ, công thức tích vô hướng đối với 2 vector \(\vec{a} = (a_x, a_y)\) và \(\vec{b} = (b_x, b_y)\) là:
+                    $$
+                    \vec{a} \cdot \vec{b} = a_x b_x + a_y b_y
+                    $$
+                    Ngoài ra nó cũng có một công thức khác nữa, đó là:
+                    $$
+                    \vec{a} \cdot \vec{b} = |\vec{a}| |\vec{b}| \cos{\theta}
+                    $$
+                    Nhìn thấy \(cos\), bạn cũng đoán được tiếp theo mình sẽ nói gì
+                    <div align="center">
+                        <img src="images/graphics3D1/dot.png" style="display:block; max-height: 300px;" />
+                    </div>
+                    Gọi \(a_b\) là hình chiếu của \(\vec{a}\) lên \(\vec{b}\), dựa vào công thức thứ hai, ta có tích vô hướng \(\vec{a} \cdot \vec{b} = a_b |\vec{b}| = b_a |\vec{a}|\).
+                    Hmmmm, cũng không có ý nghĩa gì mấy, thật ra nó sẽ có công dụng khi một trong 2 vector là vector đơn vị (độ dài = 1), ví dụ \(|\vec{b}|=1\),
+                    thì lúc đó tích vô hướng \(\vec{a} \cdot \vec{b}\) là độ dài hình chiếu của \(\vec{a}\) lên \(\vec{b}\), và trường hợp ngược lại cũng đúng. Bạn sẽ từ từ thấy sự hữu
+                    dụng của tính chất này vì ta sẽ xài tới hình chiếu hơi nhiều trong engine ta làm 😳<br/><br/>
+                    Ngoài ra, tích vô hướng cũng có 1 công dụng hữu ích khác. Vì có \(cos\) trong công thức, nên tích vô hướng sẽ \(= 0\) khi 2 vector vuông góc nhau, \(> 0\) khi 2 vector "hướng
+                    về cùng 1 vùng" và \(< 0\) khi "hướng về vùng ngược nhau".
+                    <div align="center">
+                        <img src="images/graphics3D1/dotarea.png" style="display:block; max-height: 400px;" />
+                        <i>Những vector nào hướng về vùng xanh là hướng về "cùng 1 vùng" với \(\vec{a}\), vector nào hướng về vùng đỏ là hướng "ngược vùng" với \(\vec{a}\)</i>
+                    </div>
+                    <h3>5. Tích có hướng</h3>
+                    Ngược lại với 2 cái trên, cái này thì mình được dạy về bản chất, vì cơ bản là mình phải hiểu định nghĩa của nó mới hiểu được kết quả của nó 😅 Nếu bạn không
+                    nhớ, tích có hướng giữa \(\vec{a}\) và \(\vec{b}\) là một vector \(\vec{c}\) vuông góc với cả 2 vector trên. Thứ duy nhất mình muốn lưu ý là tùy vào hệ tọa 
+                    độ tay trái hay phải mà hướng của tích có hướng sẽ thay đổi, engine của mình hệ tay trái nên nó sẽ ngược lại nếu bạn tính theo cách thuần toán học, nhưng sẽ 
+                    không ảnh hưởng gì lớn, miễn sao là nó nhất quán suốt engine.
+                    <h3 id="tamgiac">6. Tam giác</h3>
+                    Chắc cái này bạn đã từng nghe qua, tất cả mọi thứ trong đồ họa 3D đều được làm từ nhiều hình tam
+                    giác ghép lại với nhau,
+                    và nó đúng là như vậy, đơn giản chỉ là vì tam giác là hình dạng cơ bản nhất mà bạn có thể tạo được
+                    từ các điểm và đường.
+                    Sau đây mình sẽ demo với một hình lập phương đơn giản, hình lập phương được tạo thành từ 6 mặt
+                    phẳng, mỗi mặt phẳng đó
+                    sẽ được tạo thành từ 2 tam giác, mình sẽ gọi 6 mặt phẳng đó là TOP, DOWN, FRONT, BACK, LEFT và
+                    RIGHT.
+                    Trước tiên đối với 4 đỉnh của mặt phẳng DOWN, FRONT và LEFT:
+                    <div>
+                        <img src="images/graphics3D2/down.png" style="max-width: 300px;" />
+                        <img src="images/graphics3D2/front.png" style="max-width: 300px;" />
+                        <img src="images/graphics3D2/left.png" style="max-width: 300px;" />
+                    </div>
+                    Đối với TOP, BACK và RIGHT thì nó chỉ là như DOWN, FRONT và LEFT nhưng với y, z, x = 1 thay vì 0.
+                    Như vậy hình lập phương đầy đủ của chúng ta sẽ có 8 đỉnh như sau:
+                    <img src="images/graphics3D2/cube1.png" style="display: block; max-width: 300px;" />
+                    Sau đó ta bắt đầu cắt 6 mặt phẳng của hình lập phương thành các tam giác, mỗi mặt phẳng sẽ có 2 tam
+                    giác:
+                    <img src="images/graphics3D2/cube2.png" style="display: block; max-width: 300px;" />
+                    Đối với mặt FRONT, ta có 2 tam giác là [(0,1,0), (1,1,0), (1,0,0)] và [(0,1,0), (1,0,0), (0,0,0)],
+                    lưu ý là
+                    thứ tự các đỉnh liệt kê trong tam giác phải thống nhất cùng chiều kim đồng hồ hay ngược chiều kim
+                    đồng hồ,
+                    điều này khá quan trọng, ta sẽ nói về điều này sau.
+                    <img src="images/graphics3D2/frontTriangles.png" style="display: block; max-width: 300px;" />
+                    Tương tự, đối với cả hình lập phương, ta sẽ có tất cả 12 tam giác như sau (mình thống nhất theo cùng chiều kim đồng hồ):
+                    <pre><code class="language-javascript">[// FRONT
+{{0,1,0}, {1,1,0}, {1,0,0}},
+{{0,1,0}, {1,0,0}, {0,0,0}},
+// RIGHT
+{{1,1,0}, {1,1,1}, {1,0,1}},
+{{1,1,0}, {1,0,1}, {1,0,0}},
+// BACK
+{{1,1,1}, {0,1,1}, {0,0,1}},
+{{1,1,1}, {0,0,1}, {1,0,1}},
+// LEFT
+{{0,1,1}, {0,1,0}, {0,0,0}},
+{{0,1,1}, {0,0,0}, {0,0,1}},
+// TOP
+{{0,1,1}, {1,1,1}, {1,1,0}},
+{{0,1,1}, {1,1,0}, {0,1,0}},
+// BOTTOM
+{{1,0,1}, {0,0,1}, {0,0,0}},
+{{1,0,1}, {0,0,0}, {1,0,0}}]</code></pre>
+
+                    Tuy nhiên, ta muốn tâm của hình lập phương nằm ở gốc tọa độ (0, 0, 0), nên ta sẽ dịch chuyển tất cả
+                    các đỉnh đi (-0.5, -0.5, -0.5), lúc đó ta sẽ có 8 đỉnh cuối cùng như sau (mình chỉ để 4 đỉnh ở mặt
+                    FRONT để dễ nhìn):
+                    <img src="images/graphics3D2/cube3.png" style="display: block; max-width: 500px;" />
+                    Và 12 tam giác cuối cùng sẽ là:
+                    <pre><code class="language-javascript">[// FRONT
+{{-0.5,0.5,-0.5}, {0.5,0.5,-0.5}, {0.5,-0.5,-0.5}},
+{{-0.5,0.5,-0.5}, {0.5,-0.5,-0.5}, {-0.5,-0.5,-0.5}},
+// RIGHT
+{{0.5,0.5,-0.5}, {0.5,0.5,0.5}, {0.5,-0.5,0.5}},
+{{0.5,0.5,-0.5}, {0.5,-0.5,0.5}, {0.5,-0.5,-0.5}},
+// BACK
+{{0.5,0.5,0.5}, {-0.5,0.5,0.5}, {-0.5,-0.5,0.5}},
+{{0.5,0.5,0.5}, {-0.5,-0.5,0.5}, {0.5,-0.5,0.5}},
+// LEFT
+{{-0.5,0.5,0.5}, {-0.5,0.5,-0.5}, {-0.5,-0.5,-0.5}},
+{{-0.5,0.5,0.5}, {-0.5,-0.5,-0.5}, {-0.5,-0.5,0.5}},
+// TOP
+{{-0.5,0.5,0.5}, {0.5,0.5,0.5}, {0.5,0.5,-0.5}},
+{{-0.5,0.5,0.5}, {0.5,0.5,-0.5}, {-0.5,0.5,-0.5}},
+// BOTTOM
+{{0.5,-0.5,0.5}, {-0.5,-0.5,0.5}, {-0.5,-0.5,-0.5}},
+{{0.5,-0.5,0.5}, {-0.5,-0.5,-0.5}, {0.5,-0.5,-0.5}}]</code></pre>
+
+                   
+
+                    <br/>
+                    <h2>2. Setup cơ bản</h2>
+                    Các kiến thức cơ bản đã qua, bây giờ ta cần phải setup trước canvas của chúng ta để vẽ được thứ gì đó trước:
                     <div id="htmlPreview1" class="htmlPreview"></div>
                     Đây là tất cả những gì ta cần làm ở HTML, phần còn lại sẽ nằm ở Javascript, sẽ nằm bên trong tag
                     <i>script</i>.
