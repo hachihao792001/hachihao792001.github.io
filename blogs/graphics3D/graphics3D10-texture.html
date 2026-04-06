@@ -319,17 +319,21 @@ let imgPixels = null;</code></pre>
                         <img style="max-height: 400px; display: block;" src="https://preview.redd.it/have-someone-tried-to-simulate-psxs-affine-mapping-in-godot-v0-9w8unuat6nme1.jpeg?width=1280&format=pjpg&auto=webp&s=fae7f52d6e484ce75146be74d527cda16ad4c599"/>
                         <i>Nguồn ảnh: <a href="https://www.reddit.com/r/godot/comments/1j2uefk/have_someone_tried_to_simulate_psxs_affine/">Reddit</a>, Game: Tomb Raider II.</i>
                     </div>
-                    Nguyên nhân ở đây là ta đang xem UV trên màn hình như một mặt phẳng 2D (thật ra nó đúng là vậy), tuy nhiên UV cũng như vertices, có độ sâu (vì nó gắn
-                    với vertices), nó sẽ không thay đổi 1 cách tuyến tính theo x,y của màn hình, mà cũng theo kiểu "càng xa càng nhỏ, càng gần càng bự". Vertices đã
-                    phải trải qua projection matrix và perspective divide mới lên được màn hình, thì tất nhiên UV cũng phải trải qua thứ tương tự (tuy nhiên UV thì không cần
-                    trải qua projection matrix vì nó dính liền với vertices). Người ta gọi cái này là
-                    Perspective Correction.<br/><br/>
-                    Tuy nhiên vào bước cuối, ta phải trả lại UV về dạng "tuyến tính" lại để lấy được đúng pixel từ hình ra (vì tọa độ trong 1 hình là tuyến tính), 
-                    tức là nhân lại z (perspective multiply?). Vì ta cần nhân lại cái "z" mà ta đã dùng để perspective divide (w), nên ta phải có cách nào đó để giữ lại
-                    được cái "z" đó cho tới rasterizer, cách người ta hay làm là cũng thêm một giá trị w cho UV (Vector2), ban đầu nó = 1, khi perspective divide thì nó
-                    sẽ = 1/z, giữ nó cho tới rasterizer thì "nhân z" cũng giống như "chia 1/z" 😳.<br/></br>
-                    Cho nên, cũng như Vector3, ta cũng thêm một giá trị w cho Vector2 (UV), đồng thời thêm hàm div để chia (nhớ là phải chia luôn w), lerp cũng phải lerp 
-                    luôn w:
+                    Nguyên nhân ở đây là ta đang sử dụng barycentric coordinate để tìm UV của pixel hiện tại, mà barycentric coordinate là "nội suy tuyến tính
+                    giữa 3 đỉnh". Nhưng mà UV cũng như vertices, có độ sâu (vì nó gắn với vertices), nó sẽ không thay đổi 1 cách tuyến tính theo x,y của màn hình, 
+                    mà cũng theo kiểu "càng xa càng nhỏ, càng gần càng bự". Bạn nên nhớ là UV của 3 đỉnh vẫn đúng từ đầu tới cuối, tuy nhiên việc nội suy ra những pixel
+                    giữa tam giác phải theo dạng "perspective", cho nên ta phải nội suy một thứ gì đó mà nó cũng theo quan hệ perspective với màn hình, nội suy xong thì ta
+                    trả lại như cũ (tuyến tính) để lấy được pixel từ pixelData của hình. Có lẽ mình nói hơi vòng vo, cái này có nhiều cách giải thích, mình xin nói thêm 1 
+                    câu mong bạn sẽ hiểu được luôn: Nó sẽ hiển thị đúng nếu mình xài projection matrix là Orthographic.<br/><br/>
+                    Ta biết rằng vertices phải trải qua projection matrix và perspective divide mới 
+                    lên được màn hình, thì suy ra UV cũng phải trải qua thứ tương tự (tuy nhiên UV thì không cần trải qua projection matrix vì nó dính liền với vertices).
+                    Người ta gọi cái này là Perspective Correction.
+                    Tới công đoạn rasterizer, sau khi đã nội suy được perspective UV của pixel hiện tại, ta nhân lại z mà ta đã dùng để perspective divide trước đó để nó
+                    tuyến tính trở lại.
+                    Vì vậy nên ta phải có cách nào đó để giữ lại được cái "z" đó cho tới rasterizer, cách người ta hay làm là cũng thêm một giá trị w cho UV (Vector2), 
+                    ban đầu nó = 1, khi perspective divide thì nó sẽ = 1/z, giữ nó cho tới rasterizer thì "nhân z" cũng giống như "chia 1/z" 😳.<br/></br>
+
+                    Cũng như Vector3, ta cũng thêm một giá trị w cho Vector2 (UV), đồng thời thêm hàm div để chia (nhớ là phải chia luôn w), lerp cũng phải lerp luôn w:
                     <pre><code class="language-javascript">class Vector2 {
     constructor(u = 0, v = 0, w = 1) {
         this.u = u;
@@ -364,17 +368,63 @@ let imgPixels = null;</code></pre>
         tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2],
         tri.uv[0].w * baryCoords[0] + tri.uv[1].w * baryCoords[1] + tri.uv[2].w * baryCoords[2]     // tính luôn giá trị w của UV của pixel hiện tại
     );
-    const u = pixelUV.u / pixelUV.w;    // chia 1/z = nhân z
-    const v = pixelUV.v / pixelUV.w;    // chia 1/z = nhân z
+    pixelUV = Vector2.div(pixelUV, pixelUV.w);   // chia 1/z = nhân z để nó tuyến tính trở lại
 
-    const texX = Math.floor(u * (img.width - 1));
-    const texY = Math.floor(v * (img.height - 1));
+    const texX = Math.floor(pixelUV.u * (img.width - 1));
+    const texY = Math.floor(pixelUV.v * (img.height - 1));
     const texIndex = (texY * img.width + texX) * 4;
     texColor = new Color(imgPixels[texIndex], imgPixels[texIndex + 1], imgPixels[texIndex + 2]);
 }</code></pre>
                     Ta chạy lại thử:
                     <div class="htmlPreview" id="htmlPreview26"></div>
-                    Quá đã, nó đã hiển thị đúng rồi, khá là magic khi ta làm được hết những thứ này chỉ bằng toán và sự kiên trì 🥵
+                    Quá đã, nó đã hiển thị đúng rồi, khá là magic khi ta làm được hết những thứ này chỉ bằng toán và sự kiên trì 🥵<br/><br/>
+
+                    Nếu bạn quay lại blog trước và xem demo cuối cùng (hoặc demo trên cũng được), bạn sẽ thấy rằng ánh sáng mà point light
+                    chiếu lên cube2 cũng bị hiện tượng tương tự Affine Texture Mapping ở trên, bạn di chuyển camera qua lại nó cũng biến đổi theo.
+                    Đó là vì worldVertices cũng phải được "perspective correct", ta đang nội suy các tọa độ 3D một cách tuyến tính trên màn hình 2D, very wrong.<br/><br/>
+                    Cách sửa cũng tương tự, nhưng thay vì cũng thêm w cho worldVertices thì ta xài luôn 1/z mà ta đã giữ sẵn trong UV 😅 trước khi nội suy worldVertices
+                    thì cũng chia cho z (nhân w) trước, rồi nội suy, nội suy xong ta chia lại cho w (nhân z) là ô kê 😳<br/><br/>
+                    Vì ta sử dụng 1/z 2 lần, nên mình gom nó lên trên thành biến pixelInvZ luôn:
+                    <pre><code class="language-javascript">if (z < this.depthBuffer[y][x]) {
+    this.depthBuffer[y][x] = z;
+
+    // tính 1/z của pixel hiện tại để xài chung cho cả worldVertices và UV
+    let pixelInvZ = tri.uv[0].w * baryCoords[0] + tri.uv[1].w * baryCoords[1] + tri.uv[2].w * baryCoords[2];
+
+    // perspective divide cho world vertices bằng cách chia z (nhân w)
+    let perspectiveWorldVertices = [
+        Vector3.mul(tri.worldVertices[0], tri.uv[0].w),
+        Vector3.mul(tri.worldVertices[1], tri.uv[1].w),
+        Vector3.mul(tri.worldVertices[2], tri.uv[2].w)
+    ];
+    // nội suy xong rồi nhân lại z (chia w)
+    let pixelWorldPos = new Vector3(
+        (perspectiveWorldVertices[0].x * baryCoords[0] + perspectiveWorldVertices[1].x * baryCoords[1] + perspectiveWorldVertices[2].x * baryCoords[2]),
+        (perspectiveWorldVertices[0].y * baryCoords[0] + perspectiveWorldVertices[1].y * baryCoords[1] + perspectiveWorldVertices[2].y * baryCoords[2]),
+        (perspectiveWorldVertices[0].z * baryCoords[0] + perspectiveWorldVertices[1].z * baryCoords[1] + perspectiveWorldVertices[2].z * baryCoords[2])
+    );
+    pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
+
+    ...
+
+    if (imgLoaded) {
+        let pixelUV = new Vector2(
+            tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
+            tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2],
+            pixelInvZ   // xài lại thay vì tính lại
+        );
+        ...
+    }
+
+    ...
+}</code></pre>
+                    Có lẽ bạn cũng đang nhận ra, ta cũng phải làm thứ tương tự ở hàm clipAgainstPlane, cụ thể là khi clip với 4 cạnh màn hình, lúc này nó đã trải qua
+                    perspective divide nhưng hàm clipAgainstPlane vẫn đang nội suy tuyến tính 🥵 Nhưng mà hên cho chúng ta, từ lúc implement xong rasterizer, thật
+                    ra bước clip với 4 cạnh màn hình đã không cần nữa, vì ta đã giới hạn bounding box của từng tam giác vào trong kích thước canvas rồi, nên nó sẽ
+                    không bao giờ vẽ ra ngoài màn hình nữa. Ta sẽ bỏ luôn bước clip với 4 cạnh màn hình, nhưng thật ra nó vẫn có tác dụng nếu ta tiếp tục phát triển
+                    engine này về sau, suy cho cùng thì tất cả tam giác nằm gọn trong canvas vẫn sẽ dễ làm việc hơn.<br/><br/>
+                    Kết quả cuối cùng:
+                    <div class="htmlPreview" id="htmlPreview27"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 
