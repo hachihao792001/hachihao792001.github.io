@@ -655,7 +655,8 @@
 				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
 				let right = Vector3.cross(up, this.dir).normalize();
 				up = Vector3.cross(this.dir, right).normalize();
-				let lightPos = Vector3.mul(this.dir, -shadowMapDistance);
+				let sceneCenter = new Vector3(0, 0, 5); // approximate center of your scene
+				let lightPos = Vector3.sub(sceneCenter, Vector3.mul(this.dir, shadowMapDistance));
 				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
 				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
 			}
@@ -823,9 +824,9 @@
 										Math.min(255, texColor.g * lightIntensity),
 										Math.min(255, texColor.b * lightIntensity)
 									));
-									if (inShadow) {
-										this.placePixel([x, y], new Color(0, 0, 0));
-									}
+									// if (inShadow) {
+									// 	this.placePixel([x, y], new Color(0, 0, 0));
+									// }
 								}
 							}
 						}
@@ -875,7 +876,7 @@
 		const lightDirIntensityText = document.getElementById("dirIntensityText");
 		let shadowMapSize = 512;
 		let shadowBias = 0.02;
-		let shadowMapDistance = 20;
+		let shadowMapDistance = 5;
 		let dirLight = new DirectionalLight(new Vector3(-1, -1, -1), parseFloat(lightDirIntensitySlider.value));
 
 		const pointLightIntensitySlider = document.getElementById("pointIntensity");
