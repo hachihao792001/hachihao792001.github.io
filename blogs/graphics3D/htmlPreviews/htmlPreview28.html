@@ -9,9 +9,6 @@
 <body style="text-align: center; background: #f0f0f0">
 	<h1>3D Engine</h1>
 	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
-	<h2>Shadow Map Debug</h2>
-	<canvas id="shadowCanvas" width="512" height="512"
-		style="border: 2px solid #aaa; background: #111; width: 256px; height: 256px; display: block; margin: 0.5rem auto;"></canvas>
 	<h2 id="fps">FPS: 0</h2>
 	<div>
 		Directional light intensity:
@@ -138,20 +135,6 @@
 				];
 			}
 
-			static Multiply(m1, m2) {
-				let result = new Mat4x4();
-				for (let r = 0; r < 4; r++) {
-					for (let c = 0; c < 4; c++) {
-						result.m[r][c] =
-							m1.m[r][0] * m2.m[0][c] +
-							m1.m[r][1] * m2.m[1][c] +
-							m1.m[r][2] * m2.m[2][c] +
-							m1.m[r][3] * m2.m[3][c];
-					}
-				}
-				return result;
-			}
-
 			static Projection(fov, h, w, zNear, zFar) {
 				let fovMultiplier = 1.0 / Math.tan(fov * 0.5 / 180.0 * Math.PI);
 				let matrix = new Mat4x4();
@@ -163,13 +146,11 @@
 				return matrix;
 			}
 
-			static Orthographic(left, right, bottom, top, zNear, zFar) {
+			static Orthographic(size, zNear, zFar) {
 				let matrix = new Mat4x4();
-				matrix.m[0][0] = 2.0 / (right - left);
-				matrix.m[1][1] = 2.0 / (top - bottom);
+				matrix.m[0][0] = 2.0 / size;
+				matrix.m[1][1] = 2.0 / size;
 				matrix.m[2][2] = 1.0 / (zFar - zNear);
-				matrix.m[0][3] = -(right + left) / (right - left);
-				matrix.m[1][3] = -(top + bottom) / (top - bottom);
 				matrix.m[2][3] = -zNear / (zFar - zNear);
 				matrix.m[3][3] = 1.0;
 				return matrix;
@@ -673,7 +654,7 @@
 				up = Vector3.cross(this.dir, right).normalize();
 				let lightPos = Vector3.mul(this.dir, -shadowMapDistance);
 				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
-				this.projectionMatrix = Mat4x4.Orthographic(-shadowMapDistance / 2, shadowMapDistance / 2, -shadowMapDistance / 2, shadowMapDistance / 2, 0.1, shadowMapDistance);
+				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
 			}
 
 			buildShadowMap(tris) {
@@ -897,22 +878,6 @@
 		const pointLightIntensitySlider = document.getElementById("pointIntensity");
 		const pointLightIntensityText = document.getElementById("pointIntensityText");
 		let pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
-		let shadowCtx = document.getElementById("shadowCanvas").getContext("2d");
-		function drawShadowMapDebug() {
-			const imageData = shadowCtx.createImageData(shadowMapSize, shadowMapSize);
-			for (let y = 0; y < shadowMapSize; y++) {
-				for (let x = 0; x < shadowMapSize; x++) {
-					const depth = dirLight.shadowMap[y][x];
-					const idx = (y * shadowMapSize + x) * 4;
-					const intensity = depth === Infinity ? 255 : Math.max(0, Math.min(255, Math.floor((1 - depth) * 255)));
-					imageData.data[idx] = intensity;
-					imageData.data[idx + 1] = intensity;
-					imageData.data[idx + 2] = intensity;
-					imageData.data[idx + 3] = 255;
-				}
-			}
-			shadowCtx.putImageData(imageData, 0, 0);
-		}
 
 		let cube1 = new Cube(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0));
 		let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0));
@@ -974,7 +939,6 @@
 			objectTris.push(...lightCube.getTransformedTriangles());
 
 			dirLight.buildShadowMap(objectTris);
-			drawShadowMapDebug();
 
 			let visibleTris = [];
 			for (let tri of objectTris) {

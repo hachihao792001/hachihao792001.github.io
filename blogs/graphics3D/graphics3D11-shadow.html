@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="graphics3D.css">
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Graphics Engine 3D</title>
+</head>
+
+<body data-graphics3D-id="graphics3D11">
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Shadow Mapping</h1>
+                    Có ánh sáng thì phải có bóng, blog này mình sẽ chỉ các bạn cách implement bóng bằng kỹ thuật shadow mapping 😳<br/></br>
+                    Ở ngoài đời, ánh sáng chiếu vào một vật thì vật đó sẽ chặn đi một phần những tia sáng ấy và tạo ra bóng trên mặt đất. Thì ở trong game cũng tương tự
+                    như vậy, nếu bạn có kinh nghiệm làm game thì có thể bạn đang nghĩ là ta sẽ dùng kỹ thuật Raycasting hay gì đó tương tự vì nó cũng thuộc dạng "chiếu tia".
+                    Nhưng không, shadow mapping nó phức tạp hơn thế 🥵 Ý tưởng chung chung của shadow mapping là bạn chạy một render pipeline khác dưới góc nhìn của nguồn
+                    sáng, tạo ra depth buffer của riêng nó (gọi là shadow map), sau đó ở bước Rasterizer của luồng chính thì ta truyền từng pixelWorldPos một vào trong render pipeline
+                    của nguồn sáng đó để xem nó có nằm trong bóng không (dựa vào shadow map).<br/><br/>
+                    Trước tiên mình sẽ làm shadow mapping cho Directional Light trước, ta biết là Directional Light chỉ gồm những tia sáng song song, cho nên trong render pipeline
+                    của nó, ở bước projection matrix, nó sẽ là một Orthographic projection matrix. Orthographic đơn giản hơn Perspective, ta không cần lo tới FOV, không cần lo
+                    tới perspective divide, thứ duy nhất ta lưu ý là chỉnh lại theo aspect ratio của màn hình.<br/><br/>
+                    Có lẽ khi đã tới đây rồi thì não bạn đã quen mọi thứ phải là perspective và z có nhiều ý nghĩa, nhưng orthographic chả liên quan gì mấy thứ kia, một điểm
+                    khi đã trải qua view matrix, thì nếu tọa độ view space của nó là x=9, y=10, thì tọa độ của nó trên clip space cũng là x=9, y=10 😳 Ta chỉ cần lo tới việc
+                    là clip space bự bao nhiêu (x, y bằng bao nhiêu thì ra khỏi màn hình), rồi sau đó cứ lấy clip space đó nhân cho kích thước canvas là okela. Ở trường
+                    hợp đơn giản nhất, ta muốn clip space là hình vuông có cạnh là size, ta chỉ cần lấy \(x_{clip} = \frac{x*2}{size}, y_{clip} = \frac{y*2}{size}, z_{clip} = \frac{z}{z_{far}-z_{near}} - \frac{z_{near}}{z_{far}-z_{near}}\)
+                    (nhớ là x, y nằm trong khoảng [-1; 1], còn z nằm trong khoảng [0; 1]). Như vậy, Orthographic projection matrix sẽ là:
+                    \[
+                        \begin{bmatrix}
+                            \frac{2}{size} & 0 & 0 & 0 \\
+                            0 & \frac{2}{size} & 0 & 0 \\
+                            0 & 0 & \frac{1}{z_{far}-z_{near}} & -\frac{z_{near}}{z_{far}-z_{near}} \\
+                            0 & 0 & 0 & 1
+                        \end{bmatrix}
+                    \]
+                    Mình nói "trường hợp đơn giản nhất" là vì thực ra ta có thể chỉnh clip space thành hình chữ nhật thay vì hình vuông, và
+                    nó có thể không nằm giữa màn hình, lúc đó ta sử dụng các giá trị left, right, top, bottom thay vì chỉ là size để dựng matrix, nhưng mà như
+                    vậy là đủ rồi.<br/><br/>
+                    Ta thêm hàm Orthographic vào trong class Mat4x4:
+                    <pre><code class="language-javascript">static Orthographic(size, zNear, zFar) {
+    let matrix = new Mat4x4();
+    matrix.m[0][0] = 2.0 / size;
+    matrix.m[1][1] = 2.0 / size;
+    matrix.m[2][2] = 1.0 / (zFar - zNear);
+    matrix.m[2][3] = -zNear / (zFar - zNear);
+    matrix.m[3][3] = 1.0;
+    return matrix;
+}</code></pre>
+                   Tiếp theo, thay vì để hướng và cường độ của Directional Light là các biến lẻ tẻ thì ta tạo luôn một class riêng:
+                   <pre><code class="language-javascript">class DirectionalLight {
+    constructor(dir, intensity) {
+        this.dir = dir.normalize();
+        this.intensity = intensity;
+    }
+}</code></pre>
+                    Để xây dựng được một render pipeline, cụ thể là ở bước view matrix, thì ta cần một camera nào đó. Tuy nhiên bạn nhớ là Directional Light không
+                    có thông tin về vị trí nguồn sáng, nó đến chung chung từ mọi nơi theo 1 hướng. Như vậy ta sẽ giả định một vị trí nào đó cho camera, có thể là một điểm
+                    nào đó cách gốc tọa độ một khoảng cách nào đó theo hướng ngược lại dir. Ngoài ra ta cần thêm một bước nữa
+                    là tìm được up và right của camera, để tìm được thì ta không cần phải tạo một Quaternion đại diện cho độ xoay nguồn sáng chi cho phức tạp 🥵 (thật
+                    ra theo tiêu chuẩn thì đúng là ta nên làm như vậy). Ta có thể sử dụng tích có hướng để tìm ra được luôn up và right, bằng cách là giả định một up tạm trước,
+                    thường là up của thế giới (Vector3.up), nếu như forward (dir) gần Vector3.up quá thì xài Vector3.forward, sau đó ta tính right bằng tích có hướng giữa
+                    dir và up tạm, sau đó tìm lại up thật bằng tích có hướng giữa dir và right 😳
+                    <pre><code class="language-javascript">class DirectionalLight {
+    constructor(dir, intensity) {
+        this.dir = dir.normalize();
+        this.intensity = intensity;
+
+        let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;     // nếu dir gần up của thế giới quá thì up là forward của thế giới, còn không thì cứ xài up thế giới tạm
+        let right = Vector3.cross(up, this.dir).normalize();    // tính right bằng tích có hướng giữa forward và up tạm
+        up = Vector3.cross(this.dir, right).normalize();        // tính lại up thật sự bằng tích hướng của forward và right
+        let lightPos = Vector3.mul(this.dir, -shadowMapDistance);       // vị trí nguồn sáng giả định, shadowMapDistance mình để bên ngoài để thống nhất cho cả engine
+        this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);   // dựng view matrix như thường
+        this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance); // dựng orthographic projection matrix, dùng shadowMapDistance cho size và far plane luôn
+    }
+}</code></pre>
+                    Và class này cũng chứa luôn shadow map của direction light, init cũng như depth buffer. Ta cần tạo thêm một biến shadowMapSize để xác định kích thước "canvas"
+                    của shadowMap, cũng để bên ngoài để thống nhất toàn engine:
+                    <pre><code class="language-javascript">class DirectionalLight {
+    constructor(dir, intensity) {
+        this.dir = dir.normalize();
+        this.intensity = intensity;
+        this.shadowMap = [];
+        for (let i = 0; i < shadowMapSize; i++) {
+            let row = [];
+            for (let j = 0; j < shadowMapSize; j++) {
+                row.push(Infinity);
+            }
+            this.shadowMap.push(row);
+        }
+
+        let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
+				let right = Vector3.cross(up, this.dir).normalize();
+				up = Vector3.cross(this.dir, right).normalize();
+				let lightPos = Vector3.mul(this.dir, -shadowMapDistance);
+				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
+				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
+    }
+}</code></pre>
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer></footer>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+
+    <script src="graphics3D.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>
