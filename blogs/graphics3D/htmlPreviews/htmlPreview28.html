@@ -436,10 +436,10 @@
 				let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
 				let maxY = Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
 
-				minX = Math.max(0, Math.floor(minX));
-				maxX = Math.min(maxWidth - 1, Math.floor(maxX));
-				minY = Math.max(0, Math.floor(minY));
-				maxY = Math.min(maxHeight - 1, Math.floor(maxY));
+				minX = Math.max(0, parseInt(minX));
+				maxX = Math.min(maxWidth - 1, parseInt(maxX));
+				minY = Math.max(0, parseInt(minY));
+				maxY = Math.min(maxHeight - 1, parseInt(maxY));
 
 				return [minX, maxX, minY, maxY];
 			}
@@ -707,9 +707,7 @@
 				const x = Math.floor((lightSpacePos.x + 1) * shadowMapSize / 2);
 				const y = Math.floor((-lightSpacePos.y + 1) * shadowMapSize / 2);
 
-				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize) return false;
-
-				return lightSpacePos.z > this.shadowMap[y][x] + shadowBias;
+				return lightSpacePos.z > this.shadowMap[y][x];
 			}
 		}
 
@@ -789,7 +787,7 @@
 									pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
 
 									let inShadow = dirLight.isInShadow(pixelWorldPos, triWorldNormal);
-									let shadowFactor = inShadow ? 0.1 : 1.0;
+									let shadowFactor = inShadow ? 0.5 : 1.0;
 
 									let pointLightVec = Vector3.sub(pixelWorldPos, lightCube.pos);
 									let distance = pointLightVec.magnitude();
@@ -798,7 +796,7 @@
 									let attenuation = 1 / (1 + 0.1 * distance * distance);
 									pointLightDiffuse *= attenuation * pointLightIntensity;
 
-									let lightIntensity = Math.min(1, (dirLightDiffuse + pointLightDiffuse) * shadowFactor);
+									let lightIntensity = (dirLightDiffuse + pointLightDiffuse) * shadowFactor;
 
 									let texColor = tri.color;
 									if (imgLoaded) {
@@ -820,9 +818,6 @@
 										Math.min(255, texColor.g * lightIntensity),
 										Math.min(255, texColor.b * lightIntensity)
 									));
-									if (inShadow) {
-										this.placePixel([x, y], new Color(0, 0, 0));
-									}
 								}
 							}
 						}
@@ -855,7 +850,7 @@
 		const fov = 90;
 		let znear = 0.01, zfar = 1000;
 		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
-		let camera = new Camera(Vector3.zero, Vector3.zero, 2, 0.2);
+		let camera = new Camera(new Vector3(0, 1.5, 1.5), new Vector3(-15, 0, 0), 2, 0.2);
 		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
 		let edgePlanes = [
 			new Plane(Vector3.down, new Vector3(0, 0.5, 0)),
@@ -871,7 +866,6 @@
 		const lightDirIntensitySlider = document.getElementById("dirIntensity");
 		const lightDirIntensityText = document.getElementById("dirIntensityText");
 		let shadowMapSize = 512;
-		let shadowBias = 0.02;
 		let shadowMapDistance = 20;
 		let dirLight = new DirectionalLight(new Vector3(-1, -1, -1), parseFloat(lightDirIntensitySlider.value));
 
@@ -943,9 +937,8 @@
 			let visibleTris = [];
 			for (let tri of objectTris) {
 				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
-					let visibleTri = tri.clone();
-					visibleTri.mulMat4x4(viewMat);
-					visibleTris.push(...visibleTri.clipAgainstPlane(nearPlane));
+					tri.mulMat4x4(viewMat);
+					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
 				}
 			}
 

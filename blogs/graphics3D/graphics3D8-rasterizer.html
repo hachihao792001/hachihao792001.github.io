@@ -349,15 +349,17 @@ rasterizer.drawCall();</code></pre>
         }
     }
 }</code></pre>
-                    Mình sẽ chỉnh lại cho cube2 bự ra đại diện cho "mặt đất", cube1 sẽ nằm giữa cube2 đại diện cho việc nó đang bị chôn vào mặt đất một chút. Cho cube1 màu
-                    đỏ và cube2 màu xanh lá:
-                    <pre><code class="language-javascript">let cube1 = new Cube(new Vector3(0, 0, 5), new Vector3(45, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0));
+                    Mình sẽ chỉnh lại cho cube2 bự ra và ngừng xoay để đại diện cho "mặt đất", cube1 sẽ nằm giữa cube2 đại diện cho việc nó đang bị chôn vào mặt đất một chút.
+                    Cho cube1 màu đỏ và cube2 màu xanh lá, đồng thời cho camera gần gần hơn tí:
+                    <pre><code class="language-javascript">let camera = new Camera(new Vector3(0, 1.5, 1.5), new Vector3(-15, 0, 0), 2, 0.2);
+...
+let cube1 = new Cube(new Vector3(0, 0, 5), new Vector3(45, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0));
 let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0));</code></pre>
 
-                    Đồng thời ngừng xoay cube2, nó sẽ ra như sau:
+                    Kết quả như sau:
                     <div class="htmlPreview" id="htmlPreview21"></div>
 
-                    Di chuyển sao cho nhìn 2 cube từ trên xuống là bạn sẽ thấy vấn đề, tại sao nó lại ra như vậy nhỉ? Bạn hãy nghĩ xem, ở bước sau khi chuyển các tam giác về
+                    Tại sao nó lại ra như vậy nhỉ? Bạn hãy nghĩ xem, ở bước sau khi chuyển các tam giác về
                     view space, mình sort các tam giác theo khoảng cách từ center của nó tới camera. Nhưng mà center một tam giác A nằm đằng trước center một tam giác B không 
                     đồng nghĩa tam giác A sẽ nằm hoàn toàn đằng trước B, có thể một phần nào đó sẽ nằm đằng sau tam giác B, điều này khá hiển nhiên khi 2 tam giác giao nhau.
                     Như vậy việc check "nằm đằng trước hay sau" cũng phải thực hiện với từng pixel một, đồng nghĩa là ta phải chỉnh sửa rasterizer.<br/><br/>
