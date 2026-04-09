@@ -236,8 +236,8 @@ dirLight.buildShadowMap(objectTris);</code></pre>
 }</code></pre>
                     Kết quả của chúng ta (nó hơi lag vì nó cùng lúc chạy 2 cái preview ở dưới nữa hê hê):
                     <div class="htmlPreview" id="htmlPreview28"></div>
-                    Damn not bad, nhưng mà có vẻ như shadow nó hơi "blocky". Và nếu bạn nhìn phần của cube mà hướng về phía ánh sáng, bạn sẽ thấy cả đống các tam giác shadow
-                    nhỏ nhỏ.<br/><br/>
+                    Damn not bad, nhưng mà nó có 2 vấn đề. Một là có vẻ như shadow nó hơi "blocky". Và hai là nếu bạn nhìn phần của cube1 mà hướng về phía ánh sáng,
+                    bạn sẽ thấy nhiều điểm shadow nhỏ nhỏ, giống như nó đang cast shadow lên chính nó.<br/><br/>
                     Đối với vấn đề 1 thì ta có thể chỉnh shadow map distance hoặc shadow map size cho tới khi nó ra chuẩn, nhưng mà thay vì chỉnh 1 cách mù quáng thì thật
                     ra ta có thể vẽ ra luôn shadow map của chúng ta ra một canvas khác để dễ debug luôn 😳<br/><br/>
                     Ta tạo một canvas khác:
@@ -262,38 +262,107 @@ function drawShadowMapDebug() {
 }</code></pre>
                     Chỉ cần gọi hàm này ngay sau khi build shadow map, ra như sau:
                     <div class="htmlPreview" id="htmlPreview29"></div>
-                    Ta thấy rằng là các cube của chúng ta quá nhỏ từ góc nhìn của nguồn sáng, và nó không ngay chính giữa, là vì ta giả định nguồn sáng từ góc tọa độ đi
-                    ra, nhưng các cube của chúng ta lại nằm đâu đó ở z = 5. Như vậy ta chỉ cần chỉnh shadow map distance thấp hơn để nguồn sáng gần hơn, và tính tọa độ
-                    nguồn sáng giả định bằng trung tâm của các model (tạm là (0, 0, 5)) đi ra thay vì là gốc tọa độ.<br/><br/>
-                    Về vấn đề thứ hai (vấn đề các tam giác bóng nhỏ nhỏ), nó xảy ra vì khi ta so sánh độ sâu từ 2 render pipeline khác nhau, thế nào thì sai số - floating
-                    point error cũng xảy ra, một pixel đang không biết nó có đang nằm trước nó hay không 😂 Hiện tượng này được gọi là Shadow Acne, cách sửa rất đơn giản,
+                    Ta thấy rằng là các cube của chúng ta quá nhỏ từ góc nhìn của nguồn sáng, ta chỉ cần chỉnh shadow map distance thấp hơn để nguồn sáng gần hơn là oke.
+                    Ngoài ra các cube còn không ngay chính giữa, là vì ta giả định nguồn sáng chiếu vào góc tọa độ, nhưng các cube của chúng ta lại nằm đâu đó ở z = 5.
+                    Nhưng mà thay vì đơn giản là chỉnh "chỗ mà nguồn sáng chiếu vào" là (0, 0, 5), thì nó phải đi theo camera để cho shadow luôn hiện chuẩn cho mọi nơi.
+                    Cụ thể chỗ đó là phải chính giữa frustum tầm nhìn của camera, tuy nhiên ta biết là far plane nó hơi xa nên suy ra chính giữa frustum cũng sẽ hơi xa,
+                    cho nên ta tự thêm một biến zfar mới để lấy frustum nhỏ hơn để dùng nó cho riêng việc shadow mapping.<br/><br/>
+                    Về vấn đề thứ hai (vấn đề các điểm shadow nhỏ nhỏ), bạn có thể hiểu nó như hiện tượng "shadow quá nhạy vật nó cast shadow lên chính nó"
+                    nó xảy ra vì khi ta so sánh độ sâu từ 2 render pipeline khác nhau, thế nào thì sai số - floating point error - cũng xảy ra, một 
+                    pixel đang không biết nó có đang nằm trước nó hay không 😂 Hiện tượng này được gọi là Shadow Acne, hay xảy ra đối với những mặt phẳng
+                    gần như song song với ánh sáng, lúc đó phần nằm trước của mặt phẳng che đi phần nằm sau, mặt dù nó cùng một mặt phẳng. Cách sửa rất đơn giản,
                     khi so sánh 2 depth bạn chỉ cần cộng thêm một số nhỏ cho depth của shadow map, để chắc chắn rằng là depth chính phải hơn depth shadow map và hơn một
                     khoảng nhỏ nữa mới được tính là nằm ở trong bóng. Số nhỏ này được gọi là Shadow Bias, ta nên lưu ý không nên để số này quá lớn vì sẽ xảy ra hiện tượng
                     shadow bị dời ra khỏi chỗ mà nó đáng lẽ xuất hiện, gọi là hiện tượng Peter Panning.<br/><br/>
-                    Ta bắt tay vào sửa thôi 😳 Đầu tiên là khi tính tọa độ nguồn sáng giả định, ta tính từ trung tâm các model thay vì là gốc tọa độ:
-                    <pre><code class="language-javascript">class DirectionalLight {
-    constructor(dir, intensity) {
-        ...
-        let sceneCenter = new Vector3(0, 0, 5); // hòm hòm trung tâm của các cube
-        let lightPos = Vector3.sub(sceneCenter, Vector3.mul(this.dir, shadowMapDistance));
-        ...
+                    Ta bắt tay vào sửa thôi 😳 Đầu tiên là ở class Camera ta thêm một hàm tính tọa độ chính giữa của frustum, và nhận vào một zfar tùy chỉnh nếu có:
+                    <pre><code>class Camera {
+    ...
+    getFrustumCenter(customZFar = -1) {
+        let forward = this.rotation.rotateVector(Vector3.forward);
+
+        let near = Vector3.add(this.pos, Vector3.mul(forward, znear));
+        if (customZFar == -1)
+            customZFar = zfar;
+        let far = Vector3.add(this.pos, Vector3.mul(forward, customZFar));
+        return Vector3.div(Vector3.add(near, far), 2);
     }
     ...
 }</code></pre>
-                    Tới shadow bias, ta chỉ cần cộng nó thêm vào khúc so sánh 2 depth:
-                    <pre><code class="language-javascript">isInShadow(pixelWorldPos, triWorldNormal) {
+                    Ở class DirectionalLight, ta bốc phần tính up right, view matrix các thứ ra một hàm riêng để gọi mỗi frame, vì lúc này nó sẽ
+                    update theo camera. Đồng thời ta cộng thêm shadow bias ở khúc so sánh depth như trên mình nói:
+                    <pre><code class="language-javascript">class DirectionalLight {
+    constructor(dir, intensity) {
+        this.dir = dir.normalize();
+        this.intensity = intensity;
+        this.shadowMap = [];
+        for (let i = 0; i < shadowMapSize; i++) {
+            let row = [];
+            for (let j = 0; j < shadowMapSize; j++) {
+                row.push(Infinity);
+            }
+            this.shadowMap.push(row);
+        }
+    }
+
+    buildViewAndProjectionMatrix() {
+        let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
+        let right = Vector3.cross(up, this.dir).normalize();
+        up = Vector3.cross(this.dir, right).normalize();
+        let frustumCenter = camera.getFrustumCenter(shadowMapDistance);     // tính chính giữa frustum, với zfar là shadowMapDistance luôn (biến này khá hữu dụng 😅)
+        let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));    // tính tọa độ nguồn sáng giả định từ frustumCenter thay vì gốc tọa độ
+        this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
+        this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
+    }
     ...
+
+    isInShadow(pixelWorldPos, triWorldNormal) {
+        ...
+
+        return lightSpacePos.z > this.shadowMap[y][x] + shadowBias; // shadowBias cũng để bên ngoài để sửa thống nhất
+    }
+}</code></pre>
+                    Ta thử chỉnh shadow bias bằng số nhỏ như 0.04, và chỉnh shadow map distance xuống 5:
+                    <pre><code class="language-javascript">let shadowBias = 0.04;
+let shadowMapDistance = 5;</code></pre>
+                    Cuối cùng, ta gọi buildViewAndProjectionMatrix trước khi buildShadowMap:
+                    <pre><code class="language-javascript">dirLight.buildViewAndProjectionMatrix();
+dirLight.buildShadowMap(objectTris);</code></pre>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview30"></div>
+                    Oke, bóng của chúng ta đã hết bị blocky, ta có thể thấy được shadow map di chuyển theo camera của chúng ta, tuy nhiên nếu bạn đi đủ xa ra
+                    thì bóng sẽ bị cắt đi và rồi biến mất luôn, đó là vì nó đã nằm ngoài "tầm nhìn" của nguồn sáng. Trong engine thật người ta sử dụng một kỹ thuật
+                    gọi là Cascading Shadow Mapping (CSM), là dựng nhiều shadow map, mỗi shadow map tương ứng với một zfar - kích thước frustum để hiện rõ khi gần
+                    và hiện blocky khi xa. Tuy nhiên mình nghĩ nhiêu đây là đủ rồi 🥵<br/><br/>
+                    Và một cái nữa, Shadow Acne thật ra chưa hết hẳn, bạn sẽ thấy từng mặt chớp 1 cái trước khi nó quay qua bên có bóng, và thật ra bóng nó cũng
+                    hơi bị Peter Panning một chút, vậy là sao để fix tiếp nhỉ? Thật ra ngoài việc cộng shadow bias vào depth của shadow map (để giảm ảnh hưởng của 
+                    floating point error khi so sánh), thì để triệt để ta phải cộng thêm một khoảng offset theo pháp tuyến của tam giác nữa, đặc biệt đối với những
+                    tam giác song song với ánh sáng. Kiểu do nó "cọ sát" với ánh sáng nhiều quá nên ta đẩy nó ra ngoài một chút để giảm thiểu "cọ sát" nhất. Offset
+                    này sẽ tăng theo "độ song song" của tam giác với ánh sáng (xài tích vô hướng), để đảm bảo những tam giác hướng về phía ánh sáng không bị ảnh hưởng
+                    gì mấy, vì nó không làm gì sai.<br/><br/>
+                    Offset này người ta hay tính theo đơn vị texel size, là kích thước của một "pixel" ở clip space so với một pixel ở màn hình, nói nôm na nó là tỉ lệ
+                    size (orthographic) / canvas size, ở trường hợp của ta là shadowMapDistance / shadowMapSize.<br/><br/>
+                    Ta chỉ cần sửa lại hàm isInShadow như sau:
+                    <pre><code class="language-javascript">isInShadow(pixelWorldPos, triWorldNormal) {
+    let dotProduct = Vector3.dot(triWorldNormal, this.dir);
+    if (dotProduct >= 0) return false;
+
+    let texelSize = shadowMapDistance / shadowMapSize;
+    let normalOffset = texelSize * (1 - Math.abs(dotProduct));  // 1 texel size là đủ, tăng dần khi pháp tuyến tam giác càng vuông góc với ánh sáng
+
+    let lightSpacePos = Vector3.add(pixelWorldPos, Vector3.mul(triWorldNormal, normalOffset));  // offset pixelWorldPos theo hướng pháp tuyến
+    lightSpacePos.mulMat4x4(this.viewMatrix);
+    lightSpacePos.mulMat4x4(this.projectionMatrix);
+
+    lightSpacePos = Vector3.div(lightSpacePos, lightSpacePos.w);
+
+    const x = Math.floor((lightSpacePos.x + 1) * shadowMapSize / 2);
+    const y = Math.floor((-lightSpacePos.y + 1) * shadowMapSize / 2);
 
     return lightSpacePos.z > this.shadowMap[y][x] + shadowBias;
 }</code></pre>
-                    Ta chỉnh shadow bias bằng số nhỏ như 0.02 (mình đã test giùm bạn, số này là hợp lý nhất), và chỉnh shadow map distance xuống 5:
-                    <pre><code class="language-javascript">let shadowBias = 0.02;
-let shadowMapDistance = 5;</code></pre>
                     Kết quả:
-                    <div class="htmlPreview" id="htmlPreview30"></div>
-                    Shadow của chúng ta đã quá nice 😳😳😳<br/><br/>
-					Thật ra Shadow Bias không nhất thiết phải là một hằng số, nó có thể tính theo mặt hiện tại của pixel, vì nó chỉ xảy ra với
-					những mặt đang hướng về phía nguồn sáng, nhưng nói chung vậy là ô kê.<br/><br/>
+                    <div class="htmlPreview" id="htmlPreview31"></div>
+                    Shadow đã quá nice 😳<br/><br/>
                     Tiếp theo bạn expect mình sẽ nói tiếp về shadow mapping cho point light, nhưng mà bạn thấy rằng mới shadow cho Directional Light thôi thì nó đã lag
                     như vậy rồi. Làm shadow mapping cho point light thật ra còn lag hơn vậy 6 lần 😳 Đó là vì point light bắn tia sáng ra mọi hướng, 1 shadow map không thể
                     nào mô phỏng hết mọi góc nhìn được, cho nên ta cần 6 shadow map chiếu ra 6 hướng, và mỗi shadow map đều xài Perspective projection matrix thay vì Orthographic
