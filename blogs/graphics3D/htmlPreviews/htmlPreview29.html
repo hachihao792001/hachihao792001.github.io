@@ -966,16 +966,7 @@
 				tri.perspectiveDivide();
 			}
 
-			let clippedTris = visibleTris;
-			// for (let plane of edgePlanes) {
-			// 	let newTris = [];
-			// 	for (let tri of clippedTris) {
-			// 		newTris.push(...tri.clipAgainstPlane(plane));
-			// 	}
-			// 	clippedTris = newTris;
-			// }
-
-			rasterizer.processTriangles(clippedTris);
+			rasterizer.processTriangles(visibleTris);
 			rasterizer.drawCall();
 
 			requestAnimationFrame(update);
