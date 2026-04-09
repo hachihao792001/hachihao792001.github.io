@@ -292,6 +292,8 @@ let shadowMapDistance = 5;</code></pre>
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview30"></div>
                     Shadow của chúng ta đã quá nice 😳😳😳<br/><br/>
+					Thật ra Shadow Bias không nhất thiết phải là một hằng số, nó có thể tính theo mặt hiện tại của pixel, vì nó chỉ xảy ra với
+					những mặt đang hướng về phía nguồn sáng, nhưng nói chung vậy là ô kê.<br/><br/>
                     Tiếp theo bạn expect mình sẽ nói tiếp về shadow mapping cho point light, nhưng mà bạn thấy rằng mới shadow cho Directional Light thôi thì nó đã lag
                     như vậy rồi. Làm shadow mapping cho point light thật ra còn lag hơn vậy 6 lần 😳 Đó là vì point light bắn tia sáng ra mọi hướng, 1 shadow map không thể
                     nào mô phỏng hết mọi góc nhìn được, cho nên ta cần 6 shadow map chiếu ra 6 hướng, và mỗi shadow map đều xài Perspective projection matrix thay vì Orthographic
