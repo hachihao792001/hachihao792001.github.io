@@ -69,18 +69,15 @@
                     <h3>3. Bản chất sin và cos</h3>
                     Ở cấp 2, 3, chưa từng giáo viên nào dạy mình bản chất của sin và cos là gì. Họ chỉ dạy và kêu học thuộc sin là đối chia huyền, cos là kề chia huyền, rồi
                     các trường hợp góc đặc biệt \(\cos{0}=1\), \(\sin{0}=0\), \(\cos{90}=0\),... rồi các biểu thức lượng giác (\(\sin{\alpha}^2 + \cos{\alpha}^2 = 1\), ...) 
-                    rồi biến đổi các thứ qua lại dựa vào những biểu thức đó. Chứ không hề dạy mình tại sao bấm máy \(\cos{35} = 0.81915204428\), chả biết \(0.81915204428\) đó
-                    từ đâu ra, chỉ biết tin vào máy tính. Mãi mới tới lớp 10, khi được học về Công ở môn Vật lý, trong công thức của nó có cos, thì mình mới bắt đầu hiểu được
-                    bản chất của nó (giáo viên vẫn ko nói về nó). Có lẽ giáo viên mình nghĩ kiến thức này hiển nhiên, nhưng mình vẫn nghĩ nó cần được nhắc tới ít nhất 1 lần, hoặc
-                    có lẽ mình học sai thầy cô (sad, mình vẫn tôn trọng họ btw).<br/><br/>
+                    rồi biến đổi các thứ qua lại dựa vào những biểu thức đó. Mà thật ra một đứa trẻ để tâm một chút có thể suy ra được bản chất của sin, cos từ cái rule đối chia
+                    huyền, kề chia huyền, nhưng mình nghĩ nó vẫn cần được nhắc tới rõ ràng ít nhất 1 lần.<br/><br/>
                     Bản chất của sin và cos thật ra rất đơn giản, cho một vector đơn vị \(\vec{v}\) nằm trong đường tròn đơn vị, hợp với trục hoành (trục x) một góc \(\alpha\), khi đó
-                    \(\sin{\alpha}\) chính là <b>độ dài hình chiếu của \(\vec{v}\) lên trục tung</b> và \(cos{\alpha}\) chính là <b>độ dài hình chiếu của \(\vec{v}\) lên trục hoành</b>.
+                    \(\sin{\alpha}\) chính là <b>độ dài hình chiếu của \(\vec{v}\) lên trục tung</b> (hay \(v_y\)) và \(cos{\alpha}\) chính là <b>độ dài hình chiếu của \(\vec{v}\) lên trục hoành</b> 
+                    (hay \(v_x\)). Mình phải hiểu được bản chất này mới bắt đầu làm về 3D được, vì nó sử dụng hình chiếu khá nhiều.
                     <div align="center">
                         <img src="images/graphics3D1/sincos.png" style="display:block; max-height: 300px;" />
+                        <i>Dựa vào hình này bạn cũng tự suy ra được tại sao \(\cos{0}=1\) hay \(\sin{\alpha}^2 + \cos{\alpha}^2 = 1\) (pytago) hay bất cứ thứ gì khác.</i>
                     </div>
-                    Tóm lại, nếu bạn muốn tìm \(\sin\alpha\) hay \(\cos\alpha\) bằng tay, bạn tìm một vector đơn vị \(\vec{v}\) hợp với trục hoành 1 góc \(\alpha\), khi đó 
-                    \(\sin\alpha = v_y\) và \(\cos\alpha = v_x\). Dựa vào hình này bạn cũng tự suy ra được tại sao \(\cos{0}=1\) hay \(\sin{\alpha}^2 + \cos{\alpha}^2 = 1\) (pytago)
-                    hay bất cứ thứ gì khác.
                     <h3>4. Tích vô hướng</h3>
                     Một khái niệm khác mà mình không được dạy về bản chất là tích vô hướng, mình cũng chỉ được dạy về công thức của nó và các bài tập liên quan (mình quên bài tập gì rồi).
                     Nếu bạn không nhớ, công thức tích vô hướng đối với 2 vector \(\vec{a} = (a_x, a_y)\) và \(\vec{b} = (b_x, b_y)\) là:
@@ -95,10 +92,10 @@
                     <div align="center">
                         <img src="images/graphics3D1/dot.png" style="display:block; max-height: 300px;" />
                     </div>
-                    Gọi \(a_b\) là hình chiếu của \(\vec{a}\) lên \(\vec{b}\), dựa vào công thức thứ hai, ta có tích vô hướng \(\vec{a} \cdot \vec{b} = a_b |\vec{b}| = b_a |\vec{a}|\).
+                    Gọi \(a_b\) là hình chiếu của \(\vec{a}\) lên \(\vec{b}\), dựa vào công thức thứ hai, ta có tích vô hướng \(\vec{a} \cdot \vec{b} = a_b |\vec{b}| = b_a |\vec{a}|\).<br/><br/>
                     Hmmmm, cũng không có ý nghĩa gì mấy, thật ra nó sẽ có công dụng khi một trong 2 vector là vector đơn vị (độ dài = 1), ví dụ \(|\vec{b}|=1\),
                     thì lúc đó tích vô hướng \(\vec{a} \cdot \vec{b}\) là độ dài hình chiếu của \(\vec{a}\) lên \(\vec{b}\), và trường hợp ngược lại cũng đúng. Bạn sẽ từ từ thấy sự hữu
-                    dụng của tính chất này vì ta sẽ xài tới hình chiếu hơi nhiều trong engine ta làm 😳<br/><br/>
+                    dụng của tính chất này vì như trên mình nói, ta sẽ xài tới hình chiếu hơi nhiều trong engine ta làm 😳<br/><br/>
                     Ngoài ra, tích vô hướng cũng có 1 công dụng hữu ích khác. Vì có \(cos\) trong công thức, nên tích vô hướng sẽ \(= 0\) khi 2 vector vuông góc nhau, \(> 0\) khi 2 vector "hướng
                     về cùng 1 vùng" và \(< 0\) khi "hướng về vùng ngược nhau".
                     <div align="center">
@@ -107,7 +104,28 @@
                     </div>
                     <h3>5. Tích có hướng</h3>
                     Ngược lại với 2 cái trên, cái này thì mình được dạy về bản chất, vì cơ bản là mình phải hiểu định nghĩa của nó mới hiểu được kết quả của nó 😅 Nếu bạn không
-                    nhớ, tích có hướng giữa \(\vec{a}\) và \(\vec{b}\) là một vector \(\vec{c}\) vuông góc với cả 2 vector trên. Thứ duy nhất mình muốn lưu ý là tùy vào hệ tọa 
+                    nhớ, tích có hướng giữa \(\vec{a}\) và \(\vec{b}\) là một vector \(\vec{c}\) vuông góc với cả 2 vector trên, và có công thức như sau:
+                     $$
+\vec{a} \times \vec{b} = 
+\begin{pmatrix}
+a_x\\
+a_y\\
+a_z
+\end{pmatrix}
+\times
+\begin{pmatrix}
+b_x\\
+b_y\\
+b_z
+\end{pmatrix}
+=
+\begin{pmatrix}
+a_y b_z - a_z b_y \\
+a_z b_x - a_x b_z \\
+a_x b_y - a_y b_x
+\end{pmatrix}
+                    $$
+                    Thứ duy nhất mình muốn lưu ý là tùy vào hệ tọa 
                     độ tay trái hay phải mà hướng của tích có hướng sẽ thay đổi, engine của mình hệ tay trái nên nó sẽ ngược lại nếu bạn tính theo cách thuần toán học, nhưng sẽ 
                     không ảnh hưởng gì lớn, miễn sao là nó nhất quán suốt engine.
                     <h3 id="tamgiac">6. Tam giác</h3>
