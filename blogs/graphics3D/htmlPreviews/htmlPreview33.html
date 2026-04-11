@@ -376,6 +376,7 @@
 					outTri.uv[1] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
 					outTri.color = this.color;
+					outTri.texture = this.texture;
 					outTris.push(outTri);
 				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
 					let outTri1 = new Triangle(), outTri2 = new Triangle();
@@ -402,6 +403,7 @@
 					outTri1.uv[1] = this.uv[frontPoints[1]];
 					outTri1.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri1.color = this.color;
+					outTri1.texture = this.texture;
 					outTris.push(outTri1);
 
 					outTri2.vertices[0] = f1.clone();
@@ -414,6 +416,7 @@
 					outTri2.uv[1] = Vector2.lerp(this.uv[frontPoints[1]], this.uv[behindPoints[0]], t2);
 					outTri2.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri2.color = this.color;
+					outTri2.texture = this.texture;
 					outTris.push(outTri2);
 				}
 
@@ -658,7 +661,7 @@
 				const triangles = this.parseOBJ(objText);
 				this.setTriangles(triangles);
 			}
-			
+
 			parseOBJ(objText) {
 				const vertices = [];
 				const uvs = [];
@@ -809,8 +812,8 @@
 
 				const x = Math.floor((lightSpacePos.x + 1) * shadowMapSize / 2);
 				const y = Math.floor((-lightSpacePos.y + 1) * shadowMapSize / 2);
-				
-				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize) 
+
+				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize)
 					return false;
 
 				return lightSpacePos.z > this.shadowMap[y][x] + shadowBias;
