@@ -16,9 +16,18 @@
 		<span id="dirIntensityText" class="slider-value">1.0</span>
 	</div>
 	<div>
+		Directional light rotate speed:
+		<input type="range" id="dirRotateSpeed" min="0" max="50" step="0.1" value="10" />
+		<span id="dirRotateSpeedText" class="slider-value">10</span>
+	</div>
+	<div>
 		Point light intensity:
 		<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
 		<span id="pointIntensityText" class="slider-value">1.0</span>
+	</div>
+	<div>
+		Shadow:
+		<input type="checkbox" id="useShadow" checked="checked" />
 	</div>
 	<script>
 		class Vector2 {
@@ -658,7 +667,6 @@
 			async load(url) {
 				const response = await fetch(url);
 				const objText = await response.text();
-				console.log(objText);
 				const triangles = this.parseOBJ(objText);
 				this.setTriangles(triangles);
 			}
@@ -756,7 +764,7 @@
 				let right = Vector3.cross(up, this.dir).normalize();
 				up = Vector3.cross(this.dir, right).normalize();
 				//let frustumCenter = camera.getFrustumCenter(shadowMapDistance);
-				let frustumCenter = new Vector3(0, 0, 5);
+				let frustumCenter = Vector3.zero;
 				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
 				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
 				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
@@ -925,7 +933,7 @@
 									);
 									pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
 
-									let inShadow = dirLight.isInShadow(pixelWorldPos, triWorldNormal);
+									let inShadow = useShadow ? dirLight.isInShadow(pixelWorldPos, triWorldNormal) : false;
 									let shadowFactor = inShadow ? 0.5 : 1.0;
 
 									let pointLightVec = Vector3.sub(pixelWorldPos, lightCube.pos);
@@ -989,7 +997,7 @@
 		const fov = 90;
 		let znear = 0.01, zfar = 1000;
 		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
-		let camera = new Camera(new Vector3(0, 1.5, 1.5), new Vector3(-15, 0, 0), 2, 0.2);
+		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 2, 0.2);
 		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
 		let edgePlanes = [
 			new Plane(Vector3.down, new Vector3(0, 0.5, 0)),
@@ -1004,11 +1012,17 @@
 
 		const lightDirIntensitySlider = document.getElementById("dirIntensity");
 		const lightDirIntensityText = document.getElementById("dirIntensityText");
+		const lightDirRotateSpeedSlider = document.getElementById("dirRotateSpeed");
+		const lightDirRotateSpeedText = document.getElementById("dirRotateSpeedText");
+		const shadowCheckbox = document.getElementById("useShadow");
+		let useShadow = true;
 		let shadowMapSize = 512;
 		let shadowBias = 0.01;
-		let shadowMapDistance = 15;
-		let dirLight = new DirectionalLight(new Vector3(-1, -1, -1), parseFloat(lightDirIntensitySlider.value));
+		let shadowMapDistance = 20;
+		let dirLightDefaultDir = new Vector3(-1, -1, -1);
+		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
 		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
+		let dirLightRotateSpeed = parseFloat(lightDirRotateSpeedSlider.value);
 
 		const pointLightIntensitySlider = document.getElementById("pointIntensity");
 		const pointLightIntensityText = document.getElementById("pointIntensityText");
@@ -1018,10 +1032,10 @@
 		let woodTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/Wood_Tower_Col.jpg");
 
 		let cubeMesh = new Cube();
-		let woodTower = new GameObject(new Vector3(0, 0, 5), Vector3.zero, new Vector3(1, 1, 1), new Color(255, 255, 255),
+		let woodTower = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(1, 1, 1), new Color(255, 255, 255),
 			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj"),
 			woodTexture);
-		let ground = new GameObject(new Vector3(0, 0, 5), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
+		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
 		let lightCube = new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh);
 
 		let lastTime = performance.now();
@@ -1044,9 +1058,9 @@
 			camera.updateMovement(dt, keyStates);
 			const viewMat = camera.getViewMatrix();
 
-			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * 8, 0));
+			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
 			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
-			dirLight.dir = dirLightRotation.rotateVector(new Vector3(-1, -1, -1));
+			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
 
 			if (keyStates['i']) {
 				lightCube.pos.z += dt * 2;
@@ -1067,9 +1081,11 @@
 			objectTris.push(...lightCube.getTransformedTriangles());
 			objectTris.push(...woodTower.getTransformedTriangles());
 
-			dirLight.buildViewAndProjectionMatrix();
-			dirLight.buildShadowMap(objectTris);
-			
+			if (useShadow) {
+				dirLight.buildViewAndProjectionMatrix();
+				dirLight.buildShadowMap(objectTris);
+			}
+
 			let visibleTris = [];
 			for (let tri of objectTris) {
 				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
@@ -1096,9 +1112,18 @@
 			lightDirIntensityText.textContent = dirLight.intensity.toFixed(2);
 		});
 
+		lightDirRotateSpeedSlider.addEventListener("input", () => {
+			dirLightRotateSpeed = parseFloat(lightDirRotateSpeedSlider.value);
+			lightDirRotateSpeedText.textContent = dirLightRotateSpeed.toFixed(2);
+		});
+
 		pointLightIntensitySlider.addEventListener("input", () => {
 			pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
 			pointLightIntensityText.textContent = pointLightIntensity.toFixed(2);
+		});
+
+		shadowCheckbox.addEventListener("change", () => {
+			useShadow = shadowCheckbox.checked;
 		});
 
 		canvas.addEventListener("click", async () => {
