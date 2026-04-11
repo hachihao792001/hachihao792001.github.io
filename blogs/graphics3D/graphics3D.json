@@ -70,5 +70,11 @@
         "webTitle": "Graphics Engine 3D #11: Shadow Mapping",
         "title": "Graphics Engine 3D #11: Shadow Mapping",
         "route": "/blogs/graphics3D/graphics3D11-shadow.html"
+    },
+    {
+        "id": "graphics3D12",
+        "webTitle": "Graphics Engine 3D #12: Cách import file Obj và Demo tổng kết",
+        "title": "Graphics Engine 3D #12: Cách import file Obj và Demo tổng kết",
+        "route": "/blogs/graphics3D/graphics3D12-obj.html"
     }
 ]
