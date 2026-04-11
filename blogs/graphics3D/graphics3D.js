@@ -12,6 +12,22 @@ async function updatePreview() {
         htmlPreviewDiv.appendChild(codePane);
         htmlPreviewDiv.appendChild(iframe);
 
+        const disableButton = document.createElement("button");
+        disableButton.className = "disable-btn";
+        disableButton.textContent = "Disable";
+        disableButton.addEventListener("click", () => {
+            if (iframe.dataset.disabled === "true") {
+                iframe.srcdoc = htmlCode;
+                iframe.dataset.disabled = "false";
+                disableButton.textContent = "Disable";
+            } else {
+                iframe.srcdoc = "";
+                iframe.dataset.disabled = "true";
+                disableButton.textContent = "Enable";
+            }
+        });
+        codePane.appendChild(disableButton);
+
         const copyButton = document.createElement("button");
         copyButton.className = "copy-btn";
         copyButton.textContent = "Copy";

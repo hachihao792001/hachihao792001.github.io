@@ -27,6 +27,17 @@
     width: 100%;
 }
 
+.disable-btn{
+    position: absolute;
+    top: 6px;
+    right: 70px;
+    z-index: 2;
+
+    font-size: 12px;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+
 .copy-btn {
   position: absolute;
   top: 6px;
