@@ -132,47 +132,13 @@ function update(time = performance.now()) {
                     từng thấy hiện tượng này trong game, khi bạn noclip vào trong 1 vật nào đó, bạn vẫn thấy được thế giới bên ngoài, vì mặc định mặt "đằng sau" của các tam
                     giác sẽ không được hiển thị.<br/><br/>
                     Backface culling khá dễ, trước tiên, đối với từng tam giác, bạn phải tìm được vector pháp tuyến \(\vec{n}\) của nó, sau đó so sánh với vector từ camera hướng lên tâm của tam giác đó \(a\),
-                    nếu góc hợp giữa \(\vec{n}\) và \(a\) nhỏ hơn 90, thì tức là tam giác đó đang nhìn "theo hướng" camera, là mình sẽ thấy được "đằng sau" của nó, ngược lại
-                    nếu góc đó lớn hơn 90, là tam giác đang quay "về phía" camera.<br/>
-                    Đầu tiên để tìm được \(\vec{n}\) của một tam giác, ta sẽ sử dụng một khái niệm mà ta đã từng học ở cấp 3, đó chính là tích có hướng. Nếu bạn không nhớ thì tích có hướng
-                    của 2 vector sẽ ra kết quả là một vector thứ 3 vuông góc với cả 2 vector đó, và được tính như sau:
-                    $$
-\vec{a} \times \vec{b} = 
-\begin{pmatrix}
-a_x\\
-a_y\\
-a_z
-\end{pmatrix}
-\times
-\begin{pmatrix}
-b_x\\
-b_y\\
-b_z
-\end{pmatrix}
-=
-\begin{pmatrix}
-a_y b_z - a_z b_y \\
-a_z b_x - a_x b_z \\
-a_x b_y - a_y b_x
-\end{pmatrix}
-                    $$
-                    Đối với một tam giác, ta chỉ cần lấy tích có hướng của 2 cạnh bất kỳ là sẽ ra vector pháp tuyến của tam giác đó. Tuy nhiên bạn nên biết là khi bạn đảo chiều một
-                    trong 2 vector, nó vẫn sẽ ra một vector vuông góc với 2 vector ban đầu, nhưng sẽ bị ngược chiều. Đó là lí do ở <a href="graphics3D2-definitions.html">blog 2</a>
-                    mình nói là thứ tự các đỉnh của tam giác phải thống nhất cùng chiều hay ngược chiều kim đồng hồ, để tam giác nào cũng thống nhất một kiểu
-                    vector pháp tuyến.<br/><br/>
-                    Bây giờ vấn đề tiếp theo ta cần giải quyết là xác định xem vector pháp tuyến của tam giác có "hướng về" camera hay không, để làm được điều này ta cũng sử dụng một 
-                    khái niệm mà ta học hồi cấp 2, đó chính là tích vô hướng. Được tính bằng cách sau:
-                    $$
-                        \vec{a} \cdot \vec{b}= a_x b_x + a_y b_y + a_z b_z
-                    $$
-                    Ngoài ra tích vô hướng cũng có công thức sau, \(\theta\) là góc hợp giữa \(\vec{a}\) và \(\vec{b}\):
-                    $$
-                        \vec{a} \cdot \vec{b}= |a||b|cos\theta
-                    $$
-                    Vì trong công thức trên có \(cos\theta\), nên \(\vec{a} \cdot \vec{b} > 0\) khi \(\theta < 90\), \(\vec{a} \cdot \vec{b} < 0\) khi  \(\theta > 90\). Đúng cái ta cần,
-                    \(\theta < 90\) nghĩa là \(\vec{a}\) và \(\vec{b}\) đang "hướng cùng nhau" và \(\theta > 90\) nghĩa là \(\vec{a}\) và \(\vec{b}\) đang "hướng ngược nhau".<br/><br/>
-                    Nhân tiện đang nói về tích vô hướng, mình sẽ nói luôn về một tính chất khác của nó, nếu một trong 2 vector là vector đơn vị (độ dài = 1),
-                    thì tích vô hướng của 2 vector đó sẽ là độ dài hình chiếu của vector còn lại lên vector đơn vị đó. Tính chất này không relevant hiện giờ nhưng sẽ hữu dụng về sau.<br/><br/>
+                    nếu \(\vec{n}\) và \(a\) hướng về "cùng 1 vùng", là mình sẽ thấy được "đằng sau" của nó, ngược lại nếu 2 vector đó hướng "ngược vùng", là tam giác đang quay "về phía" camera.<br/><br/>
+                    Đầu tiên để tìm được \(\vec{n}\) của một tam giác, ta chỉ cần tìm tích có hướng của 2 cạnh bất kỳ trong tam giác đó. Có một thứ bạn cần để ý là khi bạn tính tích có hướng
+                    của 2 vector, khi bạn đảo chiều một trong 2 vector, nó vẫn sẽ ra một vector vuông góc với 2 vector ban đầu, nhưng sẽ bị ngược chiều. 
+                    Đó là lí do ở <a href="graphics3D1-setup.html">blog 1</a> mình nói là thứ tự các đỉnh của tam giác phải thống nhất cùng chiều hay ngược chiều kim đồng hồ, để tam giác nào cũng thống nhất một kiểu
+                    vector pháp tuyến.<br/>
+                    Đối với việc xét "ngược vùng" thì mình đã có nhắc tới chuyện này ở <a href="graphics3D1-setup.html">blog 1</a>, ta chỉ cần sử dụng tích vô hướng là ô kê, nếu
+                    tích vô hướng < 0 thì nó sẽ "ngược vùng".<br/><br/>
 
                     Hàm tính tích vô hướng (dot) và tích có hướng (cross) ta đã làm sẵn ở class Vector3. Đối với class Triangle ta sẽ thêm hàm tìm tâm getCenter và hàm tìm vector pháp tuyến
                     getNormal:

@@ -549,7 +549,7 @@ allTris.sort((a, b) => {
 
                     Sau khi biết cách cắt tam giác bằng mặt phẳng rồi, ta để ý là sau khi cắt một tam giác bằng một mặt phẳng, nó sẽ ra một tam giác nhỏ hơn và một tứ giác (quad).
                     Vì engine ta chỉ hiểu tam giác nên ta phải cắt tứ giác đó thành 2 tam giác nữa, ta chỉ cần lấy 1 trong 2 đường chéo của tứ giác đó để cắt, không quan trọng đường chéo nào, 
-                    nhưng cái quan trọng là sau khi cắt ta phải ghi thứ tự đỉnh theo chiều kim đồng hồ như đã thống nhất ở <a href="graphics3D2-definitions.html">blog 2</a>.<br/><br/>
+                    nhưng cái quan trọng là sau khi cắt ta phải ghi thứ tự đỉnh theo chiều kim đồng hồ như đã thống nhất ở <a href="graphics3D1-setup.html">blog 1</a>.<br/><br/>
 
                     Quay trở lại với engine chúng ta, ta muốn loại bỏ những phần đằng sau near plane, chỉ hiển thị phần đằng trước.
                     Ta sẽ xem vector pháp tuyến của một mặt phẳng là "hướng nhìn" của nó, những điểm mặt phẳng đó đang "nhìn" sẽ nằm "đằng trước" mặt phẳng, còn ngược lại thì nằm "đằng sau" 

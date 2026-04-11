@@ -39,7 +39,7 @@
                     Trong blog này, chúng ta sẽ cùng nhau vẽ được một hình lập phương (cube) lên canvas 😳.
                     Trước khi vẽ được 1 cục cube lên màn hình, ta cần có thông tin của cube đó trước,
                     là tập hợp tất cả các tam giác tạo nên nó. Ta đã làm được một phần việc này ở 
-                    <a href="graphics3D2-definitions.html#tamgiac">phần 2 của blog trước</a>, nhưng ta đang mặc định
+                    <a href="graphics3D1-setup.html#tamgiac">phần 2 của blog trước</a>, nhưng ta đang mặc định
                     tâm của cube đó ở gốc tọa độ (0, 0, 0) và có kích thước là 1. Ta cần tạo một hàm để tạo ra cube ở
                     vị trí và kích thước bất kỳ, hàm đó sẽ như sau (mình nghĩ là không cần giải thích):
                     <pre style="height: 400px;"><code class="language-javascript">function makeCube(center, size) {
@@ -260,9 +260,7 @@
                     <div id="htmlPreview3" class="htmlPreview"></div>
                     Khoan đã, sao lại không có gì hết nhỉ? Thật ra là có, nếu bạn để ý bạn sẽ thấy một dấu chấm nhỏ ở
                     góc trái trên của canvas, đó chính là cube1 của mình, nó nhỏ như vậy vì mình đang cố vẽ một hình lập phương
-                    kích thước 0.7 trong 1 canvas 400x300. Nếu bạn nhớ lại về 
-                    <a href="graphics3D2-definitions.html#manhinh">phần màn hình của blog trước</a>, thì màn hình chuẩn mà ta muốn
-                    hiển thị là có tọa độ trong khoảng [-1; 1] theo cả 2 chiều x và y. Nên trước khi vẽ các tam giác,
+                    kích thước 0.7 trong 1 canvas 400x300. Cho nên trước khi vẽ các tam giác,
                     ta nên chuẩn hóa từng đỉnh của nó về lại khoảng hợp lý của canvas, bằng cách nhân kích thước canvas và 
                     cộng một nửa kích thước canvas để đưa nó vào giữa. Tuy nhiên, ta nên biết rằng HTML Canvas có y hướng xuống
                     (càng xuống càng tăng), nhưng không gian 3D của chúng ta lại có y hướng lên, cho nên ta phải đổi dấu của y trước
