@@ -320,7 +320,88 @@ img.onload = () => {
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview32"></div>
                     Ô kê, nó đã load đúng được file Obj và texture các thứ áp lên nó ổn thỏa. Tuy nhiên bạn thấy ngay vấn đề là do xài chung texture nhưng không xài chung
-                    UV nên cube1, cube2 và lightCube nó ra như vậy hê hê. Cho nên Texture cũng nên được cụ thể hóa cho từng GameObject.
+                    UV nên cube1, cube2 và lightCube nó ra như vậy hê hê. Cho nên Texture cũng nên được cụ thể hóa cho từng GameObject.<br/><br/>
+                    Trước tiên ta cần tạo một class Texture và nó sẽ tự xử lý vụ load từ URL bên trong nó:
+                    <pre><code class="language-javascript">class Texture {
+    constructor(url) {
+        this.pixels = null;
+        this.width = 0;
+        this.height = 0;
+        this.load(url);
+    }
+
+    async load(url) {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = url;
+        // tạo một Promise mà hàm resolve của nó được gọi khi img đã load xong, làm vậy để ta có thể await,
+        // và tại vì ta không thể sử dụng this. trong một hàm lambda (đối tượng đã khác)
+        await new Promise((resolve) => {
+            img.onload = () => {
+                resolve();
+            };
+        });
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = img.width;
+        tempCanvas.height = img.height;
+        const tempCtx = tempCanvas.getContext("2d");
+        tempCtx.drawImage(img, 0, 0);
+        this.pixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
+        this.width = img.width;
+        this.height = img.height;
+    }
+}</code></pre>
+                    Thêm nó vào GameObject:
+                    <pre><code class="language-javascript">class GameObject {
+    constructor(pos, eulerAngles, scale, color, mesh, texture = null) {
+        ...
+        this.texture = texture;
+    }
+
+    ...
+
+    getTransformedTriangles() {
+        let transformedTris = [];
+        for (let tri of this.mesh.tris) {
+            let transformedTri = tri.clone();
+            ...
+            transformedTri.texture = this.texture;
+            transformedTris.push(transformedTri);
+        }
+        return transformedTris;
+    }
+}</code></pre>
+                    Bạn có thể thấy là mình còn set nó cho tam giác nữa, tại vì ở phần xử lý texture (hàm processTriangles), lúc đó nó đã không có khái niệm cube hay GameObject gì nữa,
+                    mà chỉ xử lý với triangles. Cho nên class Triangle cũng phải có texture, thêm nó vào constructor và hàm clone là oke. (chắc không cần demo code đâu nhỉ)<br/><br/>
+                    Cuối cùng là hàm processTriangles, ta sửa lại nó dùng texture của triangle thay vì xài imgPixels chung chung như trước:
+                    <pre><code class="language-javascript">let texColor = tri.color;
+if (tri.texture && tri.texture.pixels) {    // đảm bảo không null (có truyền texture cho GameObject (vì có thể GameObject không có texture, chỉ sử dụng màu), và nó đã load xong)
+    let pixelUV = new Vector2(
+        tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
+        tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2],
+        pixelInvZ
+    );
+    pixelUV = Vector2.div(pixelUV, pixelUV.w);
+
+    const texX = Math.floor(pixelUV.u * (tri.texture.width - 1));       // <---------------------
+    const texY = Math.floor(pixelUV.v * (tri.texture.height - 1));      // <---------------------
+    const texIndex = (texY * tri.texture.width + texX) * 4;             // <---------------------
+    texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);     // <---------------------
+}</code></pre>
+                    Ở luồng chính, ta tạo 2 instance cho 2 Texture mà ta cần sử dụng. Và truyền nó vào GameObject phù hợp:
+                    <pre><code class="language-javascript">let brickTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg");
+let grassTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/grass.jpg");
+
+let cubeMesh = new Cube();
+let cube1 = new GameObject(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0), cubeMesh, brickTexture);
+let cube2 = new GameObject(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0), cubeMesh, brickTexture);
+let lightCube = new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, brickTexture);
+
+let loadedObj = new GameObject(new Vector3(0, 0, 10), Vector3.zero, Vector3.one, new Color(255, 255, 255),
+    new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"),
+    grassTexture);</code></pre>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview33"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 
