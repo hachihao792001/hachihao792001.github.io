@@ -703,7 +703,7 @@
 									let lightIntensity = dirLightDiffuse + pointLightDiffuse;
 
 									let texColor = tri.color;
-									if (imgLoaded) {
+									if (imgPixels != null) {
 										let pixelUV = new Vector2(
 											tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
 											tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2],
@@ -790,9 +790,7 @@
 			const tempCtx = tempCanvas.getContext("2d");
 			tempCtx.drawImage(img, 0, 0);
 			imgPixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
-			imgLoaded = true;
 		};
-		let imgLoaded = false;
 		let imgPixels = null;
 
 		let lastTime = performance.now();

@@ -249,8 +249,8 @@
                     image in new tab", cái tab mới của nó sẽ có url "raw" mà bạn có thể dùng để load luôn hình đó mà không bị hệ lụy gì, đối với blog này mình sẽ dùng hình này:
                     <a href="https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg">https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg</a><br/><br/>
                     Vì thứ chúng ta cần là thông tin màu của tất cả pixel của image, nên sau khi load được image, ta phải vẽ nó vào 1 canvas tạm, sau đó dùng getImageData để lấy 
-                    ImageData của canvas đó. Ngoài ra vì download một thứ gì đó cần phải đợi, thay vì await async gì đó cho phức tạp, ta chỉ cần tạo một biến imgLoaded, nếu
-                    image chưa load thì vẽ như 1 màu như trước, còn load rồi ta mới xài ImageData để vẽ. Như vậy đoạn code load hình như sau:
+                    ImageData của canvas đó. Ngoài ra vì download một thứ gì đó cần phải đợi, thay vì await async gì đó cho phức tạp, ta chỉ check mỗi frame xem ImageData đã được load chưa,
+                    nếu chưa thì vẽ như 1 màu như trước, còn load rồi ta mới xài ImageData để vẽ. Như vậy đoạn code load hình như sau:
                     <pre><code class="language-javascript">const img = new Image();
 img.crossOrigin = "anonymous";  // cần cái này, nếu không có cái này thì image vẫn load được nhưng vẽ lên canvas tạm rồi thì sẽ không lấy được image data
 img.src = "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg";
@@ -261,9 +261,7 @@ img.onload = () => {
     const tempCtx = tempCanvas.getContext("2d");
     tempCtx.drawImage(img, 0, 0);       // vẽ hình lên canvas tạm
     imgPixels = tempCtx.getImageData(0, 0, img.width, img.height).data;     // lấy imageData
-    imgLoaded = true;
 };
-let imgLoaded = false;
 let imgPixels = null;</code></pre>
                     Có được mọi thứ rồi, giờ ta bắt đầu implement texture thôi 😳 Btw việc áp được một hình vào trong một model có UV đầy đủ trong engine được gọi là 
                     Texture Sampling (the title). Chắc bạn cũng đoán được cách rồi, mình cũng sẽ làm y hệt như depth buffer và world vertices, sử dụng barycentric
@@ -283,7 +281,7 @@ let imgPixels = null;</code></pre>
                         ...
 
                         let texColor = tri.color;
-                        if (imgLoaded) {    // load xong hình rồi mới vào đây tính màu pixel theo hình, còn không thì vẫn dùng màu của tam giác
+                        if (imgPixels != null) {    // load xong hình rồi mới vào đây tính màu pixel theo hình, còn không thì vẫn dùng màu của tam giác
                             // lấy UV bằng baryCoords như depth và worldVertices
                             let pixelUV = new Vector2(
                                 tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
@@ -362,7 +360,7 @@ let imgPixels = null;</code></pre>
     }
 }</code></pre>  
                     Cuối cùng, trong hàm processTriangles của Rasterizer, ta sửa khúc xử lý texture như sau:
-                    <pre><code class="language-javascript">if (imgLoaded) {
+                    <pre><code class="language-javascript">if (imgPixels != null) {
     let pixelUV = new Vector2(
         tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
         tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2],
@@ -407,7 +405,7 @@ let imgPixels = null;</code></pre>
 
     ...
 
-    if (imgLoaded) {
+    if (imgPixels != null) {
         let pixelUV = new Vector2(
             tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
             tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2],
