@@ -2,6 +2,6 @@
     {
         "title": "3D Physics Engine",
         "route": "/interactives/physicsEngine3D.html",
-        "description": "A simple 3D physics engine simulation using WebGL and JavaScript."
+        "description": "A simple 3D physics engine simulation using nothing but maths and algorithms."
     }
 ]
