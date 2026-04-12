@@ -62,10 +62,15 @@ h6 {
     color: white;
 }
 
+.sidebar-list .sidebar-list-item a {
+    transition: transform 0.2s ease;
+    display: block;
+}
+
 .sidebar-list .sidebar-list-item a:hover {
-    background-color: #f8f9fa;
     border-radius: 0.5rem;
     cursor: pointer;
+    transform: scale(1.2);
 }
 
 .sidebar-list .sidebar-list-item {
