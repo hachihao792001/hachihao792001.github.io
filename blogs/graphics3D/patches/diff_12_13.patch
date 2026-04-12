@@ -1,0 +1,226 @@
+--- "a/htmlPreviews\\htmlPreview12.html"
++++ "b/htmlPreviews\\htmlPreview13.html"
+@@ -19,6 +19,14 @@
+ 				this.w = w;
+ 			}
+ 
++			static zero;
++			static one;
++			static left;
++			static right;
++			static up;
++			static down;
++			static forward;
++
+ 			clone() {
+ 				return new Vector3(this.x, this.y, this.z, this.w);
+ 			}
+@@ -72,6 +80,13 @@
+ 				this.w = m.m[3][0] * x + m.m[3][1] * y + m.m[3][2] * z + m.m[3][3] * w;
+ 			}
+ 		}
++		Vector3.zero = new Vector3(0, 0, 0);
++		Vector3.one = new Vector3(1, 1, 1);
++		Vector3.left = new Vector3(-1, 0, 0);
++		Vector3.right = new Vector3(1, 0, 0);
++		Vector3.up = new Vector3(0, 1, 0);
++		Vector3.down = new Vector3(0, -1, 0);
++		Vector3.forward = new Vector3(0, 0, 1);
+ 
+ 		class Mat4x4 {
+ 			constructor() {
+@@ -82,21 +97,6 @@
+ 					[0, 0, 0, 0]
+ 				];
+ 			}
+-			static Identity;
+-
+-			static Multiply(m1, m2) {
+-				let result = new Mat4x4();
+-				for (let r = 0; r < 4; r++) {
+-					for (let c = 0; c < 4; c++) {
+-						result.m[r][c] =
+-							m1.m[r][0] * m2.m[0][c] +
+-							m1.m[r][1] * m2.m[1][c] +
+-							m1.m[r][2] * m2.m[2][c] +
+-							m1.m[r][3] * m2.m[3][c];
+-					}
+-				}
+-				return result;
+-			}
+ 
+ 			static Projection(fov, h, w, zNear, zFar) {
+ 				let fovMultiplier = 1.0 / Math.tan(fov * 0.5 / 180.0 * Math.PI);
+@@ -129,48 +129,68 @@
+ 				matrix.m[3][3] = 1;
+ 				return matrix;
+ 			}
++		}
+ 
+-			static RotationX(angle) {
+-				let radian = angle / 180.0 * Math.PI;
+-				let matrix = new Mat4x4();
+-				matrix.m[0][0] = 1;
+-				matrix.m[1][1] = Math.cos(radian);
+-				matrix.m[1][2] = Math.sin(radian);
+-				matrix.m[2][1] = -Math.sin(radian);
+-				matrix.m[2][2] = Math.cos(radian);
+-				matrix.m[3][3] = 1;
+-				return matrix;
++		class Quaternion {
++			constructor(a = 1, b = 0, c = 0, d = 0) {
++				this.a = a;
++				this.b = b;
++				this.c = c;
++				this.d = d;
+ 			}
+ 
+-			static RotationY(angle) {
++			static buildQuaternionAxisAngle(axis, angle) {
+ 				let radian = angle / 180.0 * Math.PI;
+-				let matrix = new Mat4x4();
+-				matrix.m[0][0] = Math.cos(radian);
+-				matrix.m[0][2] = -Math.sin(radian);
+-				matrix.m[1][1] = 1;
+-				matrix.m[2][0] = Math.sin(radian);
+-				matrix.m[2][2] = Math.cos(radian);
+-				matrix.m[3][3] = 1;
+-				return matrix;
+-			}
+-
+-			static RotationZ(angle) {
+-				let radian = angle / 180.0 * Math.PI;
+-				let matrix = new Mat4x4();
+-				matrix.m[0][0] = Math.cos(radian);
+-				matrix.m[0][1] = Math.sin(radian);
+-				matrix.m[1][0] = -Math.sin(radian);
+-				matrix.m[1][1] = Math.cos(radian);
+-				matrix.m[2][2] = 1;
+-				matrix.m[3][3] = 1;
+-				return matrix;
++				const half = radian / 2;
++				const s = -Math.sin(half);
++				return new Quaternion(
++					Math.cos(half),
++					axis.x * s,
++					axis.y * s,
++					axis.z * s);
++			}
++			
++			static buildQuaternionEuler(eulerAngles) {
++				const a = eulerAngles.x / 180 * Math.PI * 0.5;
++				const b = eulerAngles.y / 180 * Math.PI * 0.5;
++				const c = eulerAngles.z / 180 * Math.PI * 0.5;
++
++				const cosA = Math.cos(a);
++				const sinA = Math.sin(a);
++				const cosB = Math.cos(b);
++				const sinB = Math.sin(b);
++				const cosC = Math.cos(c);
++				const sinC = Math.sin(c);
++
++				return new Quaternion(
++					cosC * cosB * cosA + sinC * sinB * sinA,
++					-cosC * cosB * sinA + sinC * sinB * cosA,
++					-cosC * sinB * cosA - sinC * cosB * sinA,
++					-sinC * cosB * cosA + cosC * sinB * sinA
++				);
++			}
++
++			static multiply(p, q) {
++				let a = p.a * q.a - p.b * q.b - p.c * q.c - p.d * q.d;
++				let b = p.a * q.b + p.b * q.a + p.c * q.d - p.d * q.c;
++				let c = p.a * q.c - p.b * q.d + p.c * q.a + p.d * q.b;
++				let d = p.a * q.d + p.b * q.c - p.c * q.b + p.d * q.a;
++				return new Quaternion(a, b, c, d);
++			}
++
++			conjugate() {
++				return new Quaternion(this.a, -this.b, -this.c, -this.d);
++			}
++
++			rotateVector(v) {
++				const qVec = new Quaternion(0, v.x, v.y, v.z);
++				const res = Quaternion.multiply(Quaternion.multiply(this, qVec), this.conjugate());
++				return new Vector3(
++					res.b,
++					res.c,
++					res.d);
+ 			}
+ 		}
+-		Mat4x4.Identity = new Mat4x4();
+-		Mat4x4.Identity.m[0][0] = 1;
+-		Mat4x4.Identity.m[1][1] = 1;
+-		Mat4x4.Identity.m[2][2] = 1;
+-		Mat4x4.Identity.m[3][3] = 1;
+ 
+ 		class Triangle {
+ 			constructor(vertices = []) {
+@@ -197,6 +217,12 @@
+ 				}
+ 			}
+ 
++			rotate(q) {
++				for (let i = 0; i < this.vertices.length; i++) {
++					this.vertices[i] = q.rotateVector(this.vertices[i]);
++				}
++			}
++
+ 			getCenter() {
+ 				let x = (this.vertices[0].x + this.vertices[1].x + this.vertices[2].x) / 3.0;
+ 				let y = (this.vertices[0].y + this.vertices[1].y + this.vertices[2].y) / 3.0;
+@@ -214,14 +240,11 @@
+ 		}
+ 
+ 		class Cube {
+-			constructor(pos, rotation, scale) {
++			constructor(pos, eulerAngles, scale) {
+ 				this.tris = [];
+ 				this.pos = pos;
+ 				this.scale = scale;
+-
+-				this.rotationMatrix = Mat4x4.Multiply(Mat4x4.RotationX(rotation.x), Mat4x4.Identity);
+-				this.rotateY(rotation.y);
+-				this.rotateZ(rotation.z);
++				this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
+ 
+ 				this.generateInitialTriangles();
+ 			}
+@@ -293,14 +316,9 @@
+ 					new Vector3(0.5, -0.5, -0.5)]));
+ 			}
+ 
+-			rotateX(angle) {
+-				this.rotationMatrix = Mat4x4.Multiply(Mat4x4.RotationX(angle), this.rotationMatrix);
+-			}
+-			rotateY(angle) {
+-				this.rotationMatrix = Mat4x4.Multiply(Mat4x4.RotationY(angle), this.rotationMatrix);
+-			}
+-			rotateZ(angle) {
+-				this.rotationMatrix = Mat4x4.Multiply(Mat4x4.RotationZ(angle), this.rotationMatrix);
++			rotate(eulerX, eulerY, eulerZ) {
++				let q = Quaternion.buildQuaternionEuler(new Vector3(eulerX, eulerY, eulerZ));
++				this.rotation = Quaternion.multiply(q, this.rotation);
+ 			}
+ 
+ 			getTransformedTriangles() {
+@@ -308,7 +326,7 @@
+ 				for (let tri of this.tris) {
+ 					let transformedTri = tri.clone();
+ 					transformedTri.mulMat4x4(Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z));
+-					transformedTri.mulMat4x4(this.rotationMatrix);
++					transformedTri.rotate(this.rotation);
+ 					transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
+ 					transformedTris.push(transformedTri);
+ 				}
+@@ -347,8 +365,8 @@
+ 			}
+ 
+ 			ctx.clearRect(0, 0, canvas.width, canvas.height);
+-			cube1.rotateY(50 * dt);
+-			cube2.rotateX(50 * dt);
++			cube1.rotate(0, 50 * dt, 0);
++			cube2.rotate(50 * dt, 0, 0);
+ 
+ 			let allTris = [];
+ 			allTris.push(...cube1.getTransformedTriangles());

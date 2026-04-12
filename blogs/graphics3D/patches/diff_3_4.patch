@@ -1,0 +1,15 @@
+--- "a/htmlPreviews\\htmlPreview3.html"
++++ "b/htmlPreviews\\htmlPreview4.html"
+@@ -146,6 +146,12 @@
+ 		let cube1 = makeCube(new Vector3(0, 0, 2), new Vector3(0.7, 0.7, 0.7));
+ 		for (let tri of cube1) {
+ 			vertices = tri.vertices;
++			for (let i = 0; i < vertices.length; i++) {
++				vertices[i] = new Vector3(
++					vertices[i].x * canvas.width + canvas.width / 2,
++					-vertices[i].y * canvas.height + canvas.height / 2,
++					vertices[i].z);
++			}
+ 			ctx.beginPath();
+ 			ctx.moveTo(vertices[0].x, vertices[0].y);
+ 			ctx.lineTo(vertices[1].x, vertices[1].y);

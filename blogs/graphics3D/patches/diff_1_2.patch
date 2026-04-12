@@ -1,0 +1,20 @@
+--- "a/htmlPreviews\\htmlPreview1.html"
++++ "b/htmlPreviews\\htmlPreview2.html"
+@@ -9,8 +9,13 @@
+ <body style="text-align: center; background: #f0f0f0">
+ 	<h1>3D Engine</h1>
+ 	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
+-    <script>
+-        // Ná»™i dung script
+-    </script>
++	<script>
++		const canvas = document.getElementById("gameCanvas");
++		const ctx = canvas.getContext("2d");
++
++		ctx.arc(canvas.width / 2, canvas.height / 2, 12, 0, 2 * Math.PI, true);
++		ctx.stroke();
++	</script>
+ </body>
++
+ </html>
+\ No newline at end of file

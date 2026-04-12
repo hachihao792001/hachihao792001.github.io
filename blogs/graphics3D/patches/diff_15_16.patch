@@ -1,0 +1,175 @@
+--- "a/htmlPreviews\\htmlPreview15.html"
++++ "b/htmlPreviews\\htmlPreview16.html"
+@@ -255,6 +255,93 @@
+ 				normal.normalize();
+ 				return normal;
+ 			}
++
++			perspectiveDivide() {
++				for (let i = 0; i < this.vertices.length; i++) {
++					this.vertices[i] = Vector3.div(this.vertices[i], this.vertices[i].w);
++				}
++			}
++
++			clipAgainstPlane(plane) {
++				let outTris = [];
++
++				let frontPoints = [];
++				let behindPoints = [];
++
++				for (let i = 0; i < this.vertices.length; i++) {
++					if (plane.isPointInFrontOfPlane(this.vertices[i])) {
++						frontPoints.push(i);
++					} else {
++						behindPoints.push(i);
++					}
++				}
++
++				if (frontPoints.length == 3) {
++					outTris.push(this.clone());
++				} else if (frontPoints.length == 1 && behindPoints.length == 2) {
++					let outTri = new Triangle();
++
++					if (behindPoints[0] == 0 && behindPoints[1] == 2) {
++						behindPoints[0] = 2;
++						behindPoints[1] = 0;
++					}
++
++					let f = this.vertices[frontPoints[0]];
++					let b0 = this.vertices[behindPoints[0]];
++					let b1 = this.vertices[behindPoints[1]];
++
++					outTri.vertices[0] = f;
++					outTri.vertices[1] = plane.intersectWithLine(f, b0);
++					outTri.vertices[2] = plane.intersectWithLine(f, b1);
++					outTris.push(outTri);
++				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
++					let outTri1 = new Triangle(), outTri2 = new Triangle();
++
++					if (frontPoints[0] == 0 && frontPoints[1] == 2) {
++						frontPoints[0] = 2;
++						frontPoints[1] = 0;
++					}
++
++					let f0 = this.vertices[frontPoints[0]];
++					let f1 = this.vertices[frontPoints[1]];
++					let b = this.vertices[behindPoints[0]];
++
++					let intersection1 = plane.intersectWithLine(f0, b);
++					let intersection2 = plane.intersectWithLine(f1, b);
++
++					outTri1.vertices[0] = f0;
++					outTri1.vertices[1] = f1;
++					outTri1.vertices[2] = intersection1;
++					outTris.push(outTri1);
++
++					outTri2.vertices[0] = f1.clone();
++					outTri2.vertices[1] = intersection2;
++					outTri2.vertices[2] = intersection1.clone();
++					outTris.push(outTri2);
++				}
++
++				return outTris;
++			}
++		}
++
++		class Plane {
++			constructor(normal, P) {
++				this.normal = normal.normalize();
++				this.P = P;
++				this.D = Vector3.dot(this.normal, this.P);
++			}
++
++			isPointInFrontOfPlane(p) {
++				return Vector3.dot(p, this.normal) >= this.D;
++			}
++
++			intersectWithLine(A, B) {
++				let An = Vector3.dot(A, this.normal);
++				let Bn = Vector3.dot(B, this.normal);
++				let vectorAB = Vector3.sub(B, A);
++				let vectorAM = Vector3.mul(vectorAB, (this.D - An) / (Bn - An));
++				return Vector3.add(A, vectorAM);
++			}
+ 		}
+ 
+ 		class Camera {
+@@ -408,6 +495,7 @@
+ 		let znear = 0.01, zfar = 1000;
+ 		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
+ 		let camera = new Camera(Vector3.zero, Vector3.zero, 2, 0.2);
++		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
+ 		let keyStates = [];
+ 
+ 		const fpsInfo = document.getElementById("fps");
+@@ -440,36 +528,43 @@
+ 			cube1.rotate(0, 50 * dt, 0);
+ 			cube2.rotate(50 * dt, 0, 0);
+ 
+-			let allTris = [];
+-			allTris.push(...cube1.getTransformedTriangles());
+-			allTris.push(...cube2.getTransformedTriangles());
+-			allTris.sort((a, b) => {
+-				let distA = Vector3.sub(a.getCenter(), camera.pos).magnitude();
+-				let distB = Vector3.sub(b.getCenter(), camera.pos).magnitude();
++			let objectTris = [];
++			objectTris.push(...cube1.getTransformedTriangles());
++			objectTris.push(...cube2.getTransformedTriangles());
++
++			let visibleTris = [];
++			for (let tri of objectTris) {
++				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
++					tri.mulMat4x4(viewMat);
++					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
++				}
++			}
++			visibleTris.sort((a, b) => {
++				let distA = a.getCenter().magnitude();
++				let distB = b.getCenter().magnitude();
+ 				return distB - distA;
+ 			});
+-			for (let tri of allTris) {
+-				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
+-					let vertices = tri.vertices;
+-					for (let i = 0; i < vertices.length; i++) {
+-						vertices[i].mulMat4x4(viewMat);
+-						vertices[i].mulMat4x4(projectionMatrix);
+-						vertices[i] = Vector3.div(vertices[i], vertices[i].w);
+-						vertices[i] = new Vector3(
+-							vertices[i].x * canvas.width + canvas.width / 2,
+-							-vertices[i].y * canvas.height + canvas.height / 2,
+-							1);
+-					}
+-					ctx.beginPath();
+-					ctx.moveTo(vertices[0].x, vertices[0].y);
+-					ctx.lineTo(vertices[1].x, vertices[1].y);
+-					ctx.lineTo(vertices[2].x, vertices[2].y);
+-					ctx.closePath();
+-					ctx.fillStyle = "#ccc";
+-					ctx.fill();
+-					ctx.strokeStyle = "#000";
+-					ctx.stroke();
++
++			for (let tri of visibleTris) {
++				tri.mulMat4x4(projectionMatrix);
++				tri.perspectiveDivide();
++
++				let vertices = tri.vertices;
++				for (let i = 0; i < vertices.length; i++) {
++					vertices[i] = new Vector3(
++						vertices[i].x * canvas.width + canvas.width / 2,
++						-vertices[i].y * canvas.height + canvas.height / 2,
++						1);
+ 				}
++				ctx.beginPath();
++				ctx.moveTo(vertices[0].x, vertices[0].y);
++				ctx.lineTo(vertices[1].x, vertices[1].y);
++				ctx.lineTo(vertices[2].x, vertices[2].y);
++				ctx.closePath();
++				ctx.fillStyle = "#ccc";
++				ctx.fill();
++				ctx.strokeStyle = "#000";
++				ctx.stroke();
+ 			}
+ 
+ 			requestAnimationFrame(update);

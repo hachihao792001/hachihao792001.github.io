@@ -1,0 +1,83 @@
+--- "a/htmlPreviews\\htmlPreview18.html"
++++ "b/htmlPreviews\\htmlPreview19.html"
+@@ -10,6 +10,43 @@
+ 	<h1>3D Engine</h1>
+ 	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
+ 	<script>
++		function edgeFunction(a, b, p) {
++			return (a[1] - b[1]) * (p[0] - a[0]) + (b[0] - a[0]) * (p[1] - a[1]);
++		}
++
++		class Triangle {
++			constructor(vertices = []) {
++				if (vertices.length == 0) {
++					this.vertices = [];
++					for (let i = 0; i < 3; i++) {
++						this.vertices.push([0, 0]);
++					}
++				} else {
++					this.vertices = vertices;
++				}
++			}
++
++			isPointInTriangle(p) {
++				const e1 = edgeFunction(this.vertices[0], this.vertices[1], p);
++				const e2 = edgeFunction(this.vertices[1], this.vertices[2], p);
++				const e3 = edgeFunction(this.vertices[2], this.vertices[0], p);
++				return e1 < 0 && e2 < 0 && e3 < 0;
++			}
++
++			boundingBox() {
++				let minX = Math.min(this.vertices[0][0], this.vertices[1][0], this.vertices[2][0]);
++				let maxX = Math.max(this.vertices[0][0], this.vertices[1][0], this.vertices[2][0]);
++				let minY = Math.min(this.vertices[0][1], this.vertices[1][1], this.vertices[2][1]);
++				let maxY = Math.max(this.vertices[0][1], this.vertices[1][1], this.vertices[2][1]);
++
++				minX = Math.max(0, parseInt(minX));
++				maxX = Math.min(canvas.width - 1, parseInt(maxX));
++				minY = Math.max(0, parseInt(minY));
++				maxY = Math.min(canvas.height - 1, parseInt(maxY));
++
++				return [minX, maxX, minY, maxY];
++			}
++		}
+ 
+ 		class Color {
+ 			constructor(r, g, b) {
+@@ -64,6 +101,12 @@
+ 		const ctx = canvas.getContext("2d");
+ 		const rasterizer = new Rasterizer();
+ 
++		let testTri = new Triangle([
++			[-0.25, -0.25],
++			[0.25, -0.25],
++			[0, 0.25],
++		]);
++
+ 		let lastTime = performance.now();
+ 		let dt = 0;
+ 
+@@ -73,9 +116,20 @@
+ 
+ 			rasterizer.clearScreen();
+ 
+-			for (let i = 150; i < 250; i++) {
+-				for (let j = 100; j < 200; j++) {
+-					rasterizer.placePixel([i, j], new Color(255, 0, 0));
++			let screenTri = new Triangle();
++			for (let i = 0; i < testTri.vertices.length; i++) {
++				screenTri.vertices[i] = [
++					testTri.vertices[i][0] * canvas.width + canvas.width / 2,
++					-testTri.vertices[i][1] * canvas.height + canvas.height / 2
++				];
++			}
++
++			let bbox = screenTri.boundingBox();
++			for (let y = bbox[2]; y <= bbox[3]; y++) {
++				for (let x = bbox[0]; x <= bbox[1]; x++) {
++					if (screenTri.isPointInTriangle([x, y])) {
++						rasterizer.placePixel([x, y], new Color(255, 0, 0));
++					}
+ 				}
+ 			}
+ 

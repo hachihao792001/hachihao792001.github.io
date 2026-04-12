@@ -1,0 +1,52 @@
+--- "a/htmlPreviews\\htmlPreview26.html"
++++ "b/htmlPreviews\\htmlPreview27.html"
+@@ -687,11 +687,19 @@
+ 								if (z < this.depthBuffer[y][x]) {
+ 									this.depthBuffer[y][x] = z;
+ 
++									let pixelInvZ = tri.uv[0].w * baryCoords[0] + tri.uv[1].w * baryCoords[1] + tri.uv[2].w * baryCoords[2];
++
++									let perspectiveWorldVertices = [
++										Vector3.mul(tri.worldVertices[0], tri.uv[0].w),
++										Vector3.mul(tri.worldVertices[1], tri.uv[1].w),
++										Vector3.mul(tri.worldVertices[2], tri.uv[2].w)
++									];
+ 									let pixelWorldPos = new Vector3(
+-										tri.worldVertices[0].x * baryCoords[0] + tri.worldVertices[1].x * baryCoords[1] + tri.worldVertices[2].x * baryCoords[2],
+-										tri.worldVertices[0].y * baryCoords[0] + tri.worldVertices[1].y * baryCoords[1] + tri.worldVertices[2].y * baryCoords[2],
+-										tri.worldVertices[0].z * baryCoords[0] + tri.worldVertices[1].z * baryCoords[1] + tri.worldVertices[2].z * baryCoords[2]
++										(perspectiveWorldVertices[0].x * baryCoords[0] + perspectiveWorldVertices[1].x * baryCoords[1] + perspectiveWorldVertices[2].x * baryCoords[2]),
++										(perspectiveWorldVertices[0].y * baryCoords[0] + perspectiveWorldVertices[1].y * baryCoords[1] + perspectiveWorldVertices[2].y * baryCoords[2]),
++										(perspectiveWorldVertices[0].z * baryCoords[0] + perspectiveWorldVertices[1].z * baryCoords[1] + perspectiveWorldVertices[2].z * baryCoords[2])
+ 									);
++									pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
+ 
+ 									let pointLightVec = Vector3.sub(pixelWorldPos, lightCube.pos);
+ 									let distance = pointLightVec.magnitude();
+@@ -707,7 +715,7 @@
+ 										let pixelUV = new Vector2(
+ 											tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
+ 											tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2],
+-											tri.uv[0].w * baryCoords[0] + tri.uv[1].w * baryCoords[1] + tri.uv[2].w * baryCoords[2]
++											pixelInvZ
+ 										);
+ 										pixelUV = Vector2.div(pixelUV, pixelUV.w);
+ 
+@@ -846,16 +854,7 @@
+ 				tri.perspectiveDivide();
+ 			}
+ 
+-			let clippedTris = visibleTris;
+-			for (let plane of edgePlanes) {
+-				let newTris = [];
+-				for (let tri of clippedTris) {
+-					newTris.push(...tri.clipAgainstPlane(plane));
+-				}
+-				clippedTris = newTris;
+-			}
+-
+-			rasterizer.processTriangles(clippedTris);
++			rasterizer.processTriangles(visibleTris);
+ 			rasterizer.drawCall();
+ 
+ 			requestAnimationFrame(update);

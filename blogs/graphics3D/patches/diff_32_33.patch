@@ -1,0 +1,159 @@
+--- "a/htmlPreviews\\htmlPreview32.html"
++++ "b/htmlPreviews\\htmlPreview33.html"
+@@ -271,6 +271,7 @@
+ 				this.uv = uv;
+ 				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
+ 				this.color = color;
++				this.texture = null;
+ 			}
+ 
+ 			clone() {
+@@ -281,6 +282,7 @@
+ 					tri.uv[i] = this.uv[i].clone();
+ 				}
+ 				tri.color = this.color;
++				tri.texture = this.texture;
+ 				return tri;
+ 			}
+ 
+@@ -374,6 +376,7 @@
+ 					outTri.uv[1] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
+ 					outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
+ 					outTri.color = this.color;
++					outTri.texture = this.texture;
+ 					outTris.push(outTri);
+ 				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
+ 					let outTri1 = new Triangle(), outTri2 = new Triangle();
+@@ -400,6 +403,7 @@
+ 					outTri1.uv[1] = this.uv[frontPoints[1]];
+ 					outTri1.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
+ 					outTri1.color = this.color;
++					outTri1.texture = this.texture;
+ 					outTris.push(outTri1);
+ 
+ 					outTri2.vertices[0] = f1.clone();
+@@ -412,6 +416,7 @@
+ 					outTri2.uv[1] = Vector2.lerp(this.uv[frontPoints[1]], this.uv[behindPoints[0]], t2);
+ 					outTri2.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
+ 					outTri2.color = this.color;
++					outTri2.texture = this.texture;
+ 					outTris.push(outTri2);
+ 				}
+ 
+@@ -702,12 +707,13 @@
+ 		}
+ 
+ 		class GameObject {
+-			constructor(pos, eulerAngles, scale, color, mesh) {
++			constructor(pos, eulerAngles, scale, color, mesh, texture = null) {
+ 				this.pos = pos;
+ 				this.scale = scale;
+ 				this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
+ 				this.color = color;
+ 				this.mesh = mesh;
++				this.texture = texture;
+ 			}
+ 
+ 			rotate(eulerX, eulerY, eulerZ) {
+@@ -723,6 +729,7 @@
+ 					transformedTri.rotate(this.rotation);
+ 					transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
+ 					transformedTri.updateWorldVertices();
++					transformedTri.texture = this.texture;
+ 					transformedTris.push(transformedTri);
+ 				}
+ 				return transformedTris;
+@@ -821,6 +828,34 @@
+ 			}
+ 		}
+ 
++		class Texture {
++			constructor(url) {
++				this.pixels = null;
++				this.width = 0;
++				this.height = 0;
++				this.load(url);
++			}
++
++			async load(url) {
++				const img = new Image();
++				img.crossOrigin = "anonymous";
++				img.src = url;
++				await new Promise((resolve) => {
++					img.onload = () => {
++						resolve();
++					};
++				});
++				const tempCanvas = document.createElement("canvas");
++				tempCanvas.width = img.width;
++				tempCanvas.height = img.height;
++				const tempCtx = tempCanvas.getContext("2d");
++				tempCtx.drawImage(img, 0, 0);
++				this.pixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
++				this.width = img.width;
++				this.height = img.height;
++			}
++		}
++
+ 		class Rasterizer {
+ 			constructor() {
+ 				this.imageData = ctx.createImageData(canvas.width, canvas.height);
+@@ -901,7 +936,7 @@
+ 									let lightIntensity = (dirLightDiffuse + pointLightDiffuse) * shadowFactor;
+ 
+ 									let texColor = tri.color;
+-									if (imgPixels != null) {
++									if (tri.texture && tri.texture.pixels) {
+ 										let pixelUV = new Vector2(
+ 											tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
+ 											tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2],
+@@ -909,10 +944,10 @@
+ 										);
+ 										pixelUV = Vector2.div(pixelUV, pixelUV.w);
+ 
+-										const texX = Math.floor(pixelUV.u * (img.width - 1));
+-										const texY = Math.floor(pixelUV.v * (img.height - 1));
+-										const texIndex = (texY * img.width + texX) * 4;
+-										texColor = new Color(imgPixels[texIndex], imgPixels[texIndex + 1], imgPixels[texIndex + 2]);
++										const texX = Math.floor(pixelUV.u * (tri.texture.width - 1));
++										const texY = Math.floor(pixelUV.v * (tri.texture.height - 1));
++										const texIndex = (texY * tri.texture.width + texX) * 4;
++										texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
+ 									}
+ 
+ 									this.placePixel([x, y], new Color(
+@@ -976,25 +1011,17 @@
+ 		const pointLightIntensityText = document.getElementById("pointIntensityText");
+ 		let pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
+ 
++		let brickTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg");
++		let grassTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/grass.jpg");
++
+ 		let cubeMesh = new Cube();
+-		let cube1 = new GameObject(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0), cubeMesh);
+-		let cube2 = new GameObject(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0), cubeMesh);
+-		let lightCube = new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh);
++		let cube1 = new GameObject(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0), cubeMesh, brickTexture);
++		let cube2 = new GameObject(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0), cubeMesh, brickTexture);
++		let lightCube = new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, brickTexture);
++
+ 		let loadedObj = new GameObject(new Vector3(0, 0, 10), Vector3.zero, Vector3.one, new Color(255, 255, 255),
+-			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"));
+-
+-		const img = new Image();
+-		img.crossOrigin = "anonymous";
+-		img.src = "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/grass.jpg";
+-		img.onload = () => {
+-			const tempCanvas = document.createElement("canvas");
+-			tempCanvas.width = img.width;
+-			tempCanvas.height = img.height;
+-			const tempCtx = tempCanvas.getContext("2d");
+-			tempCtx.drawImage(img, 0, 0);
+-			imgPixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
+-		};
+-		let imgPixels = null;
++			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"),
++			grassTexture);
+ 
+ 		let lastTime = performance.now();
+ 		let dt = 0;

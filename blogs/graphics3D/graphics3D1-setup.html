@@ -205,12 +205,6 @@ a_x b_y - a_y b_x
                     <h2>2. Setup cơ bản</h2>
                     Các kiến thức cơ bản đã qua, bây giờ ta cần phải setup trước canvas của chúng ta để vẽ được thứ gì đó trước:
                     <div id="htmlPreview1" class="htmlPreview"></div>
-                    Đây là tất cả những gì ta cần làm ở HTML, phần còn lại sẽ nằm ở Javascript, sẽ nằm bên trong tag
-                    <i>script</i>.
-                    Series này mình sẽ làm mọi thứ chạy được trong 1 file HTML duy nhất, một là để bạn tiện copy và chạy
-                    luôn (chỉ cần double click vào file HTML),
-                    hai là để tăng độ "thuần khiết" và magic, rằng ta chỉ cần gõ gõ trong một file HTML là có thể vẽ
-                    được đồ họa 3D (no joke).<br /><br />
 
                     Trước tiên ta sẽ vẽ một hình tròn đơn giản lên canvas, bằng những hàm có sẵn của canvas 2D
                     context.<br />
@@ -224,6 +218,11 @@ a_x b_y - a_y b_x
 ctx.stroke();</code></pre>
                     Sau khi kết hợp lại và để vào HTML, đây là kết quả:
                     <div id="htmlPreview2" class="htmlPreview"></div>
+
+                    Từ giờ, mỗi lần bạn thấy một panel mà được chia ra làm 2 bên như trên, thì bên phải là một cái iframe chạy lại y hệt đoạn HTML bên trái.
+                    Mỗi cái này mình gọi là một cái htmlPreview, bạn có thể dùng nút Diff để so sánh với htmlPreview trước (rất có ích khi nó càng ngày càng dài),
+                    Disable để tắt nó đi (có ích khi ở cuối series preview sẽ khá là lag) và Copy để copy đoạn code.
+                    
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 

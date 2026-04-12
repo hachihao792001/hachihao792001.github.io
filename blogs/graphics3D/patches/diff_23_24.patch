@@ -1,0 +1,242 @@
+--- "a/htmlPreviews\\htmlPreview23.html"
++++ "b/htmlPreviews\\htmlPreview24.html"
+@@ -15,6 +15,11 @@
+ 		<input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" />
+ 		<span id="dirIntensityText" class="slider-value">1.0</span>
+ 	</div>
++	<div>
++		Point light intensity:
++		<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
++		<span id="pointIntensityText" class="slider-value">1.0</span>
++	</div>
+ 	<script>
+ 		class Vector3 {
+ 			constructor(x = 0, y = 0, z = 0, w = 1) {
+@@ -61,6 +66,13 @@
+ 					v1.x * v2.y - v1.y * v2.x);
+ 				return v;
+ 			}
++			static lerp(v1, v2, t) {
++				return new Vector3(
++					v1.x + (v2.x - v1.x) * t,
++					v1.y + (v2.y - v1.y) * t,
++					v1.z + (v2.z - v1.z) * t,
++					v1.w + (v2.w - v1.w) * t);
++			}
+ 			magnitude() {
+ 				return Math.hypot(this.x, this.y, this.z);
+ 			}
+@@ -226,17 +238,26 @@
+ 					this.vertices = vertices;
+ 				}
+ 
++				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
+ 				this.color = color;
+ 			}
+ 
+ 			clone() {
+ 				let tri = new Triangle();
+-				for (let i = 0; i < this.vertices.length; i++)
++				for (let i = 0; i < this.vertices.length; i++) {
+ 					tri.vertices[i] = this.vertices[i].clone();
++					tri.worldVertices[i] = this.worldVertices[i].clone();
++				}
+ 				tri.color = this.color;
+ 				return tri;
+ 			}
+ 
++			updateWorldVertices() {
++				for (let i = 0; i < this.vertices.length; i++) {
++					this.worldVertices[i] = this.vertices[i].clone();
++				}
++			}
++
+ 			mulMat4x4(m) {
+ 				for (let v of this.vertices) {
+ 					v.mulMat4x4(m);
+@@ -264,6 +285,14 @@
+ 				return normal;
+ 			}
+ 
++			getWorldNormal() {
++				let v1 = Vector3.sub(this.worldVertices[0], this.worldVertices[1]);
++				let v2 = Vector3.sub(this.worldVertices[1], this.worldVertices[2]);
++				let normal = Vector3.cross(v1, v2);
++				normal.normalize();
++				return normal;
++			}
++
+ 			perspectiveDivide() {
+ 				for (let i = 0; i < this.vertices.length; i++) {
+ 					this.vertices[i] = Vector3.div(this.vertices[i], this.vertices[i].w);
+@@ -298,9 +327,15 @@
+ 					let b0 = this.vertices[behindPoints[0]];
+ 					let b1 = this.vertices[behindPoints[1]];
+ 
++					let [t1, intersection1] = plane.intersectWithLine(f, b0);
++					let [t2, intersection2] = plane.intersectWithLine(f, b1);
++
+ 					outTri.vertices[0] = f;
+-					outTri.vertices[1] = plane.intersectWithLine(f, b0);
+-					outTri.vertices[2] = plane.intersectWithLine(f, b1);
++					outTri.vertices[1] = intersection1;
++					outTri.vertices[2] = intersection2;
++					outTri.worldVertices[0] = this.worldVertices[frontPoints[0]];
++					outTri.worldVertices[1] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
++					outTri.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[1]], t2);
+ 					outTri.color = this.color;
+ 					outTris.push(outTri);
+ 				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
+@@ -315,18 +350,24 @@
+ 					let f1 = this.vertices[frontPoints[1]];
+ 					let b = this.vertices[behindPoints[0]];
+ 
+-					let intersection1 = plane.intersectWithLine(f0, b);
+-					let intersection2 = plane.intersectWithLine(f1, b);
++					let [t1, intersection1] = plane.intersectWithLine(f0, b);
++					let [t2, intersection2] = plane.intersectWithLine(f1, b);
+ 
+ 					outTri1.vertices[0] = f0;
+ 					outTri1.vertices[1] = f1;
+ 					outTri1.vertices[2] = intersection1;
++					outTri1.worldVertices[0] = this.worldVertices[frontPoints[0]];
++					outTri1.worldVertices[1] = this.worldVertices[frontPoints[1]];
++					outTri1.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
+ 					outTri1.color = this.color;
+ 					outTris.push(outTri1);
+ 
+ 					outTri2.vertices[0] = f1.clone();
+ 					outTri2.vertices[1] = intersection2;
+ 					outTri2.vertices[2] = intersection1.clone();
++					outTri2.worldVertices[0] = this.worldVertices[frontPoints[1]].clone();
++					outTri2.worldVertices[1] = Vector3.lerp(this.worldVertices[frontPoints[1]], this.worldVertices[behindPoints[0]], t2);
++					outTri2.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
+ 					outTri2.color = this.color;
+ 					outTris.push(outTri2);
+ 				}
+@@ -371,11 +412,6 @@
+ 				const w2 = edgeFunction(v0, v1, p) / area;
+ 				return [w0, w1, w2];
+ 			}
+-
+-			applyDirectionalLight(lightDir) {
+-				let dirLightDiffuse = (1 - (Vector3.dot(this.getNormal(), lightDir) + 1) / 2) * dirLightIntensity;
+-				this.color = new Color(this.color.r * dirLightDiffuse, this.color.g * dirLightDiffuse, this.color.b * dirLightDiffuse);
+-			}
+ 		}
+ 
+ 		class Plane {
+@@ -393,8 +429,9 @@
+ 				let An = Vector3.dot(A, this.normal);
+ 				let Bn = Vector3.dot(B, this.normal);
+ 				let vectorAB = Vector3.sub(B, A);
+-				let vectorAM = Vector3.mul(vectorAB, (this.D - An) / (Bn - An));
+-				return Vector3.add(A, vectorAM);
++				let t = (this.D - An) / (Bn - An);
++				let vectorAM = Vector3.mul(vectorAB, t);
++				return [t, Vector3.add(A, vectorAM)];
+ 			}
+ 		}
+ 
+@@ -537,6 +574,7 @@
+ 					transformedTri.mulMat4x4(Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z));
+ 					transformedTri.rotate(this.rotation);
+ 					transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
++					transformedTri.updateWorldVertices();
+ 					transformedTris.push(transformedTri);
+ 				}
+ 				return transformedTris;
+@@ -592,6 +630,8 @@
+ 							vertices[i].z);
+ 					}
+ 
++					let triWorldNormal = tri.getWorldNormal();
++					let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, lightDir) + 1) / 2) * dirLightIntensity;
+ 					const bbox = tri.boundingBox();
+ 					for (let y = bbox[2]; y <= bbox[3]; y++) {
+ 						for (let x = bbox[0]; x <= bbox[1]; x++) {
+@@ -601,7 +641,27 @@
+ 
+ 								if (z < this.depthBuffer[y][x]) {
+ 									this.depthBuffer[y][x] = z;
+-									this.placePixel([x, y], tri.color);
++
++									let pixelWorldPos = new Vector3(
++										tri.worldVertices[0].x * baryCoords[0] + tri.worldVertices[1].x * baryCoords[1] + tri.worldVertices[2].x * baryCoords[2],
++										tri.worldVertices[0].y * baryCoords[0] + tri.worldVertices[1].y * baryCoords[1] + tri.worldVertices[2].y * baryCoords[2],
++										tri.worldVertices[0].z * baryCoords[0] + tri.worldVertices[1].z * baryCoords[1] + tri.worldVertices[2].z * baryCoords[2]
++									);
++
++									let pointLightVec = Vector3.sub(pixelWorldPos, lightCube.pos);
++									let distance = pointLightVec.magnitude();
++									pointLightVec.normalize();
++									let pointLightDiffuse = 1 - (Vector3.dot(triWorldNormal, pointLightVec) + 1) / 2;
++									let attenuation = 1 / (1 + 0.1 * distance * distance);
++									pointLightDiffuse *= attenuation * pointLightIntensity;
++
++									let lightIntensity = dirLightDiffuse + pointLightDiffuse;
++
++									this.placePixel([x, y], new Color(
++										Math.min(255, tri.color.r * lightIntensity),
++										Math.min(255, tri.color.g * lightIntensity),
++										Math.min(255, tri.color.b * lightIntensity)
++									));
+ 								}
+ 							}
+ 						}
+@@ -652,8 +712,13 @@
+ 		let lightDir = new Vector3(-1, -1, -1).normalize();
+ 		let dirLightIntensity = parseFloat(lightDirIntensitySlider.value);
+ 
++		const pointLightIntensitySlider = document.getElementById("pointIntensity");
++		const pointLightIntensityText = document.getElementById("pointIntensityText");
++		let pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
++
+ 		let cube1 = new Cube(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0));
+ 		let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0));
++		let lightCube = new Cube(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255));
+ 
+ 		let lastTime = performance.now();
+ 		let dt = 0;
+@@ -676,15 +741,28 @@
+ 			const viewMat = camera.getViewMatrix();
+ 
+ 			cube1.rotate(0, 50 * dt, 0);
++			if (keyStates['i']) {
++				lightCube.pos.z += dt * 2;
++			} else if (keyStates['k']) {
++				lightCube.pos.z -= dt * 2;
++			} else if (keyStates['j']) {
++				lightCube.pos.x -= dt * 2;
++			} else if (keyStates['l']) {
++				lightCube.pos.x += dt * 2;
++			} else if (keyStates['u']) {
++				lightCube.pos.y += dt * 2;
++			} else if (keyStates['o']) {
++				lightCube.pos.y -= dt * 2;
++			}
+ 
+ 			let objectTris = [];
+ 			objectTris.push(...cube1.getTransformedTriangles());
+ 			objectTris.push(...cube2.getTransformedTriangles());
++			objectTris.push(...lightCube.getTransformedTriangles());
+ 
+ 			let visibleTris = [];
+ 			for (let tri of objectTris) {
+ 				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
+-					tri.applyDirectionalLight(lightDir);
+ 					tri.mulMat4x4(viewMat);
+ 					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
+ 				}
+@@ -717,6 +795,11 @@
+ 			lightDirIntensityText.textContent = dirLightIntensity.toFixed(2);
+ 		});
+ 
++		pointLightIntensitySlider.addEventListener("input", () => {
++			pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
++			pointLightIntensityText.textContent = pointLightIntensity.toFixed(2);
++		});
++
+ 		canvas.addEventListener("click", async () => {
+ 			await canvas.requestPointerLock({
+ 				unadjustedMovement: true,

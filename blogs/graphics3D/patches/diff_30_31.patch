@@ -1,0 +1,27 @@
+--- "a/htmlPreviews\\htmlPreview30.html"
++++ "b/htmlPreviews\\htmlPreview31.html"
+@@ -710,10 +710,13 @@
+ 			}
+ 
+ 			isInShadow(pixelWorldPos, triWorldNormal) {
+-				let lightSpacePos = pixelWorldPos.clone();
++				let dotProduct = Vector3.dot(triWorldNormal, this.dir);
++				if (dotProduct >= 0) return false;
+ 
+-				if (Vector3.dot(triWorldNormal, this.dir) >= 0) return false;
++				let texelSize = shadowMapDistance / shadowMapSize;
++				let normalOffset = texelSize * (1 - Math.abs(dotProduct));
+ 
++				let lightSpacePos = Vector3.add(pixelWorldPos, Vector3.mul(triWorldNormal, normalOffset));
+ 				lightSpacePos.mulMat4x4(this.viewMatrix);
+ 				lightSpacePos.mulMat4x4(this.projectionMatrix);
+ 
+@@ -884,7 +887,7 @@
+ 		const lightDirIntensitySlider = document.getElementById("dirIntensity");
+ 		const lightDirIntensityText = document.getElementById("dirIntensityText");
+ 		let shadowMapSize = 512;
+-		let shadowBias = 0.04;
++		let shadowBias = 0.01;
+ 		let shadowMapDistance = 5;
+ 		let dirLight = new DirectionalLight(new Vector3(-1, -1, -1), parseFloat(lightDirIntensitySlider.value));
+ 

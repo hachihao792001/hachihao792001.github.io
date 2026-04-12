@@ -1,0 +1,184 @@
+--- "a/htmlPreviews\\htmlPreview27.html"
++++ "b/htmlPreviews\\htmlPreview28.html"
+@@ -146,6 +146,16 @@
+ 				return matrix;
+ 			}
+ 
++			static Orthographic(size, zNear, zFar) {
++				let matrix = new Mat4x4();
++				matrix.m[0][0] = 2.0 / size;
++				matrix.m[1][1] = 2.0 / size;
++				matrix.m[2][2] = 1.0 / (zFar - zNear);
++				matrix.m[2][3] = -zNear / (zFar - zNear);
++				matrix.m[3][3] = 1.0;
++				return matrix;
++			}
++
+ 			static View(r, u, f, t) {
+ 				let matrix = new Mat4x4();
+ 				matrix.m[0][0] = r.x;
+@@ -420,16 +430,16 @@
+ 				return e1 < 0 && e2 < 0 && e3 < 0;
+ 			}
+ 
+-			boundingBox() {
++			boundingBox(maxWidth = canvas.width, maxHeight = canvas.height) {
+ 				let minX = Math.min(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
+ 				let maxX = Math.max(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
+ 				let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
+ 				let maxY = Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
+ 
+ 				minX = Math.max(0, parseInt(minX));
+-				maxX = Math.min(canvas.width - 1, parseInt(maxX));
++				maxX = Math.min(maxWidth - 1, parseInt(maxX));
+ 				minY = Math.max(0, parseInt(minY));
+-				maxY = Math.min(canvas.height - 1, parseInt(maxY));
++				maxY = Math.min(maxHeight - 1, parseInt(maxY));
+ 
+ 				return [minX, maxX, minY, maxY];
+ 			}
+@@ -626,6 +636,84 @@
+ 			}
+ 		}
+ 
++		class DirectionalLight {
++			constructor(dir, intensity) {
++				this.dir = dir.normalize();
++				this.intensity = intensity;
++				this.shadowMap = [];
++				for (let i = 0; i < shadowMapSize; i++) {
++					let row = [];
++					for (let j = 0; j < shadowMapSize; j++) {
++						row.push(Infinity);
++					}
++					this.shadowMap.push(row);
++				}
++
++				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
++				let right = Vector3.cross(up, this.dir).normalize();
++				up = Vector3.cross(this.dir, right).normalize();
++				let lightPos = Vector3.mul(this.dir, -shadowMapDistance);
++				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
++				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
++			}
++
++			buildShadowMap(tris) {
++
++				for (let i = 0; i < shadowMapSize; i++) {
++					for (let j = 0; j < shadowMapSize; j++) {
++						this.shadowMap[i][j] = Infinity;
++					}
++				}
++
++				for (let tri of tris) {
++					let shadowTri = tri.clone();
++
++					if (Vector3.dot(tri.getWorldNormal(), this.dir) >= 0) continue;
++
++					shadowTri.mulMat4x4(this.viewMatrix);
++					shadowTri.mulMat4x4(this.projectionMatrix);
++					shadowTri.perspectiveDivide();
++
++					for (let i = 0; i < shadowTri.vertices.length; i++) {
++						shadowTri.vertices[i].x = (shadowTri.vertices[i].x + 1) * shadowMapSize / 2;
++						shadowTri.vertices[i].y = (-shadowTri.vertices[i].y + 1) * shadowMapSize / 2;
++					}
++
++					const bbox = shadowTri.boundingBox(shadowMapSize, shadowMapSize);
++					for (let y = bbox[2]; y <= bbox[3]; y++) {
++						for (let x = bbox[0]; x <= bbox[1]; x++) {
++							if (shadowTri.isPointInTriangle([x, y])) {
++								const baryCoords = shadowTri.barycentricCoords([x, y]);
++								const z = shadowTri.vertices[0].z * baryCoords[0] + shadowTri.vertices[1].z * baryCoords[1] + shadowTri.vertices[2].z * baryCoords[2];
++								if (z < this.shadowMap[y][x]) {
++									this.shadowMap[y][x] = z;
++								}
++							}
++						}
++					}
++				}
++			}
++
++			isInShadow(pixelWorldPos, triWorldNormal) {
++				let lightSpacePos = pixelWorldPos.clone();
++
++				if (Vector3.dot(triWorldNormal, this.dir) >= 0) return false;
++
++				lightSpacePos.mulMat4x4(this.viewMatrix);
++				lightSpacePos.mulMat4x4(this.projectionMatrix);
++
++				lightSpacePos = Vector3.div(lightSpacePos, lightSpacePos.w);
++
++				const x = Math.floor((lightSpacePos.x + 1) * shadowMapSize / 2);
++				const y = Math.floor((-lightSpacePos.y + 1) * shadowMapSize / 2);
++
++				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize) 
++					return false;
++
++				return lightSpacePos.z > this.shadowMap[y][x];
++			}
++		}
++
+ 		class Color {
+ 			constructor(r, g, b) {
+ 				this.r = r;
+@@ -676,7 +764,7 @@
+ 					}
+ 
+ 					let triWorldNormal = tri.getWorldNormal();
+-					let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, lightDir) + 1) / 2) * dirLightIntensity;
++					let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
+ 					const bbox = tri.boundingBox();
+ 					for (let y = bbox[2]; y <= bbox[3]; y++) {
+ 						for (let x = bbox[0]; x <= bbox[1]; x++) {
+@@ -701,6 +789,9 @@
+ 									);
+ 									pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
+ 
++									let inShadow = dirLight.isInShadow(pixelWorldPos, triWorldNormal);
++									let shadowFactor = inShadow ? 0.5 : 1.0;
++
+ 									let pointLightVec = Vector3.sub(pixelWorldPos, lightCube.pos);
+ 									let distance = pointLightVec.magnitude();
+ 									pointLightVec.normalize();
+@@ -708,7 +799,7 @@
+ 									let attenuation = 1 / (1 + 0.1 * distance * distance);
+ 									pointLightDiffuse *= attenuation * pointLightIntensity;
+ 
+-									let lightIntensity = dirLightDiffuse + pointLightDiffuse;
++									let lightIntensity = (dirLightDiffuse + pointLightDiffuse) * shadowFactor;
+ 
+ 									let texColor = tri.color;
+ 									if (imgPixels != null) {
+@@ -777,8 +868,9 @@
+ 
+ 		const lightDirIntensitySlider = document.getElementById("dirIntensity");
+ 		const lightDirIntensityText = document.getElementById("dirIntensityText");
+-		let lightDir = new Vector3(-1, -1, -1).normalize();
+-		let dirLightIntensity = parseFloat(lightDirIntensitySlider.value);
++		let shadowMapSize = 512;
++		let shadowMapDistance = 20;
++		let dirLight = new DirectionalLight(new Vector3(-1, -1, -1), parseFloat(lightDirIntensitySlider.value));
+ 
+ 		const pointLightIntensitySlider = document.getElementById("pointIntensity");
+ 		const pointLightIntensityText = document.getElementById("pointIntensityText");
+@@ -841,6 +933,8 @@
+ 			objectTris.push(...cube2.getTransformedTriangles());
+ 			objectTris.push(...lightCube.getTransformedTriangles());
+ 
++			dirLight.buildShadowMap(objectTris);
++
+ 			let visibleTris = [];
+ 			for (let tri of objectTris) {
+ 				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
+@@ -863,8 +957,8 @@
+ 		update();
+ 
+ 		lightDirIntensitySlider.addEventListener("input", () => {
+-			dirLightIntensity = parseFloat(lightDirIntensitySlider.value);
+-			lightDirIntensityText.textContent = dirLightIntensity.toFixed(2);
++			dirLight.intensity = parseFloat(lightDirIntensitySlider.value);
++			lightDirIntensityText.textContent = dirLight.intensity.toFixed(2);
+ 		});
+ 
+ 		pointLightIntensitySlider.addEventListener("input", () => {
