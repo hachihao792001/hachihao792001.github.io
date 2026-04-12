@@ -1,0 +1,62 @@
+--- "a/htmlPreviews\\htmlPreview29.html"
++++ "b/htmlPreviews\\htmlPreview30.html"
+@@ -488,6 +488,16 @@
+ 				this.sensitivity = sensitivity;
+ 			}
+ 
++			getFrustumCenter(customZFar = -1) {
++				let forward = this.rotation.rotateVector(Vector3.forward);
++
++				let near = Vector3.add(this.pos, Vector3.mul(forward, znear));
++				if (customZFar == -1)
++					customZFar = zfar;
++				let far = Vector3.add(this.pos, Vector3.mul(forward, customZFar));
++				return Vector3.div(Vector3.add(near, far), 2);
++			}
++
+ 			updateRotation(mouseMovementX, mouseMovementY) {
+ 				let q = Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity);
+ 
+@@ -650,11 +660,14 @@
+ 					}
+ 					this.shadowMap.push(row);
+ 				}
++			}
+ 
++			buildViewAndProjectionMatrix() {
+ 				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
+ 				let right = Vector3.cross(up, this.dir).normalize();
+ 				up = Vector3.cross(this.dir, right).normalize();
+-				let lightPos = Vector3.mul(this.dir, -shadowMapDistance);
++				let frustumCenter = camera.getFrustumCenter(shadowMapDistance);
++				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
+ 				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
+ 				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
+ 			}
+@@ -712,7 +725,7 @@
+ 				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize)
+ 					return false;
+ 
+-				return lightSpacePos.z > this.shadowMap[y][x];
++				return lightSpacePos.z > this.shadowMap[y][x] + shadowBias;
+ 			}
+ 		}
+ 
+@@ -871,7 +884,8 @@
+ 		const lightDirIntensitySlider = document.getElementById("dirIntensity");
+ 		const lightDirIntensityText = document.getElementById("dirIntensityText");
+ 		let shadowMapSize = 512;
+-		let shadowMapDistance = 20;
++		let shadowBias = 0.04;
++		let shadowMapDistance = 5;
+ 		let dirLight = new DirectionalLight(new Vector3(-1, -1, -1), parseFloat(lightDirIntensitySlider.value));
+ 
+ 		const pointLightIntensitySlider = document.getElementById("pointIntensity");
+@@ -951,6 +965,7 @@
+ 			objectTris.push(...cube2.getTransformedTriangles());
+ 			objectTris.push(...lightCube.getTransformedTriangles());
+ 
++			dirLight.buildViewAndProjectionMatrix();
+ 			dirLight.buildShadowMap(objectTris);
+ 			drawShadowMapDebug();
+ 

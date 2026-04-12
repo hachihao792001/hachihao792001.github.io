@@ -1,0 +1,52 @@
+--- "a/htmlPreviews\\htmlPreview25.html"
++++ "b/htmlPreviews\\htmlPreview26.html"
+@@ -22,17 +22,22 @@
+ 	</div>
+ 	<script>
+ 		class Vector2 {
+-			constructor(u = 0, v = 0) {
++			constructor(u = 0, v = 0, w = 1) {
+ 				this.u = u;
+ 				this.v = v;
++				this.w = w;
+ 			}
+ 			clone() {
+-				return new Vector2(this.u, this.v);
++				return new Vector2(this.u, this.v, this.w);
++			}
++			static div(vec, value) {
++				return new Vector2(vec.u / value, vec.v / value, vec.w / value);
+ 			}
+ 			static lerp(vec1, vec2, t) {
+ 				return new Vector2(
+ 					vec1.u + (vec2.u - vec1.u) * t,
+-					vec1.v + (vec2.v - vec1.v) * t);
++					vec1.v + (vec2.v - vec1.v) * t,
++					vec1.w + (vec2.w - vec1.w) * t);
+ 			}
+ 		}
+ 
+@@ -312,7 +317,9 @@
+ 
+ 			perspectiveDivide() {
+ 				for (let i = 0; i < this.vertices.length; i++) {
+-					this.vertices[i] = Vector3.div(this.vertices[i], this.vertices[i].w);
++					let z = this.vertices[i].w;
++					this.vertices[i] = Vector3.div(this.vertices[i], z);
++					this.uv[i] = Vector2.div(this.uv[i], z);
+ 				}
+ 			}
+ 
+@@ -699,8 +706,11 @@
+ 									if (imgPixels != null) {
+ 										let pixelUV = new Vector2(
+ 											tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
+-											tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2]
++											tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2],
++											tri.uv[0].w * baryCoords[0] + tri.uv[1].w * baryCoords[1] + tri.uv[2].w * baryCoords[2]
+ 										);
++										pixelUV = Vector2.div(pixelUV, pixelUV.w);
++
+ 										const texX = Math.floor(pixelUV.u * (img.width - 1));
+ 										const texY = Math.floor(pixelUV.v * (img.height - 1));
+ 										const texIndex = (texY * img.width + texX) * 4;

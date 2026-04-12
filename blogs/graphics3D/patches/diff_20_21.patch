@@ -1,0 +1,180 @@
+--- "a/htmlPreviews\\htmlPreview20.html"
++++ "b/htmlPreviews\\htmlPreview21.html"
+@@ -211,7 +211,7 @@
+ 		}
+ 
+ 		class Triangle {
+-			constructor(vertices = []) {
++			constructor(vertices = [], color = new Color(255, 255, 255)) {
+ 				if (vertices.length == 0) {
+ 					this.vertices = [];
+ 					for (let i = 0; i < 3; i++) {
+@@ -220,12 +220,15 @@
+ 				} else {
+ 					this.vertices = vertices;
+ 				}
++
++				this.color = color;
+ 			}
+ 
+ 			clone() {
+ 				let tri = new Triangle();
+ 				for (let i = 0; i < this.vertices.length; i++)
+ 					tri.vertices[i] = this.vertices[i].clone();
++				tri.color = this.color;
+ 				return tri;
+ 			}
+ 
+@@ -293,6 +296,7 @@
+ 					outTri.vertices[0] = f;
+ 					outTri.vertices[1] = plane.intersectWithLine(f, b0);
+ 					outTri.vertices[2] = plane.intersectWithLine(f, b1);
++					outTri.color = this.color;
+ 					outTris.push(outTri);
+ 				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
+ 					let outTri1 = new Triangle(), outTri2 = new Triangle();
+@@ -312,11 +316,13 @@
+ 					outTri1.vertices[0] = f0;
+ 					outTri1.vertices[1] = f1;
+ 					outTri1.vertices[2] = intersection1;
++					outTri1.color = this.color;
+ 					outTris.push(outTri1);
+ 
+ 					outTri2.vertices[0] = f1.clone();
+ 					outTri2.vertices[1] = intersection2;
+ 					outTri2.vertices[2] = intersection1.clone();
++					outTri2.color = this.color;
+ 					outTris.push(outTri2);
+ 				}
+ 
+@@ -419,11 +425,12 @@
+ 		}
+ 
+ 		class Cube {
+-			constructor(pos, eulerAngles, scale) {
++			constructor(pos, eulerAngles, scale, color) {
+ 				this.tris = [];
+ 				this.pos = pos;
+ 				this.scale = scale;
+ 				this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
++				this.color = color;
+ 
+ 				this.generateInitialTriangles();
+ 			}
+@@ -433,66 +440,66 @@
+ 				this.tris.push(new Triangle([
+ 					new Vector3(-0.5, -0.5, -0.5),
+ 					new Vector3(-0.5, 0.5, -0.5),
+-					new Vector3(0.5, 0.5, -0.5)]));
++					new Vector3(0.5, 0.5, -0.5)], this.color));
+ 				this.tris.push(new Triangle([
+ 					new Vector3(-0.5, -0.5, -0.5),
+ 					new Vector3(0.5, 0.5, -0.5),
+-					new Vector3(0.5, -0.5, -0.5)]));
++					new Vector3(0.5, -0.5, -0.5)], this.color));
+ 
+ 				// RIGHT
+ 				this.tris.push(new Triangle([
+ 					new Vector3(0.5, -0.5, -0.5),
+ 					new Vector3(0.5, 0.5, -0.5),
+-					new Vector3(0.5, 0.5, 0.5)]));
++					new Vector3(0.5, 0.5, 0.5)], this.color));
+ 
+ 				this.tris.push(new Triangle([
+ 					new Vector3(0.5, -0.5, -0.5),
+ 					new Vector3(0.5, 0.5, 0.5),
+-					new Vector3(0.5, -0.5, 0.5)]));
++					new Vector3(0.5, -0.5, 0.5)], this.color));
+ 
+ 				// BACK
+ 				this.tris.push(new Triangle([
+ 					new Vector3(0.5, -0.5, 0.5),
+ 					new Vector3(0.5, 0.5, 0.5),
+-					new Vector3(-0.5, 0.5, 0.5)]));
++					new Vector3(-0.5, 0.5, 0.5)], this.color));
+ 
+ 				this.tris.push(new Triangle([
+ 					new Vector3(0.5, -0.5, 0.5),
+ 					new Vector3(-0.5, 0.5, 0.5),
+-					new Vector3(-0.5, -0.5, 0.5)]));
++					new Vector3(-0.5, -0.5, 0.5)], this.color));
+ 
+ 				// LEFT
+ 				this.tris.push(new Triangle([
+ 					new Vector3(-0.5, -0.5, 0.5),
+ 					new Vector3(-0.5, 0.5, 0.5),
+-					new Vector3(-0.5, 0.5, -0.5)]));
++					new Vector3(-0.5, 0.5, -0.5)], this.color));
+ 
+ 				this.tris.push(new Triangle([
+ 					new Vector3(-0.5, -0.5, 0.5),
+ 					new Vector3(-0.5, 0.5, -0.5),
+-					new Vector3(-0.5, -0.5, -0.5)]));
++					new Vector3(-0.5, -0.5, -0.5)], this.color));
+ 
+ 				// TOP
+ 				this.tris.push(new Triangle([
+ 					new Vector3(-0.5, 0.5, -0.5),
+ 					new Vector3(-0.5, 0.5, 0.5),
+-					new Vector3(0.5, 0.5, 0.5)]));
++					new Vector3(0.5, 0.5, 0.5)], this.color));
+ 
+ 				this.tris.push(new Triangle([
+ 					new Vector3(-0.5, 0.5, -0.5),
+ 					new Vector3(0.5, 0.5, 0.5),
+-					new Vector3(0.5, 0.5, -0.5)]));
++					new Vector3(0.5, 0.5, -0.5)], this.color));
+ 
+ 				// BOTTOM
+ 				this.tris.push(new Triangle([
+ 					new Vector3(0.5, -0.5, 0.5),
+ 					new Vector3(-0.5, -0.5, 0.5),
+-					new Vector3(-0.5, -0.5, -0.5)]));
++					new Vector3(-0.5, -0.5, -0.5)], this.color));
+ 
+ 				this.tris.push(new Triangle([
+ 					new Vector3(0.5, -0.5, 0.5),
+ 					new Vector3(-0.5, -0.5, -0.5),
+-					new Vector3(0.5, -0.5, -0.5)]));
++					new Vector3(0.5, -0.5, -0.5)], this.color));
+ 			}
+ 
+ 			rotate(eulerX, eulerY, eulerZ) {
+@@ -561,7 +568,7 @@
+ 					for (let y = bbox[2]; y <= bbox[3]; y++) {
+ 						for (let x = bbox[0]; x <= bbox[1]; x++) {
+ 							if (tri.isPointInTriangle([x, y])) {
+-								this.placePixel([x, y], new Color(204, 204, 204));
++								this.placePixel([x, y], tri.color);
+ 							}
+ 						}
+ 					}
+@@ -593,7 +600,7 @@
+ 		const fov = 90;
+ 		let znear = 0.01, zfar = 1000;
+ 		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
+-		let camera = new Camera(Vector3.zero, Vector3.zero, 2, 0.2);
++		let camera = new Camera(new Vector3(0, 1.5, 1.5), new Vector3(-15, 0, 0), 2, 0.2);
+ 		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
+ 		let edgePlanes = [
+ 			new Plane(Vector3.down, new Vector3(0, 0.5, 0)),
+@@ -606,9 +613,8 @@
+ 		const fpsInfo = document.getElementById("fps");
+ 		let frames = 0, fpsTimeCounter = 0;
+ 
+-		let cube1 = new Cube(new Vector3(0.6, -0.7, 2.5), new Vector3(45, 0, 0), new Vector3(0.7, 0.7, 0.7));
+-		let cube2 = new Cube(new Vector3(1, 0, 2.5), new Vector3(0, 0, 15), new Vector3(1, 0.7, 0.7));
+-		cube2.pos = Vector3.sub(cube2.pos, new Vector3(1.6, 0, 0));
++		let cube1 = new Cube(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0));
++		let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0));
+ 
+ 		let lastTime = performance.now();
+ 		let dt = 0;
+@@ -631,7 +637,6 @@
+ 			const viewMat = camera.getViewMatrix();
+ 
+ 			cube1.rotate(0, 50 * dt, 0);
+-			cube2.rotate(50 * dt, 0, 0);
+ 
+ 			let objectTris = [];
+ 			objectTris.push(...cube1.getTransformedTriangles());

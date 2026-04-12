@@ -1,0 +1,33 @@
+--- "a/htmlPreviews\\htmlPreview14.html"
++++ "b/htmlPreviews\\htmlPreview15.html"
+@@ -167,7 +167,7 @@
+ 					axis.y * s,
+ 					axis.z * s);
+ 			}
+-			
++
+ 			static buildQuaternionEuler(eulerAngles) {
+ 				const a = eulerAngles.x / 180 * Math.PI * 0.5;
+ 				const b = eulerAngles.y / 180 * Math.PI * 0.5;
+@@ -443,6 +443,11 @@
+ 			let allTris = [];
+ 			allTris.push(...cube1.getTransformedTriangles());
+ 			allTris.push(...cube2.getTransformedTriangles());
++			allTris.sort((a, b) => {
++				let distA = Vector3.sub(a.getCenter(), camera.pos).magnitude();
++				let distB = Vector3.sub(b.getCenter(), camera.pos).magnitude();
++				return distB - distA;
++			});
+ 			for (let tri of allTris) {
+ 				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
+ 					let vertices = tri.vertices;
+@@ -460,6 +465,9 @@
+ 					ctx.lineTo(vertices[1].x, vertices[1].y);
+ 					ctx.lineTo(vertices[2].x, vertices[2].y);
+ 					ctx.closePath();
++					ctx.fillStyle = "#ccc";
++					ctx.fill();
++					ctx.strokeStyle = "#000";
+ 					ctx.stroke();
+ 				}
+ 			}
