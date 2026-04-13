@@ -46,12 +46,12 @@
                     mình thì quen hệ tọa độ tay trái hơn, lúc đó trục z sẽ hướng ra xa mình, trục x sẽ hướng sang phải,
                     và trục y sẽ hướng lên trên, và mình sẽ dùng hệ tọa độ tay trái trong suốt quá trình giải thích engine của mình.
                     <div align="center">
-                        <img src="https://www.learnopengles.com/wordpress/wp-content/uploads/2012/10/left_right_hand.gif" style="display:block; max-height: 300px;" />
+                        <img src="https://www.learnopengles.com/wordpress/wp-content/uploads/2012/10/left_right_hand.gif" style="display:block; max-height: 300px;max-width: 100vw;" />
                         <i>Nguồn ảnh: <a href="https://www.learnopengles.com/tag/left-handed-coordinate-system/">learnopengles</a></i>
                     </div>
                     Nếu bạn thắc mắc, thì hệ trục tọa độ \(Oxyz\) mà bạn đã làm quen ở lớp 12 là hệ tọa độ tay phải, bạn xem hình trong sgk lớp 12 dưới đây để làm rõ.
                     <div align="center">
-                        <img src="https://vietjack.com/toan-12-cd/images/hoat-dong-1-trang-74-toan-12-tap-1.PNG" style="display:block; max-height: 350px;" />
+                        <img src="https://vietjack.com/toan-12-cd/images/hoat-dong-1-trang-74-toan-12-tap-1.PNG" style="display:block; max-height: 350px;max-width: 100vw;" />
                         <i>Nguồn ảnh: <a href="https://vietjack.com/toan-12-cd/hoat-dong-1-trang-74-toan-12-tap-1.jsp">vietjack</a>, SGK Toán lớp 12</i>
                     </div>
 
@@ -61,7 +61,7 @@
                     Nghĩa là khi \(t = 0\) thì \(M = A\) và \(t = 1\) thì \(M = B\), \(t=0.5\) thì nó ngay giữa \(A, B\). Công thức của nội suy tuyến tính khá đơn giản:
                     \(M = A + (B - A) * t\), bạn có thể xem hình dưới đây và tự ngẫm:
                     <div align="center">
-                        <img src="images/graphics3D1/linearinterpolation.png" style="display:block; max-height: 300px;" />
+                        <img src="images/graphics3D1/linearinterpolation.png" style="display:block; max-height: 300px;max-width: 100vw;" />
                     </div>
                     Nội suy tuyến tính có thể áp dụng cho cả không gian 2 chiều và trở lên, xem \(A\), \(B\) là 2 điểm, thì ta vẫn có thể nội suy ra điểm \(M\) từ \(t\) bằng công thức trên 
                     (sử dụng phép cộng trừ điểm/vector, nhân điểm/vector với hệ số).
@@ -75,7 +75,7 @@
                     \(\sin{\alpha}\) chính là <b>độ dài hình chiếu của \(\vec{v}\) lên trục tung</b> (hay \(v_y\)) và \(cos{\alpha}\) chính là <b>độ dài hình chiếu của \(\vec{v}\) lên trục hoành</b> 
                     (hay \(v_x\)). Mình phải hiểu được bản chất này mới bắt đầu làm về 3D được, vì nó sử dụng hình chiếu khá nhiều.
                     <div align="center">
-                        <img src="images/graphics3D1/sincos.png" style="display:block; max-height: 300px;" />
+                        <img src="images/graphics3D1/sincos.png" style="display:block; max-height: 300px; max-width: 100vw;" />
                         <i>Dựa vào hình này bạn cũng tự suy ra được tại sao \(\cos{0}=1\) hay \(\sin{\alpha}^2 + \cos{\alpha}^2 = 1\) (pytago) hay bất cứ thứ gì khác.</i>
                     </div>
                     <h3>4. Tích vô hướng</h3>
@@ -90,7 +90,7 @@
                     $$
                     Nhìn thấy \(cos\), bạn cũng đoán được tiếp theo mình sẽ nói gì
                     <div align="center">
-                        <img src="images/graphics3D1/dot.png" style="display:block; max-height: 300px;" />
+                        <img src="images/graphics3D1/dot.png" style="display:block; max-height: 300px; max-width: 100vw;" />
                     </div>
                     Gọi \(a_b\) là hình chiếu của \(\vec{a}\) lên \(\vec{b}\), dựa vào công thức thứ hai, ta có tích vô hướng \(\vec{a} \cdot \vec{b} = a_b |\vec{b}| = b_a |\vec{a}|\).<br/><br/>
                     Hmmmm, cũng không có ý nghĩa gì mấy, thật ra nó sẽ có công dụng khi một trong 2 vector là vector đơn vị (độ dài = 1), ví dụ \(|\vec{b}|=1\),
@@ -99,7 +99,7 @@
                     Ngoài ra, tích vô hướng cũng có 1 công dụng hữu ích khác. Vì có \(cos\) trong công thức, nên tích vô hướng sẽ \(= 0\) khi 2 vector vuông góc nhau, \(> 0\) khi 2 vector "hướng
                     về cùng 1 vùng" và \(< 0\) khi "hướng về vùng ngược nhau".
                     <div align="center">
-                        <img src="images/graphics3D1/dotarea.png" style="display:block; max-height: 400px;" />
+                        <img src="images/graphics3D1/dotarea.png" style="display:block; max-height: 400px; max-width: 100vw;" />
                         <i>Những vector nào hướng về vùng xanh là hướng về "cùng 1 vùng" với \(\vec{a}\), vector nào hướng về vùng đỏ là hướng "ngược vùng" với \(\vec{a}\)</i>
                     </div>
                     <h3>5. Tích có hướng</h3>
@@ -139,22 +139,22 @@ a_x b_y - a_y b_x
                     RIGHT.
                     Trước tiên đối với 4 đỉnh của mặt phẳng DOWN, FRONT và LEFT:
                     <div>
-                        <img src="images/graphics3D1/down.png" style="max-width: 300px;" />
-                        <img src="images/graphics3D1/front.png" style="max-width: 300px;" />
-                        <img src="images/graphics3D1/left.png" style="max-width: 300px;" />
+                        <img src="images/graphics3D1/down.png" style="max-height: 300px; max-width: 100vw;" />
+                        <img src="images/graphics3D1/front.png" style="max-height: 300px; max-width: 100vw;" />
+                        <img src="images/graphics3D1/left.png" style="max-height: 300px; max-width: 100vw;" />
                     </div>
                     Đối với TOP, BACK và RIGHT thì nó chỉ là như DOWN, FRONT và LEFT nhưng với y, z, x = 1 thay vì 0.
                     Như vậy hình lập phương đầy đủ của chúng ta sẽ có 8 đỉnh như sau:
-                    <img src="images/graphics3D1/cube1.png" style="display: block; max-width: 300px;" />
+                    <img src="images/graphics3D1/cube1.png" style="display: block; max-height: 300px; max-width: 100vw;" />
                     Sau đó ta bắt đầu cắt 6 mặt phẳng của hình lập phương thành các tam giác, mỗi mặt phẳng sẽ có 2 tam
                     giác:
-                    <img src="images/graphics3D1/cube2.png" style="display: block; max-width: 300px;" />
+                    <img src="images/graphics3D1/cube2.png" style="display: block; max-height: 300px; max-width: 100vw;" />
                     Đối với mặt FRONT, ta có 2 tam giác là [(0,1,0), (1,1,0), (1,0,0)] và [(0,1,0), (1,0,0), (0,0,0)],
                     lưu ý là
                     thứ tự các đỉnh liệt kê trong tam giác phải thống nhất cùng chiều kim đồng hồ hay ngược chiều kim
                     đồng hồ,
                     điều này khá quan trọng, ta sẽ nói về điều này sau.
-                    <img src="images/graphics3D1/frontTriangles.png" style="display: block; max-width: 300px;" />
+                    <img src="images/graphics3D1/frontTriangles.png" style="display: block; max-height: 300px; max-width: 100vw;" />
                     Tương tự, đối với cả hình lập phương, ta sẽ có tất cả 12 tam giác như sau (mình thống nhất theo cùng chiều kim đồng hồ):
                     <pre><code class="language-javascript">[// FRONT
 {{0,1,0}, {1,1,0}, {1,0,0}},
@@ -178,7 +178,7 @@ a_x b_y - a_y b_x
                     Tuy nhiên, ta muốn tâm của hình lập phương nằm ở gốc tọa độ (0, 0, 0), nên ta sẽ dịch chuyển tất cả
                     các đỉnh đi (-0.5, -0.5, -0.5), lúc đó ta sẽ có 8 đỉnh cuối cùng như sau (mình chỉ để 4 đỉnh ở mặt
                     FRONT để dễ nhìn):
-                    <img src="images/graphics3D1/cube3.png" style="display: block; max-width: 500px;" />
+                    <img src="images/graphics3D1/cube3.png" style="display: block; max-height: 500px; max-width: 100vw;" />
                     Và 12 tam giác cuối cùng sẽ là:
                     <pre><code class="language-javascript">[// FRONT
 {{-0.5,0.5,-0.5}, {0.5,0.5,-0.5}, {0.5,-0.5,-0.5}},
