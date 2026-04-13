@@ -43,11 +43,11 @@
                     đó, người ta sẽ định nghĩa thêm giá trị UV cho từng đỉnh trong model, để cho hình có thể "áp" được theo ý mình muốn vào trong. Ví dụ hình dưới mình vẽ một hình
                     vuông trong engine có 4 đỉnh có 4 UV như hình, sẽ map ra vùng tương ứng trong texture.
                     <div align="center">
-                        <img style="max-height: 600px; display:block" src="images/graphics3D10/uv1.png"/>
+                        <img style="max-height: 600px; max-width: 100vw; display:block" src="images/graphics3D10/uv1.png"/>
                     </div>
                     Tương tự với cube của chúng ta trong engine, ta cũng phải thêm UV cho từng đỉnh một 🥵 mình ví dụ với mặt front:
                     <div align="center">
-                        <img style="max-height: 600px; display:block" src="images/graphics3D10/uv2.png"/>
+                        <img style="max-height: 600px; max-width: 100vw; display:block" src="images/graphics3D10/uv2.png"/>
                     </div>
                     Thực ra ngoài thực tế, texture của một model sẽ làm đầy đủ cho tất cả mặt và file model đó cũng sẽ đi kèm một danh sách các UV tương ứng với từng đỉnh (nếu bạn
                     từng làm UV mapping trong Blender bạn sẽ biết). Tuy nhiên để cho đơn giản, mình sẽ để tất cả mặt của cube đều có UV như mặt front như trên, để 1 texture hình
@@ -314,7 +314,7 @@ let imgPixels = null;</code></pre>
                     Cụ thể là càng gần tâm màn hình thì nó càng chuẩn, càng gần cạnh màn hình thì nó càng méo. Hiện tượng này cũng xảy ra với các game PS1 hồi xưa, người ta gọi nó
                     là Affine Texture Mapping 😳
                     <div align="center">
-                        <img style="max-height: 400px; display: block;" src="https://preview.redd.it/have-someone-tried-to-simulate-psxs-affine-mapping-in-godot-v0-9w8unuat6nme1.jpeg?width=1280&format=pjpg&auto=webp&s=fae7f52d6e484ce75146be74d527cda16ad4c599"/>
+                        <img style="max-height: 400px; max-width: 100vw; display: block;" src="https://preview.redd.it/have-someone-tried-to-simulate-psxs-affine-mapping-in-godot-v0-9w8unuat6nme1.jpeg?width=1280&format=pjpg&auto=webp&s=fae7f52d6e484ce75146be74d527cda16ad4c599"/>
                         <i>Nguồn ảnh: <a href="https://www.reddit.com/r/godot/comments/1j2uefk/have_someone_tried_to_simulate_psxs_affine/">Reddit</a>, Game: Tomb Raider II.</i>
                     </div>
                     Nguyên nhân ở đây là ta đang sử dụng barycentric coordinate để tìm UV của pixel hiện tại, mà barycentric coordinate là "nội suy tuyến tính

@@ -1,8 +1,16 @@
 .g3d-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 18px;
     margin-top: 1rem;
+}
+
+@media (max-width: 900px) {
+    .g3d-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 560px) {
+    .g3d-grid { grid-template-columns: 1fr; }
 }
 
 .g3d-card {
@@ -62,42 +70,24 @@
     height: 100%;
 }
 
+@media (max-width: 768px) {
+    .htmlPreview {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .htmlPreview .codePane {
+        height: 460px;
+    }
+
+    .htmlPreview iframe {
+        height: 460px;
+    }
+}
+
 .codePane pre {
     width: 100%;
 }
-/*
-.diff-btn {
-    position: absolute;
-    top: 6px;
-    right: 130px;
-    z-index: 2;
-
-    font-size: 12px;
-    padding: 4px 8px;
-    cursor: pointer;
-}
-
-.disable-btn {
-    position: absolute;
-    top: 6px;
-    right: 70px;
-    z-index: 2;
-
-    font-size: 12px;
-    padding: 4px 8px;
-    cursor: pointer;
-}
-
-.copy-btn {
-    position: absolute;
-    top: 6px;
-    right: 14px;
-    z-index: 2;
-
-    font-size: 12px;
-    padding: 4px 8px;
-    cursor: pointer;
-} */
 
 .buttons-container {
     position: absolute;
