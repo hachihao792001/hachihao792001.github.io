@@ -542,7 +542,7 @@ allTris.sort((a, b) => {
                     \(A\) và \(B\). Gọi hình chiếu của điểm \(A\) và \(B\) lên \(\vec{n}\) là \(A_n\) và \(B_n\), đoạn thẳng \(AB\) sẽ giao với mặt phẳng khi \(|\vec{A_n}| < D < |\vec{B_n}|\)
                     hoặc \(|\vec{A_n}| > D > |\vec{B_n}|\). Nhìn hình dưới đây để thấy rõ hơn, bạn nên nhớ là \(\vec{n}\) có thể được vẽ ở đâu cũng được chứ không nhất thiết phải
                     ở đúng trục đi qua gốc tọa độ.
-                    <div align="center"><img style="max-height: 500px;" src="images/graphics3D8/LinePlaneIntersection.png"/></div>
+                    <div align="center"><img style="max-height: 500px;" src="images/graphics3D7/LinePlaneIntersection.png"/></div>
                     Gọi \(M\) là giao điểm của \(AB\) và mặt phẳng, gọi \(N\) là hình chiếu của gốc tọa độ lên thẳng mặt phẳng (\(ON = D\)), ta thấy rằng \(\frac{AM}{AB}=\frac{A_nN}{A_nB_n}\)
                     (mình cũng chả biết chứng minh sao ngoài việc nói do \(AA_n, NM, BB_n\) song song nhau). \(\frac{AM}{AB}\) là tỉ lệ của \(AM\) so với \(AB\), nghĩa là ta sẽ có
                     \(\vec{AM} = \vec{AB} * \frac{AM}{AB}\), có được \(\vec{AM}\) ta lấy điểm \(A + \vec{AM}\) sẽ ra tọa độ điểm \(M\), chính là thứ ta cần tìm 😳 <br/><br/>
@@ -556,7 +556,7 @@ allTris.sort((a, b) => {
                     mặt phẳng. Một điểm \(P\) sẽ nằm đằng trước mặt phẳng nếu hình chiếu của \(P\) lên \( \vec{n} \) có độ dài lớn hơn \(D\) (bạn nên nhớ rằng độ dài hình chiếu đó và \(D\) đều có
                     dấu). Đồng nghĩa với việc điểm \(P\) nằm đằng trước mặt phẳng nếu \( \vec{P} \cdot \vec{n} \geq D \) (có dấu bằng hay không tùy bạn).<br/><br/>
                     Nhìn tổng thể, đối với mỗi tam giác, ta sẽ có 4 trường hợp:
-                    <div align="center"><img style="max-height: 300px;" src="images/graphics3D8/TrianglePlane4Cases.png"/></div>
+                    <div align="center"><img style="max-height: 300px;" src="images/graphics3D7/TrianglePlane4Cases.png"/></div>
                     <ol>
                         <li>Cả 3 điểm đều nằm đằng trước near plane</li>
                         <li>Cả 3 điểm đều nằm đằng sau near plane</li>
@@ -570,7 +570,7 @@ allTris.sort((a, b) => {
                     Nếu nằm vào 2 trường hợp đầu thì khá dễ, trả về tam giác cũ hoặc không trả về gì.
                     Nếu nằm vào trường hợp 3 và 4 thì ta phải tìm thêm 2 giao điểm của 2 cạnh tam giác với mặt phẳng, và dựng các tam giác mới bằng các đỉnh cũ nằm trước near plane
                     và 2 giao điểm mới vừa tìm được, và phải dựng nó theo chiều kim đồng hồ.
-                    <div align="center"><img style="max-height: 500px;" src="images/graphics3D8/Clipping.png"/></div>
+                    <div align="center"><img style="max-height: 500px;" src="images/graphics3D7/Clipping.png"/></div>
                     Hình này mình sẽ nói hơi vòng vo, nên bạn cần ngẫm thêm chút để hiểu 😅 Cái ta cần lưu ý là thứ tự ta đánh dấu 2 giao điểm, trong hình thì mình đánh dấu thứ tự giao điểm 
                     theo thứ tự nối frontPoints với các behindPoints. Ví dụ với trường hợp frontPoints = [v0], behindPoints = [v1, v2], thì I1 = intersection(v0, v1), I2 = intersection(v0, v2),
                     tương tự với 2 trường hợp còn lại. Đối với 2 trường hợp đầu, ta dựng tam giác với thứ tự đỉnh [frontPoints[0], I1, I2].
@@ -580,7 +580,7 @@ allTris.sort((a, b) => {
                     chạy đúng có thể vì chỉ gặp đúng 2 trường hợp đầu trong lúc clip tam giác, mình chưa clone code ổng về chạy thử nên chưa chắc chắn được.</i><br/><br/>
                     Đối với trường hợp 4 cũng tương tự thôi, nhìn hình, ta dựng 2 tam giác mới theo thứ tự [frontPoints[0], frontPoints[1], I1] và [frontPoints[1], I2, I1]. Với
                     trường hợp behindPoints = [v1] thì swap 2 frontPoints.
-                    <div align="center"><img style="max-height: 500px;" src="images/graphics3D8/Clipping2.png"/></div><br/><br/>
+                    <div align="center"><img style="max-height: 500px;" src="images/graphics3D7/Clipping2.png"/></div><br/><br/>
 
                     Bây giờ ta sẽ bắt đầu code Clipping vào engine của chúng ta. Đầu tiên mình định nghĩa class Plane, constructor truyền vào vector pháp tuyến và một điểm bất kỳ
                     trên plane (cũng là cách ta xác định một mặt phẳng trong toán học), dùng 2 cái đó ta có thể tính được D. Thêm hàm isPointInFrontOfPlane để check xem một điểm có nằm trước plane hay không,

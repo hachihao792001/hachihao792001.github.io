@@ -16,7 +16,8 @@ for i in range(1, 34):
     result = subprocess.run(
         ["git", "diff", "--no-index", file_a, file_b],
         capture_output=True,
-        text=True
+        text=True,
+        encoding="utf-8"
     )
 
     # Split into lines and remove first 2 lines

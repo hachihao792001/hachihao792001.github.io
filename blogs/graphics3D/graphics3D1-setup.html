@@ -139,22 +139,22 @@ a_x b_y - a_y b_x
                     RIGHT.
                     Trước tiên đối với 4 đỉnh của mặt phẳng DOWN, FRONT và LEFT:
                     <div>
-                        <img src="images/graphics3D2/down.png" style="max-width: 300px;" />
-                        <img src="images/graphics3D2/front.png" style="max-width: 300px;" />
-                        <img src="images/graphics3D2/left.png" style="max-width: 300px;" />
+                        <img src="images/graphics3D1/down.png" style="max-width: 300px;" />
+                        <img src="images/graphics3D1/front.png" style="max-width: 300px;" />
+                        <img src="images/graphics3D1/left.png" style="max-width: 300px;" />
                     </div>
                     Đối với TOP, BACK và RIGHT thì nó chỉ là như DOWN, FRONT và LEFT nhưng với y, z, x = 1 thay vì 0.
                     Như vậy hình lập phương đầy đủ của chúng ta sẽ có 8 đỉnh như sau:
-                    <img src="images/graphics3D2/cube1.png" style="display: block; max-width: 300px;" />
+                    <img src="images/graphics3D1/cube1.png" style="display: block; max-width: 300px;" />
                     Sau đó ta bắt đầu cắt 6 mặt phẳng của hình lập phương thành các tam giác, mỗi mặt phẳng sẽ có 2 tam
                     giác:
-                    <img src="images/graphics3D2/cube2.png" style="display: block; max-width: 300px;" />
+                    <img src="images/graphics3D1/cube2.png" style="display: block; max-width: 300px;" />
                     Đối với mặt FRONT, ta có 2 tam giác là [(0,1,0), (1,1,0), (1,0,0)] và [(0,1,0), (1,0,0), (0,0,0)],
                     lưu ý là
                     thứ tự các đỉnh liệt kê trong tam giác phải thống nhất cùng chiều kim đồng hồ hay ngược chiều kim
                     đồng hồ,
                     điều này khá quan trọng, ta sẽ nói về điều này sau.
-                    <img src="images/graphics3D2/frontTriangles.png" style="display: block; max-width: 300px;" />
+                    <img src="images/graphics3D1/frontTriangles.png" style="display: block; max-width: 300px;" />
                     Tương tự, đối với cả hình lập phương, ta sẽ có tất cả 12 tam giác như sau (mình thống nhất theo cùng chiều kim đồng hồ):
                     <pre><code class="language-javascript">[// FRONT
 {{0,1,0}, {1,1,0}, {1,0,0}},
@@ -178,7 +178,7 @@ a_x b_y - a_y b_x
                     Tuy nhiên, ta muốn tâm của hình lập phương nằm ở gốc tọa độ (0, 0, 0), nên ta sẽ dịch chuyển tất cả
                     các đỉnh đi (-0.5, -0.5, -0.5), lúc đó ta sẽ có 8 đỉnh cuối cùng như sau (mình chỉ để 4 đỉnh ở mặt
                     FRONT để dễ nhìn):
-                    <img src="images/graphics3D2/cube3.png" style="display: block; max-width: 500px;" />
+                    <img src="images/graphics3D1/cube3.png" style="display: block; max-width: 500px;" />
                     Và 12 tam giác cuối cùng sẽ là:
                     <pre><code class="language-javascript">[// FRONT
 {{-0.5,0.5,-0.5}, {0.5,0.5,-0.5}, {0.5,-0.5,-0.5}},

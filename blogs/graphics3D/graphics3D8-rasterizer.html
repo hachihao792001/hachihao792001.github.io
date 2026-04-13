@@ -118,10 +118,10 @@
                     pixel nào nằm trong 1 tam giác thì sẽ vẽ pixel đó ra. Nói thì dễ nhưng làm sao để ta biết là 1 pixel nằm trong 1 tam giác?<br/><br/>
 
                     Ta sẽ bắt đầu từ việc xét lại thứ tự các đỉnh mà ta định nghĩa cho tam giác trong engine chúng ta, cụ thể là ngược chiều kim đồng hồ như sau:
-                    <div align="center"><img style="max-height: 300px;" src="images/graphics3D9/TriangleEdges.png"/></div>
+                    <div align="center"><img style="max-height: 300px;" src="images/graphics3D8/TriangleEdges.png"/></div>
                     Xét 3 cạnh của tam giác là vector theo chiều đó, ta nhận ra rằng một điểm sẽ nằm trong tam giác nếu nó đều nằm ở "bên trái" của 3 cạnh. Nhưng
                     làm sao để biết một điểm nằm bên trái của 1 vector? Ta xét vector \(\vec{AB}\) và điểm \(P\) như sau:
-                    <div align="center"><img style="max-height: 300px;" src="images/graphics3D9/LeftOfVector.png"/></div>
+                    <div align="center"><img style="max-height: 300px;" src="images/graphics3D8/LeftOfVector.png"/></div>
                     Ta xoay \(\vec{AB}\) 90 độ ngược chiều kim đồng hồ thành \(\vec{AB'}\), \(\vec{AB'}\) đang hướng về bên trái của \(\vec{AB}\). 
                     Đồng nghĩa những điểm \(P\) nào mà \(\vec{AP}\) hướng về cùng 1 vùng với \(\vec{AB'}\), nghĩa là \(\langle \vec{AB'}, \vec{AP} \rangle > 0\), thì điểm đó sẽ nằm 
                     bên trái \(\vec{AB}\) 😳 Xoay \(\vec{AB}\) 90 độ ngược chiều kim đồng hồ cũng khá đơn giản, giả sử \(\vec{AB}\) là \((x; y)\) thì xoay xong nó thành \((-y; x)\).<br/><br/>
@@ -375,7 +375,7 @@ let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3),
                     điểm \(P\) càng gần điểm \(C\) hơn thì diện tích tam giác \(ABP\) càng lớn, đồng nghĩa sự ảnh hưởng của \(C\) lên \(P\) càng lớn.<br/><br/>
                     Ta biết diện tích tam giác \(ABP\) được tính bằng công thức \(\frac{1}{2}.PM.AB\) với \(PM\) là đường cao của tam giác \(ABP\), nhưng việc tính thêm đường cao các
                     thứ vào trong code ta thì có lẽ hơi phức tạp. Thật ra có cách dễ hơn 😳 mình sẽ quay lại hình "điểm \(P\) nằm bên trái \(\vec{AB}\)" ở trên và vẽ thêm vào:
-                    <div align="center"><img style="max-height: 300px;" src="images/graphics3D9/Area.png"/></div>
+                    <div align="center"><img style="max-height: 300px;" src="images/graphics3D8/Area.png"/></div>
                     Ta thử tính diện tích tam giác: \(S_{\triangle ABP} = \frac{1}{2}.PM.AB = \frac{1}{2}.AN.AB' = \frac{1}{2}.AB'.AP.\cos{\theta} = \frac{1}{2}.\langle \vec{AB'},\vec{AP} \rangle\)<br/><br/>
                     What? Diện tích tam giác \(ABP\) bằng một nửa tích vô hướng của \(\vec{AB'}\) và \(\vec{AP}\) 😳 (đừng quên \(\vec{AB'}\) là \(\vec{AB}\) nhưng xoay 90 độ ngược chiều kđh).
                     Và như ta đã chứng minh, tích vô hướng đó cũng là edge function của cạnh \(AB\) và điểm \(P\), như vậy là ta có thể tính được tầm ảnh hưởng của 1 đỉnh lên 1 điểm trong
