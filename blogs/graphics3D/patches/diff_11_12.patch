@@ -23,7 +23,7 @@
  
  		class Cube {
 @@ -307,6 +322,7 @@
- 		const fov = 90;
+ 		const fov = 60;
  		let znear = 0.01, zfar = 1000;
  		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
 +		let cameraPos = new Vector3(0, 0, 0);
@@ -39,8 +39,8 @@
 -					vertices[i].mulMat4x4(projectionMatrix);
 -					vertices[i] = Vector3.div(vertices[i], vertices[i].w);
 -					vertices[i] = new Vector3(
--						vertices[i].x * canvas.width + canvas.width / 2,
--						-vertices[i].y * canvas.height + canvas.height / 2,
+-						vertices[i].x * (canvas.width / 2) + canvas.width / 2,
+-						-vertices[i].y * (canvas.height / 2) + canvas.height / 2,
 -						1);
 +				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), cameraPos)) < 0) {
 +					let vertices = tri.vertices;
@@ -48,8 +48,8 @@
 +						vertices[i].mulMat4x4(projectionMatrix);
 +						vertices[i] = Vector3.div(vertices[i], vertices[i].w);
 +						vertices[i] = new Vector3(
-+							vertices[i].x * canvas.width + canvas.width / 2,
-+							-vertices[i].y * canvas.height + canvas.height / 2,
++							vertices[i].x * (canvas.width / 2) + canvas.width / 2,
++							-vertices[i].y * (canvas.height / 2) + canvas.height / 2,
 +							1);
 +					}
 +					ctx.beginPath();

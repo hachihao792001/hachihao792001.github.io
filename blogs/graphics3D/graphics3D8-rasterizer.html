@@ -227,8 +227,8 @@ for (let y = bbox[2]; y <= bbox[3]; y++) {
         let vertices = tri.vertices;
         for (let i = 0; i < vertices.length; i++) {
             vertices[i] = new Vector3(
-                vertices[i].x * canvas.width + canvas.width / 2,
-                -vertices[i].y * canvas.height + canvas.height / 2,
+                vertices[i].x * (canvas.width / 2) + canvas.width / 2,
+                -vertices[i].y * (canvas.height / 2) + canvas.height / 2,
                 1);
         }
 
@@ -441,8 +441,8 @@ let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3),
 		let vertices = tri.vertices;
 		for (let i = 0; i < vertices.length; i++) {
 			vertices[i] = new Vector3(
-				vertices[i].x * canvas.width + canvas.width / 2,
-				-vertices[i].y * canvas.height + canvas.height / 2,
+				vertices[i].x * (canvas.width / 2) + canvas.width / 2,
+				-vertices[i].y * (canvas.height / 2) + canvas.height / 2,
 				vertices[i].z);	// <------------------------ giữ lại giá trị z
 		}
 
@@ -465,9 +465,9 @@ let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3),
 					Cuối cùng là ta sẽ bỏ đi đoạn code mà ta sort tam giác theo khoảng cách tới camera, và được kết quả sau:
 					<div class="htmlPreview" id="htmlPreview22"></div>
 				
-					Có lẽ bạn sẽ nhớ lại những gì ta làm ở <a href="graphics3D4-projection.html">blog 4</a> và thắc mắc, tại sao ta lại sử dụng z (độ sâu đã normalized ở near 
+					Có lẽ bạn sẽ nhớ lại những gì ta làm ở <a href="graphics3D3-projection.html">blog 3</a> và thắc mắc, tại sao ta lại sử dụng z (độ sâu đã normalized ở near 
 					plane - far plane và giá trị nằm trong khoảng [0; 1]), mà lại không sử dụng w (giá trị z ban đầu) để tính độ sâu cho pixel. Thật ra mình cũng đã giải thích ở
-					blog 4, đó là do giá trị z mới tăng theo đồ thị hyperpol, càng gần 0 (gần màn hình) thì nó biến thiên càng nhanh, nghĩa là các giá trị z sẽ càng khác nhau hơn,
+					blog 3, đó là do giá trị z mới tăng theo đồ thị hyperpol, càng gần 0 (gần màn hình) thì nó biến thiên càng nhanh, nghĩa là các giá trị z sẽ càng khác nhau hơn,
 					đỡ bị hiện tượng trùng độ sâu (z-fighting). Bạn có thể thử xài giá trị w để xem nó hiển thị ra sao.<br/><br/>
 					
                     <div id="graphics3D-nav-bottom"></div>

@@ -260,7 +260,7 @@ function drawShadowMapDebug() {
     }
     shadowCtx.putImageData(imageData, 0, 0);
 }</code></pre>
-                    Chỉ cần gọi hàm này ngay sau khi build shadow map, ra như sau:
+                    Chỉ cần gọi hàm này ngay sau khi build shadow map, ra như sau (kéo xuống):
                     <div class="htmlPreview" id="htmlPreview29"></div>
                     Ta thấy rằng là các cube của chúng ta quá nhỏ từ góc nhìn của nguồn sáng, ta chỉ cần chỉnh shadow map distance thấp hơn để nguồn sáng gần hơn là oke.
                     Ngoài ra các cube còn không ngay chính giữa, là vì ta giả định nguồn sáng chiếu vào góc tọa độ, nhưng các cube của chúng ta lại nằm đâu đó ở z = 5.
@@ -275,7 +275,7 @@ function drawShadowMapDebug() {
                     khoảng nhỏ nữa mới được tính là nằm ở trong bóng. Số nhỏ này được gọi là Shadow Bias, ta nên lưu ý không nên để số này quá lớn vì sẽ xảy ra hiện tượng
                     shadow bị dời ra khỏi chỗ mà nó đáng lẽ xuất hiện, gọi là hiện tượng Peter Panning.<br/><br/>
                     Ta bắt tay vào sửa thôi 😳 Đầu tiên là ở class Camera ta thêm một hàm tính tọa độ chính giữa của frustum, và nhận vào một zfar tùy chỉnh nếu có:
-                    <pre><code>class Camera {
+                    <pre><code class="language-javascript">class Camera {
     ...
     getFrustumCenter(customZFar = -1) {
         let forward = this.rotation.rotateVector(Vector3.forward);

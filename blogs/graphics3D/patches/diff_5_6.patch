@@ -4,8 +4,8 @@
  		const canvas = document.getElementById("gameCanvas");
  		const ctx = canvas.getContext("2d");
  
--		let cube1 = makeCube(new Vector3(0, 0, 2), new Vector3(0.7, 0.7, 0.7));
-+		let cube1 = makeCube(new Vector3(0.6, -0.7, 2.5), new Vector3(0.7, 0.7, 0.7));
+-		let cube1 = makeCube(new Vector3(0, 0, 2), new Vector3(1, 1, 1));
++		let cube1 = makeCube(new Vector3(0.7, -0.7, 2), new Vector3(1, 1, 1));
  		for (let tri of cube1) {
  			vertices = tri.vertices;
  			for (let i = 0; i < vertices.length; i++) {
