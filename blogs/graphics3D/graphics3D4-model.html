@@ -419,7 +419,7 @@ Mat4x4.Identity.m[3][3] = 1;</code></pre>
 }</code></pre>
                     Tới khúc vẽ chính, mình sẽ tạo 2 cube, cube1 ở vị trí cũ nhưng xoay trục x 45 độ, cube2 lúc đầu mình tạo ở x=1 nhưng sau đó mình trừ đi 1.6, là cuối cùng
                     nó sẽ ở x=-0.6, là sẽ ở bên trái màn hình.
-                    <pre><code class="language-javascript">let cube1 = new Cube(new Vector3(0.6, -0.7, 2.5), new Vector3(45, 0, 0), new Vector3(0.7, 0.7, 0.7));
+                    <pre><code class="language-javascript">let cube1 = new Cube(new Vector3(0.7, -0.7, 3), new Vector3(45, 0, 0), new Vector3(1, 1, 1));
 let cube2 = new Cube(new Vector3(1, 0, 2.5), new Vector3(0, 0, 15), new Vector3(1, 0.7, 0.7));
 cube2.pos = Vector3.sub(cube2.pos, new Vector3(1.6, 0, 0));</code></pre>
 

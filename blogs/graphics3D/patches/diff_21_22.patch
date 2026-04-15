@@ -55,8 +55,8 @@
  			}
 @@ -561,14 +579,20 @@
  						vertices[i] = new Vector3(
- 							vertices[i].x * canvas.width + canvas.width / 2,
- 							-vertices[i].y * canvas.height + canvas.height / 2,
+ 							vertices[i].x * (canvas.width / 2) + canvas.width / 2,
+ 							-vertices[i].y * (canvas.height / 2) + canvas.height / 2,
 -							1);
 +							vertices[i].z);
  					}

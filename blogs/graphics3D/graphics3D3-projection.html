@@ -63,12 +63,12 @@
                     sử dụng vertical FOV, lí do giống với việc ta nhân aspect ratio ở x thay vì ở y, điều này không hề được nhắc tới trong video của javidx9 btw.<br/><br/>
 
                     Vì \(P \backsim \frac{1}{tan(\frac{θ}{2})}\), ta sẽ nhân x, y với \(\frac{1}{tan(\frac{θ}{2})}\):
-                    <pre><code class="language-javascript">const fov = 90;
+                    <pre><code class="language-javascript">const fov = 60;
 let fovMultiplier = 1.0 / Math.tan(fov * 0.5 / 180.0 * Math.PI);    //hàm Math.tan nhận radian, phải chuyển độ thành radian
 ...
 vertices[i] = new Vector3(
-    v.x * fovMultiplier * canvas.height + canvas.width / 2,
-    -v.y * fovMultiplier * canvas.height + canvas.height / 2,
+    v.x * fovMultiplier * (canvas.height/2) + canvas.width / 2,
+    -v.y * fovMultiplier * (canvas.height/2) + canvas.height / 2,
     1);</code></pre>
                     Hiển thị như sau (bạn tự copy về thay đổi FOV để xem khác biệt nhé):
                     <div id="htmlPreview7" class="htmlPreview"></div><br/>
@@ -109,10 +109,11 @@ vertices[i] = new Vector3(
                     việc chia phần z cho z luôn sẽ giúp đơn giản hóa vấn đề (nhất là lúc dùng ma trận).<br/><br/>
                     Tuy nhiên, bạn để ý là nãy giờ mình chỉ thay đổi z chứ không làm gì liên quan tới x và y, cho nên khi thêm code liên quan tới \(z_{far}\), \(z_{near}\) vào thì cũng
                     chả thay đổi gì. Đó là vì \(z_{normalized}\) mà mình vừa tính ra dùng cho các bước tính liên quan tới độ sâu trước khi thực hiện các phép tính liên quan
-                    tới màn hình, mình sẽ nói về nó sau.<br/><br/>
+                    tới màn hình, mình sẽ nói về nó sau. Ngoài ra, nó cũng chưa giải quyết được vấn đề khi cube quá gần màn hình, mình cũng sẽ giải quyết nó sau,
+                    nhưng chuyển được \(z\) về \(z_{normalized}\) là một bước quan trọng.<br/><br/>
                     
                     Bây giờ, mình sẽ lùi lại một tí và quay về tiêu đề của blog này, Projection Matrix là gì? Trước hết, Projection chính là một phép biến đổi mà ta làm từ blog trước tới
-                    giờ, chuyển các tọa độ trong không gian 3D thành tọa độ màn hình 2D. Nhưng trước Projection thì ta có phép biến đối View, là chuyển đổi thế giới theo góc nhìn và vị trí
+                    giờ, chuyển các tọa độ trong không gian 3D thành tọa độ màn hình 2D. Nhưng trước Projection thì ta có phép biến đổi View, là chuyển đổi thế giới theo góc nhìn và vị trí
                     của camera (từ blog trước tới giờ ta luôn mặc định camera ở (0, 0, 0)). Và trước View ta có có phép biến đổi Model, là thay đổi vị trí, độ xoay và kích thước của các
                     vật trong không gian 3D. Ba phép biến đổi này đều có thể chuyển thành ma trận và nhân (gộp) nhau thành một ma trận duy nhất, gọi là Model View Projection Matrix,
                     như vậy sẽ giảm phép tính phải tính đối với mọi đỉnh trong không gian 3D. Và ngoài ra việc sử dụng ma trận như vậy cũng thích hợp cho GPU, vì GPU giỏi tính
@@ -353,15 +354,15 @@ vertices[i] = new Vector3(
                     <pre><code class="language-javascript">let znear = 0.01, zfar = 1000;
 let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
 
-let cube1 = makeCube(new Vector3(0.6, -0.7, 2.5), new Vector3(0.7, 0.7, 0.7));
+let cube1 = makeCube(new Vector3(0.7, -0.7, 3), new Vector3(1, 1, 1));
 for (let tri of cube1) {
     let vertices = tri.vertices;
     for (let i = 0; i < vertices.length; i++) {
         vertices[i].mulMat4x4(projectionMatrix);
         vertices[i] = Vector3.div(vertices[i], vertices[i].w);
         vertices[i] = new Vector3(
-            vertices[i].x * canvas.width + canvas.width / 2,
-            -vertices[i].y * canvas.height + canvas.height / 2,
+            vertices[i].x * (canvas.width / 2) + canvas.width / 2,  // sửa lại nhân width thay vì nhân height vì việc xử lý aspect ratio đã được làm trong projection matrix rồi
+            -vertices[i].y * (canvas.height / 2) + canvas.height / 2,
             1);
     }
     ...

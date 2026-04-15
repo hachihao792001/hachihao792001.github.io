@@ -136,8 +136,8 @@
 -						vertices[i].mulMat4x4(projectionMatrix);
 -						vertices[i] = Vector3.div(vertices[i], vertices[i].w);
 -						vertices[i] = new Vector3(
--							vertices[i].x * canvas.width + canvas.width / 2,
--							-vertices[i].y * canvas.height + canvas.height / 2,
+-							vertices[i].x * (canvas.width / 2) + canvas.width / 2,
+-							-vertices[i].y * (canvas.height / 2) + canvas.height / 2,
 -							1);
 -					}
 -					ctx.beginPath();
@@ -157,8 +157,8 @@
 +				let vertices = tri.vertices;
 +				for (let i = 0; i < vertices.length; i++) {
 +					vertices[i] = new Vector3(
-+						vertices[i].x * canvas.width + canvas.width / 2,
-+						-vertices[i].y * canvas.height + canvas.height / 2,
++						vertices[i].x * (canvas.width / 2) + canvas.width / 2,
++						-vertices[i].y * (canvas.height / 2) + canvas.height / 2,
 +						1);
  				}
 +				ctx.beginPath();

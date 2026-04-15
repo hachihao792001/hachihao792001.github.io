@@ -244,8 +244,8 @@
     return tris;
 		}</code></pre>
                     Có được hàm makeCube rồi, ta sẽ tiến hành vẽ, quay lại với canvas mà đã được setup ở <a href="graphics3D1-setup.html">phần 1</a>,
-                    ta tạo một cube ở vị trí (0, 0, 2) (chính giữa màn hình và cách màn hình 2 đơn vị) và có kích thước là (0.7, 0.7, 0.7):
-                    <pre><code class="language-javascript">let cube1 = makeCube(new Vector3(0, 0, 2), new Vector3(0.7, 0.7, 0.7));</code></pre>
+                    ta tạo một cube ở vị trí (0, 0, 2) (chính giữa màn hình và cách màn hình 2 đơn vị) và có kích thước là (1, 1, 1):
+                    <pre><code class="language-javascript">let cube1 = makeCube(new Vector3(0, 0, 2), new Vector3(1, 1, 1));</code></pre>
                     Sau đó đối với từng tam giác của cube1, ta sẽ vẽ 3 đường nối 3 đỉnh của nó lại với nhau, sử dụng các hàm của canvas 2D context:
                     <pre><code class="language-javascript">for (let tri of cube1) {
     vertices = tri.vertices;
@@ -260,17 +260,25 @@
                     <div id="htmlPreview3" class="htmlPreview"></div>
                     Khoan đã, sao lại không có gì hết nhỉ? Thật ra là có, nếu bạn để ý bạn sẽ thấy một dấu chấm nhỏ ở
                     góc trái trên của canvas, đó chính là cube1 của mình, nó nhỏ như vậy vì mình đang cố vẽ một hình lập phương
-                    kích thước 0.7 trong 1 canvas 400x300. Cho nên trước khi vẽ các tam giác,
-                    ta nên chuẩn hóa từng đỉnh của nó về lại khoảng hợp lý của canvas, bằng cách nhân kích thước canvas và 
-                    cộng một nửa kích thước canvas để đưa nó vào giữa. Tuy nhiên, ta nên biết rằng HTML Canvas có y hướng xuống
+                    kích thước 1 trong 1 canvas 400x300. Cho nên trước khi vẽ các tam giác, ta nên chuẩn hóa từng đỉnh của nó về
+                    lại khoảng hợp lý của canvas. Nhưng trước đó, người ta thường chuẩn hóa nó về một môi trường "chuẩn", là người ta
+                    sẽ cho rằng tọa độ (0, 0) ở giữa màn hình và đi ra 1 đơn vị ở 4 phía (dù cho là hình chữ nhật), 
+                    sau đó mới nhân kích thước màn hình (hay ở trường hợp của mình là canvas). 4 phía đều đi ra 1 đơn vị như vậy 
+                    sẽ rất thuận tiện trong các thao tác liên quan tới màn hình:
+                    <div align="center">
+                        <img style="max-height: 400px; max-width: 100vw;" src="images/graphics3D2/screen.png"/>
+                    </div>
+                    Như vậy màn hình của
+                    ta sẽ có cạnh là 2 đơn vị, nên để hiển thị đúng lên canvas, ta nhân với một nửa kích thước canvas, và cộng thêm
+                    một nửa kích thước canvas để đưa nó vào giữa. Tuy nhiên, ta nên biết rằng HTML Canvas có y hướng xuống
                     (càng xuống càng tăng), nhưng không gian 3D của chúng ta lại có y hướng lên, cho nên ta phải đổi dấu của y trước
                     khi nhân, như sau:
                     <pre><code class="language-javascript">for (let tri of cube1) {
     vertices = tri.vertices;
     for (let i = 0; i < vertices.length; i++) {
         vertices[i] = new Vector3(
-            vertices[i].x * canvas.width + canvas.width / 2,
-            -vertices[i].y * canvas.height + canvas.height / 2,
+            vertices[i].x * (canvas.width / 2) + canvas.width / 2,
+			-vertices[i].y * (canvas.height / 2) + canvas.height / 2,
             vertices[i].z);
     }
     ctx.beginPath();
@@ -292,12 +300,12 @@
                     do đó mình phải tự sửa lại với tỉ lệ (aspect ratio) của canvas. Chỉ đơn giản là lấy x chia cho chiều rộng
                     và nhân chiều cao canvas trước khi làm các phép tính khác:
                     $$
-                        (x * \frac{h}{w}) * w + \frac{w}{2} = x * h + \frac{w}{2}
+                        (x * \frac{h}{w}) * \frac{w}{2} + \frac{w}{2} = x * \frac{h}{2} + \frac{w}{2}
                     $$
                     Code sẽ thành:
                     <pre><code class="language-javascript">vertices[i] = new Vector3(
-    vertices[i].x * canvas.height + canvas.width / 2,
-    -vertices[i].y * canvas.height + canvas.height / 2,
+    vertices[i].x * (canvas.height/2) + canvas.width / 2,
+    -vertices[i].y * (canvas.height/2) + canvas.height / 2,
     vertices[i].z);</code></pre>
                     Thật ra nếu bạn giữ nguyên x và lấy y chia chiều cao nhân chiều rộng nó cũng sẽ ra được hình vuông, nhưng mà kích thước nó sẽ
                     lớn hơn, và thêm hậu quả là khi vẽ trên canvas dài nó sẽ bự hơn rất nhiều nữa, tính theo x nó sẽ ổn định trên
@@ -326,8 +334,8 @@
     for (let i = 0; i < vertices.length; i++) {
         let v = Vector3.div(vertices[i], vertices[i].z);    // <--------------
         vertices[i] = new Vector3(
-            v.x * canvas.height + canvas.width / 2,
-            -v.y * canvas.height + canvas.height / 2,
+            v.x * (canvas.height/2) + canvas.width / 2,
+            -v.y * (canvas.height/2) + canvas.height / 2,
             1);
     }
     ctx.beginPath();
@@ -343,15 +351,8 @@
                     tạo nên cube, việc mình thấy hết tam giác như vậy được gọi là cách hiển thị 
                     <a href="https://en.wikipedia.org/wiki/Wire-frame_model">Wireframe</a>, mình sẽ chỉ cách làm mất chúng sau.<br/>
                     Việc mình để cube ở giữa như vậy khá khó nhìn ra "cảm nhận 3D", nên mình dịch chuyển vị trí của cube một chút:
-                    <pre><code class="language-javascript">let cube1 = makeCube(new Vector3(0.6, -0.7, 2.5), new Vector3(0.7, 0.7, 0.7));</code></pre>
+                    <pre><code class="language-javascript">let cube1 = makeCube(new Vector3(0.7, -0.7, 2.5), new Vector3(1, 1, 1));</code></pre>
                     <div id="htmlPreview6" class="htmlPreview"></div>
-                    <br/>
-                    Vậy là ta đã vẽ được một cube lên canvas, tuy nhiên ta còn những vấn đề sau cần giải quyết:
-                    <ol>
-                        <li>Làm gì nếu mình muốn chỉnh tầm nhìn (FOV) của mình?</li>
-                        <li>Chuyện gì xảy ra khi cube quá gần màn hình?</li>
-                    </ol>
-                    Ta sẽ cùng nhau giải quyết 2 vấn đề này ở blog sau, và hệ thống hết mọi thứ thành một cái gọi là Projection Matrix 😳.
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 

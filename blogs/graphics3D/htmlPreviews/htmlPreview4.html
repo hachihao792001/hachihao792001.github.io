@@ -143,13 +143,13 @@
 		const canvas = document.getElementById("gameCanvas");
 		const ctx = canvas.getContext("2d");
 
-		let cube1 = makeCube(new Vector3(0, 0, 2), new Vector3(0.7, 0.7, 0.7));
+		let cube1 = makeCube(new Vector3(0, 0, 2), new Vector3(1, 1, 1));
 		for (let tri of cube1) {
 			vertices = tri.vertices;
 			for (let i = 0; i < vertices.length; i++) {
 				vertices[i] = new Vector3(
-					vertices[i].x * canvas.width + canvas.width / 2,
-					-vertices[i].y * canvas.height + canvas.height / 2,
+					vertices[i].x * (canvas.width / 2) + canvas.width / 2,
+					-vertices[i].y * (canvas.height / 2) + canvas.height / 2,
 					vertices[i].z);
 			}
 			ctx.beginPath();

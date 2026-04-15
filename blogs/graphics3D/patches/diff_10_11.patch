@@ -15,7 +15,7 @@
 +		const fpsInfo = document.getElementById("fps");
 +		let frames = 0, fpsTimeCounter = 0;
 +
- 		let cube1 = new Cube(new Vector3(0.6, -0.7, 2.5), new Vector3(45, 0, 0), new Vector3(0.7, 0.7, 0.7));
+ 		let cube1 = new Cube(new Vector3(0.7, -0.7, 3), new Vector3(45, 0, 0), new Vector3(1, 1, 1));
  		let cube2 = new Cube(new Vector3(1, 0, 2.5), new Vector3(0, 0, 15), new Vector3(1, 0.7, 0.7));
  		cube2.pos = Vector3.sub(cube2.pos, new Vector3(1.6, 0, 0));
 @@ -318,6 +322,14 @@

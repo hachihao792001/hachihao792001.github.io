@@ -5,10 +5,10 @@
  		let camera = new Camera(Vector3.zero, Vector3.zero, 2, 0.2);
  		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
 +		let edgePlanes = [
-+			new Plane(Vector3.down, new Vector3(0, 0.5, 0)),
-+			new Plane(Vector3.up, new Vector3(0, -0.5, 0)),
-+			new Plane(Vector3.right, new Vector3(-0.5, 0, 0)),
-+			new Plane(Vector3.left, new Vector3(0.5, 0, 0))
++			new Plane(Vector3.down, new Vector3(0, 1, 0)),
++			new Plane(Vector3.up, new Vector3(0, -1, 0)),
++			new Plane(Vector3.right, new Vector3(-1, 0, 0)),
++			new Plane(Vector3.left, new Vector3(1, 0, 0))
 +		];
  		let keyStates = [];
  

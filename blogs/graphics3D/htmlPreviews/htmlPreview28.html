@@ -758,8 +758,8 @@
 					let vertices = tri.vertices;
 					for (let i = 0; i < vertices.length; i++) {
 						vertices[i] = new Vector3(
-							vertices[i].x * canvas.width + canvas.width / 2,
-							-vertices[i].y * canvas.height + canvas.height / 2,
+							vertices[i].x * (canvas.width / 2) + canvas.width / 2,
+							-vertices[i].y * (canvas.height / 2) + canvas.height / 2,
 							vertices[i].z);
 					}
 
@@ -850,16 +850,16 @@
 		const canvas = document.getElementById("gameCanvas");
 		const ctx = canvas.getContext("2d");
 		const rasterizer = new Rasterizer();
-		const fov = 90;
+		const fov = 60;
 		let znear = 0.01, zfar = 1000;
 		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
 		let camera = new Camera(new Vector3(0, 1.5, 1.5), new Vector3(-15, 0, 0), 2, 0.2);
 		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
 		let edgePlanes = [
-			new Plane(Vector3.down, new Vector3(0, 0.5, 0)),
-			new Plane(Vector3.up, new Vector3(0, -0.5, 0)),
-			new Plane(Vector3.right, new Vector3(-0.5, 0, 0)),
-			new Plane(Vector3.left, new Vector3(0.5, 0, 0))
+			new Plane(Vector3.down, new Vector3(0, 1, 0)),
+			new Plane(Vector3.up, new Vector3(0, -1, 0)),
+			new Plane(Vector3.right, new Vector3(-1, 0, 0)),
+			new Plane(Vector3.left, new Vector3(1, 0, 0))
 		];
 		let keyStates = [];
 
