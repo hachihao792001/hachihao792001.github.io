@@ -1,12 +1,5 @@
 [
     {
-        "title": "Tất tần tật về nghĩa vụ quân sự",
-        "route": "/blogs/nvqs/nvqs-intro.html",
-        "date": "03/02/2026",
-        "isWritten": true,
-        "isSeries": true
-    },
-    {
         "title": "Cách làm một Graphics Engine 3D bằng thuần HTML Canvas và Javascript",
         "route": "/blogs/graphics3D/graphics3D-intro.html",
         "date": "11/4/2026",
