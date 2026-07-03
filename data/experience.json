@@ -1,17 +1,17 @@
 [
     {
-        "image": "images/hcmus.png",
-        "title": "Ho Chi Minh City University of Science",
-        "url": "https://www.hcmus.edu.vn",
-        "description": "I graduated from this university, where I gained valuable knowledge, cherished numerous happy memories, and studied in the Honors Program, achieving a GPA of 9.07/10.",
-        "period": "8/2019 - 16/11/2023" 
+        "image": "images/noncoi.png",
+        "title": "Conscription",
+        "url": "#",
+        "description": "Served as a conscripted soldier in the Vietnamese Army, gaining valuable life experience while honing discipline, teamwork, and resilience, and maintaining strong technical skills through self-study and personal projects during my service.",
+        "period": "27/2/2024 - 28/1/2026"
     },
     {
-        "image": "images/freelancer.png",
-        "title": "Freelancer apprenticeship",
-        "url": "#",
-        "description": "Assist a freelancer in his personal projects and freelancing projects, earn wisdom as well as experience from him and the projects along the way.",
-        "period": "10/2020 - 5/2022" 
+        "image": "images/vng.png",
+        "title": "Madpoly studio - VNG Corporation",
+        "url": "https://play.google.com/store/apps/dev?id=5579086278019851339&hl=vi&gl=US",
+        "description": "Worked with the title Associate Software Engineer, had to stop to fullfill my duty as a male Vietnamese citizen",
+        "period": "5/2022 - 24/2/2024"
     },
     {
         "image": "images/re.png",
@@ -21,10 +21,17 @@
         "period": "11/2021 - 2/2022" 
     },
     {
-        "image": "images/vng.png",
-        "title": "Madpoly studio - VNG Corporation",
-        "url": "https://play.google.com/store/apps/dev?id=5579086278019851339&hl=vi&gl=US",
-        "description": "Working with the title Associate Software Engineer, still on the way of learning how to make games the professional way",
-        "period": "5/2022 - Present"
+        "image": "images/freelancer.png",
+        "title": "Freelancer apprenticeship",
+        "url": "#",
+        "description": "Assist a freelancer in his personal projects and freelancing projects, earn wisdom as well as experience from him and the projects along the way.",
+        "period": "10/2020 - 5/2022" 
+    },
+    {
+        "image": "images/hcmus.png",
+        "title": "Ho Chi Minh City University of Science",
+        "url": "https://www.hcmus.edu.vn",
+        "description": "I graduated from this university, where I gained valuable knowledge, cherished numerous happy memories, and studied in the Honors Program, achieving a GPA of 9.07/10.",
+        "period": "8/2019 - 16/11/2023" 
     }
 ]

@@ -1,45 +1,33 @@
-.blogs {
+.interactive {
     padding: 40px;
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
-.arrow {
-    cursor: pointer;
-    display: inline-block;
-    margin-right: 8px;
-    transition: transform 0.2s ease;
-    user-select: none;
-}
-
-.arrow-down {
-    transform: rotate(90deg);
-}
-
-.blogs-item {
+.interactive-item {
     
     padding: 10px;
 }
 
-.blogs-item>a {
+.interactive-item>a {
     text-decoration: none;
     color: black;
     font-size: 1.8em;
     font-weight: 500;
 }
 
-.blogs-item>p {
+.interactive-item>p {
     font-size: 200;
 }
 
-.blogs-item:hover {
+.interactive-item:hover {
     box-shadow: 0 0 10px #ccc;
     animation-name: scaling;
     animation-duration: 0.5s;
     animation-fill-mode: forwards;
 }
 
-.blogs-item>div {
+.interactive-item>div {
     cursor: unset;
 }

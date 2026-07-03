@@ -1,0 +1,14 @@
+.codeBlock {
+    display: grid;
+    grid-template-columns: 1fr 0.8fr;
+    gap: 12px;
+    width: 100%;
+    height: 100%;
+}
+
+.codeBlock pre,
+.codeBlock iframe {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
