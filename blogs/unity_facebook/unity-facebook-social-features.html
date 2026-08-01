@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+
+    <script src="/js/prism.js"></script>
+    <script src="https://kit.fontawesome.com/0ddc8e522c.js" crossorigin="anonymous"></script>
+
+    <style>
+        .blog-content pre {
+            background: #f6f8fa;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
+        .blog-content img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 1rem 0;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        .blog-content code {
+            font-size: 0.95rem;
+        }
+    </style>
+
+    <title>Implement các tính năng Social với Facebook trong Unity</title>
+</head>
+
+<body>
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10">
+                    <h1>Kinh nghiệm từ việc implement tính năng Social với Facebook trong Unity</h1>
+
+                    <p>Vừa qua mình được giao task cài đặt các tính năng Social trên Facebook cho game ở job của mình. Vì phải build đi build lại khá nhiều lần và kẹt 
+                        ở những khâu mà mình nghĩ sẽ không kẹt, nên mình quyết định viết blog này để bạn có thể tránh được những thứ mà mình đã tốn nhiều thời gian thử sai
+                    </p>
+                    <p><i>Disclaimer: Blog này không phải tutorial từ đầu tới cuối, giờ có AI thì việc tìm và đọc doc về những thứ cơ bản sẽ khá là nhanh. Blog này chỉ nêu lên
+                        những kinh nghiệm, hướng đi của mình trong quá trình làm (mà AI không giúp được), để tiết kiệm thời gian của bạn trong lúc làm.
+                    </i></p>
+
+                    <p>Các tính năng social cụ thể là:</p>
+                    <ul>
+                        <li>Lấy list friend Facebook và in-game info của từng friend</li>
+                        <li>Mời bạn bè chơi game qua tin nhắn Messenger</li>
+                        <li>Share thành tựu lên tường nhà kèm screenshot</li>
+                    </ul>
+
+                    <h2>1. Setup trên Meta Developers</h2>
+
+                    <h3>a. App type / Use case và quyền</h3>
+                    <p>Đối với trường hợp của mình, thì Game thật ra đã có sẵn app trên Meta Developers, tuy nhiên app đó được config để ưu tiên AdMon, Marketing. Cụ thể nó có <code>App type</code> là <code>Business</code>.</p>
+                    <p>App type <code>Business</code> sẽ không làm được các tính năng liên quan tới bạn bè. Chỉ app có app type là <code>Gaming</code> và <code>Consumer</code> thì mới làm được.
+                    Và một sự thật phũ phàng nữa là Meta sẽ không cho mình thay đổi setup đó.</p>
+                    <p>Cho nên nếu bạn cũng gặp trường hợp tương tự như mình, thì bạn không còn cách nào khác ngoài <b>tạo app mới</b></p>
+                    <p>Một cái bạn nên để ý là bây giờ Meta Developers không còn khái niệm <code>App type</code> nữa, mà chỉ có <code>Use cases</code>, và <code>Use case</code>
+                    thích hợp để làm các tính năng Social là cái này:</p>
+                    <img src="/blogs/unity_facebook/images/AuthenticateUsecase.png" alt="Meta app setup screenshot 2">
+                    <p>Tuy nhiên có một trade-off: khi đã chọn use case Authenticate trên, hầu hết mọi use case còn lại đều bị làm mờ, ngoại trừ use case liên quan tới Meta Ads Manager.</p>
+                    <img src="/blogs/unity_facebook/images/UsecasesBlurredOut.png" alt="Meta app setup screenshot 3">
+                    <p>Vì vậy app này sẽ không thể dùng để làm các tính năng liên quan tới Marketing mà AdMon và UA thường cần (A small price to pay for salvation).</p>
+                    <p>Giải pháp mà mình đã bàn với team là giữ App marketing cũ chạy tiếp nhưng không kết nối với client game, chỉ kết nối client với App mới này để làm được các tính năng login, bạn bè, ...</p>
+                    <p>Sau khi đã tạo app, ta customize use-case Authenticate để có các quyền <code>public_profile</code>, <code>email</code>, <code>user_friends</code>:</p>
+                    <img src="/blogs/unity_facebook/images/CustomizeUsecases.png" alt="Meta permissions screenshot">
+                    <ul>
+                        <li><code>public_profile</code> cho mình lấy thông tin cơ bản của user như tên và avatar</li>
+                        <li><code>email</code> cho mình lấy email của user dùng trong Facebook</li>
+                        <li><code>user_friends</code> cho mình lấy danh sách bạn bè Facebook của user mà cũng chơi game này. Với các use case liên quan tới Marketing thì sẽ không hề có quyền này.</li>
+                    </ul>
+
+                    <h3>b. Test user và Advanced access</h3>
+                    <p>Để tính năng Login Facebook, bạn bè, ... có thể sử dụng được với mọi user, thì trước tiên các quyền mình dùng cần có 
+                        <a href="https://developers.facebook.com/docs/graph-api/overview/access-levels/">Advanced access</a>. Muốn có Advanced access thì App phải được thông qua 
+                        <a href="https://developers.facebook.com/documentation/resp-plat-initiatives/individual-processes/app-review">App Review của Meta</a>.</p>
+                    <p>Trước khi submit App Review, mình có thể test trước các tính năng Facebook trong game với các tài khoản FB có role trong App, hoặc tạo các Test users:</p>
+                    <img src="/blogs/unity_facebook/images/TestUserAccount.png" alt="Meta test user setup screenshot">
+                    <p>Mình khuyên nên tạo Test users vì thứ nhất là mình không cần dùng tài khoản Facebook cá nhân của mình, và thứ hai là những test user này cho phép mình lấy Access Token dễ dàng. Điều này rất hữu dụng vì cho phép mình test ngay trong Editor mà không cần build ra device (sẽ nói sau).</p>
+                    <p>Tuy nhiên khi tạo Test users này thì Meta thường lỗi, không hiện email (như hình trên) hoặc mật khẩu. May là Meta cho phép "Login as this test user" ngay mà không cần credentials đó:</p>
+                    <img src="/blogs/unity_facebook/images/TestUserLogin.png" alt="Meta login as test user screenshot">
+                    <p>Login được vào trong acc rồi mình có thể xem được email đó trong phần Account Center của Facebook (như acc FB bình thường). Về mật khẩu thì ở dropdown trên cũng đã có option "Change name or password".</p>
+                    <p>Về phần submit App Review, mình có các lưu ý:</p>
+                    <ul>
+                        <li>Về quyền <code>user_friends</code>, Meta sẽ hỏi mình sử dụng nó như thế nào và mình phải cung cấp video demo việc sử dụng nó trong game.</li>
+                        <img src="/blogs/unity_facebook/images/WhyUserFriends.png" alt="Meta app review screenshot">
+                        <li>Ở phần Data Handling và Data Protection có nhiều câu hỏi về bảo mật (technical), business và legal. Dev (mình) có thể trả lời phần bảo mật, phần còn lại nên chuyển cho người có thẩm quyền (tùy công ty, team của bạn) xử lý.</li>
+                        <img src="/blogs/unity_facebook/images/AppReview.png" alt="Meta review data handling screenshot">
+                        <li>Cuối cùng phần Review Instructions sẽ yêu cầu upload APK kèm hướng dẫn cách access phần Connect Facebook và một video demo.</li>
+                    </ul>
+                    <p>Sau khi submit App Review, Meta cần khoảng <b>20 ngày</b> để review app, này là một fact mà bạn cần phải consider.</p>
+
+                    <h2>2. Kết nối app trên Meta Developers với client Unity</h2>
+                    <p>Sau khi tải SDK xuống và import vào project, nó sẽ có file <code>FacebookSettings.asset</code>, rồi trên Meta Developers copy đúng App Id và Client Token vào.</p>
+                    <img src="/blogs/unity_facebook/images/FacebookSDKConnect.png" alt="Facebook SDK connection screenshot">
+                    <p>Ở cuối trang <code>App settings / Basic</code>, có nút <code>Add platform</code>. Với platform Android, ta copy <code>Package name</code> và <code>Class name</code> vào. Ngoài ra cần thêm <code>Key hash</code>.
+                        Theo <a href="https://developers.facebook.com/documentation/unity/getting-started/android">doc</a>, chỉ cần copy phần "Debug Android Key Hash" trong FacebookSettings vào App là được. 
+                        Tuy nhiên thực tế là hash đó đôi khi không đúng, để chắc ăn nhất ta nên dùng hash mà SDK log ra khi được Init, như <a href="https://developers.facebook.com/documentation/android/getting-started">doc</a> này có nói</p>
+                    <img src="/blogs/unity_facebook/images/FacebookSDKConnectAndroid.png" alt="Facebook SDK Android connection screenshot">
+
+                    <h2>3. Sử dụng Facebook SDK trong client</h2>
+
+                    <h3>a. Init và login</h3>
+                    <p>Luồng cơ bản đầu game: gọi <code>FB.Init</code>, trong event <code>onInitCompleted</code> gọi <code>FB.ActivateApp</code>.</p>
+                    <p>Khi muốn login, gọi <code>FB.LogInWithReadPermissions</code>, với các quyền mà ta đã thêm trong phần customize use case ở trên: <code>public_profile</code>, <code>email</code>, <code>user_friends</code>.</p>
+                    <p>Như mình có nói ở trên, ta có thể test ngay việc login trên Editor bằng các Test users. Khi <code>FB.LogInWithReadPermissions</code> được gọi, nếu là Editor thì nó sẽ hiện một màn hình mockup có chỗ để mình paste Access Token vào ngay:</p>
+                    <img src="/blogs/unity_facebook/images/EditorEnterAccessToken.png" alt="Facebook login in editor screenshot">
+                    <p>Trên Meta Developers, chọn một test user và bấm "Get a user access token".</p>
+                    <img src="/blogs/unity_facebook/images/GetUserAccessToken.png" alt="Meta user access token screenshot">
+                    Paste nó vào rồi bấm Send Success, nó sẽ login như luồng bình thường.
+
+                    <h3>b. Lấy info cơ bản và list friend</h3>
+                    <p>Mình dùng <a href="https://developers.facebook.com/docs/graph-api/">Graph API</a> để lấy thông tin đó bằng hàm <code>FB.API</code>. Mình để ở đây một vài code snippet để bạn dễ copy-paste <i>(mình tối giản code lại để dễ nhìn, thực tế là phải check null, try catch các thứ)</i>.</p>
+                    Class chứa thông tin user và hàm parse:
+                    <pre><code class="language-cs">public class FBUserInfo
+{
+    public string fbId;
+    public string fbName;
+    public string fbAvatarUrl;
+}
+
+FBUserInfo ParseUserNode(JSONNode node)
+{
+    string id = node["id"].Value;
+    string name = node["name"].Value;
+    string avatarUrl = node["picture"]["data"]["url"].Value;
+    return new FBUserInfo(id, name, avatarUrl);
+}</code></pre>
+                    Lấy info cơ bản:
+                    <pre><code class="language-cs">FB.API("/me?fields=id,name,picture.width(128).height(128)", HttpMethod.GET, (result) =&gt;
+{
+    FBUserInfo me = ParseUserNode(JSONNode.Parse(result.RawResult));
+});</code></pre>
+                    Lấy friends:
+                    <pre><code class="language-cs">FB.API("/me/friends?fields=id,name,picture.width(128).height(128)&amp;limit=100&amp;summary=true", HttpMethod.GET, (result) =&gt;
+{
+    List&lt;FBUserInfo&gt; friends = new List&lt;FBUserInfo&gt;();
+    JSONNode root = JSONNode.Parse(result.RawResult);
+    JSONNode data = root["data"];
+    if (data != null)
+    {
+        for (int i = 0; i &lt; data.Count; i++)
+            friends.Add(ParseUserNode(data[i]));
+    }
+
+	// data.Count là số bạn bè cũng có chơi game (có thể access info), totalCount là tổng số bạn bè trên Facebook của user (không thể access info)
+    int totalCount = root["summary"]["total_count"].AsInt;
+});</code></pre>
+                    <p>Bạn có thể xem thêm tại các doc của Graph API:</p>
+                    <ul>
+                        <li><a href="https://developers.facebook.com/docs/graph-api/reference/user/" target="_blank" rel="noopener noreferrer">Graph API User</a></li>
+                        <li><a href="https://developers.facebook.com/docs/graph-api/reference/v25.0/user/friends" target="_blank" rel="noopener noreferrer">Graph API User Friends</a></li>
+                    </ul>
+
+                    <h2>4. Liên kết Facebook SDK với các tính năng in-game bằng PlayFab</h2>
+                    <p>Có danh sách bạn bè Facebook rồi, nhưng ta cần cách lấy được in-game data của những bạn đó. Mỗi user Facebook có Facebook ID để định danh, nhưng thay vì lưu in-game data tương ứng với từng Facebook ID ở database nào đó, ta có thể dùng <a href="https://developer.microsoft.com/en-us/games/products/playfab/">PlayFab</a>.</p>
+                    <p>PlayFab có hỗ trợ liên kết với Facebook bằng API <a href="https://learn.microsoft.com/en-us/rest/api/playfab/client/account-management/link-facebook-account?view=playfab-rest" target="_blank" rel="noopener noreferrer">Link Facebook Account</a>, cùng với hàm <code>PlayFabClientAPI.LinkFacebookAccount</code> để gọi trong SDK của PlayFab, 
+                        chỉ cần truyền vào token của facebook (<code>Facebook.Unity.AccessToken.CurrentAccessToken</code>) sau khi login. Theo mặc định thì hàm này chỉ link khi acc Facebook đó không
+                        link với acc PlayFab nào khác, nếu có thì nó sẽ chặn. Nhưng hàm <code>PlayFabClientAPI.LinkFacebookAccount</code> có thêm argument <code>ForceLink</code> để bạn force link 2 acc dù đã có link trước đó (nhằm mục đích test).</p>
+                    <p>PlayFab cũng cung cấp API <a href="https://learn.microsoft.com/en-us/rest/api/playfab/server/account-management/get-playfab-ids-from-facebook-ids?view=playfab-rest" target="_blank" rel="noopener noreferrer">Get PlayFab IDs From Facebook IDs</a> 
+                        cũng có sẵn hàm <code>PlayFabClientAPI.GetPlayFabIDsFromFacebookIDs</code> trong SDK. Từ hàm này ta có thể implement system liên quan đến save/load dữ liệu player bằng Facebook ID. 
+                        Tuy nhiên cách tốt nhất là wrap hàm này trên cloud script của PlayFab bằng một hàm get full info của mỗi friend của user, thay vì gọi ở client.</p>
+                    <p><i>Blog này không phải 1 tutorial về PlayFab, nên mình nói lướt lướt</i></p>
+
+                    <h2>5. Hệ thống in-game friends</h2>
+                    <p>PlayFab có sẵn các hàm <code>AddFriend</code>, <code>GetFriendsList</code>, <code>RemoveFriend</code>. Tuy nhiên yêu cầu design có thêm tính năng friend request accept/deny, trong khi hệ thống có sẵn của PlayFab chỉ cho kết bạn ngay. Hơn nữa hệ thống này làm việc với <code>Master Player Account ID</code> (id unique giữa mọi game trong cùng một studio trên PlayFab), trong khi <code>Title Player Account ID</code> (id unique trong 1 game trên PlayFab) được hỗ trợ nhiều hàm xử lý hơn.</p>
+                    <p>Giải pháp của mình là luôn lưu data in-game friend trong phần <code>Objects</code> của mỗi Player, lưu danh sách bạn, request gửi đi và request tới dưới dạng Title Player Account ID.</p>
+                    <img src="/blogs/unity_facebook/images/PlayfabPlayerObjects.png" alt="In-game friends data model screenshot">
+
+                    <h2>6. Gửi invite chơi game qua Messenger</h2>
+                    <p>Yêu cầu của GD là khi cần user có thể gửi text sau qua Messenger cho bạn bè:</p>
+                    <p><em>Let's play Zombie Shoot Out together! https://play.google.com/store/apps/details?id=com.apocalypse.zombie.games</em></p>
+                    <p>Sau đây là mọi cách mà mình đã thử (mình đã phải build đi build lại khá nhiều lần 🥲):</p>
+                    <ul>
+                        <li><code>FB.AppRequest</code>: Cái này lúc đầu có vẻ như giải pháp hiển nhiên, có sẵn doc của Meta. Tuy nhiên sử dụng cái này nó sẽ mở browser lên thay vì mở app Messenger <a href="https://developers.facebook.com/support/bugs/493662894306112/" style="display: inline">https://developers.facebook.com/support/bugs/493662894306112/</a> → Bỏ</li>
+                        <li><code>FB.Mobile.AppInvite</code>: Cái này đã bị Meta bỏ. Mặc dù có list trên doc <a href="https://developers.facebook.com/documentation/unity/reference/current" style="display:inline">https://developers.facebook.com/documentation/unity/reference/current</a>, nhưng khi bấm vào thì nó not found 😅</li>
+                        <li><code>FB.ShareLink</code>: Share được, mở được app Messenger nhưng bỏ đi phần text đầu tiên (caption), chỉ giữ lại URL → Bỏ</li>
+                        <li>Gửi bằng intent qua Messenger (<code>com.facebook.orca</code>):
+                            <pre><code class="language-cs">using (AndroidJavaClass intentClass = new AndroidJavaClass("android.content.Intent"))
+using (AndroidJavaObject intentObject = new AndroidJavaObject("android.content.Intent", intentClass.GetStatic&lt;string&gt;("ACTION_SEND")))
+{
+    intentObject.Call&lt;AndroidJavaObject&gt;("setType", "text/plain");
+    intentObject.Call&lt;AndroidJavaObject&gt;("setPackage", "com.facebook.orca");
+    intentObject.Call&lt;AndroidJavaObject&gt;("putExtra", intentClass.GetStatic&lt;string&gt;("EXTRA_TEXT"), text);
+
+    using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+    using (AndroidJavaObject currentActivity = unityPlayer.GetStatic&lt;AndroidJavaObject&gt;("currentActivity"))
+    {
+        currentActivity.Call("startActivity", intentObject);
+    }
+}
+</code></pre>
+Gửi được, có cả caption lẫn link, nhưng nó bị tách làm 2 tin nhắn. Cái đầu là caption lẫn link và prefix lạ <code>mp:</code>/<code>ms:</code>, cái thứ 2 chỉ có caption:</li>
+                        <img src="/blogs/unity_facebook/images/MessengerMpMs.png" alt="Messenger invite bug screenshot" style="max-width: 300px;">
+                        <li>Sử dụng native share sheet của Android:
+                            <pre><code class="language-cs">using (AndroidJavaClass intentClass = new AndroidJavaClass("android.content.Intent"))
+using (AndroidJavaObject intentObject = new AndroidJavaObject("android.content.Intent", intentClass.GetStatic&lt;string&gt;("ACTION_SEND")))
+{
+    intentObject.Call&lt;AndroidJavaObject&gt;("setType", "text/plain");
+    intentObject.Call&lt;AndroidJavaObject&gt;("putExtra", intentClass.GetStatic&lt;string&gt;("EXTRA_TEXT"), text);
+
+    using (AndroidJavaObject chooser = intentClass.CallStatic&lt;AndroidJavaObject&gt;("createChooser", intentObject, DUtil.GetString(5000586)))
+    using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+    using (AndroidJavaObject currentActivity = unityPlayer.GetStatic&lt;AndroidJavaObject&gt;("currentActivity"))
+    {
+        currentActivity.Call("startActivity", chooser);
+    }
+}</code></pre> cũng bị tách thành 2 tin nhắn và có <code>mp:</code>/<code>ms:</code>.</li>
+                        <li>Tạo link redirect tới link store:<br/>
+                            Context: Mình đã thử nghiệm lại 2 cách trên với 1 link khác bất kỳ không phải Google play, và ngạc nhiên là nó không bị tách và bị <code>mp:</code>/<code>ms:</code><br/>
+<img src="/blogs/unity_facebook/images/MessengerNormalLink.png" alt="Messenger screenshot" style="max-width: 300px;"><br/>
+Có thể do messenger đang cố gắng hiển thị trang store nhưng không được, và dẫn đến vấn đề trên. Giải pháp là tạo 1 link redirect tới link Play store đó để Messenger hiển thị ngon. Cách tạo link redirect này thật ra là cách tốt nhất về mặt kỹ thuật, tuy nhiên có vấn đề thực tế là mình lại cho user gửi 1 link lạ tới bạn bè.</li>
+                        <li><b>Tự tách caption và link thành 2 tin nhắn riêng và gửi riêng 2 lần bằng intent</b>: Cả 2 tin nhắn đều hiện bình thường, tuy nhiên màn hình chọn bạn FB để gửi sẽ hiện 2 lần, gây confuse user. Nhưng đây là cách mà GD đã chọn.</li>
+                    </ul>
+
+                    <h2>7. Share thành tựu lên Facebook</h2>
+                    <p>Yêu cầu của GD là ở vài chỗ có button để screenshot và share lên Facebook với caption định sẵn.</p>
+                    <p>Về screenshot, mình dùng hệ thống có sẵn của Game mình: dùng <code>OnRenderImage</code> trong 1 <code>Camera</code> và dùng <code>Graphics.Blit</code> để đưa Texture của Camera vào một Texture khác.</p>
+                    <p>Về phần share lên Facebook, mình lưu screenshot thành file trong <code>Application.temporaryCachePath</code>, rồi share hình đó thông qua <code>FileProvider</code>. FileProvider là 1 thứ cho phép mình share file giữa các app với nhau trong Android bằng các URI. Doc về FileProvider: <a href="https://developer.android.com/reference/androidx/core/content/FileProvider">https://developer.android.com/reference/androidx/core/content/FileProvider</a>
+                    <p>Trong <code>Assets/Plugins/Android</code>, tạo thư mục <code>MyGameShare.androidlib</code> với các file:</p>
+                    <p><code>project.properties</code>: File này chủ yếu nói cho Unity biết thư mục này là một Android library, không phải một app riêng:</p>
+                    <pre><code class="language-properties">target=android-9
+android.library=true</code></pre>
+                    <p><code>AndroidManifest.xml</code>: Để khai báo FileProvider của mình, có <code>authority</code> là <code>${applicationId}.mygamefileprovider</code> (authority là tên unique của provider). Và có link tới resource <code>xml/file_paths</code> bên dưới.</p>
+                    <pre><code class="language-markup">&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.zombiefire.share"
+    android:versionCode="1"
+    android:versionName="1.0"&gt;
+
+    &lt;application&gt;
+        &lt;provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.mygamefileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true"&gt;
+            &lt;meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" /&gt;
+        &lt;/provider&gt;
+    &lt;/application&gt;
+&lt;/manifest&gt;</code></pre>
+                    <p><code>res/xml/file_paths.xml</code>: Định nghĩa những nơi mà FileProvider có thể truy cập, ở đây bao gồm các nơi như là <code>Application.temporaryCachePath</code>, <code>Application.persistentDataPath</code> của Unity. 2 giá trị đó của Unity có thể thay đổi tùy theo device nên file này liệt kê hết các chỗ mà 2 giá trị đó có thể rơi vào.</p>
+                    <pre><code class="language-markup">&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;paths xmlns:android="http://schemas.android.com/apk/res/android"&gt;
+    &lt;cache-path name="internal_cache" path="." /&gt;
+    &lt;external-cache-path name="external_cache" path="." /&gt;
+    &lt;files-path name="internal_files" path="." /&gt;
+    &lt;external-files-path name="external_files" path="." /&gt;
+    &lt;external-path name="external_storage" path="." /&gt;
+&lt;/paths&gt;</code></pre>
+                    Trong project:
+                    <pre><code class="language-cs">public void ShareImageOutsideGame(string imagePath, string text)
+{
+    using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+    using (AndroidJavaObject currentActivity = unityPlayer.GetStatic&lt;AndroidJavaObject&gt;("currentActivity"))
+    {
+        string authority = currentActivity.Call&lt;string&gt;("getPackageName") + ".zf2fileprovider";
+
+        // lấy reference tới file, tạo URI cho nó thông qua FileProvider mà mình tạo
+        using (AndroidJavaObject fileObject = new AndroidJavaObject("java.io.File", imagePath))
+        using (AndroidJavaClass fileProviderClass = new AndroidJavaClass("androidx.core.content.FileProvider"))
+        using (AndroidJavaObject uriObject = fileProviderClass.CallStatic&lt;AndroidJavaObject&gt;("getUriForFile", currentActivity, authority, fileObject))
+        
+        // tạo intent mới với ACTION_SEND
+        using (AndroidJavaClass intentClass = new AndroidJavaClass("android.content.Intent"))
+        using (AndroidJavaObject intentObject = new AndroidJavaObject("android.content.Intent", intentClass.GetStatic&lt;string&gt;("ACTION_SEND")))
+        {
+            intentObject.Call&lt;AndroidJavaObject&gt;("setType", "image/*");
+            intentObject.Call&lt;AndroidJavaObject&gt;("putExtra", intentClass.GetStatic&lt;string&gt;("EXTRA_STREAM"), uriObject);
+            if (!string.IsNullOrEmpty(text))
+                intentObject.Call&lt;AndroidJavaObject&gt;("putExtra", intentClass.GetStatic&lt;string&gt;("EXTRA_TEXT"), text);
+
+            // trao quyền đọc URI cho intent
+            int flagGrantRead = intentClass.GetStatic&lt;int&gt;("FLAG_GRANT_READ_URI_PERMISSION");
+            intentObject.Call&lt;AndroidJavaObject&gt;("addFlags", flagGrantRead);
+
+            // tạo chooser để gửi giống như Invite friends
+            using (AndroidJavaObject chooser = intentClass.CallStatic&lt;AndroidJavaObject&gt;("createChooser", intentObject, DUtil.GetString(5000586)))
+            {
+                chooser.Call&lt;AndroidJavaObject&gt;("addFlags", flagGrantRead);   // cũng trao quyền cho chooser
+                currentActivity.Call("startActivity", chooser);
+            }
+        }
+    }
+}</code></pre>
+
+                    <h2>8. iOS</h2>
+                    <p>iOS phần login Facebook và lấy friends thì không cần làm gì thêm; chỉ có Invite friends và Share thành tựu là cần.</p>
+                    <p>Thú thật phần này mình nhờ Claude hoàn toàn vì chưa có nhiều kinh nghiệm về iOS, những trường hợp như vậy mới thấy được sự hữu dụng của AI, vừa tăng tốc công việc, vừa tăng tốc quá trình học của mình nếu mình biết sử dụng đúng cách.</p>
+                    <p>Trong source của Game có sẵn file <code>Assets/Plugins/iOS/MyNativeBindings.mm</code> để lưu các plugin mà game xài, nên Claude chọn file đó để thêm vào tiếp.</p>
+
+                    <h3>a. Share sheet</h3>
+                    Đầu tiên nó import thêm <code>UIKit.h</code> và thêm 1 dòng prototype lấy view controller của unity:
+                    <pre><code class="language-objectivec">#import <UIKit/UIKit.h>
+...
+
+extern "C" UIViewController* UnityGetGLViewController();</code></pre>
+                    Sau đó nó thêm hàm để hiện share sheet của iOS (giống chooser <code>ACTION_SEND</code> bên Android) bên trên view controller của Unity:
+                    <pre><code class="language-objectivec">static void PresentShareSheet(NSArray* items)
+{
+    if (items == nil || items.count == 0) {
+        NSLog(@"PresentShareSheet: nothing to share");
+        return;
+    }
+
+    // chạy trên main thread vì liên quan UIKit
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIViewController* root = UnityGetGLViewController();
+        if (root == nil) {
+            NSLog(@"PresentShareSheet: no root view controller");
+            return;
+        }
+
+		// tạo share sheet bao gồm các items để gửi
+        UIActivityViewController* avc =
+            [[UIActivityViewController alloc] initWithActivityItems:items applicationActivities:nil];
+
+        // Dành cho iPad, nếu không có sourceView thì popoverPresentationController không có anchor và game bị crash
+        if (avc.popoverPresentationController != nil) {
+            avc.popoverPresentationController.sourceView = root.view;
+            avc.popoverPresentationController.sourceRect = CGRectMake(
+                root.view.bounds.size.width / 2.0,
+                root.view.bounds.size.height / 2.0, 0, 0);
+            avc.popoverPresentationController.permittedArrowDirections = 0;
+        }
+
+		// hiện share sheet avc thành 1 modal (presentViewController) bên trên unity view hiện tại (root) 
+        [root presentViewController:avc animated:YES completion:nil];
+    });
+}</code></pre>
+
+                    <h3>b. Invite friends</h3>
+                    Hàm share text này là một symbol có thể gọi được từ bên C#:
+                    <pre><code class="language-objectivec">void _ShareTextOutsideGame(const char* text)
+{
+    NSString* str = text != NULL ? [NSString stringWithUTF8String:text] : nil;
+    if (str.length == 0) {
+        NSLog(@"_ShareTextOutsideGame: empty text");
+        return;
+    }
+    PresentShareSheet(@[str]);
+}</code></pre>
+                    Note: Vấn đề tin nhắn tách làm 2 và có <code>mp:</code>, <code>ms:</code> không bị trên iOS, nên không cần phải tự tách làm 2 tin nhắn như bên Android.
+                    <h3>c. Share thành tựu</h3>
+                    Hàm share hình + caption, cũng là một symbol có thể gọi được từ bên C#:
+                    <pre><code class="language-objectivec">void _ShareImageWithCaption(const char* imagePath, const char* caption)
+{
+    NSString* path = imagePath != NULL ? [NSString stringWithUTF8String:imagePath] : nil;
+    NSString* text = caption != NULL ? [NSString stringWithUTF8String:caption] : nil;
+
+    NSMutableArray* items = [NSMutableArray array];
+
+    if (path.length > 0 && [[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        UIImage* image = [UIImage imageWithContentsOfFile:path];
+        if (image != nil)
+            [items addObject:image];
+        else
+            NSLog(@"_ShareImageWithCaption: failed to load image at %@", path);
+    }
+    if (text.length > 0)
+        [items addObject:text];
+
+    PresentShareSheet(items);
+}</code></pre>
+                    <p>Tuy nhiên Facebook iOS không cho share caption kèm theo hình, khi share lên nó chỉ có hình mà không có text nào thêm, cái này thì mình phải chịu. Claude gợi ý là mình edit luôn chữ vào trong hình nhưng mình thấy không cần thiết.</p>
+                    <p>Ngoài ra mình cần thêm quyền <code>NSPhotoLibraryAddUsageDescription</code> nếu user muốn lưu screenshot vào thư viện, cái này phải thêm vào giai đoạn
+                    post process sau khi build:</p>
+                    <pre><code class="language-cs">public class MyPostBuilder {
+    [PostProcessBuild(821)]
+    public static void onPostProcessBuildPlayer(BuildTarget buildTarget, string pathToBuiltProject) {
+#if UNITY_IOS
+        if (buildTarget == BuildTarget.iOS) {
+	        ...
+			rootDict.SetString("NSPhotoLibraryAddUsageDescription", "Save shared screenshots to your photo library");
+			...
+		}
+#endif
+	}
+	...
+}	   </code></pre>
+                    <p>Cuối cùng là gọi 2 hàm trên từ C#:</p>
+                    <pre><code class="language-cs">#if UNITY_IOS &amp;&amp; !UNITY_EDITOR
+[System.Runtime.InteropServices.DllImport("__Internal")]
+private static extern void _ShareTextOutsideGame(string text);
+[System.Runtime.InteropServices.DllImport("__Internal")]
+private static extern void _ShareImageWithCaption(string imagePath, string caption);
+#endif
+
+_ShareTextOutsideGame(text);
+_ShareImageWithCaption(imagePath, text);</code></pre>
+                    <b>Tổng kết lại vấn đề của Android và iOS</b>:
+                    <table class="table table-bordered">
+                    <tr>
+                        <th> </th>
+                        <th>Android</th>
+                        <th>iOS</th>
+                    </tr>
+                    <tr>
+                        <td>Share caption + link Google play qua messenger</td>
+                        <td>Bị tách làm 2 và có kí tự <code>mp:</code>/<code>ms:</code> lạ lạ → Tự tách làm 2 tin nhắn gửi riêng biệt</td>
+                        <td>Bình thường</td>
+                    </tr>
+                    <tr>
+                        <td>Share caption + hình lên Facebook</td>
+                        <td>Bình thường</td>
+                        <td>Mất caption</td>
+                    </tr>
+                    </table>
+
+                    <h2>8. Lời kết</h2>
+                    Các lí do lớn mà mình có động lực viết blog này:
+                    <ul>
+                    <li>Giai đoạn setup App trên Meta Developers: Ban đầu mình khá chật vật tìm hết mọi cách để làm được trên app có sẵn của Game, thậm chí mình còn hỏi trên <a style="display:inline" href="https://stackoverflow.com/questions/79980571/using-facebook-in-unity-for-both-marketing-api-and-facebook-login-social-feature">stackoverflow</a> (2 downvotes 🥳) về vấn đề làm sao để làm các tính năng Social trên 1 app Business. Nhưng sau cùng thì vẫn phải tạo 1 app mới 🥵.</li>
+                    <li>Hai feature Invite friends và Share thành tựu: 2 tính năng này không test được trên editor, mỗi lần test là mỗi lần build 😅 Đặc biết là cái vụ tách tin nhắn khi link là Google play, mình cũng thử sai rất nhiều cách, build vô số lần. Vậy nên mình mong blog này sẽ giúp bạn tiết kiệm thời gian hơn 😁</li>
+                    </ul>
+
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer></footer>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer></footer>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+
+    <script src="/js/blogs.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

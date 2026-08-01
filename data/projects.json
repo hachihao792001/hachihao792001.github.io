@@ -18,6 +18,15 @@
     "technology": "Unity, C#"
   },
   {
+    "title": "Zombie Shoot Out: Offline Game by VNG GAME STUDIOS",
+    "image": "zombieshootout",
+    "url": "https://play.google.com/store/apps/details?id=com.apocalypse.zombie.games",
+    "source": "",
+    "description": "A game that I'm currently working on in Madpoly studio - VNG Corporation. It's the project I'm assigned to when I just got back from conscription. I worked on the in-game Team system using PlayFab, time-sensitive Game Event system. Implementing Google play achievements and Social features with Facebook.",
+    "type": "Contributed",
+    "technology": "Unity, C#"
+  },
+  {
     "title": "HCMUS Tour",
     "image": "hcmustour",
     "url": "https://www.facebook.com/hachihao792001/videos/791676336016821/",
