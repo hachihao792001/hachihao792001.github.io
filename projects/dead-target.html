@@ -1,0 +1,45 @@
+<!--
+    Custom card content for the "DEAD TARGET: Zombie Games 3D by VNG GAME STUDIOS" project.
+
+    It is picked up through the "html" field of the entry in data/projects.json and
+    injected inside the .project-item card by js/index.js, so this file is only a
+    fragment (no <html>/<head>/<body>) and all the paths in it are relative to index.html.
+
+    When a project has a custom HTML like this one, the "title", "image", "url", "source",
+    "type", "technology" and "description" fields of the JSON entry are not rendered
+    anymore, everything below is written by hand instead.
+-->
+
+<a class="col-12 col-lg-1 me-0 me-md-2 me-lg-2"
+    href="https://play.google.com/store/apps/details?id=com.vng.g6.a.zombie">
+    <img src="images/dt.png" alt="DEAD TARGET: Zombie Games 3D by VNG GAME STUDIOS" width="60px" height="60px">
+</a>
+<div class="col-12 col-lg-10 project-item-content">
+    <div class="project-item-content-title row m-0">
+        <h3 class="col-12 col-md-10 col-lg-10 p-0">DEAD TARGET: Zombie Games 3D by VNG GAME STUDIOS</h3>
+        <div class="col-5 col-md-2 col-lg-2
+            project-item-content-title-tech p-0">
+            <div class="btn btn-outline-warning m-0 p-1">
+                Unity, C#
+            </div>
+        </div>
+    </div>
+    <div class="btn btn-outline-primary p-0">
+        Contributed
+    </div>
+    <lead>
+        A game that I worked on in Madpoly studio - VNG Corporation. It is a big opportunity for me to work in such a
+        big game, there are many challenges, one of them being understanding the huge and old codebase, but I will
+        embrace it and try my best to contribute to it. One of the most intricate features I've implemented is the
+        Arch of Thunder, a unique eagle-shaped crossbow capable of firing lightning arrows. Its capabilities extend
+        beyond my description; you must witness it firsthand here:
+    </lead>
+
+    <!-- The whole point of the custom HTML: an embedded gameplay video right in the card -->
+    <div class="project-item-video">
+        <iframe src="https://www.youtube.com/embed/DOOmOATYuAM"
+            title="StaticBowDemo" loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+    </div>
+</div>

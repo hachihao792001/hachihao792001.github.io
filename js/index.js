@@ -21,33 +21,58 @@ window.onload = async () => {
     }
 
     const projectData = await loadData('projects.json');
-    for (var i = 0; i < projectData.length; i++) {
-        project.innerHTML += `
+
+    // A project can provide its own card content through the "html" field, the
+    // files are fetched up front so that the cards still show up in JSON order
+    const customHTMLs = await Promise.all(projectData.map(p => loadCustomHTML(p.html)));
+
+    project.innerHTML += projectData.map((p, i) => `
             <div class="project-item row">
-                <a class="col-12 col-lg-1 me-0 me-md-2 me-lg-2" href="${projectData[i].url}">
-                    <img src="images/${projectData[i].image}.png" alt="${projectData[i].title}" width="60px" height="60px">
+                ${customHTMLs[i] === null ? getDefaultProjectHTML(p) : customHTMLs[i]}
+            </div>
+        `).join('');
+}
+
+// returns the file's content, or null when there is no custom HTML to use
+async function loadCustomHTML(htmlPath) {
+    if (!htmlPath)
+        return null;
+
+    try {
+        const response = await fetch(htmlPath);
+        if (!response.ok)
+            throw new Error(`${response.status} ${response.statusText}`);
+        return await response.text();
+    } catch (error) {
+        console.warn(`Could not load the custom project HTML "${htmlPath}", falling back to the default card`, error);
+        return null;
+    }
+}
+
+function getDefaultProjectHTML(projectItem) {
+    return `
+                <a class="col-12 col-lg-1 me-0 me-md-2 me-lg-2" href="${projectItem.url}">
+                    <img src="images/${projectItem.image}.png" alt="${projectItem.title}" width="60px" height="60px">
                 </a>
                 <div class="col-12 col-lg-10 project-item-content">
                     <div class="project-item-content-title row m-0">
-                        <h3 class="col-12 col-md-10 col-lg-10 p-0">${projectData[i].title}</h3>
-                        <div class="col-5 col-md-2 col-lg-2 
+                        <h3 class="col-12 col-md-10 col-lg-10 p-0">${projectItem.title}</h3>
+                        <div class="col-5 col-md-2 col-lg-2
                             project-item-content-title-tech p-0">
                             <div class="btn btn-outline-warning m-0 p-1">
-                                ${projectData[i].technology}
+                                ${projectItem.technology}
                             </div>
                         </div>
                     </div>
-                    <div class="btn ${getTypeDivBtnStyle(projectData[i].type)} p-0">
-                        ${projectData[i].type}
+                    <div class="btn ${getTypeDivBtnStyle(projectItem.type)} p-0">
+                        ${projectItem.type}
                     </div>
                     <lead>
-                        ${projectData[i].description}
+                        ${projectItem.description}
                     </lead>
-                    ${getSrcLinkHTML(projectData[i].source)}
+                    ${getSrcLinkHTML(projectItem.source)}
                 </div>
-            </div>
-        `;
-    }
+    `;
 }
 
 async function loadData(jsonFileName) {

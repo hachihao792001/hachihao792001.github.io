@@ -6,7 +6,8 @@
     "source": "",
     "description": "A game that I worked on in Madpoly studio - VNG Corporation. It is a big opportunity for me to work in such a big game, there are many challenges, one of them being understanding the huge and old codebase, but I will embrace it and try my best to contribute to it. One of the most intricate features I've implemented is the Arch of Thunder, a unique eagle-shaped crossbow capable of firing lightning arrows. Its capabilities extend beyond my description; you must witness it firsthand here: https://www.facebook.com/hachihao792001/videos/696523142425505",
     "type": "Contributed",
-    "technology": "Unity, C#"
+    "technology": "Unity, C#",
+    "html": "projects/dead-target.html"
   },
   {
     "title": "Zombie Fire 3D: Offline Game by VNG GAME STUDIOS",
