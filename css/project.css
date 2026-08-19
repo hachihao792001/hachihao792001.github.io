@@ -63,6 +63,7 @@
     position: relative;
     width: 100%;
     max-width: 560px;
+    align-self: center;
     aspect-ratio: 16 / 9;
     margin-top: 7px;
     border-radius: 10px;
