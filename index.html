@@ -6,23 +6,34 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <meta name="description"
+        content="Hà Chí Hào - Unity game developer. Gameplay mechanics, customizable systems, and the projects, blogs and experiments behind them.">
+    <meta name="theme-color" content="#20799b">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Hà Chí Hào - Unity game developer">
+    <meta property="og:description"
+        content="Unity game developer specializing in gameplay mechanics and customizable systems.">
+    <meta property="og:image" content="https://hachihao792001.github.io/images/hao.jpg">
+
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;500&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    <link rel="stylesheet" href="css/theme.css">
     <link rel="stylesheet" href="css/index.css">
 
-    <script src="https://kit.fontawesome.com/0ddc8e522c.js" crossorigin="anonymous"></script>
-
-    <title>My Portfolio</title>
+    <title>Hà Chí Hào - Unity game developer</title>
 </head>
 
 <body>
-    <header></header>
+    <a class="skip-link" href="#main">Skip to content</a>
 
     <main>
         <div class="container-fluid ps-0">
@@ -31,60 +42,94 @@
                     <!--load from sidebar.html-->
                 </div>
 
-                <div class="about col-12 col-lg-10">
-                    <div class="row ms-0">
+                <div class="about col-12 col-lg-10" id="main">
+                    <div class="hero row ms-0">
                         <div class="col-md-3 col-12 aboutAvatarSection p-0 mb-5 mb-md-0">
-                            <img src="images/hao.jpg" alt="avatar" width="100%">
-                            <button type="button" class="btn btn-outline-primary">
-                                <a class="seemycv" href="https://www.overleaf.com/read/ytrjqkzkgpgn#511b3f">
-                                    See my CV
-                                </a>
-                            </button>
+                            <img class="hero-avatar" src="images/hao.jpg" alt="Portrait of Hà Chí Hào" width="320"
+                                height="320">
+
+                            <a class="button button--primary" href="https://www.overleaf.com/read/ytrjqkzkgpgn#511b3f"
+                                target="_blank" rel="noopener noreferrer">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                                    stroke-linecap="round" stroke-linejoin="round" width="18" height="18"
+                                    aria-hidden="true" focusable="false">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+                                </svg>
+                                See my CV
+                            </a>
+
                             <div class="contacts">
-                                <a href="https://www.linkedin.com/in/chí-hào-hà-0831801bb/">
-                                    <img src="images/linkedin.png" alt="linkedin" width="30px">
+                                <a class="icon-link" href="https://www.linkedin.com/in/chí-hào-hà-0831801bb/"
+                                    target="_blank" rel="noopener noreferrer"
+                                    aria-label="LinkedIn profile (opens in a new tab)">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                                        <path
+                                            d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM10 9h3.8v1.7h.05A4.2 4.2 0 0 1 17.5 8.7c3 0 3.5 1.9 3.5 4.5V21h-4v-6.4c0-1.5-.3-2.6-1.8-2.6s-2.2 1-2.2 2.6V21h-4z" />
+                                    </svg>
                                 </a>
-                                <a href="https://github.com/hachihao792001">
-                                    <img src="images/github.png" alt="github" width="30px">
+                                <a class="icon-link" href="https://github.com/hachihao792001" target="_blank"
+                                    rel="noopener noreferrer" aria-label="GitHub profile (opens in a new tab)">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                                        <path
+                                            d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.1-1.47-1.1-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.88 1.52 2.31 1.08 2.87.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.11-.25-.45-1.27.1-2.65 0 0 .83-.27 2.75 1.02a9.4 9.4 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z" />
+                                    </svg>
                                 </a>
                             </div>
                         </div>
 
                         <div class="col-md-8 col-12 aboutIntroSection">
+                            <p class="hero-eyebrow">Unity game developer</p>
                             <h1>Welcome! I'm Hà Chí Hào</h1>
-                            <lead>
-                                A Unity game developer with the unique perspective of having completed conscription while remaining actively connected to the industry.<br/><br/>
-                                I specialize in crafting gameplay mechanics and enjoy rethinking and reinventing systems to make them more customizable. My focus - both as a player and a developer - is on creating and experiencing truly exceptional gameplay.<br/><br/>
-                            </lead>
+                            <p class="lead-text">
+                                A Unity game developer with the unique perspective of having completed conscription
+                                while remaining actively connected to the industry.
+                            </p>
+                            <p class="lead-text">
+                                I specialize in crafting gameplay mechanics and enjoy rethinking and reinventing systems
+                                to make them more customizable. My focus - both as a player and a developer - is on
+                                creating and experiencing truly exceptional gameplay.
+                            </p>
                         </div>
                     </div>
 
-                    <div class="experience mt-5">
-                        <h2 class="mb-3">Education and experience</h2>
-                        <!-- Load from script -->
-                    </div>
+                    <section class="experience mt-5" aria-labelledby="experienceHeading">
+                        <div class="section-head">
+                            <h2 id="experienceHeading">Education and experience</h2>
+                        </div>
+                        <div class="experience-list">
+                            <!-- Load from script -->
+                        </div>
+                    </section>
 
-                    <div class="project mt-5">
-                        <h2 class="mb-3">What have I done</h2>
-                        <!-- Load from script -->
-                    </div>
+                    <section class="project mt-5" aria-labelledby="projectsHeading">
+                        <div class="section-head">
+                            <h2 id="projectsHeading">What have I done</h2>
+                            <span class="section-count" id="projectCount"></span>
+                        </div>
+
+                        <div class="toolbar" id="projectToolbar">
+                            <!-- Load from script -->
+                        </div>
+
+                        <div class="project-list">
+                            <!-- Load from script -->
+                        </div>
+
+                        <div class="empty-state" id="projectEmpty" hidden>
+                            <strong>No projects match that search.</strong>
+                            <p>Try a different keyword, or start over.</p>
+                            <button class="button button--ghost" type="button" id="projectClear">
+                                Clear filters
+                            </button>
+                        </div>
+                    </section>
                 </div>
             </div>
         </div>
     </main>
 
-    <footer></footer>
-
-    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
-        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
-        crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
-        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
-        crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
-        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
-        crossorigin="anonymous"></script>
-
+    <script src="js/ui.js"></script>
     <script src="js/index.js"></script>
     <script src="js/loadsidebar.js"></script>
 </body>

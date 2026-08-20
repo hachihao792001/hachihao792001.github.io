@@ -1,8 +1,31 @@
 @import url(experience.css);
 @import url(project.css);
 
+/* ==========================================================================
+   About page content column
+   ========================================================================== */
+
+/* The column runs the full width of the shell. The line length that matters is
+   the one inside each block - the hero intro is capped at its own measure - so
+   the cards, lists and media are free to use every pixel next to the rail. */
 .about {
-    padding: 40px;
+    padding: var(--space-6) var(--space-5) var(--space-8);
+}
+
+@media screen and (min-width: 992px) {
+
+    .about {
+        padding: var(--space-7) var(--space-7) var(--space-8);
+    }
+}
+
+/* ==========================================================================
+   Hero
+   ========================================================================== */
+
+.hero {
+    align-items: center;
+    row-gap: var(--space-5);
 }
 
 .aboutAvatarSection {
@@ -10,51 +33,81 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 15px;
+    gap: var(--space-4);
+    padding: 0;
 }
 
-.aboutAvatarSection>img {
+.hero-avatar {
+    width: 72%;
+    max-width: 15rem;
+    /* the width/height attributes reserve space before the image loads, but
+       they also make the height definite, which would defeat aspect-ratio */
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
     border-radius: 50%;
-    width: 70%;
+    /* a soft brand halo instead of a bare circle */
+    background: var(--brand-050);
+    box-shadow: 0 0 0 4px var(--surface),
+        0 0 0 5px var(--brand-200),
+        0 18px 36px -20px rgba(16, 42, 67, 0.4);
 }
 
-.aboutAvatarSection>button {
-    margin: auto;
-    width: 70%;
-}
-
-.aboutAvatarSection>button:hover>a {
-    color: white;
-}
-
-.aboutAvatarSection a {
-    text-decoration: none;
+/* the narrow md column would wrap the label onto two lines at 72% */
+.aboutAvatarSection .button {
+    width: 100%;
+    max-width: 15rem;
 }
 
 .contacts {
-    margin: auto;
-    width: 100%;
     display: flex;
-    justify-items: center;
     justify-content: center;
-    gap: 50px;
+    gap: var(--space-3);
+}
+
+/* --- intro text ---------------------------------------------------------- */
+
+.aboutIntroSection {
+    max-width: var(--measure);
+}
+
+.hero-eyebrow {
+    margin: 0 0 var(--space-2);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--brand-ink);
 }
 
 .aboutIntroSection>h1 {
-    font-size: 2.5em;
-    font-weight: bold;
-    margin-bottom: 20px;
+    font-size: clamp(1.85rem, 1.3rem + 2vw, 2.6rem);
+    font-weight: 700;
+    margin: 0 0 var(--space-4);
 }
 
-.aboutIntroSection>lead {
-    font-size: 1.2em;
+.lead-text {
+    font-size: 1.08rem;
+    line-height: 1.7;
+    color: var(--text-muted);
+    margin-bottom: var(--space-4);
 }
 
-.aboutAvatarSection {
-    padding: 40px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
+.lead-text:last-child {
+    margin-bottom: 0;
+}
+
+@media screen and (max-width: 767px) {
+
+    .hero {
+        text-align: center;
+    }
+
+    .aboutIntroSection {
+        text-align: left;
+    }
+
+    .hero-avatar {
+        width: 58%;
+    }
 }

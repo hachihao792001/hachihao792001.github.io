@@ -161,38 +161,52 @@ async function fetchHTMLCode(htmlPreviewId) {
     document.title = current.webTitle;
 
     // ===== RENDER NAV =====
-    const renderNav = () => {
-        let html = `<div class="d-flex gap-2 mb-1">`;
+    // the intro page is the series index, so the chapters are numbered from it
+    const chapterCount = list.length - 1;
+    const chapterNumber = index;
 
-        if (prev) {
-            html += `
-                <a class="btn btn-outline-primary" href="${prev.route}">
-                    ← ${prev.webTitle}
+    const renderNav = (position) => {
+        const pagerLink = (item, direction, label) => item
+            ? `
+                <a class="g3d-pager-link g3d-pager-${direction}" href="${item.route}">
+                    <span class="g3d-pager-dir">${label}</span>
+                    <span class="g3d-pager-title">${item.webTitle}</span>
                 </a>
-            `;
-        }
+            `
+            : '<span class="g3d-pager-link is-empty" aria-hidden="true"></span>';
 
-        if (next) {
-            html += `
-                <a class="btn btn-outline-primary" href="${next.route}">
-                    ${next.webTitle} →
-                </a>
-            `;
-        }
+        return `
+            ${chapterNumber > 0 ? `
+                <p class="g3d-progress">
+                    <span class="g3d-progress-label">Phần ${chapterNumber} / ${chapterCount}</span>
+                    <span class="g3d-progress-track">
+                        <span class="g3d-progress-bar" style="width: ${(chapterNumber / chapterCount) * 100}%"></span>
+                    </span>
+                </p>
+            ` : ''}
 
-        html += `</div>
-            <a class="btn btn-outline-secondary" href="/blogs/graphics3D/graphics3D-intro.html">
+            <nav class="g3d-pager" aria-label="Điều hướng series${position ? ` (${position})` : ''}">
+                ${pagerLink(prev, 'prev', '← Bài trước')}
+                ${pagerLink(next, 'next', 'Bài sau →')}
+            </nav>
+
+            <a class="button button--ghost g3d-pager-home" href="/blogs/graphics3D/graphics3D-intro.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                    stroke-linecap="round" stroke-linejoin="round" width="16" height="16"
+                    aria-hidden="true" focusable="false">
+                    <path d="M3 5h18M3 12h18M3 19h18" />
+                </svg>
                 Về trang chủ series
-            </a>`;
-
-        return html;
+            </a>
+        `;
     };
 
     const top = document.getElementById("graphics3D-nav-top");
     const bottom = document.getElementById("graphics3D-nav-bottom");
 
-    if (top) top.innerHTML = renderNav();
-    if (bottom) bottom.innerHTML = renderNav();
+    // both pagers are the same links, so they need distinguishable labels
+    if (top) top.innerHTML = renderNav('đầu bài');
+    if (bottom) bottom.innerHTML = renderNav('cuối bài');
 })();
 
 // ------------------------ END NAVIGATION ------------------------

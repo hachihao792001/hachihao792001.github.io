@@ -1,76 +1,126 @@
-.project {
+/* ==========================================================================
+   Project list
+
+   Forty projects in a flat list is a lot to scan, so the toolbar in
+   theme.css filters them by type and by keyword. Each card keeps the original
+   shape - thumbnail, title, type, tech, description - with a clearer hierarchy.
+   ========================================================================== */
+
+.project-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-}
-
-.project>h2 {
-    font-weight: bold;
+    gap: var(--space-3);
 }
 
 .project-item {
-    justify-items: center;
-    position: relative;
-    border: 1px solid #ccc;
-    border-radius: 10px;
-    padding: 10px;
-	transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-4);
+    align-items: start;
+    padding: var(--space-4);
+    /* .card-surface from theme.css supplies the border, radius and hover lift */
 }
 
-@media screen and (max-width: 991px) {
-    .project-item {
-        gap: 20px;
-        margin: 0px;
-    }
+.project-item[hidden] {
+    display: none;
 }
 
-.project-item:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 10px #ccc;
+/* --- thumbnail ----------------------------------------------------------- */
+
+.project-thumb {
+    display: block;
+    width: 3.75rem;
+    height: 3.75rem;
+    flex: none;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface-sunken);
+    overflow: hidden;
+    transition: border-color var(--dur) var(--ease);
 }
+
+.project-item:hover .project-thumb {
+    border-color: var(--brand-200);
+}
+
+.project-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* --- content ------------------------------------------------------------- */
 
 .project-item-content {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: var(--space-2);
+    min-width: 0;
 }
 
-.project-item-content>.btn {
-    width: 100px;
-    text-align: center;
-    cursor: unset;
-}
-
-.project-item-content-title-tech {
-    min-height: 30px;
-    max-height: min-content;
+.project-item-content h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
     margin: 0;
-    text-align: center;
-    border-radius: 5px;
+    min-width: 0;
+}
 
+.project-item-content h3 a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.project-item-content h3 a:hover {
+    color: var(--brand-ink);
+    text-decoration: underline;
+}
+
+/* type and tech are the same kind of information, so they sit together on one
+   row under the title rather than the tech label floating off to the far right */
+.project-meta {
     display: flex;
-    justify-content: center;
-    align-content: center;
-    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
 }
 
-.project-item-content-title-tech > div{
-    cursor: unset;
+.project-item-content p {
+    margin: 0;
+    color: var(--text-muted);
 }
 
-/* used by the custom project cards in the projects/ folder */
+.project-source {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    align-self: flex-start;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.project-source svg {
+    width: 1em;
+    height: 1em;
+    flex: none;
+}
+
+/* --- media inside the hand written project cards ------------------------- */
+
 .project-item-video {
     position: relative;
     width: 100%;
     max-width: 560px;
     align-self: center;
     aspect-ratio: 16 / 9;
-    margin-top: 7px;
-    border-radius: 10px;
+    margin-top: var(--space-2);
+    border-radius: var(--radius);
     overflow: hidden;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
 }
 
-.project-item-video > iframe {
+.project-item-video>iframe {
     position: absolute;
     top: 0;
     left: 0;
@@ -81,5 +131,33 @@
 
 .project-item-video-caption {
     font-size: 0.85rem;
-    color: #777;
+    color: var(--text-muted);
+    text-align: center;
+    margin: 0;
+}
+
+/* a responsive strip for the gameplay gifs, replaces fixed pixel widths */
+.project-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--space-2);
+    margin: var(--space-2) 0;
+}
+
+.project-gallery img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface-sunken);
+}
+
+@media screen and (max-width: 575px) {
+
+    .project-item {
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+    }
 }

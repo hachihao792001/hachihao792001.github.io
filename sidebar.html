@@ -1,28 +1,79 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light pb-0 pe-0 pt-0">
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
-        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-    </button>
+<!--
+    Injected into .sidebar on every page by js/loadsidebar.js, which also marks
+    the link matching the current URL with aria-current="page" and wires the
+    mobile toggle. The toggle is plain JavaScript, so no Bootstrap JS bundle is
+    needed anywhere on the site.
+-->
 
-    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+<nav class="site-nav" aria-label="Main">
+    <div class="site-nav-bar">
+        <a class="site-nav-brand" href="/">
+            <span class="site-nav-name">Hà Chí Hào</span>
+            <span class="site-nav-role">Unity game developer</span>
+        </a>
 
-        <div class='sidebar-list p-2'>
-            <h1>Hà Chí Hào</h1>
-            <li class='sidebar-list-item'>
-                <a href='/'>
-                    <h6 class='col-10'>About me</h6>
+        <button class="site-nav-toggle" type="button" aria-expanded="false" aria-controls="siteNavPanel"
+            aria-label="Menu">
+            <svg class="site-nav-toggle-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" aria-hidden="true" focusable="false">
+                <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+            <svg class="site-nav-toggle-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" aria-hidden="true" focusable="false">
+                <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+        </button>
+    </div>
+
+    <div class="site-nav-panel" id="siteNavPanel">
+        <ul class="site-nav-list">
+            <li>
+                <a class="site-nav-link" href="/" data-match="/">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    About me
                 </a>
             </li>
-            <li class='sidebar-list-item'>
-                <a href='/blogs.html'>
-                    <h6 class='col-10'>Blogs</h6>
+            <li>
+                <a class="site-nav-link" href="/blogs.html" data-match="/blogs">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                    </svg>
+                    Blogs
                 </a>
             </li>
-            <li class='sidebar-list-item'>
-                <a href='/interactive.html'>
-                    <h6 class='col-10'>Interactive Projects</h6>
+            <li>
+                <a class="site-nav-link" href="/interactive.html" data-match="/interactive">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M6 11h4M8 9v4M15 12h.01M18 10h.01" />
+                        <rect x="2" y="6" width="20" height="12" rx="4" />
+                    </svg>
+                    Interactive Projects
                 </a>
             </li>
+        </ul>
+
+        <div class="site-nav-footer">
+            <a class="site-nav-social" href="https://www.linkedin.com/in/chí-hào-hà-0831801bb/" target="_blank"
+                rel="noopener noreferrer" aria-label="LinkedIn profile (opens in a new tab)">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                    <path
+                        d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM10 9h3.8v1.7h.05A4.2 4.2 0 0 1 17.5 8.7c3 0 3.5 1.9 3.5 4.5V21h-4v-6.4c0-1.5-.3-2.6-1.8-2.6s-2.2 1-2.2 2.6V21h-4z" />
+                </svg>
+            </a>
+            <a class="site-nav-social" href="https://github.com/hachihao792001" target="_blank"
+                rel="noopener noreferrer" aria-label="GitHub profile (opens in a new tab)">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                    <path
+                        d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.1-1.47-1.1-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.88 1.52 2.31 1.08 2.87.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.11-.25-.45-1.27.1-2.65 0 0 .83-.27 2.75 1.02a9.4 9.4 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z" />
+                </svg>
+            </a>
         </div>
     </div>
 </nav>

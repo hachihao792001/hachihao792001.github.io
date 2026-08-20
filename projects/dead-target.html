@@ -7,40 +7,46 @@
 
     When a project has a custom HTML like this one, the "title", "image", "url", "source",
     "type", "technology" and "description" fields of the JSON entry are not rendered
-    anymore, everything below is written by hand instead.
+    anymore, everything below is written by hand instead. The "type" and "technology"
+    fields are still read by the filter toolbar, so keep them in sync with this card.
 -->
 
-<a class="col-12 col-lg-1 me-0 me-md-2 me-lg-2"
-    href="https://play.google.com/store/apps/details?id=com.vng.g6.a.zombie">
-    <img src="images/dt.png" alt="DEAD TARGET: Zombie Games 3D by VNG GAME STUDIOS" width="60px" height="60px">
+<a class="project-thumb" href="https://play.google.com/store/apps/details?id=com.vng.g6.a.zombie" target="_blank"
+    rel="noopener noreferrer" tabindex="-1" aria-hidden="true">
+    <img src="images/dt.png" alt="" width="60" height="60" loading="lazy" decoding="async">
 </a>
-<div class="col-12 col-lg-10 project-item-content">
-    <div class="project-item-content-title row m-0">
-        <h3 class="col-12 col-md-10 col-lg-10 p-0">DEAD TARGET: Zombie Games 3D by VNG GAME STUDIOS</h3>
-        <div class="col-5 col-md-2 col-lg-2
-            project-item-content-title-tech p-0">
-            <div class="btn btn-outline-warning m-0 p-1">
-                Unity, C#
-            </div>
-        </div>
+<div class="project-item-content">
+    <h3>
+        <a href="https://play.google.com/store/apps/details?id=com.vng.g6.a.zombie" target="_blank"
+            rel="noopener noreferrer">
+            DEAD TARGET: Zombie Games 3D by VNG GAME STUDIOS<span class="visually-hidden"> (opens in a new tab)</span>
+        </a>
+    </h3>
+    <div class="project-meta">
+        <span class="tag tag--brand">
+            <span class="tag-dot" aria-hidden="true"></span>Contributed
+        </span>
+        <span class="tag tag--tech">Unity, C#</span>
     </div>
-    <div class="btn btn-outline-primary p-0">
-        Contributed
+    <p>
+        The first game that I worked on in Madpoly studio - VNG Corporation. It is a big opportunity for me to work in
+        such a big game, there are many challenges, one of them being understanding the huge and old codebase.
+    </p>
+    <p>
+        One of the most intricate features I've implemented is the Arch of Thunder, a unique eagle-shaped crossbow
+        capable of firing and <b>CONTROLLING</b> lightning arrows.
+    </p>
+    <div class="project-gallery">
+        <img src="images/projects/StaticBow1.gif" alt="The Arch of Thunder firing a lightning arrow at a zombie wave"
+            loading="lazy" decoding="async">
+        <img src="images/projects/StaticBow2.gif" alt="A lightning arrow being steered mid-flight through the level"
+            loading="lazy" decoding="async">
+        <img src="images/projects/StaticBow3.gif" alt="A chained lightning strike hitting several zombies at once"
+            loading="lazy" decoding="async">
     </div>
-    <lead>
-        The first game that I worked on in Madpoly studio - VNG Corporation. It is a big opportunity for me to work in such a
-        big game, there are many challenges, one of them being understanding the huge and old codebase.
-    </lead>
-    <p>One of the most intricate features I've implemented is the Arch of Thunder, a unique eagle-shaped crossbow capable of firing and <b>CONTROLLING</b> lightning arrows.</p>
-    <div align="center" style="margin-bottom: 10px;">
-        <img src="images/projects/StaticBow1.gif" alt="Arch of Thunder" width="300px">
-        <img src="images/projects/StaticBow2.gif" alt="Arch of Thunder" width="300px">
-        <img src="images/projects/StaticBow3.gif" alt="Arch of Thunder" width="300px">
-    </div>
-    <div align="center">Full demo if you're interested:</div>
-    <div class="project-item-video" style="margin-bottom: 10px;">
-        <iframe src="https://www.youtube.com/embed/DOOmOATYuAM"
-            title="StaticBowDemo" loading="lazy"
+    <p class="project-item-video-caption">Full demo if you're interested:</p>
+    <div class="project-item-video">
+        <iframe src="https://www.youtube.com/embed/DOOmOATYuAM" title="Arch of Thunder gameplay demo" loading="lazy"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
     </div>

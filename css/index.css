@@ -1,90 +1,268 @@
 @import url(about.css);
 
+/* ==========================================================================
+   Page shell
+   ========================================================================== */
+
 .container-fluid,
 .container-fluid>.row {
     min-height: 100vh;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    font-family: 'Inter', sans-serif;
+/* The shell uses .container-fluid.ps-0 so the blue rail sits flush against the
+   left edge, but Bootstrap's row still applies margin-left: -12px, which hung
+   12px off the side of the viewport and pushed wide content into a horizontal
+   scrollbar on small screens. The negative right margin is kept, it is what
+   cancels the container's right padding. */
+.container-fluid.ps-0>.row {
+    margin-left: 0;
 }
+
+/* ==========================================================================
+   Sidebar / site navigation
+
+   Desktop: a sticky blue rail so the nav stays reachable on the long project
+   and blog-series pages.
+   Mobile:  a compact bar with a disclosure panel.
+   ========================================================================== */
 
 .sidebar {
     align-items: flex-start;
-    background-color: #299ac5;
+    background-color: var(--brand-600);
+    /* the sidebar column is injected asynchronously, reserving a minimum height
+       stops the content below from jumping when it lands */
+    min-height: 4.25rem;
 }
 
-.sidebar>nav {
+.site-nav {
+    display: flex;
+    flex-direction: column;
     height: 100%;
+    color: #ffffff;
 }
 
-#navbarSupportedContent {
-    height: 100%;
+/* --- brand block --------------------------------------------------------- */
+
+.site-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
 }
 
-.sidebar-list {
-    padding: 0px;
-    background-color: #299ac5;
-    list-style-type: none;
-    height: 100%;
+.site-nav-brand {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    color: #ffffff;
+    text-decoration: none;
+    border-radius: var(--radius-sm);
 }
 
-@media screen and (max-width: 991px) {
-
-    #navbarSupportedContent {
-        overflow: hidden;
-        transition: max-height 0.25s ease, opacity 0.25s ease;
-        max-height: 0;
-        opacity: 0;
-    }
-
-    #navbarSupportedContent.show {
-        max-height: 500px; /* large enough to fit menu */
-        opacity: 1;
-    }
+.site-nav-brand:hover {
+    color: #ffffff;
 }
 
-.sidebar-list h1 {
-    text-align: center;
-    margin: 40px 0px;
-    font-weight: 500;
-    padding: 0px 10px;
-    font-family: 'Inter', sans-serif;
-    color: white;
+.site-nav-name {
+    font-size: 1.35rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
 }
 
-.sidebar-list .sidebar-list-item a {
-    color: white;
+.site-nav-role {
+    font-size: 0.8rem;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.82);
 }
 
-.sidebar-list .sidebar-list-item a {
-    transition: transform 0.2s ease;
+/* --- mobile toggle ------------------------------------------------------- */
+
+.site-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: none;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease),
+        border-color var(--dur-fast) var(--ease);
+}
+
+.site-nav-toggle:hover {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+.site-nav-toggle svg {
+    width: 1.4rem;
+    height: 1.4rem;
+}
+
+.site-nav-toggle-close,
+.site-nav-toggle[aria-expanded='true'] .site-nav-toggle-open {
+    display: none;
+}
+
+.site-nav-toggle[aria-expanded='true'] .site-nav-toggle-close {
     display: block;
 }
 
-.sidebar-list .sidebar-list-item a:hover {
-    border-radius: 0.5rem;
-    cursor: pointer;
-    transform: scale(1.2);
+/* --- links --------------------------------------------------------------- */
+
+.site-nav-panel {
+    display: flex;
+    flex-direction: column;
 }
 
-.sidebar-list .sidebar-list-item {
-    padding: 15px 0px;
+.site-nav-list {
+    list-style: none;
+    margin: 0;
+    padding: var(--space-2) var(--space-3) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
 }
 
-.sidebar-list .sidebar-list-item a {
-    padding: 1rem 0;
-    text-align: center;
+.site-nav-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    /* comfortable 44px+ target */
+    min-height: 2.75rem;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 1.02rem;
+    font-weight: 300;
     text-decoration: none;
+    transition: background var(--dur-fast) var(--ease),
+        color var(--dur-fast) var(--ease);
 }
 
-.sidebar-list .sidebar-list-item h6 {
-    margin: auto;
-    font-size: 1.2em;
-    font-weight: 200;
+.site-nav-link svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    flex: none;
+    opacity: 0.85;
+}
+
+.site-nav-link:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+}
+
+/* the current section, marked by loadsidebar.js */
+.site-nav-link[aria-current='page'] {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    font-weight: 500;
+    /* the signature blue reads as a bright accent against the deeper panel */
+    box-shadow: inset 3px 0 0 var(--brand-300);
+}
+
+.site-nav-link[aria-current='page'] svg {
+    opacity: 1;
+}
+
+/* --- footer socials ------------------------------------------------------ */
+
+.site-nav-footer {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4) var(--space-5);
+    margin-top: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.site-nav-social {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    color: rgba(255, 255, 255, 0.85);
+    transition: background var(--dur-fast) var(--ease),
+        color var(--dur-fast) var(--ease);
+}
+
+.site-nav-social:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+}
+
+.site-nav-social svg {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
+/* ==========================================================================
+   Desktop
+   ========================================================================== */
+
+@media screen and (min-width: 992px) {
+
+    .site-nav-toggle {
+        display: none;
+    }
+
+    .site-nav {
+        position: sticky;
+        top: 0;
+        max-height: 100vh;
+        overflow-y: auto;
+    }
+
+    /* fills the rail so the social links sit at the bottom. Only on desktop:
+       on mobile the bar is content-height, so flex-basis 0 would collapse the
+       disclosure panel to nothing */
+    .site-nav-panel {
+        flex: 1;
+    }
+
+    .site-nav-bar {
+        padding: var(--space-6) var(--space-4) var(--space-5);
+    }
+
+    .site-nav-name {
+        font-size: 1.5rem;
+    }
+}
+
+/* ==========================================================================
+   Mobile - collapsed disclosure panel
+   ========================================================================== */
+
+@media screen and (max-width: 991px) {
+
+    .sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .site-nav-panel {
+        overflow: hidden;
+        max-height: 0;
+        opacity: 0;
+        transition: max-height var(--dur) var(--ease), opacity var(--dur) var(--ease);
+    }
+
+    .site-nav-panel.is-open {
+        max-height: 26rem;
+        opacity: 1;
+    }
+
+    .site-nav-footer {
+        justify-content: center;
+    }
 }

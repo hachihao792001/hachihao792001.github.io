@@ -1,53 +1,175 @@
+/* The chapter thumbnails are ~406x308, so the track is capped by the column
+   count rather than by a fixed 3: on a wide screen that means more cards per
+   row instead of three upscaled ones, and it collapses on its own on a phone. */
 .g3d-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
     gap: 18px;
     margin-top: 1rem;
 }
 
-@media (max-width: 900px) {
-    .g3d-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 560px) {
-    .g3d-grid { grid-template-columns: 1fr; }
-}
-
 .g3d-card {
     display: block;
-    border-radius: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    box-shadow: var(--shadow-sm);
     text-decoration: none;
     color: inherit;
-    background: #fff;
-    transition: transform 0.22s ease, box-shadow 0.22s ease;
+    background: var(--surface);
+    transition: transform var(--dur) var(--ease),
+        box-shadow var(--dur) var(--ease),
+        border-color var(--dur) var(--ease);
 }
 
-.g3d-card:hover {
-    transform: scale(1.06);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
-    color: inherit;
-    text-decoration: none;
+/* a lift rather than a scale, so a hovered card does not grow over the ones
+   next to it in the grid */
+@media (hover: hover) {
+
+    .g3d-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--brand-300);
+        box-shadow: var(--shadow);
+        color: inherit;
+        text-decoration: none;
+    }
 }
 
 .g3d-card img {
     width: 100%;
-    height: 250px;
+    /* fixed heights at every viewport crop the thumbnails oddly */
+    aspect-ratio: 16 / 10;
+    height: auto;
     object-fit: cover;
     display: block;
+    background: var(--surface-sunken);
 }
 
 .g3d-card-title {
-    padding: 10px 12px;
-    font-size: 0.88rem;
+    padding: var(--space-3);
+    font-size: 0.9rem;
     font-weight: 600;
-    line-height: 1.35;
+    line-height: 1.4;
+    color: var(--text);
 }
 
+.g3d-card:hover .g3d-card-title {
+    color: var(--brand-ink);
+}
+
+/* ==========================================================================
+   Series pager - rendered by graphics3D.js above and below every chapter
+   ========================================================================== */
+
+.g3d-progress {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin: 0 0 var(--space-3);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.g3d-progress-label {
+    flex: none;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+.g3d-progress-track {
+    flex: 1;
+    max-width: 14rem;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--brand-100);
+    overflow: hidden;
+}
+
+.g3d-progress-bar {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--brand-500);
+}
+
+.g3d-pager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.g3d-pager-link {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    text-decoration: none;
+    transition: border-color var(--dur) var(--ease),
+        background var(--dur) var(--ease);
+}
+
+.g3d-pager-link:hover {
+    border-color: var(--brand-300);
+    background: var(--brand-050);
+    color: var(--text);
+    text-decoration: none;
+}
+
+/* keeps the "next" link on the right when there is no previous chapter */
+.g3d-pager-link.is-empty {
+    border: 0;
+    background: none;
+    pointer-events: none;
+}
+
+.g3d-pager-next {
+    text-align: right;
+}
+
+.g3d-pager-dir {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--brand-ink);
+}
+
+.g3d-pager-title {
+    font-size: 0.95rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.g3d-pager-home {
+    margin-bottom: var(--space-5);
+}
+
+@media screen and (max-width: 560px) {
+
+    .g3d-pager {
+        grid-template-columns: 1fr;
+    }
+
+    .g3d-pager-next {
+        text-align: left;
+    }
+
+    .g3d-pager-link.is-empty {
+        display: none;
+    }
+}
+
+/* The live preview holds a 400px canvas (a few are 512px). A percentage split
+   made that pane shrink with the column and clip the demo, so the preview gets
+   the width it needs and the code pane takes whatever is left. */
 .htmlPreview {
     display: grid;
-    grid-template-columns: 60% 40%;
+    grid-template-columns: minmax(0, 1fr) 420px;
     gap: 10px;
     height: 460px;
 }
@@ -70,7 +192,16 @@
     height: 100%;
 }
 
-@media (max-width: 768px) {
+/* below this the code pane would be too cramped to read next to the preview */
+/* with the column at full width there is room for the three 512px canvases
+   of the series, instead of scrolling them inside a 420px pane */
+@media (min-width: 1400px) {
+    .htmlPreview {
+        grid-template-columns: minmax(0, 1fr) 560px;
+    }
+}
+
+@media (max-width: 900px) {
     .htmlPreview {
         grid-template-columns: 1fr;
         height: auto;

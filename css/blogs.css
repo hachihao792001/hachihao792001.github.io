@@ -1,74 +1,135 @@
+/* ==========================================================================
+   Blogs index
+   ========================================================================== */
+
 .blogs {
-    padding: 40px;
+    padding: var(--space-6) var(--space-5) var(--space-8);
+}
+
+@media screen and (min-width: 992px) {
+
+    .blogs {
+        padding: var(--space-7) var(--space-7) var(--space-8);
+    }
+}
+
+.blogs>h1 {
+    font-size: clamp(1.85rem, 1.3rem + 2vw, 2.4rem);
+    font-weight: 700;
+    margin: 0 0 var(--space-2);
+}
+
+.blogs-intro {
+    color: var(--text-muted);
+    margin: 0 0 var(--space-5);
+    max-width: 68ch;
+}
+
+.blogs-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-3);
 }
 
-.arrow {
-    cursor: pointer;
-    display: inline-block;
-    margin-right: 8px;
-    transition: transform 0.2s ease;
-    user-select: none;
-}
+/* --------------------------------------------------------------------------
+   Blog card
 
-.arrow-down {
-    transform: rotate(90deg);
-}
+   The whole card is the link target rather than just the title text, so it is
+   a much easier thing to hit - especially on a touch screen.
+   -------------------------------------------------------------------------- */
 
 .blogs-item {
-    padding: 10px;
-}
-
-.blogs-item-series {
-    border-left: 4px solid #0d6efd;
-    background: linear-gradient(to right, #e8f0fe, transparent);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-5);
+    /* .card-surface from theme.css supplies the border, radius and hover lift */
 }
 
 .blogs-item-title {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    align-items: baseline;
+    gap: var(--space-2);
     flex-wrap: wrap;
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    line-height: 1.4;
 }
 
-.series-badge {
-    display: inline-block;
-    background-color: #0d6efd;
-    color: white;
-    font-size: 0.75em;
-    font-weight: 500;
-    padding: 2px 8px;
-    border-radius: 4px;
-    white-space: nowrap;
+.blogs-item-title a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+.blogs-item-title a::after {
+    /* stretches the anchor over the whole card */
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+}
+
+.blogs-item:hover .blogs-item-title a,
+.blogs-item-title a:focus-visible {
+    color: var(--brand-ink);
+}
+
+/* series entries keep the blue accent rail they had before */
+.blogs-item-series {
+    border-left: 4px solid var(--brand-500);
+    background: linear-gradient(to right, var(--brand-050), var(--surface) 45%);
+}
+
+.blogs-item-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    font-size: 0.875rem;
+    color: var(--text-muted);
 }
 
 .blogs-item-date {
-    display: inline-block;
-    font-size: 0.9em;
-    color: #666;
-    margin-top: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-variant-numeric: tabular-nums;
 }
 
-.blogs-item-title>a {
-    text-decoration: none;
-    color: black;
-    font-size: 1.8em;
+.blogs-item-date svg {
+    width: 0.95em;
+    height: 0.95em;
+    flex: none;
+    opacity: 0.8;
+}
+
+/* an unwritten post is not a link, so it must not look or behave like one */
+.blogs-item-upcoming {
+    background: var(--surface-sunken);
+    border-style: dashed;
+}
+
+.blogs-item-upcoming .blogs-item-title {
+    color: var(--text-muted);
     font-weight: 500;
 }
 
-.blogs-item>p {
-    margin: 0;
+.blogs-item-upcoming:hover {
+    transform: none;
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
 }
 
-.blogs-item:hover {
-    box-shadow: 0 0 10px #ccc;
-    animation-name: scaling;
-    animation-duration: 0.5s;
-    animation-fill-mode: forwards;
+/* the external-link marker */
+.blogs-item-external {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
 }
 
-.blogs-item>div {
-    cursor: unset;
+.blogs-item-external svg {
+    width: 0.9em;
+    height: 0.9em;
+    flex: none;
 }
