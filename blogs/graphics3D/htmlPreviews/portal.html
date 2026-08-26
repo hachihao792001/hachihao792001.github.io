@@ -26,13 +26,13 @@
             <tr>
                 <th>
                     <span style="display: inline">
-                        <p>What orange portal is seeing:</p>
+                        <p style="font-weight: 100">What orange portal is showing<br />(what blue camera is seeing):</p>
                         <canvas id="portal1Canvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
                     </span>
                 </th>
                 <th>
                     <span style="display: inline">
-                        <p>What blue portal is seeing:</p>
+                        <p style="font-weight: 100">What blue portal is showing<br />(what orange camera is seeing):</p>
                         <canvas id="portal2Canvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
                     </span>
                 </th>
@@ -123,7 +123,7 @@
                     return [axis, angle];
                 }
 
-                static getRadianBetween(vec1, vec2, axis) {
+                static getRadianBetweenWithAxis(vec1, vec2, axis) {
                     let projectedV1 = vec1.projectVectorToPlane(axis);
                     let projectedV2 = vec2.projectVectorToPlane(axis);
                     projectedV1.normalize();
@@ -135,6 +135,12 @@
 
                     let cross = Vector3.cross(projectedV1, projectedV2);
                     return Vector3.dot(cross, axis) > 0 ? -angle : angle;
+                }
+
+                static getRadianBetween(vec1, vec2) {
+                    let a = Vector3.cross(vec1, vec2).magnitude();
+                    let b = Vector3.dot(vec1, vec2);
+                    return Math.atan2(a, b);
                 }
 
                 projectVectorToPlane(planeNormal) {
@@ -303,6 +309,29 @@
                     let c = p.a * q.c - p.b * q.d + p.c * q.a + p.d * q.b;
                     let d = p.a * q.d + p.b * q.c - p.c * q.b + p.d * q.a;
                     return new Quaternion(a, b, c, d);
+                }
+
+                static add(p, q) {
+                    let a = p.a + q.a;
+                    let b = p.b + q.b;
+                    let c = p.c + q.c;
+                    let d = p.d + q.d;
+                    return new Quaternion(a, b, c, d);
+                }
+
+                static lerp(from, to, t) {
+                    t = Math.min(Math.max(t, 0), 1);
+                    let first = Quaternion.multiply(new Quaternion(1 - t, 0, 0, 0), from);
+                    let second = Quaternion.multiply(new Quaternion(t, 0, 0, 0), to);
+                    return Quaternion.add(first, second);
+                }
+
+                static dot(p, q) {
+                    return p.a * q.a + p.b * q.b + p.c * q.c + p.d * q.d;
+                }
+
+                static isClose(a, b, margin) {
+                    return 1 - Math.abs(Quaternion.dot(a, b)) < margin;
                 }
 
                 normalize() {
@@ -521,10 +550,10 @@
                     let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
                     let maxY = Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
 
-                    minX = Math.max(0, parseInt(minX));
-                    maxX = Math.min(maxWidth - 1, parseInt(maxX));
-                    minY = Math.max(0, parseInt(minY));
-                    maxY = Math.min(maxHeight - 1, parseInt(maxY));
+                    minX = Math.max(0, Math.floor(minX));
+                    maxX = Math.min(maxWidth - 1, Math.floor(maxX));
+                    minY = Math.max(0, Math.floor(minY));
+                    maxY = Math.min(maxHeight - 1, Math.floor(maxY));
 
                     return [minX, maxX, minY, maxY];
                 }
@@ -580,10 +609,10 @@
                 updateRotation(mouseMovementX, mouseMovementY) {
                     let q = Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity);
 
-                    let right = this.rotation.rotateVector(Vector3.right);
+                    let right = camera.rotation.rotateVector(Vector3.right);
                     q = Quaternion.multiply(q, Quaternion.buildQuaternionAxisAngle(right, -mouseMovementY * this.sensitivity));
 
-                    this.rotation = Quaternion.multiply(q, this.rotation);
+                    camera.rotation = Quaternion.multiply(q, camera.rotation);
                 }
 
                 updateMovement(dt, keyStates) {
@@ -612,12 +641,12 @@
 
                 setForward(newForward) {
                     let oldForward = this.getForward();
-                    let yawRadian = Vector3.getRadianBetween(oldForward, newForward, Vector3.up);
+                    let yawRadian = Vector3.getRadianBetweenWithAxis(oldForward, newForward, Vector3.up);
                     let q = Quaternion.buildQuaternionAxisAngleRadian(Vector3.up, yawRadian);
                     this.rotation = Quaternion.multiply(q, this.rotation);
 
                     let cameraRight = this.rotation.rotateVector(Vector3.right);
-                    let pitchRadian = Vector3.getRadianBetween(oldForward, newForward, cameraRight);
+                    let pitchRadian = Vector3.getRadianBetweenWithAxis(oldForward, newForward, cameraRight);
                     q = Quaternion.buildQuaternionAxisAngleRadian(cameraRight, pitchRadian);
                     this.rotation = Quaternion.multiply(q, this.rotation);
                 }
@@ -871,26 +900,14 @@
 
                 setForward(newForward) {
                     let oldForward = this.getForward();
-                    let yawRadian = Vector3.getRadianBetween(oldForward, newForward, Vector3.up);
+                    let yawRadian = Vector3.getRadianBetweenWithAxis(oldForward, newForward, Vector3.up);
                     let q = Quaternion.buildQuaternionAxisAngleRadian(Vector3.up, yawRadian);
                     this.rotation = Quaternion.multiply(q, this.rotation);
 
                     let cameraRight = this.rotation.rotateVector(Vector3.right);
-                    let pitchRadian = Vector3.getRadianBetween(oldForward, newForward, cameraRight);
+                    let pitchRadian = Vector3.getRadianBetweenWithAxis(oldForward, newForward, cameraRight);
                     q = Quaternion.buildQuaternionAxisAngleRadian(cameraRight, pitchRadian);
                     this.rotation = Quaternion.multiply(q, this.rotation);
-
-                    // let [axis, angle] = Vector3.getAxisAndAngleRadianBetween(oldForward, newForward);
-                    // axis = Vector3.mul(axis, -1);
-
-                    // this.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngleRadian(axis, angle), this.rotation);
-
-                    // console.log(oldForward, newForward, this.getForward());
-
-                    // let cameraUp = this.rotation.rotateVector(Vector3.up);
-                    // [axis, angle] = Vector3.getAxisAndAngleRadianBetween(cameraUp, Vector3.up);
-                    // axis = Vector3.mul(axis, -1);
-                    // this.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngleRadian(axis, angle), this.rotation);
                 }
 
                 getTransformedTriangles() {
@@ -974,14 +991,19 @@
                 clearScreen() {
                     for (let i = 0; i < this.screenBuffer.length; i++) {
                         for (let j = 0; j < this.screenBuffer[i].length; j++) {
-                            this.screenBuffer[i][j] = new Color(240, 240, 240);
+                            this.screenBuffer[i][j].r = 240;
+                            this.screenBuffer[i][j].g = 240;
+                            this.screenBuffer[i][j].b = 240;
                             this.depthBuffer[i][j] = Infinity;
                         }
                     }
                 }
-                placePixel(pos, color) {
-                    if (pos[1] >= 0 && pos[1] < canvas.height && pos[0] >= 0 && pos[0] < canvas.width)
-                        this.screenBuffer[parseInt(pos[1])][parseInt(pos[0])] = color;
+                placePixel(pos, r, g, b) {
+                    if (pos[1] >= 0 && pos[1] < canvas.height && pos[0] >= 0 && pos[0] < canvas.width) {
+                        this.screenBuffer[pos[1]][pos[0]].r = r;
+                        this.screenBuffer[pos[1]][pos[0]].g = g;
+                        this.screenBuffer[pos[1]][pos[0]].b = b;
+                    }
                 }
 
                 rasterizeClipSpaceTriangle(tris) {
@@ -1035,11 +1057,9 @@
 
                                 this.placePixel(
                                     [x, y],
-                                    new Color(
-                                        Math.min(255, texColor.r * lightIntensity),
-                                        Math.min(255, texColor.g * lightIntensity),
-                                        Math.min(255, texColor.b * lightIntensity),
-                                    ),
+                                    Math.min(255, texColor.r * lightIntensity),
+                                    Math.min(255, texColor.g * lightIntensity),
+                                    Math.min(255, texColor.b * lightIntensity),
                                 );
                             }
                         }
@@ -1136,12 +1156,15 @@
                 setPos(pos) {
                     this.pos = pos;
                     this.quad.pos = pos;
-                    this.topCube.pos = Vector3.add(pos, Vector3.mul(Vector3.up, this.scale.y / 2));
-                    this.bottomCube.pos = Vector3.add(pos, Vector3.mul(Vector3.down, this.scale.y / 2));
-                    let portalLeft = this.rotation.rotateVector(Vector3.left);
-                    this.leftCube.pos = Vector3.add(pos, Vector3.mul(portalLeft, this.scale.x / 2));
+
+                    let portalUp = this.rotation.rotateVector(Vector3.up);
+                    this.topCube.pos = Vector3.add(pos, Vector3.mul(portalUp, this.scale.y / 2));
+                    this.bottomCube.pos = Vector3.add(pos, Vector3.mul(portalUp, -this.scale.y / 2));
+
                     let portalRight = this.rotation.rotateVector(Vector3.right);
+                    this.leftCube.pos = Vector3.add(pos, Vector3.mul(portalRight, -this.scale.x / 2));
                     this.rightCube.pos = Vector3.add(pos, Vector3.mul(portalRight, this.scale.x / 2));
+
                     let portalBack = this.rotation.rotateVector(Vector3.back);
                     this.backCube.pos = Vector3.add(pos, Vector3.mul(portalBack, 0.15));
                 }
@@ -1158,15 +1181,18 @@
                 }
 
                 calculateCameraTransform(playerCameraPos, playerCameraRotation) {
+                    let otherPortalUp = this.otherPortal.rotation.rotateVector(Vector3.up).normalize();
+                    let rotate180 = Quaternion.buildQuaternionAxisAngle(otherPortalUp, 180);
+
                     let worldPlayerPosRelativeToThisPortal = Vector3.sub(playerCameraPos, this.pos);
                     let localPlayerPosRelativeToThisPortal = this.rotation.inverseRotateVector(worldPlayerPosRelativeToThisPortal);
-                    let playerPosRelativeToOtherPortal = this.otherPortal.rotation.rotateVector(localPlayerPosRelativeToThisPortal);
-                    let rotate180 = Quaternion.buildQuaternionAxisAngle(Vector3.up, 180);
-                    let cameraPos = Vector3.add(this.otherPortal.pos, rotate180.rotateVector(playerPosRelativeToOtherPortal));
+                    let worldPlayerPosRelativeToOtherPortal = this.otherPortal.rotation.rotateVector(localPlayerPosRelativeToThisPortal);
+                    let cameraPos = Vector3.add(this.otherPortal.pos, rotate180.rotateVector(worldPlayerPosRelativeToOtherPortal));
 
-                    let inverseRotation = this.rotation.conjugate();
-                    let localPlayerRotation = Quaternion.multiply(inverseRotation, playerCameraRotation);
-                    let cameraRotation = Quaternion.multiply(Quaternion.multiply(this.otherPortal.rotation, rotate180), localPlayerRotation);
+                    let thisPortalInverseRotation = this.rotation.conjugate();
+                    let localPlayerRotRelativeToThisPortal = Quaternion.multiply(thisPortalInverseRotation, playerCameraRotation);
+                    let worldPlayerRotRelativeToOtherPortal = Quaternion.multiply(this.otherPortal.rotation, localPlayerRotRelativeToThisPortal);
+                    let cameraRotation = Quaternion.multiply(rotate180, worldPlayerRotRelativeToOtherPortal);
 
                     return [cameraPos, cameraRotation];
                 }
@@ -1190,16 +1216,7 @@
                             Math.abs(localPlayerPosRelativeToThisPortal.x) <= this.scale.x / 2 &&
                             Math.abs(localPlayerPosRelativeToThisPortal.y) <= this.scale.y / 2
                         ) {
-                            let worldPlayerPosRelativeToThisPortal = Vector3.sub(playerCameraPos, this.pos);
-                            let localPlayerPosRelativeToThisPortal = this.rotation.inverseRotateVector(worldPlayerPosRelativeToThisPortal);
-                            let playerPosRelativeToOtherPortal = this.otherPortal.rotation.rotateVector(localPlayerPosRelativeToThisPortal);
-                            let rotate180 = Quaternion.buildQuaternionAxisAngle(Vector3.up, 180);
-                            let newPlayerPos = Vector3.add(this.otherPortal.pos, rotate180.rotateVector(playerPosRelativeToOtherPortal));
-
-                            let inverseRotation = this.rotation.conjugate();
-                            let localPlayerRotation = Quaternion.multiply(inverseRotation, playerCameraRotation);
-                            let newPlayerRotation = Quaternion.multiply(Quaternion.multiply(this.otherPortal.rotation, rotate180), localPlayerRotation);
-
+                            let [newPlayerPos, newPlayerRotation] = this.calculateCameraTransform(playerCameraPos, playerCameraRotation);
                             this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
                             return [newPlayerPos, newPlayerRotation];
                         }
@@ -1233,8 +1250,6 @@
                                 clippedTri.mulMat4x4(viewMatPortal);
                                 visibleTris.push(...clippedTri.clipAgainstPlane(nearPlane));
                             }
-                            // tri.mulMat4x4(viewMatPortal);
-                            // visibleTris.push(...tri.clipAgainstPlane(nearPlane));
                         }
                     }
 
@@ -1293,10 +1308,12 @@
                 //- P4 là limit, render đen
                 recursivePortalOperation(playerCameraPos, playerCameraRotation) {
                     let cameraTransforms = [[playerCameraPos, playerCameraRotation]];
-                    for (let i = 1; i < portalLimit; i++) {
+                    for (let i = 1; i <= portalLimit; i++) {
                         cameraTransforms.push(this.calculateCameraTransform(cameraTransforms[i - 1][0], cameraTransforms[i - 1][1]));
                     }
 
+                    this.camera.pos = cameraTransforms[portalLimit][0];
+                    this.camera.rotation = cameraTransforms[portalLimit][1];
                     let clipSpaceTris = this.runRenderPipeline(objectTris, null);
                     this.updateTextureForQuad(clipSpaceTris);
                     for (let i = portalLimit - 1; i >= 1; i--) {
@@ -1328,6 +1345,12 @@
                 new Plane(Vector3.left, new Vector3(1, 0, 0)),
             ];
             let keyStates = [];
+
+            let cameraRotLerpStart = camera.rotation;
+            let cameraRotLerpEnd = camera.rotation;
+            let cameraRotLerpDuration = 0.2;
+            let cameraRotLerpCount = 0;
+            let cameraRotLerpRate = 4;
 
             const fpsInfo = document.getElementById("fps");
             let frames = 0,
@@ -1364,8 +1387,16 @@
             );
             let cubeMesh = new Cube();
             let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
-            let testCube = new GameObject(new Vector3(0, 3, 10), Vector3.zero, new Vector3(1, 1, 1), new Color(0, 255, 0), 
-                new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), grassTexture);
+            let testCube = new GameObject(
+                new Vector3(0, 3, 10),
+                Vector3.zero,
+                new Vector3(1, 1, 1),
+                new Color(0, 255, 0),
+                new ObjMesh(
+                    "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj",
+                ),
+                grassTexture,
+            );
 
             let objectTris = [];
 
@@ -1378,9 +1409,34 @@
             portal2.setOtherPortal(portal1);
             let portalLimit = 4;
             let controllingPortal = 0;
+            let portalRotateSpeed = 60;
 
             let lastTime = performance.now();
             let dt = 0;
+
+            function updateCameraTransform(newPlayerPos, newPlayerRotation) {
+                camera.pos = newPlayerPos;
+                camera.rotation = newPlayerRotation;
+
+                // tạm thời dùng while để khỏi tìm nguồn sai số
+                let newPlayerRight = camera.rotation.rotateVector(Vector3.right);
+                newPlayerRight.normalize();
+                while (Math.abs(Vector3.dot(newPlayerRight, Vector3.up)) > 0.001) {
+                    let axis = Vector3.cross(Vector3.up, newPlayerRight);
+                    axis.normalize();
+                    let correctPlayerRight = Vector3.cross(axis, Vector3.up);
+                    correctPlayerRight.normalize();
+                    let angle = Vector3.getRadianBetween(newPlayerRight, correctPlayerRight);
+                    let rotation = Quaternion.buildQuaternionAxisAngleRadian(axis, angle);
+                    newPlayerRotation = Quaternion.multiply(rotation, newPlayerRotation);
+                    newPlayerRight = newPlayerRotation.rotateVector(Vector3.right);
+                    newPlayerRight.normalize();
+                }
+
+                cameraRotLerpStart = camera.rotation.clone();
+                cameraRotLerpEnd = newPlayerRotation;
+                cameraRotLerpCount = cameraRotLerpDuration;
+            }
 
             function update(time = performance.now()) {
                 dt = (time - lastTime) / 1000;
@@ -1423,13 +1479,17 @@
                     if (controllingPortal == 0) portal1Pos = Vector3.sub(portal1Pos, Vector3.mul(Vector3.up, dt * 4));
                     else portal2Pos = Vector3.sub(portal2Pos, Vector3.mul(Vector3.up, dt * 4));
                 }
+                if (keyStates["b"]) {
+                    if (controllingPortal == 0) portal1.rotate(dt * portalRotateSpeed, 0, 0);
+                    else portal2.rotate(dt * portalRotateSpeed, 0, 0);
+                }
                 if (keyStates["n"]) {
-                    if (controllingPortal == 0) portal1.rotate(0, dt * 40, 0);
-                    else portal2.rotate(0, dt * 40, 0);
+                    if (controllingPortal == 0) portal1.rotate(0, dt * portalRotateSpeed, 0);
+                    else portal2.rotate(0, dt * portalRotateSpeed, 0);
                 }
                 if (keyStates["m"]) {
-                    if (controllingPortal == 0) portal1.rotate(0, -dt * 40, 0);
-                    else portal2.rotate(0, -dt * 40, 0);
+                    if (controllingPortal == 0) portal1.rotate(0, 0, dt * portalRotateSpeed);
+                    else portal2.rotate(0, 0, dt * portalRotateSpeed);
                 }
 
                 rasterizer.clearScreen();
@@ -1444,13 +1504,23 @@
                 let [newPlayerPos, newPlayerRotation] = portal1.detectTeleportPlayer(camera.pos, camera.rotation);
 
                 if (newPlayerPos != Vector3.zero) {
-                    camera.pos = newPlayerPos;
-                    camera.rotation = newPlayerRotation;
+                    updateCameraTransform(newPlayerPos, newPlayerRotation);
                 } else {
                     [newPlayerPos, newPlayerRotation] = portal2.detectTeleportPlayer(camera.pos, camera.rotation);
                     if (newPlayerPos != Vector3.zero) {
-                        camera.pos = newPlayerPos;
-                        camera.rotation = newPlayerRotation;
+                        updateCameraTransform(newPlayerPos, newPlayerRotation);
+                    }
+                }
+
+                if (cameraRotLerpCount > 0) {
+                    camera.rotation = Quaternion.lerp(
+                        cameraRotLerpStart,
+                        cameraRotLerpEnd,
+                        (cameraRotLerpDuration - cameraRotLerpCount) / cameraRotLerpDuration,
+                    );
+                    cameraRotLerpCount -= dt;
+                    if (cameraRotLerpCount <= 0) {
+                        camera.rotation = cameraRotLerpEnd;
                     }
                 }
 
@@ -1530,7 +1600,7 @@
 
             canvas.addEventListener("mousemove", (e) => {
                 if (document.pointerLockElement === canvas) {
-                    camera.updateRotation(e.movementX, e.movementY);
+                    if (cameraRotLerpCount <= 0) camera.updateRotation(e.movementX, e.movementY);
                 }
             });
 
