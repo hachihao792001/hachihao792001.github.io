@@ -15,29 +15,32 @@
             <span id="dirIntensityText" class="slider-value">1.5</span>
         </div>
         <div>
-            Portal limit:
-            <input id="portalLimit" value="4" />
+            Portal recursion limit:
+            <input id="portalLimit" value="6" />
         </div>
         <div>
             Controlling object:
             <span id="controllingObject">Orange portal</span>
         </div>
-        <table align="center">
-            <tr>
-                <th>
-                    <span style="display: inline">
-                        <p style="font-weight: 100">What orange portal is showing<br />(what blue camera is seeing):</p>
-                        <canvas id="portal1Canvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
-                    </span>
-                </th>
-                <th>
-                    <span style="display: inline">
-                        <p style="font-weight: 100">What blue portal is showing<br />(what orange camera is seeing):</p>
-                        <canvas id="portal2Canvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
-                    </span>
-                </th>
-            </tr>
-        </table>
+        <div style="margin-top: 30px">
+            W, A, S, D to move<br />
+            Space, shift to fly up and down<br />
+            Mouse to look around<br /><br />
+            P to change controlling object<br />
+            I, K, J, L to move controlling object.<br />
+            U, O to move controlling object up and down<br />
+            B, N, M to rotate controlling object around the X, Y, Z world axis<br /><br />
+            G to toggle gravity for grass block<br />
+            F to reset grass block position and velocity
+        </div>
+        <div style="position: fixed; top: 10px; left: 20px">
+            <p style="font-weight: 100">What orange portal is showing<br />(what blue camera is seeing):</p>
+            <canvas id="portal1Canvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
+        </div>
+        <div style="position: fixed; top: 10px; right: 20px">
+            <p style="font-weight: 100">What blue portal is showing<br />(what orange camera is seeing):</p>
+            <canvas id="portal2Canvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
+        </div>
 
         <script>
             class Vector2 {
@@ -973,6 +976,7 @@
                     this.mesh = mesh;
                     this.texture = texture;
                     this.currentTransformedTris = [];
+                    this.velocity = Vector3.zero.clone();
                 }
 
                 rotate(eulerX, eulerY, eulerZ) {
@@ -1032,6 +1036,12 @@
                     this.g = g;
                     this.b = b;
                 }
+
+                updateColor(r, g, b) {
+                    this.r = r;
+                    this.g = g;
+                    this.b = b;
+                }
             }
 
             class Texture {
@@ -1084,18 +1094,14 @@
                 clearScreen() {
                     for (let i = 0; i < this.screenBuffer.length; i++) {
                         for (let j = 0; j < this.screenBuffer[i].length; j++) {
-                            this.screenBuffer[i][j].r = 240;
-                            this.screenBuffer[i][j].g = 240;
-                            this.screenBuffer[i][j].b = 240;
+                            this.screenBuffer[i][j].updateColor(240, 240, 240);
                             this.depthBuffer[i][j] = Infinity;
                         }
                     }
                 }
                 placePixel(pos, r, g, b) {
                     if (pos[1] >= 0 && pos[1] < canvas.height && pos[0] >= 0 && pos[0] < canvas.width) {
-                        this.screenBuffer[pos[1]][pos[0]].r = r;
-                        this.screenBuffer[pos[1]][pos[0]].g = g;
-                        this.screenBuffer[pos[1]][pos[0]].b = b;
+                        this.screenBuffer[pos[1]][pos[0]].updateColor(r, g, b);
                     }
                 }
 
@@ -1193,7 +1199,7 @@
                     this.rasterizer = new Rasterizer(this);
                     let quadMesh = new Quad(this);
                     this.quad = new GameObject(pos, eulerAngles, scale, color, quadMesh, null);
-                    this.camera = new Camera(pos, eulerAngles, 6, 0.2);
+                    this.camera = new Camera(pos, eulerAngles, 8, 0.2);
 
                     this.lastFramePlayerInFrontOfPortal = false;
                     this.lastFrameGameObjectInFrontOfPortal = [];
@@ -1260,7 +1266,7 @@
                     this.rightCube.pos = Vector3.add(pos, Vector3.mul(portalRight, this.scale.x / 2));
 
                     let portalBack = this.rotation.rotateVector(Vector3.back);
-                    this.backCube.pos = Vector3.add(pos, Vector3.mul(portalBack, 0.15));
+                    this.backCube.pos = Vector3.add(pos, Vector3.mul(portalBack, 0.05));
                 }
 
                 rotate(eulerX, eulerY, eulerZ) {
@@ -1272,6 +1278,13 @@
                     this.leftCube.rotate(eulerX, eulerY, eulerZ);
                     this.rightCube.rotate(eulerX, eulerY, eulerZ);
                     this.backCube.rotate(eulerX, eulerY, eulerZ);
+                }
+
+                isPointDirectlyInFrontOrBackOfPortal(point) {
+                    let worldPointRelativeToThisPortal = Vector3.sub(point, this.pos);
+                    let localPointRelativeToThisPortal = this.rotation.inverseRotateVector(worldPointRelativeToThisPortal);
+
+                    return Math.abs(localPointRelativeToThisPortal.x) <= this.scale.x / 2 && Math.abs(localPointRelativeToThisPortal.y) <= this.scale.y / 2;
                 }
 
                 calculateTransformToOtherPortalTransform(position, rotation) {
@@ -1289,6 +1302,20 @@
                     let newRotation = Quaternion.multiply(rotate180, worldRotationRelativeToOtherPortal);
 
                     return [newPos, newRotation];
+                }
+
+                createCloneObjectOnOtherPortal(gameObject) {
+                    let cloneObjectTransform = this.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
+                    let cloneObject = new GameObject(
+                        cloneObjectTransform[0],
+                        Vector3.forward,
+                        gameObject.scale.clone(),
+                        gameObject.color,
+                        gameObject.mesh,
+                        gameObject.texture,
+                    );
+                    cloneObject.rotation = cloneObjectTransform[1];
+                    return cloneObject;
                 }
 
                 updatePortalCameraBaseOnPlayer(playerCameraPos, playerCameraRotation) {
@@ -1315,55 +1342,33 @@
                 }
 
                 getPlayerTeleportedTransformIfGoThroughPortal(playerCameraPos, playerCameraRotation) {
-                    let portalForward = this.rotation.rotateVector(Vector3.forward);
-                    let portalPlane = new Plane(portalForward, this.pos);
-                    let isPlayerInFrontOfPortal = portalPlane.isPointInFrontOfPlane(playerCameraPos);
+                    let isPlayerInFrontOfPortal = this.getPlane().isPointInFrontOfPlane(playerCameraPos);
 
-                    if (this.lastFramePlayerInFrontOfPortal && !isPlayerInFrontOfPortal) {
-                        let worldPlayerPosRelativeToThisPortal = Vector3.sub(playerCameraPos, this.pos);
-                        let localPlayerPosRelativeToThisPortal = this.rotation.inverseRotateVector(worldPlayerPosRelativeToThisPortal);
-
-                        if (
-                            Math.abs(localPlayerPosRelativeToThisPortal.x) <= this.scale.x / 2 &&
-                            Math.abs(localPlayerPosRelativeToThisPortal.y) <= this.scale.y / 2
-                        ) {
-                            let [newPlayerPos, newPlayerRotation] = this.calculateTransformToOtherPortalTransform(playerCameraPos, playerCameraRotation);
-                            this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
-                            return [newPlayerPos, newPlayerRotation];
-                        }
-
+                    if (this.lastFramePlayerInFrontOfPortal && !isPlayerInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(playerCameraPos)) {
+                        this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
+                        let [newPlayerPos, newPlayerRotation] = this.calculateTransformToOtherPortalTransform(playerCameraPos, playerCameraRotation);
+                        return [newPlayerPos, newPlayerRotation];
+                    } else {
                         this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
                         return null;
                     }
-
-                    this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
-                    return null;
                 }
 
                 getGameObjectTeleportedTransformIfGoThroughPortal(gameObject) {
-                    let portalForward = this.rotation.rotateVector(Vector3.forward);
-                    let portalPlane = new Plane(portalForward, this.pos);
-                    let isGameObjectInFrontOfPortal = portalPlane.isPointInFrontOfPlane(gameObject.pos);
+                    let isGameObjectInFrontOfPortal = this.getPlane().isPointInFrontOfPlane(gameObject.pos);
 
-                    if (this.isGameObjectLastFrameInFrontOfPortal(gameObject.id) && !isGameObjectInFrontOfPortal) {
-                        let worldPlayerPosRelativeToThisPortal = Vector3.sub(gameObject.pos, this.pos);
-                        let localPlayerPosRelativeToThisPortal = this.rotation.inverseRotateVector(worldPlayerPosRelativeToThisPortal);
-
-                        if (
-                            Math.abs(localPlayerPosRelativeToThisPortal.x) <= this.scale.x / 2 &&
-                            Math.abs(localPlayerPosRelativeToThisPortal.y) <= this.scale.y / 2
-                        ) {
-                            let [newPlayerPos, newPlayerRotation] = this.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
-                            this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
-                            return [newPlayerPos, newPlayerRotation];
-                        }
-
+                    if (
+                        this.isGameObjectLastFrameInFrontOfPortal(gameObject.id) &&
+                        !isGameObjectInFrontOfPortal &&
+                        this.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos)
+                    ) {
+                        this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
+                        let [newPos, newRot] = this.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
+                        return [newPos, newRot];
+                    } else {
                         this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
                         return null;
                     }
-
-                    this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
-                    return null;
                 }
 
                 runRenderPipeline(objectTris, textureForPortal) {
@@ -1401,16 +1406,15 @@
                 }
 
                 updateTextureForQuad(clipSpaceTris) {
-                    for (let y = 0; y < canvas.height; y++) {
-                        for (let x = 0; x < canvas.width; x++) {
-                            let color = new Color(0, 0, 0);
-                            const texIndex = (y * canvas.width + x) * 4;
-                            this.renderTexture.pixels[texIndex] = color.r;
-                            this.renderTexture.pixels[texIndex + 1] = color.g;
-                            this.renderTexture.pixels[texIndex + 2] = color.b;
-                            this.renderTexture.pixels[texIndex + 3] = 255;
-                        }
-                    }
+                    // for (let y = 0; y < canvas.height; y++) {
+                    //     for (let x = 0; x < canvas.width; x++) {
+                    //         const texIndex = (y * canvas.width + x) * 4;
+                    //         this.renderTexture.pixels[texIndex] = 0;
+                    //         this.renderTexture.pixels[texIndex + 1] = 0;
+                    //         this.renderTexture.pixels[texIndex + 2] = 0;
+                    //         this.renderTexture.pixels[texIndex + 3] = 255;
+                    //     }
+                    // }
 
                     for (let tri of clipSpaceTris) {
                         if (!tri.portal) continue;
@@ -1438,13 +1442,52 @@
                     this.quad.texture = this.renderTexture;
                 }
 
+                isQuadVisible(playerCamera) {
+                    let viewMatPortal = playerCamera.getViewMatrix();
+                    let quadTris = [];
+                    quadTris.push(...this.quad.getTransformedTriangles());
+
+                    let visibleTris = [];
+                    for (let tri of quadTris) {
+                        if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), playerCamera.pos)) < 0) {
+                            tri.mulMat4x4(viewMatPortal);
+                            visibleTris.push(...tri.clipAgainstPlane(nearPlane));
+                        }
+                    }
+
+                    for (let tri of visibleTris) {
+                        tri.mulMat4x4(projectionMatrix);
+                        tri.perspectiveDivide();
+
+                        let vertices = tri.vertices;
+                        for (let i = 0; i < vertices.length; i++) {
+                            vertices[i] = new Vector3(
+                                vertices[i].x * (canvas.width / 2) + canvas.width / 2,
+                                -vertices[i].y * (canvas.height / 2) + canvas.height / 2,
+                                vertices[i].z,
+                            );
+                        }
+
+                        const bbox = tri.boundingBox();
+                        for (let y = bbox[2]; y <= bbox[3]; y++) {
+                            for (let x = bbox[0]; x <= bbox[1]; x++) {
+                                if (tri.isPointInTriangle([x, y])) return true;
+                            }
+                        }
+                    }
+
+                    return false;
+                }
+
                 //- c0 (người chơi) thấy P1
                 //- P1 cần render, tạo c1 từ c0, hỏi c1 thấy gì, c1 thấy P1 (nhưng nhỏ hơn), gọi là P2
                 //- P2 cần render, tạo c2 từ c1, hỏi c2 thấy gì, c2 thấy P2 (nhưng nhỏ hơn), gọi là P3
                 //- P3 cần render, tạo c3 từ c2, hỏi c3 thấy gì, c3 thấy P3 (nhưng nhỏ hơn), gọi là P4
                 //- P4 là limit, render đen
-                recursivePortalOperation(playerCameraPos, playerCameraRotation) {
-                    let cameraTransforms = [[playerCameraPos, playerCameraRotation]];
+                recursivePortalOperation(playerCamera) {
+                    if (!this.isQuadVisible(playerCamera)) return;
+
+                    let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
                     for (let i = 1; i <= portalLimit; i++) {
                         cameraTransforms.push(this.calculateTransformToOtherPortalTransform(cameraTransforms[i - 1][0], cameraTransforms[i - 1][1]));
                     }
@@ -1499,6 +1542,8 @@
             const portalLimitInput = document.getElementById("portalLimit");
             const controllingObjectText = document.getElementById("controllingObject");
 
+            let useGravity = false;
+
             let dirLightDefaultDir = new Vector3(-1, -1, -1);
             let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
 
@@ -1524,9 +1569,8 @@
             );
             let cubeMesh = new Cube();
             let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
-            let testCubePos = new Vector3(0, 3, 0);
             let testCube = new GameObject(
-                testCubePos,
+                new Vector3(0, 7, 0),
                 Vector3.zero,
                 new Vector3(1, 1, 1),
                 new Color(0, 255, 0),
@@ -1535,20 +1579,24 @@
                 ),
                 grassTexture,
             );
-            testCube.name = "Test cube";
 
             let objectTris = [];
 
             let quadMesh = new Quad();
-            let portal1Pos = new Vector3(-5, 3.6, 0);
-            let portal2Pos = new Vector3(5, 3.6, 0);
-            let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, -90, 0), new Vector3(3, 6, 1), new Color(255, 201, 94));
-            let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 90, 0), new Vector3(3, 6, 1), new Color(17, 155, 255), quadMesh, null);
+            let portal1Pos = new Vector3(0, 10, 0);
+            let portal2Pos = new Vector3(0, 4, 0);
+            let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(-90, 0, 0), new Vector3(3, 6, 1), new Color(255, 201, 94));
+            let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(90, 0, 0), new Vector3(3, 6, 1), new Color(17, 155, 255), quadMesh, null);
+            // let portal1Pos = new Vector3(-5, 3.5, 0);
+            // let portal2Pos = new Vector3(5, 3.5, 0);
+            // let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, -90, 0), new Vector3(3, 6, 1), new Color(255, 201, 94));
+            // let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 90, 0), new Vector3(3, 6, 1), new Color(17, 155, 255), quadMesh, null);
             portal1.setOtherPortal(portal2);
             portal2.setOtherPortal(portal1);
-            let portalLimit = 4;
+            let portalLimit = 6;
             let controllingObject = 0;
-            let portalRotateSpeed = 60;
+            let controllingMoveSpeed = 6;
+            let controllingRotateSpeed = 60;
             let canInteractWithPortalGameObjects = [testCube];
 
             let lastTime = performance.now();
@@ -1578,48 +1626,61 @@
                         controllingObjectText.innerText = "Blue portal";
                         break;
                     case 2:
-                        controllingPos = testCubePos;
+                        controllingPos = testCube.pos;
                         controllingObjectText.innerText = "Test cube";
                         break;
                 }
 
                 let posDelta = Vector3.zero;
                 if (keyStates["i"]) {
-                    posDelta = Vector3.mul(Vector3.forward, dt * 4);
+                    posDelta = Vector3.add(posDelta, Vector3.forward);
                 }
                 if (keyStates["k"]) {
-                    posDelta = Vector3.mul(Vector3.back, dt * 4);
+                    posDelta = Vector3.add(posDelta, Vector3.back);
                 }
                 if (keyStates["j"]) {
-                    posDelta = Vector3.mul(Vector3.left, dt * 4);
+                    posDelta = Vector3.add(posDelta, Vector3.left);
                 }
                 if (keyStates["l"]) {
-                    posDelta = Vector3.mul(Vector3.right, dt * 4);
+                    posDelta = Vector3.add(posDelta, Vector3.right);
                 }
                 if (keyStates["u"]) {
-                    posDelta = Vector3.mul(Vector3.up, dt * 4);
+                    posDelta = Vector3.add(posDelta, Vector3.up);
                 }
                 if (keyStates["o"]) {
-                    posDelta = Vector3.mul(Vector3.down, dt * 4);
+                    posDelta = Vector3.add(posDelta, Vector3.down);
                 }
-                if (controllingObject == 2) {
-                    testCube.pos = Vector3.add(testCube.pos, posDelta);
-                } else {
+                if (posDelta != Vector3.zero) {
+                    posDelta.normalize();
+                    posDelta = Vector3.mul(posDelta, dt * controllingMoveSpeed);
+
                     let newPos = Vector3.add(controllingPos, posDelta);
                     controllingPos.x = newPos.x;
                     controllingPos.y = newPos.y;
                     controllingPos.z = newPos.z;
                 }
+                if (useGravity) {
+                    testCube.velocity = Vector3.add(testCube.velocity, Vector3.mul(Vector3.down, 9.8 * dt));
+                    if (testCube.velocity.magnitude() >= 50) {
+                        testCube.velocity = Vector3.mul(testCube.velocity.normalize(), 50);
+                    }
+                }
+                testCube.pos = Vector3.add(testCube.pos, Vector3.mul(testCube.velocity, dt));
+                // hardcoded, no collision yet
+                if (testCube.pos.y < 1.5) {
+                    testCube.pos.y = 1.5;
+                    testCube.velocity = Vector3.zero.clone();
+                }
 
                 let rotateEuler = Vector3.zero.clone();
                 if (keyStates["b"]) {
-                    rotateEuler.x = dt * portalRotateSpeed;
+                    rotateEuler.x = dt * controllingRotateSpeed;
                 }
                 if (keyStates["n"]) {
-                    rotateEuler.y = dt * portalRotateSpeed;
+                    rotateEuler.y = dt * controllingRotateSpeed;
                 }
                 if (keyStates["m"]) {
-                    rotateEuler.z = dt * portalRotateSpeed;
+                    rotateEuler.z = dt * controllingRotateSpeed;
                 }
                 if (!rotateEuler.equal(Vector3.zero)) {
                     switch (controllingObject) {
@@ -1644,6 +1705,8 @@
                 portal2.setPos(portal2Pos);
                 portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
 
+                // ---------------- Begin Portal teleport ----------------
+
                 let cameraTeleportedTransform = portal1.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
                 if (cameraTeleportedTransform != null) {
                     camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
@@ -1657,18 +1720,26 @@
                 for (let gameObject of canInteractWithPortalGameObjects) {
                     let gameObjectTeleportedTransform = portal1.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
                     if (gameObjectTeleportedTransform != null) {
-                        console.log("teleported by portal1");
+                        //console.log("frame", frameCount, "gameObject", gameObject.id, "teleported by portal 1");
                         gameObject.pos = gameObjectTeleportedTransform[0];
+                        let oldLocalVelocity = gameObject.rotation.inverseRotateVector(gameObject.velocity);
+                        let newWorldVelocity = gameObjectTeleportedTransform[1].rotateVector(oldLocalVelocity);
+                        gameObject.velocity = newWorldVelocity;
                         gameObject.rotation = gameObjectTeleportedTransform[1];
                     } else {
                         gameObjectTeleportedTransform = portal2.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
                         if (gameObjectTeleportedTransform != null) {
-                            console.log("teleported by portal2");
+                            //console.log("frame", frameCount, "gameObject", gameObject.id, "teleported by portal 2");
                             gameObject.pos = gameObjectTeleportedTransform[0];
+                            let oldLocalVelocity = gameObject.rotation.inverseRotateVector(gameObject.velocity);
+                            let newWorldVelocity = gameObjectTeleportedTransform[1].rotateVector(oldLocalVelocity);
+                            gameObject.velocity = newWorldVelocity;
                             gameObject.rotation = gameObjectTeleportedTransform[1];
                         }
                     }
                 }
+
+                // ---------------- End Portal teleport ----------------
 
                 if (cameraRotLerpCount > 0) {
                     camera.rotation = Quaternion.lerp(
@@ -1699,77 +1770,58 @@
                 objectTris.push(...portal2.bottomCube.getTransformedTriangles());
                 objectTris.push(...portal2.leftCube.getTransformedTriangles());
                 objectTris.push(...portal2.rightCube.getTransformedTriangles());
-
-                let clonedObjectTuples = [];
+                objectTris.push(...portal1.backCube.getTransformedTriangles());
+                objectTris.push(...portal2.backCube.getTransformedTriangles());
                 for (let gameObject of canInteractWithPortalGameObjects) {
-                    let portal1Plane = portal1.getPlane();
-                    if (Vector3.distance(gameObject.pos, portal1.pos) < 2 && gameObject.isIntersectingWithPlane(portal1Plane)) {
-                        let cloneObjectTransform = portal1.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
-                        let cloneObject = new GameObject(
-                            cloneObjectTransform[0],
-                            Vector3.forward,
-                            gameObject.scale.clone(),
-                            gameObject.color,
-                            gameObject.mesh,
-                            gameObject.texture,
-                        );
-                        cloneObject.rotation = cloneObjectTransform[1];
-                        clonedObjectTuples.push([gameObject, cloneObject, portal1]);
+                    gameObject.getTransformedTriangles();
+                }
+
+                let clonedObjectDatas = [];
+                let notclonedGameObjects = [];
+                for (let gameObject of canInteractWithPortalGameObjects) {
+                    if (portal1.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && gameObject.isIntersectingWithPlane(portal1.getPlane())) {
+                        let cloneObject = portal1.createCloneObjectOnOtherPortal(gameObject);
+                        clonedObjectDatas.push([gameObject, cloneObject, portal1]);
                     } else {
-                        let portal2Plane = portal2.getPlane();
-                        if (Vector3.distance(gameObject.pos, portal2.pos) < 2 && gameObject.isIntersectingWithPlane(portal2Plane)) {
-                            let cloneObjectTransform = portal2.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
-                            let cloneObject = new GameObject(
-                                cloneObjectTransform[0],
-                                Vector3.forward,
-                                gameObject.scale.clone(),
-                                gameObject.color,
-                                gameObject.mesh,
-                                gameObject.texture,
-                            );
-                            cloneObject.rotation = cloneObjectTransform[1];
-                            clonedObjectTuples.push([gameObject, cloneObject, portal2]);
+                        if (portal2.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && gameObject.isIntersectingWithPlane(portal2.getPlane())) {
+                            let cloneObject = portal2.createCloneObjectOnOtherPortal(gameObject);
+                            clonedObjectDatas.push([gameObject, cloneObject, portal2]);
+                        } else {
+                            notclonedGameObjects.push(gameObject);
                         }
                     }
                 }
 
-                if (clonedObjectTuples.length > 0) {
-                    for (let tuple of clonedObjectTuples) {
-                        let gameObject = tuple[0];
-                        let clonedGameObject = tuple[1];
-                        let portal = tuple[2];
-                        let portalPlane = portal.getPlane();
-                        let otherPortalPlane = portal.otherPortal.getPlane();
+                for (let data of clonedObjectDatas) {
+                    let gameObject = data[0];
+                    let clonedGameObject = data[1];
+                    let portal = data[2];
 
-                        let tris = gameObject.getTransformedTriangles();
-                        let clippedTris = [];
-                        for (let tri of tris) {
-                            clippedTris.push(...tri.clipAgainstPlane(portalPlane));
-                        }
+                    let portalPlane = portal.getPlane();
+                    let otherPortalPlane = portal.otherPortal.getPlane();
 
-                        tris = clonedGameObject.getTransformedTriangles();
-                        for (let tri of tris) {
-                            clippedTris.push(...tri.clipAgainstPlane(otherPortalPlane));
-                        }
-
-                        objectTris.push(...clippedTris);
+                    let tris = gameObject.currentTransformedTris;
+                    let clippedTris = [];
+                    for (let tri of tris) {
+                        clippedTris.push(...tri.clipAgainstPlane(portalPlane));
                     }
-                } else {
-                    for (let gameObject of canInteractWithPortalGameObjects) {
-                        objectTris.push(...gameObject.getTransformedTriangles());
+
+                    tris = clonedGameObject.getTransformedTriangles();
+                    for (let tri of tris) {
+                        clippedTris.push(...tri.clipAgainstPlane(otherPortalPlane));
                     }
+
+                    objectTris.push(...clippedTris);
+                }
+                for (let gameObject of notclonedGameObjects) {
+                    objectTris.push(...gameObject.currentTransformedTris);
                 }
 
-                portal1.recursivePortalOperation(camera.pos, camera.rotation);
-                portal2.recursivePortalOperation(camera.pos, camera.rotation);
-
-                let objectTris2 = [];
-                objectTris2.push(...objectTris);
-                objectTris2.push(...portal1.backCube.getTransformedTriangles());
-                objectTris2.push(...portal2.backCube.getTransformedTriangles());
+                portal1.recursivePortalOperation(camera);
+                portal2.recursivePortalOperation(camera);
 
                 let visibleTris = [];
-                for (let tri of objectTris2) {
+                for (let tri of objectTris) {
                     if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
                         tri.mulMat4x4(viewMat);
                         visibleTris.push(...tri.clipAgainstPlane(nearPlane));
@@ -1829,6 +1881,12 @@
                 if (e.key == "p") {
                     controllingObject++;
                     if (controllingObject > 2) controllingObject = 0;
+                } else if (e.key == "g") {
+                    useGravity = !useGravity;
+                } else if (e.key == "f") {
+                    useGravity = false;
+                    testCube.velocity = Vector3.zero.clone();
+                    testCube.pos = new Vector3(0, 7, 0);
                 }
             });
         </script>
