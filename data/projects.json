@@ -60,6 +60,26 @@
     "html": "projects/mediapipe-gyro.html"
   },
   {
+    "title": "3D Rendering Engine with Point light and Shadows in pure HTML canvas",
+    "image": "3dengine",
+    "url": "/graphics3D/htmlPreviews/htmlPreview34.html",
+    "source": "",
+    "description": "A 3D rendering engine simulation with point lighting and shadow effects. This is the result of my 12 blogs about 3D rendering engine development, which you can find in the blogs section.",
+    "type": "Personal",
+    "technology": "JavaScript, HTML5 Canvas",
+    "html": "projects/3dengine.html"
+  },
+  {
+    "title": "Portal mechanic in my 3D HTML Canvas Rendering Engine",
+    "image": "portalhtml",
+    "url": "/interactives/portal.html",
+    "source": "",
+    "description": "The 3D rendering engine above with fully working portal mechanic.",
+    "type": "Personal",
+    "technology": "JavaScript, HTML5 Canvas",
+    "html": "projects/portalproject.html"
+  },
+  {
     "title": "My CatPots by MaxSRarity",
     "image": "mycatpots",
     "url": "https://play.google.com/store/apps/details?id=com.shinart.planya&hl=vi&gl=US",
