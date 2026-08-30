@@ -1,0 +1,56 @@
+<!--
+    Custom card content for the "Zombie Shoot Out: Offline Game by VNG GAME STUDIOS" project.
+
+    Same contract as projects/dead-target.html: it is picked up through the "html" field
+    of the entry in data/projects.json and injected inside the .project-item card, so this
+    file is a fragment and its paths are relative to index.html. The "type" and
+    "technology" fields of the JSON entry still drive the filter toolbar, keep them in sync.
+-->
+
+<a class="project-thumb" href="https://play.google.com/store/apps/details?id=com.apocalypse.zombie.games"
+    target="_blank" rel="noopener noreferrer" tabindex="-1" aria-hidden="true">
+    <img src="images/zombieshootout.png" alt="" width="60" height="60" loading="lazy" decoding="async">
+</a>
+<div class="project-item-content">
+    <h3>
+        <a href="https://play.google.com/store/apps/details?id=com.apocalypse.zombie.games" target="_blank"
+            rel="noopener noreferrer">
+            Zombie Shoot Out: Offline Game by VNG GAME STUDIOS<span class="visually-hidden"> (opens in a new tab)</span>
+        </a>
+    </h3>
+    <div class="project-meta">
+        <span class="tag tag--brand">
+            <span class="tag-dot" aria-hidden="true"></span>Contributed
+        </span>
+        <span class="tag tag--tech">Unity, C#, PlayFab</span>
+        <span class="tag">2026 &ndash; now</span>
+    </div>
+    <p>
+        The game I'm currently on at Madpoly studio - VNG Corporation, and the one I was assigned to right after
+        conscription.
+    </p>
+    <div class="project-highlights">
+        <h4>What I shipped</h4>
+        <ul>
+            <li>
+                <strong>Team system:</strong> Manage player team (group) with Playfab. Implement Team-related rank-based LiveOps events: Team Exploration, Team Battle and
+                Team Tournament.
+            </li>
+            <li>
+                <strong>Event V2:</strong> Rework the entire time framework for every old and new LiveOps events, handling old to new conversion so a new event
+                only starts once the previous one (old version) has finished and no one loses progress mid-run. Built six new events: Rescue Rush, Jeep Racing, Vaccine Formula, Supply Drop, Virus
+                Trace, and Glory Showdown.
+            </li>
+            <li>
+                <strong>Facebook:</strong> Connecting and disconnecting an account, use Playfab to link Facebook account to in-game data, get friend lists and their in-game data,
+                    inviting friends into the game through Messenger, and sharing a win or an achievement on Facebook. I actually have written a blog post about this one, check it out <a href="../blogs/unity_facebook/unity-facebook-social-features.html">here</a>.
+            </li>
+            <li>
+                <strong>Friends system:</strong> Friends leaderboard, send and accept/deny friend requests, suggest friends based on mission progress, last online. Also use Playfab.
+            </li>
+            <li>
+                <strong>Google Play Achievements</strong> on Android.
+            </li>
+        </ul>
+    </div>
+</div>

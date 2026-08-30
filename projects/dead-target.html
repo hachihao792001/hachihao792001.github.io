@@ -1,16 +1,3 @@
-<!--
-    Custom card content for the "DEAD TARGET: Zombie Games 3D by VNG GAME STUDIOS" project.
-
-    It is picked up through the "html" field of the entry in data/projects.json and
-    injected inside the .project-item card by js/index.js, so this file is only a
-    fragment (no <html>/<head>/<body>) and all the paths in it are relative to index.html.
-
-    When a project has a custom HTML like this one, the "title", "image", "url", "source",
-    "type", "technology" and "description" fields of the JSON entry are not rendered
-    anymore, everything below is written by hand instead. The "type" and "technology"
-    fields are still read by the filter toolbar, so keep them in sync with this card.
--->
-
 <a class="project-thumb" href="https://play.google.com/store/apps/details?id=com.vng.g6.a.zombie" target="_blank"
     rel="noopener noreferrer" tabindex="-1" aria-hidden="true">
     <img src="images/dt.png" alt="" width="60" height="60" loading="lazy" decoding="async">
@@ -27,6 +14,7 @@
             <span class="tag-dot" aria-hidden="true"></span>Contributed
         </span>
         <span class="tag tag--tech">Unity, C#</span>
+        <span class="tag">2022 &ndash; 2023</span>
     </div>
     <p>
         The first game that I worked on in Madpoly studio - VNG Corporation. It is a big opportunity for me to work in
@@ -36,6 +24,11 @@
         One of the most intricate features I've implemented is the Arch of Thunder, a unique eagle-shaped crossbow
         capable of firing and <b>CONTROLLING</b> lightning arrows.
     </p>
+    <p>
+        It grew into a system of its own: a tiered evolution path for the bow, a per-scene config for when the
+        camera is allowed to fly along with the arrow so it never reveals a part of the map it shouldn't, and
+        several rounds of polish on top.
+    </p>
     <div class="project-gallery">
         <img src="images/projects/StaticBow1.gif" alt="The Arch of Thunder firing a lightning arrow at a zombie wave"
             loading="lazy" decoding="async">
@@ -44,10 +37,50 @@
         <img src="images/projects/StaticBow3.gif" alt="A chained lightning strike hitting several zombies at once"
             loading="lazy" decoding="async">
     </div>
-    <p class="project-item-video-caption">Full demo if you're interested:</p>
-    <div class="project-item-video">
-        <iframe src="https://www.youtube.com/embed/DOOmOATYuAM" title="Arch of Thunder gameplay demo" loading="lazy"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+    <p class="project-item-video-caption">See the full demo <a href="https://www.youtube.com/watch?v=DOOmOATYuAM" target="_blank" rel="noopener noreferrer">here</a> if you're interested:</p>
+    <div class="project-highlights">
+        <h4>What else I shipped</h4>
+        <ul>
+            <li>
+                <strong>16 weapon skills</strong>: Plasma Flare, Sweet Embrace, Yokai's Strength, Slasher, Artic Glacier, New Year Resolution,
+                Scorched Earth, Apollo's Descent, Pulse Cannon, Burning Love, Thunderstruck, Pot'o Gold, Atomic Strike, Arcane Detonation, Final Judgement,
+                Graviton Surge.<br/>
+                I think the most complex skill is Plasma Flare, it shoots a barrage of plasma
+                projectiles that move in a curve path, and spawn timed bombs on the objects that they collide with on its way.<br/>
+                <div style="display:flex; justify-content: center;">
+                    <img src="images/projects/plasma_flare.gif" alt="Plasma flare" style="max-width: 250px;" align="center" loading="lazy" decoding="async">
+                </div>
+            </li>
+            <li style="margin-top: 20px;">
+                <strong>Defense skills for drones</strong>: At the start of each battle, player's drone will drop traps around player.<br/>
+                <div style="display:flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+                    <img src="images/projects/drone1.gif" alt="Drone drop mines" style="max-width: 250px;"
+                        loading="lazy" decoding="async">
+                    <img src="images/projects/drone2.gif" alt="Drone drop bear traps" style="max-width: 250px;"
+                        loading="lazy" decoding="async">
+                    <img src="images/projects/drone3.gif" alt="Drone pour oil and set on fire" style="max-width: 250px;"
+                        loading="lazy" decoding="async">
+                </div>
+            </li>
+            <li style="margin-top: 20px;">
+                <strong>Better jump animation for zombies:</strong> Use Catmull-Rom spline to correct the jumping arc for zombies, and also freeze jump animation when zombie begin falling
+                so zombie only play the land animation when they've actually landed.<br/>
+                <div style="display:flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+                    <div style="text-align: center; display: inline;">
+                        Before<br/>
+                        <img src="images/projects/jumpanim1.gif" alt="Jump anim before" style="max-width: 250px;"
+                            loading="lazy" decoding="async">
+                    </div>
+                    <div style="text-align: center;">
+                        After<br/>
+                        <img src="images/projects/jumpanim2.gif" alt="Jump anim after" style="max-width: 250px;"
+                            loading="lazy" decoding="async">
+                    </div>
+                </div>
+            </li>
+            <li style="margin-top: 20px;">
+                <strong>Many other features related to Gameplay, Ads, Liveops events and IAP.</strong>
+            </li>
+        </ul>
     </div>
 </div>

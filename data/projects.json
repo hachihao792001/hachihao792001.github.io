@@ -4,7 +4,7 @@
     "image": "dt",
     "url": "https://play.google.com/store/apps/details?id=com.vng.g6.a.zombie",
     "source": "",
-    "description": "A game that I worked on in Madpoly studio - VNG Corporation. It is a big opportunity for me to work in such a big game, there are many challenges, one of them being understanding the huge and old codebase, but I will embrace it and try my best to contribute to it. One of the most intricate features I've implemented is the Arch of Thunder, a unique eagle-shaped crossbow capable of firing lightning arrows. Its capabilities extend beyond my description; you must witness it firsthand here: https://www.facebook.com/hachihao792001/videos/696523142425505",
+    "description": "The first game that I worked on in Madpoly studio - VNG Corporation, a huge and old codebase. I implemented the Arch of Thunder crossbow, 17 weapon and battle pass skills, the drone, events, the Progress Road and combo reworks, IAP and A/B tests, UGUI screen conversions, boss and level work, and dev tooling.",
     "type": "Contributed",
     "technology": "Unity, C#",
     "html": "projects/dead-target.html"
@@ -14,18 +14,20 @@
     "image": "zf",
     "url": "https://apps.apple.com/us/app/zombie-fire-3d-offline-game/id6465898418",
     "source": "",
-    "description": "Another game that I worked on in Madpoly studio - VNG Corporation. I have the opportunity to port it from Android to iOS and take care of all the nuances such as reimplementing in-app purchase, adverstisement and resolving other iOS-specific issues",
+    "description": "Another game that I worked on in Madpoly studio - VNG Corporation. I ported it from Android to iOS - restore purchase, ads mediation, bundle ID and other iOS-specific issues - then kept building live features: the card system, Daily Quest Pass seasons, gun skins, monetization flows and a URP graphics pass.",
     "type": "Contributed",
-    "technology": "Unity, C#"
+    "technology": "Unity, C#",
+    "html": "projects/zombie-fire-3d.html"
   },
   {
     "title": "Zombie Shoot Out: Offline Game by VNG GAME STUDIOS",
     "image": "zombieshootout",
     "url": "https://play.google.com/store/apps/details?id=com.apocalypse.zombie.games",
     "source": "",
-    "description": "A game that I'm currently working on in Madpoly studio - VNG Corporation. It's the project I'm assigned to when I just got back from conscription. I worked on the in-game Team system using PlayFab, time-sensitive Game Event system. Implementing Google play achievements and Social features with Facebook.",
+    "description": "The game I'm currently working on in Madpoly studio - VNG Corporation, the project I was assigned to right after conscription. I built the Team system (Team Battle, Team Exploration, Team Tournament) on PlayFab, the Local Event V2 framework and the six events running on it, Google Play achievements, Facebook social features and the offer mechanics.",
     "type": "Contributed",
-    "technology": "Unity, C#"
+    "technology": "Unity, C#, PlayFab",
+    "html": "projects/zombie-shoot-out.html"
   },
   {
     "title": "HCMUS Tour",

@@ -105,6 +105,63 @@
     flex: none;
 }
 
+/* --- the shipped work breakdown on the hand written studio cards ---------- */
+
+.project-highlights {
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border);
+}
+
+.project-highlights h4 {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 var(--space-2);
+}
+
+.project-highlights ul {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* a small brand marker rather than the default bullet, which sits too far from
+   the text once the list has lost its browser padding */
+.project-highlights li {
+    position: relative;
+    padding-left: var(--space-4);
+    color: var(--text-muted);
+}
+
+.project-highlights li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 0.4em;
+    height: 0.4em;
+    border-radius: 50%;
+    background: var(--brand-400);
+}
+
+.project-highlights strong {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.project-highlights code {
+    font-size: 0.875em;
+    padding: 0.1em 0.35em;
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
 /* --- media inside the hand written project cards ------------------------- */
 
 .project-item-video {
