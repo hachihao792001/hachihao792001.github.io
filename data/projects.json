@@ -48,6 +48,16 @@
     "technology": "Unity, C#, React, Java Spring, PostgreSQL"
   },
   {
+    "title": "Combine Mediapipe Hand Tracking with Gyroscope",
+    "image": "mediapipegyro",
+    "url": "https://www.youtube.com/watch?v=XsONFUoKUU8",
+    "source": "",
+    "description": "A passion project I thought of when I'm revisiting what I did in my thesis. Use Mediapipe Hand Tracking to control a 3D model of a hand (spend a lot of time to correct rotation for the fingers), and use Gyroscope for the natural \"look around\" feeling.",
+    "type": "Personal",
+    "technology": "Unity, C#, Mediapipe",
+    "html": "projects/mediapipe-gyro.html"
+  },
+  {
     "title": "My CatPots by MaxSRarity",
     "image": "mycatpots",
     "url": "https://play.google.com/store/apps/details?id=com.shinart.planya&hl=vi&gl=US",
