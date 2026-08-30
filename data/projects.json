@@ -36,7 +36,8 @@
     "source": "",
     "description": "One of the projects I built for my bachelor thesis, it involves utilizing the Microsoft Azure Kinect DK to facilitate user navigation and exploration of Ho Chi Minh City University of Science using the user's body gestures. This system seamlessly communicates with a web server to acquire essential information and assets. Additionally, an administrator web interface is integrated, allowing for the modification of pertinent information.",
     "type": "University",
-    "technology": "Unity, C#, React, Java Spring, PostgreSQL"
+    "technology": "Unity, C#, React, Java Spring, PostgreSQL",
+    "html": "projects/hcmustour.html"
   },
   {
     "title": "World Tour",
@@ -45,7 +46,8 @@
     "source": "",
     "description": "Another project that I built for my bachelor thesis, it harnesses the combined capabilities of Microsoft Azure Kinect DK and Microsoft HoloLens 2, offering a fully immersive Extended Reality (XR) environment.Within this environment, users employ the HoloLens 2 to interact with a globe, selecting destinations to explore and utilizing body gestures for navigation within the chosen destination. Much like the HCMUS Tour project, this application integrates a web server and an administrator web interface to serve identical purposes.",
     "type": "University",
-    "technology": "Unity, C#, React, Java Spring, PostgreSQL"
+    "technology": "Unity, C#, React, Java Spring, PostgreSQL",
+    "html": "projects/worldtour.html"
   },
   {
     "title": "Combine Mediapipe Hand Tracking with Gyroscope",
