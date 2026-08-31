@@ -67,9 +67,7 @@
 
 /* --- intro text ---------------------------------------------------------- */
 
-.aboutIntroSection {
-    max-width: var(--measure);
-}
+
 
 .hero-eyebrow {
     margin: 0 0 var(--space-2);
