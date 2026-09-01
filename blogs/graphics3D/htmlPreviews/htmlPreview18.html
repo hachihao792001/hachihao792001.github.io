@@ -17,6 +17,12 @@
 				this.g = g;
 				this.b = b;
 			}
+
+			updateColor(r, g, b) {
+				this.r = r;
+				this.g = g;
+				this.b = b;
+			}
 		}
 
 		class Rasterizer {
@@ -36,13 +42,9 @@
 			clearScreen() {
 				for (let i = 0; i < this.screenBuffer.length; i++) {
 					for (let j = 0; j < this.screenBuffer[i].length; j++) {
-						this.screenBuffer[i][j] = new Color(240, 240, 240);
+						this.screenBuffer[i][j].updateColor(240, 240, 240);
 					}
 				}
-			}
-			placePixel(pos, color) {
-				if (pos[1] >= 0 && pos[1] < canvas.height && pos[0] >= 0 && pos[0] < canvas.width)
-					this.screenBuffer[parseInt(pos[1])][parseInt(pos[0])] = color;
 			}
 			drawCall() {
 				let index = 0;
@@ -73,9 +75,9 @@
 
 			rasterizer.clearScreen();
 
-			for (let i = 150; i < 250; i++) {
-				for (let j = 100; j < 200; j++) {
-					rasterizer.placePixel([i, j], new Color(255, 0, 0));
+			for (let y = 100; y < 200; y++) {
+				for (let x = 150; x < 250; x++) {
+					rasterizer.screenBuffer[y][x].updateColor(255, 0, 0);
 				}
 			}
 

@@ -70,6 +70,12 @@
         this.g = g;
         this.b = b;
     }
+
+    updateColor(r, g, b) {
+        this.r = r;
+        this.g = g;
+        this.b = b;
+    }
 }</code></pre>
 
                     Để cho gọn, ta sẽ tạo một class Rasterizer để quản lý mọi thứ liên quan tới việc rasterize. Đầu tiên là trong constructor ta tạo ImageData của canvas
@@ -104,18 +110,11 @@
     ctx.putImageData(this.imageData, 0, 0);
 }</code></pre>
 
-                    Ta thêm một hàm để bên ngoài class có thể gán màu cho 1 pixel dựa trên tọa độ truyền vào, ta phải chuyển tọa độ này thành int và check
-                    xem nó có nằm trong kích thước của canvas hay không:
-                    <pre><code class="language-javascript">placePixel(pos, color) {
-    if (pos[1] >= 0 && pos[1] < canvas.height && pos[0] >= 0 && pos[0] < canvas.width)
-        this.screenBuffer[parseInt(pos[1])][parseInt(pos[0])] = color;
-}</code></pre>
-
                     Cuối cùng, ta phải thay thế thao tác clear screen hiện tại, cho nó một màu xám xám:
                     <pre><code class="language-javascript">clearScreen() {
     for (let i = 0; i < this.screenBuffer.length; i++) {
         for (let j = 0; j < this.screenBuffer[i].length; j++) {
-            this.screenBuffer[i][j] = new Color(240, 240, 240);
+            this.screenBuffer[i][j].updateColor(240, 240, 240);
         }
     }
 }</code></pre>
@@ -125,7 +124,7 @@
                     Để có thể áp dụng rasterizer này vào engine chúng ta, ta phải vẽ được một hình tam giác cơ bản 😳 Phương pháp chung chung là ta sẽ loop qua hết các pixel,
                     pixel nào nằm trong 1 tam giác thì sẽ vẽ pixel đó ra. Nói thì dễ nhưng làm sao để ta biết là 1 pixel nằm trong 1 tam giác?<br/><br/>
 
-                    Ta sẽ bắt đầu từ việc xét lại thứ tự các đỉnh mà ta định nghĩa cho tam giác trong engine chúng ta, cụ thể là ngược chiều kim đồng hồ như sau:
+                    Ta sẽ bắt đầu từ việc xét lại thứ tự các đỉnh mà ta định nghĩa cho tam giác trong engine chúng ta, cụ thể là cùng chiều kim đồng hồ như sau:
                     <div align="center"><img style="max-height: 300px; max-width: 100vw;" src="images/graphics3D8/TriangleEdges.png"/></div>
                     Xét 3 cạnh của tam giác là vector theo chiều đó, ta nhận ra rằng một điểm sẽ nằm trong tam giác nếu nó đều nằm ở "bên trái" của 3 cạnh. Nhưng
                     làm sao để biết một điểm nằm bên trái của 1 vector? Ta xét vector \(\vec{AB}\) và điểm \(P\) như sau:
@@ -142,7 +141,7 @@
                     <pre><code class="language-javascript">function edgeFunction(a, b, p) {
     return (a[1] - b[1]) * (p[0] - a[0]) + (b[0] - a[0]) * (p[1] - a[1]);
 }</code></pre>
-                    Ta đừng nên tạo một class Vector2 mới làm gì, cứ xem tọa độ 2 chiều là một mảng, như thế nó sẽ đỡ sinh ra rác, đặc biệt là khi ta bắt đầu chạy cho từng pixel.<br/><br/>
+                    Mình dùng tạm mảng để đại diện cho CTDL đỉnh (x ở vị trí 0, y ở vị trí 1), để dễ demo.<br/><br/>
                     Ta tạo lại class Triangle, nhưng lúc này constructor sẽ xem mỗi đỉnh như 1 mảng như trên, thay vì là Vector3. Có hàm isPointInTriangle để check nếu 1 điểm nằm trong tam giác đó:
                     <pre><code class="language-javascript">class Triangle {
     constructor(vertices = []) {
@@ -160,19 +159,14 @@
         const e1 = edgeFunction(this.vertices[0], this.vertices[1], p);
         const e2 = edgeFunction(this.vertices[1], this.vertices[2], p);
         const e3 = edgeFunction(this.vertices[2], this.vertices[0], p);
-        return e1 < 0 && e2 < 0 && e3 < 0;
+        return e1 > 0 && e2 > 0 && e3 > 0;
     }
 }</code></pre>
-                    Khoan đã, ở trên mình nói một điểm nằm trong tam giác nếu 3 edge function của 3 cạnh > 0, nhưng tại sao mình lại check < 0? Đó là tại vì ở <a href="graphics3D2-cube.html">blog 2</a>,
-                    mình có nói là do chiều dọc của canvas (càng xuống càng tăng) ngược với chiều y của toán (càng lên càng tăng) nên ta phải đổi dấu y trước khi nhân cho kích thước canvas.
-                    Khi lật ngược mọi thứ lại như vậy thì các đỉnh tam giác từ cùng chiều kđh sẽ thành ngược chiều và ngược lại, đó giờ điều này không ảnh hưởng tới ta vì nó xảy ra
-                    ở screen space (bước cuối cùng sau tất cả các thao tác toán học), nhưng vì rasterizer hoạt động ở screen space nên ta phải "ngược" theo.<br/><br/>
-
-                    Ta tạo một tam giác ở giữa màn hình (thứ tự đỉnh ngược chiều kim đồng hồ):
+                    Ta tạo một tam giác ở giữa màn hình (thứ tự đỉnh cùng chiều kim đồng hồ):
                     <pre><code class="language-javascript">let testTri = new Triangle([
     [-0.25, -0.25],
-    [0.25, -0.25],
     [0, 0.25],
+    [0.25, -0.25],
 ]);</code></pre>
                     Sau đó ta thay phần vẽ (phần nằm giữa clear screen và draw call) thành như vậy:
                     <pre><code class="language-javascript">let screenTri = new Triangle();
@@ -185,7 +179,7 @@ for (let i = 0; i < testTri.vertices.length; i++) {
 for (let y = 0; y < canvas.height; y++) {
     for (let x = 0; x < canvas.width; x++) {
         if (screenTri.isPointInTriangle([x, y])) {
-            rasterizer.placePixel([x, y], new Color(255, 0, 0));
+            rasterizer.screenBuffer[y][x].updateColor(255, 0, 0);
         }
     }
 }</code></pre>
@@ -211,7 +205,7 @@ for (let y = 0; y < canvas.height; y++) {
 for (let y = bbox[2]; y <= bbox[3]; y++) {
     for (let x = bbox[0]; x <= bbox[1]; x++) {
         if (screenTri.isPointInTriangle([x, y])) {
-            rasterizer.placePixel([x, y], new Color(255, 0, 0));
+            rasterizer.screenBuffer[y][x].updateColor(255, 0, 0);
         }
     }
 }</code></pre>
@@ -245,7 +239,7 @@ for (let y = bbox[2]; y <= bbox[3]; y++) {
         for (let y = bbox[2]; y <= bbox[3]; y++) {
             for (let x = bbox[0]; x <= bbox[1]; x++) {
                 if (tri.isPointInTriangle([x, y])) {
-                    this.placePixel([x, y], new Color(204, 204, 204));
+                    this.screenBuffer[y][x].updateColor(204, 204, 204);
                 }
             }
         }
@@ -256,6 +250,8 @@ for (let y = bbox[2]; y <= bbox[3]; y++) {
 rasterizer.drawCall();</code></pre>
                     Full code:
                     <div class="htmlPreview" id="htmlPreview20"></div>
+                    
+
                     Nó chỉ có một màu ảm đạm như vậy là do ta không vẽ outline của nó (ở version cũ ta có dùng ctx.stroke()), trong các game thì do có texture và ánh sáng 
                     nên nó sẽ không chỉ có một màu như vậy (nếu bạn xài Unity thì nó giống shader Unlit). Nếu bạn muốn hiện lại outline thì bạn chỉ cần
                     thêm lại vòng for bự đó đằng sau hàm drawCall và chỉ gọi ctx.stroke() chứ ko gọi ctx.fill(), vẽ ra outline như vậy được gọi là wireframe mode và
@@ -351,7 +347,7 @@ rasterizer.drawCall();</code></pre>
         for (let y = bbox[2]; y <= bbox[3]; y++) {
             for (let x = bbox[0]; x <= bbox[1]; x++) {
                 if (tri.isPointInTriangle([x, y])) {
-                    this.placePixel([x, y], tri.color);
+                    this.screenBuffer[y][x].updateColor(tri.color.r, tri.color.g, tri.color.b);
                 }
             }
         }
@@ -435,7 +431,7 @@ let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3),
 	clearScreen() {
 		for (let i = 0; i < this.screenBuffer.length; i++) {
 			for (let j = 0; j < this.screenBuffer[i].length; j++) {
-				this.screenBuffer[i][j] = new Color(240, 240, 240);
+				this.screenBuffer[i][j].updateColor(240, 240, 240);
 				this.depthBuffer[i][j] = Infinity;	// <-------------------
 			}
 		}
@@ -463,7 +459,7 @@ let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3),
 
 					if (z < this.depthBuffer[y][x]) {	// check nếu nhỏ hơn độ sâu hiện tại thì quất
 						this.depthBuffer[y][x] = z;
-						this.placePixel([x, y], tri.color);
+						this.screenBuffer[y][x].updateColor(tri.color.r, tri.color.g, tri.color.b);
 					}
 				}
 			}
@@ -476,8 +472,163 @@ let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3),
 					Có lẽ bạn sẽ nhớ lại những gì ta làm ở <a href="graphics3D3-projection.html">blog 3</a> và thắc mắc, tại sao ta lại sử dụng z (độ sâu đã normalized ở near 
 					plane - far plane và giá trị nằm trong khoảng [0; 1]), mà lại không sử dụng w (giá trị z ban đầu) để tính độ sâu cho pixel. Thật ra mình cũng đã giải thích ở
 					blog 3, đó là do giá trị z mới tăng theo đồ thị hyperpol, càng gần 0 (gần màn hình) thì nó biến thiên càng nhanh, nghĩa là các giá trị z sẽ càng khác nhau hơn,
-					đỡ bị hiện tượng trùng độ sâu (z-fighting). Bạn có thể thử xài giá trị w để xem nó hiển thị ra sao.<br/><br/>
-					
+					đỡ bị hiện tượng trùng độ sâu (z-fighting). Bạn có thể thử xài giá trị w để xem nó hiển thị ra sao.
+
+                    <h2>Optimize: Incremental Edge Function</h2>
+                    Những gì mình viết ở trên mang tính dễ đọc và pseudocode nhất có thể. Tuy nhiên nó có thể được optimize rất nhiều. 
+                    Bạn hãy để ý 2 cái vòng for trong cùng, nó chạy 1 lần cho mỗi pixel của mỗi tam giác, mỗi frame.
+                    Bây giờ ta thử đếm xem hiện tại mỗi pixel ta đang làm những gì:
+                    <pre><code class="language-javascript">if (tri.isPointInTriangle([x, y])) {
+    const baryCoords = tri.barycentricCoords([x, y]);
+    ...
+}</code></pre>
+                    <ul>
+                        <li>2 cái mảng <code>[x, y]</code> được tạo ra chỉ để truyền tham số.</li>
+                        <li>isPointInTriangle: tạo 3 mảng v0, v1, v2 rồi gọi edgeFunction 3 lần.</li>
+                        <li>barycentricCoords: tạo 3 mảng v0, v1, v2 nữa, gọi edgeFunction 4 lần (3 cạnh + 1 lần cho diện tích), rồi tạo thêm 1 mảng nữa để return.</li>
+                    </ul>
+                    Tổng cộng: 7 lần edge function và 9 cái mảng, cho MỖI pixel. Ta có 3 điều vô lý ở đây:
+                    <ul>
+                        <li>3 trong 7 lần gọi edgeFunction bị tính trùng: isPointInTriangle tính \(E(A,B,P), E(B,C,P), E(C,A,P)\) rồi bỏ đi, xong barycentricCoords tính lại
+                            đúng 3 giá trị đó. Chỉ cần tính 1 lần rồi dùng cho cả 2 việc là xong.</li>
+                        <li>Trong hàm barycentricCoords cũng tính lại liên tục \(E(A,B,C)\) cho mỗi pixel, chỉ cần tính 1 lần duy nhất cho mỗi tam giác</li>
+                        <li>9 cái mảng mỗi pixel là 9 object rác mỗi pixel, Garbage Collector sẽ khá vất vả 🥵</li>
+                    </ul>
+                    Tuy nhiên thay vì đi sửa từng vấn đề 1 vào code, ta có thể sửa hết 3 vấn đề đó cùng lúc bằng kỹ thuật Incremental Edge Function - tên của phần này.<br/><br/>
+                    Bạn có biết là bạn không cần phải tính lại edge function cho từng pixel một bằng công thức full không. Bạn hãy thử quay lại công thức edge function.
+                    Với \(A=(a_x, a_y), B=(b_x, b_y), P=(p_x, p_y)\), Ta có:
+                    $$
+                    E(A, B, P) = (a_y-b_y)(p_x-a_x) + (b_x-a_x)(p_y-a_y)
+                    $$
+                    Thay vì gọi là \(E(A, B, P)\), ta xem \(A\) và \(B\) là cố định. Còn lại \(P\) là tham số, ta chuyển thành 2 tham số \(p_x, p_y\) luôn:
+                    $$
+                    E(p_x, p_y) = (a_y-b_y)(p_x-a_x) + (b_x-a_x)(p_y-a_y)
+                    $$
+                    Ta thử nhân phân phối lại với nhau và bốc ra theo tham số \(p_x\), \(p_y\):
+                    $$
+                    \begin{eqnarray} 
+                    E(p_x, p_y) = a_yp_x-a_xa_y-b_yp_x+a_xb_y + b_xp_y-a_yb_x - a_xp_y + a_xa_y\\
+                    = p_x (a_y-b_y) + p_y(b_x-a_x)+a_xb_y-a_yb_x
+                    \end{eqnarray}
+                    $$
+                    Ta thấy rằng: \(E(p_x, p_y)\) là một hàm số bậc 1, nên khi ta thay đổi
+                    \(p_x\), \(p_y\) 1 lượng cố định thì hàm \(E(p_x, p_y)\) cũng thay đổi 1 lượng cố định. Cụ thể là khi ta tăng \(p_x\) lên 1 thì \(E(p_x, p_y)\) sẽ tăng 1 lượng C,
+                    tăng \(p_x\) lên 1 nữa thì \(E(p_x, p_y)\) cũng tăng 1 lượng C nữa.<br/><br/>
+                    Điều này có nghĩa là gì? Điều này có nghĩa là từ \(E(p_x, p_y)\) ta có thể tính \(E(p_{x+1}, p_y)\) hoặc \(E(p_x, p_{y+1})\) chỉ bằng cách cộng 1 hằng số C, it's QUY HOẠCH ĐỘNG TIME BABY.<br/><br/>
+                    Đầu tiên ta tính hằng số ở trục x:
+                    $$
+                    \begin{eqnarray}
+                    E(p_{x+1}, p_y) - E(p_x, p_y) = p_{x+1} (a_y-b_y) + p_y(b_x-a_x)+a_xb_y-a_yb_x - [p_x (a_y-b_y) + p_y(b_x-a_x)+a_xb_y-a_yb_x] \\
+                    = a_yp_{x+1} - b_yp_{x+1} + b_xp_y - a_xp_y + a_xb_y - a_yb_x - a_yp_x + b_yp_x - b_xp_y + a_xp_y - a_xb_y + a_yb_x \\
+                    = a_yp_{x+1} - b_yp_{x+1} - a_yp_x + b_yp_x \\
+                    = a_y - b_y \\
+                    \end{eqnarray}
+                    $$
+                    $$
+                    \implies E(p_{x+1}, p_y) = E(p_x, p_y) + a_y - b_y
+                    $$
+                    Với trục y:
+                    $$
+                    \begin{eqnarray}
+                    E(p_x, p_{y+1}) - E(p_x, p_y) = p_x (a_y-b_y) + p_{y+1}(b_x-a_x)+a_xb_y-a_yb_x - [p_x (a_y-b_y) + p_y(b_x-a_x)+a_xb_y-a_yb_x] \\
+                    = a_yp_x - b_yp_x + b_xp_{y+1} - a_xp_{y+1} + a_xb_y - a_yb_x - a_yp_x + b_yp_x - b_xp_y + a_xp_y - a_xb_y + a_yb_x \\
+                    = b_xp_{y+1} - a_xp_{y+1} - b_xp_y + a_xp_y \\
+                    = b_x - a_x \\
+                    \end{eqnarray}
+                    $$
+                    $$
+                    \implies E(p_x, p_{y+1}) = E(p_x, p_y) + b_x - a_x  
+                    $$
+
+                    Có 2 công thức này, từ giờ ta chỉ cần tính hằng số cho trục X và Y cho mỗi cạnh tam giác. Rồi trong 2 vòng for pixel ta cứ cộng vào mà tính edge function
+                    của pixel hiện tại so với 3 cạnh tam giác. Kỹ thuật này gọi là
+                    incremental (hoặc stepping) edge function, và nó là cách mà mọi rasterizer thật, kể cả phần cứng trong GPU, đều làm.<br/><br/>
+                    
+                    Bắt tay vào code thôi. Ta viết lại edgeFunction cho nó nhận vào Vector3 thay vì mảng như trước:
+                    <pre><code class="language-javascript">function edgeFunction(v0, v1, p) {
+    return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
+}</code></pre>
+                    
+                    Vì rasterizer sẽ tự quản 3 giá trị edge function của nó, nên 2 hàm isPointInTriangle và barycentricCoords không còn cần thiết nữa. Thay vào đó ta thêm 
+                    một hàm tính sẵn double diện tích có dấu (signed double area) của tam giác bằng edge function và lưu lại vào chính tam giác đó:
+                    <pre><code class="language-javascript">class Triangle {
+    ...
+
+    calculateSignedDoubleArea() {
+        this.signedDoubleArea = edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
+    }
+}</code></pre>
+                    Và đây là hàm processTriangles mới, viết đầy đủ luôn cho dễ so sánh:
+                    <pre><code class="language-javascript">processTriangles(tris) {
+    for (let tri of tris) {
+        // nhân kích thước canvas như trước giờ
+        let vertices = tri.vertices;
+        for (let i = 0; i < vertices.length; i++) {
+            vertices[i] = new Vector3(
+                vertices[i].x * (canvas.width / 2) + canvas.width / 2,
+                -vertices[i].y * (canvas.height / 2) + canvas.height / 2,
+                vertices[i].z);
+        }
+
+        tri.calculateSignedDoubleArea();      // hằng số của tam giác, tính 1 lần ở đây thay vì tính lại mỗi pixel
+
+        const bbox = tri.boundingBox();
+
+        // tính edge function của 3 cạnh tại góc trên trái của bounding box, đây là 3 lần gọi edgeFunction duy nhất cho cả tam giác
+        let edgeFunctionRow01 = edgeFunction(
+            tri.vertices[0],
+            tri.vertices[1],
+            new Vector3(bbox[0], bbox[2], 0));
+        let edgeFunctionRow12 = edgeFunction(
+            tri.vertices[1],
+            tri.vertices[2],
+            new Vector3(bbox[0], bbox[2], 0));
+        let edgeFunctionRow20 = edgeFunction(
+            tri.vertices[2],
+            tri.vertices[0],
+            new Vector3(bbox[0], bbox[2], 0));
+
+        for (let y = bbox[2]; y <= bbox[3]; y++) {
+            // mỗi hàng mới thì bắt đầu lại từ giá trị ở đầu hàng đó
+            let edgeFunction01 = edgeFunctionRow01;
+            let edgeFunction12 = edgeFunctionRow12;
+            let edgeFunction20 = edgeFunctionRow20;
+            for (let x = bbox[0]; x <= bbox[1]; x++) {
+                // isPointInTriangle lúc trước, giờ chỉ còn 3 phép so sánh
+                if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+                    // barycentricCoords lúc trước, giờ chỉ còn 3 phép chia
+                    const baryCoord0 = edgeFunction12 / tri.signedDoubleArea;
+                    const baryCoord1 = edgeFunction20 / tri.signedDoubleArea;
+                    const baryCoord2 = edgeFunction01 / tri.signedDoubleArea;
+                    const z = tri.vertices[0].z * baryCoord0 + tri.vertices[1].z * baryCoord1 + tri.vertices[2].z * baryCoord2;
+
+                    if (z < this.depthBuffer[y][x]) {
+                        this.depthBuffer[y][x] = z;
+                        this.screenBuffer[y][x].updateColor(tri.color.r, tri.color.g, tri.color.b);
+                    }
+                }
+
+                // qua pixel kế bên (x tăng 1)
+                edgeFunction01 += (tri.vertices[0].y - tri.vertices[1].y);
+                edgeFunction12 += (tri.vertices[1].y - tri.vertices[2].y);
+                edgeFunction20 += (tri.vertices[2].y - tri.vertices[0].y);
+            }
+
+            // qua hàng kế dưới (y tăng 1)
+            edgeFunctionRow01 += (tri.vertices[1].x - tri.vertices[0].x);
+            edgeFunctionRow12 += (tri.vertices[2].x - tri.vertices[1].x);
+            edgeFunctionRow20 += (tri.vertices[0].x - tri.vertices[2].x);
+        }
+    }
+}</code></pre>
+                    Kết quả hiển thị y hệt demo ở trên, nhưng mỗi pixel giờ chỉ còn 3 phép cộng, 3 phép so sánh và 3 phép chia cho phần "pixel này có nằm trong tam giác
+                    không và nó nằm ở đâu trong tam giác", và không tạo ra một object rác nào:
+                    <div class="htmlPreview" id="htmlPreview23"></div>
+                    Cái giá phải trả là ta không thể nhảy pixel một cách tùy tiện được nữa: cách cộng dồn này chỉ đúng khi ta đi qua từng pixel liền kề theo đúng thứ tự
+                    x tăng 1, y tăng 1. Nếu về sau bạn muốn chia màn hình ra thành nhiều block để chạy song song (đây cũng là cách GPU làm), thì ở đầu mỗi block bạn phải
+                    nhân cái lượng cộng dồn đó lên với số bước tương ứng để nhảy tới đúng chỗ. Từ blog sau trở đi, mọi thứ ta thêm vào rasterizer đều sẽ nằm trong vòng
+                    for này, nên bạn hãy chắc là bạn hiểu nó trước khi đi tiếp 😳<br/><br/>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 

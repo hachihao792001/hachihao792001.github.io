@@ -331,7 +331,7 @@
 				const e1 = edgeFunction(v0, v1, p);
 				const e2 = edgeFunction(v1, v2, p);
 				const e3 = edgeFunction(v2, v0, p);
-				return e1 < 0 && e2 < 0 && e3 < 0;
+				return e1 > 0 && e2 > 0 && e3 > 0;
 			}
 
 			boundingBox() {
@@ -519,6 +519,12 @@
 				this.g = g;
 				this.b = b;
 			}
+
+			updateColor(r, g, b) {
+				this.r = r;
+				this.g = g;
+				this.b = b;
+			}
 		}
 
 		class Rasterizer {
@@ -538,13 +544,9 @@
 			clearScreen() {
 				for (let i = 0; i < this.screenBuffer.length; i++) {
 					for (let j = 0; j < this.screenBuffer[i].length; j++) {
-						this.screenBuffer[i][j] = new Color(240, 240, 240);
+						this.screenBuffer[i][j].updateColor(240, 240, 240);
 					}
 				}
-			}
-			placePixel(pos, color) {
-				if (pos[1] >= 0 && pos[1] < canvas.height && pos[0] >= 0 && pos[0] < canvas.width)
-					this.screenBuffer[parseInt(pos[1])][parseInt(pos[0])] = color;
 			}
 
 			processTriangles(tris) {
@@ -561,7 +563,7 @@
 					for (let y = bbox[2]; y <= bbox[3]; y++) {
 						for (let x = bbox[0]; x <= bbox[1]; x++) {
 							if (tri.isPointInTriangle([x, y])) {
-								this.placePixel([x, y], new Color(204, 204, 204));
+								this.screenBuffer[y][x].updateColor(204, 204, 204);
 							}
 						}
 					}
@@ -583,9 +585,9 @@
 				ctx.putImageData(this.imageData, 0, 0);
 			}
 		}
-		function edgeFunction(v0, v1, p) {
-			return (p[0] - v0[0]) * (v1[1] - v0[1]) - (p[1] - v0[1]) * (v1[0] - v0[0]);
-		}
+		function edgeFunction(a, b, p) {
+            return (a[1] - b[1]) * (p[0] - a[0]) + (b[0] - a[0]) * (p[1] - a[1]);
+        }
 
 		const canvas = document.getElementById("gameCanvas");
 		const ctx = canvas.getContext("2d");

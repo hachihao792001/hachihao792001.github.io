@@ -279,21 +279,29 @@ let imgPixels = null;</code></pre>
         ...
 
         const bbox = tri.boundingBox();
+
+        ...     // 3 biến edgeFunctionRow01/12/20 y như blog 8
+
         for (let y = bbox[2]; y <= bbox[3]; y++) {
+            let edgeFunction01 = edgeFunctionRow01;
+            let edgeFunction12 = edgeFunctionRow12;
+            let edgeFunction20 = edgeFunctionRow20;
             for (let x = bbox[0]; x <= bbox[1]; x++) {
-                if (tri.isPointInTriangle([x, y])) {
-                    const baryCoords = tri.barycentricCoords([x, y]);
-                    const z = tri.vertices[0].z * baryCoords[0] + tri.vertices[1].z * baryCoords[1] + tri.vertices[2].z * baryCoords[2];
+                if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+                    const baryCoord0 = edgeFunction12 / tri.signedDoubleArea;
+                    const baryCoord1 = edgeFunction20 / tri.signedDoubleArea;
+                    const baryCoord2 = edgeFunction01 / tri.signedDoubleArea;
+                    const z = tri.vertices[0].z * baryCoord0 + tri.vertices[1].z * baryCoord1 + tri.vertices[2].z * baryCoord2;
 
                     if (z < this.depthBuffer[y][x]) {
                         ...
 
                         let texColor = tri.color;
                         if (imgPixels != null) {    // load xong hình rồi mới vào đây tính màu pixel theo hình, còn không thì vẫn dùng màu của tam giác
-                            // lấy UV bằng baryCoords như depth và worldVertices
+                            // lấy UV bằng barycentric coordinate như depth và worldVertices
                             let pixelUV = new Vector2(
-                                tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
-                                tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2]
+                                tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,
+                                tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2
                             );
                             // vì UV nằm trong khoảng [0; 1], nên nhân lên với kích thước hình
                             const texX = Math.floor(pixelUV.u * (img.width - 1));
@@ -304,19 +312,23 @@ let imgPixels = null;</code></pre>
                             texColor = new Color(imgPixels[texIndex], imgPixels[texIndex + 1], imgPixels[texIndex + 2]);
                         }
 
-                        this.placePixel([x, y], new Color(
+                        this.screenBuffer[y][x].updateColor(
                             Math.min(255, texColor.r * lightIntensity),
                             Math.min(255, texColor.g * lightIntensity),
                             Math.min(255, texColor.b * lightIntensity)
-                        ));
+                        );
                     }
                 }
+
+                ...     // cộng dồn 3 biến edgeFunction y như blog 8
             }
+
+            ...         // cộng dồn 3 biến edgeFunctionRow y như blog 8
         }
     }
 }</code></pre>
                     Tất cả đã ổn thỏa, giờ ta chạy thử thôi 😳
-                    <div class="htmlPreview" id="htmlPreview25"></div>
+                    <div class="htmlPreview" id="htmlPreview26"></div>
                     Hmmmmmmmmmmm, nếu bạn nhìn từ xa thì sẽ thấy nó bình thường, tuy nhiên nếu bạn lại gần, hoặc là khi các cube gần cạnh màn hình, thì texture sẽ bắt đầu bị
                     méo mó, thật ra với mỗi tam giác, bạn vẫn thấy texture vẫn bắt đầu và kết thúc đúng chỗ, tuy nhiên trong lúc nó đi từ cạnh này sang cạnh kia nó bị sao sao đó.
                     Cụ thể là càng gần tâm màn hình thì nó càng chuẩn, càng gần cạnh màn hình thì nó càng méo. Hiện tượng này cũng xảy ra với các game PS1 hồi xưa, người ta gọi nó
@@ -370,9 +382,9 @@ let imgPixels = null;</code></pre>
                     Cuối cùng, trong hàm processTriangles của Rasterizer, ta sửa khúc xử lý texture như sau:
                     <pre><code class="language-javascript">if (imgPixels != null) {
     let pixelUV = new Vector2(
-        tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
-        tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2],
-        tri.uv[0].w * baryCoords[0] + tri.uv[1].w * baryCoords[1] + tri.uv[2].w * baryCoords[2]     // tính luôn giá trị w của UV của pixel hiện tại
+        tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,
+        tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2,
+        tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2     // tính luôn giá trị w của UV của pixel hiện tại
     );
     pixelUV = Vector2.div(pixelUV, pixelUV.w);   // chia 1/z = nhân z để nó tuyến tính trở lại
 
@@ -382,7 +394,7 @@ let imgPixels = null;</code></pre>
     texColor = new Color(imgPixels[texIndex], imgPixels[texIndex + 1], imgPixels[texIndex + 2]);
 }</code></pre>
                     Ta chạy lại thử:
-                    <div class="htmlPreview" id="htmlPreview26"></div>
+                    <div class="htmlPreview" id="htmlPreview27"></div>
                     Quá đã, nó đã hiển thị đúng rồi, khá là magic khi ta làm được hết những thứ này chỉ bằng toán và sự kiên trì 🥵<br/><br/>
 
                     Nếu bạn quay lại blog trước và xem demo cuối cùng (hoặc demo trên cũng được), bạn sẽ thấy rằng ánh sáng mà point light
@@ -390,39 +402,54 @@ let imgPixels = null;</code></pre>
                     Đó là vì worldVertices cũng phải được "perspective correct", ta đang nội suy các tọa độ 3D một cách tuyến tính trên màn hình 2D, very wrong.<br/><br/>
                     Cách sửa cũng tương tự, nhưng thay vì cũng thêm w cho worldVertices thì ta xài luôn 1/z mà ta đã giữ sẵn trong UV 😅 trước khi nội suy worldVertices
                     thì cũng chia cho z (nhân w) trước, rồi nội suy, nội suy xong ta chia lại cho w (nhân z) là ô kê 😳<br/><br/>
-                    Vì ta sử dụng 1/z 2 lần, nên mình gom nó lên trên thành biến pixelInvZ luôn:
-                    <pre><code class="language-javascript">if (z < this.depthBuffer[y][x]) {
-    this.depthBuffer[y][x] = z;
 
-    // tính 1/z của pixel hiện tại để xài chung cho cả worldVertices và UV
-    let pixelInvZ = tri.uv[0].w * baryCoords[0] + tri.uv[1].w * baryCoords[1] + tri.uv[2].w * baryCoords[2];
+                    Vì ta sử dụng 1/z 2 lần, nên mình gom nó lên trên thành biến pixelInvZ luôn. Còn vụ nhân worldVertices với w mình gom nó thành perspectiveWorldVertices 
+                    và để ra ngoài 2 vòng for pixel vì nó là thuộc tính chung của tam giác. Nếu để nó nằm bên trong thì cứ mỗi pixel ta lại tạo thêm
+                    1 mảng và 3 Vector3 mới, mà một tam giác có thể chiếm cả chục ngàn pixel - nhớ lại vụ rác cho Garbage Collector ở
+                    <a href="graphics3D8-rasterizer.html">blog 8</a> 😳 Nguyên tắc chung cho 2 vòng for pixel là: thứ gì không đổi theo pixel thì phải tính sẵn cho tam giác,
+                    đừng bao giờ để nó lọt vào trong vòng for pixel.
+                    <pre><code class="language-javascript">const bbox = tri.boundingBox();
 
-    // perspective divide cho world vertices bằng cách chia z (nhân w)
-    let perspectiveWorldVertices = [
-        Vector3.mul(tri.worldVertices[0], tri.uv[0].w),
-        Vector3.mul(tri.worldVertices[1], tri.uv[1].w),
-        Vector3.mul(tri.worldVertices[2], tri.uv[2].w)
-    ];
-    // nội suy xong rồi nhân lại z (chia w)
-    let pixelWorldPos = new Vector3(
-        (perspectiveWorldVertices[0].x * baryCoords[0] + perspectiveWorldVertices[1].x * baryCoords[1] + perspectiveWorldVertices[2].x * baryCoords[2]),
-        (perspectiveWorldVertices[0].y * baryCoords[0] + perspectiveWorldVertices[1].y * baryCoords[1] + perspectiveWorldVertices[2].y * baryCoords[2]),
-        (perspectiveWorldVertices[0].z * baryCoords[0] + perspectiveWorldVertices[1].z * baryCoords[1] + perspectiveWorldVertices[2].z * baryCoords[2])
-    );
-    pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
+// perspective divide cho world vertices bằng cách chia z (nhân w)
+// tính sẵn ở ngoài 2 vòng for vì nó chỉ phụ thuộc vào tam giác
+let perspectiveWorldVertices = [
+    Vector3.mul(tri.worldVertices[0], tri.uv[0].w),
+    Vector3.mul(tri.worldVertices[1], tri.uv[1].w),
+    Vector3.mul(tri.worldVertices[2], tri.uv[2].w)
+];
 
-    ...
-
-    if (imgPixels != null) {
-        let pixelUV = new Vector2(
-            tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
-            tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2],
-            pixelInvZ   // xài lại thay vì tính lại
-        );
+for (let y = bbox[2]; y <= bbox[3]; y++) {
+    for (let x = bbox[0]; x <= bbox[1]; x++) {
         ...
-    }
 
-    ...
+        if (z < this.depthBuffer[y][x]) {
+            this.depthBuffer[y][x] = z;
+
+            // tính 1/z của pixel hiện tại để xài chung cho cả worldVertices và UV
+            let pixelInvZ = tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2;
+
+            // nội suy xong rồi nhân lại z (chia w)
+            let pixelWorldPos = new Vector3(
+                (perspectiveWorldVertices[0].x * baryCoord0 + perspectiveWorldVertices[1].x * baryCoord1 + perspectiveWorldVertices[2].x * baryCoord2),
+                (perspectiveWorldVertices[0].y * baryCoord0 + perspectiveWorldVertices[1].y * baryCoord1 + perspectiveWorldVertices[2].y * baryCoord2),
+                (perspectiveWorldVertices[0].z * baryCoord0 + perspectiveWorldVertices[1].z * baryCoord1 + perspectiveWorldVertices[2].z * baryCoord2)
+            );
+            pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
+
+            ...
+
+            if (imgPixels != null) {
+                let pixelUV = new Vector2(
+                    tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,
+                    tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2,
+                    pixelInvZ   // xài lại thay vì tính lại
+                );
+                ...
+            }
+
+            ...
+        }
+    }
 }</code></pre>
                     Có lẽ bạn cũng đang nhận ra, ta cũng phải làm thứ tương tự ở hàm clipAgainstPlane, cụ thể là khi clip với 4 cạnh màn hình, lúc này nó đã trải qua
                     perspective divide nhưng hàm clipAgainstPlane vẫn đang nội suy tuyến tính 🥵 Nhưng mà hên cho chúng ta, từ lúc implement xong rasterizer, thật
@@ -430,7 +457,7 @@ let imgPixels = null;</code></pre>
                     không bao giờ vẽ ra ngoài màn hình nữa. Ta sẽ bỏ luôn bước clip với 4 cạnh màn hình, nhưng thật ra nó vẫn có tác dụng nếu ta tiếp tục phát triển
                     engine này về sau, suy cho cùng thì tất cả tam giác nằm gọn trong canvas vẫn sẽ dễ làm việc hơn.<br/><br/>
                     Kết quả cuối cùng:
-                    <div class="htmlPreview" id="htmlPreview27"></div>
+                    <div class="htmlPreview" id="htmlPreview28"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 

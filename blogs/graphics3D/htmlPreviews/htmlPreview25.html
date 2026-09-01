@@ -21,21 +21,6 @@
 		<span id="pointIntensityText" class="slider-value">1.0</span>
 	</div>
 	<script>
-		class Vector2 {
-			constructor(u = 0, v = 0) {
-				this.u = u;
-				this.v = v;
-			}
-			clone() {
-				return new Vector2(this.u, this.v);
-			}
-			static lerp(vec1, vec2, t) {
-				return new Vector2(
-					vec1.u + (vec2.u - vec1.u) * t,
-					vec1.v + (vec2.v - vec1.v) * t);
-			}
-		}
-
 		class Vector3 {
 			constructor(x = 0, y = 0, z = 0, w = 1) {
 				this.x = x;
@@ -243,7 +228,7 @@
 		}
 
 		class Triangle {
-			constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
+			constructor(vertices = [], color = new Color(255, 255, 255)) {
 				if (vertices.length == 0) {
 					this.vertices = [];
 					for (let i = 0; i < 3; i++) {
@@ -253,7 +238,6 @@
 					this.vertices = vertices;
 				}
 
-				this.uv = uv;
 				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
 				this.color = color;
 			}
@@ -263,7 +247,6 @@
 				for (let i = 0; i < this.vertices.length; i++) {
 					tri.vertices[i] = this.vertices[i].clone();
 					tri.worldVertices[i] = this.worldVertices[i].clone();
-					tri.uv[i] = this.uv[i].clone();
 				}
 				tri.color = this.color;
 				return tri;
@@ -353,9 +336,6 @@
 					outTri.worldVertices[0] = this.worldVertices[frontPoints[0]];
 					outTri.worldVertices[1] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
 					outTri.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[1]], t2);
-					outTri.uv[0] = this.uv[frontPoints[0]];
-					outTri.uv[1] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
-					outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
 					outTri.color = this.color;
 					outTris.push(outTri);
 				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
@@ -379,9 +359,6 @@
 					outTri1.worldVertices[0] = this.worldVertices[frontPoints[0]];
 					outTri1.worldVertices[1] = this.worldVertices[frontPoints[1]];
 					outTri1.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
-					outTri1.uv[0] = this.uv[frontPoints[0]];
-					outTri1.uv[1] = this.uv[frontPoints[1]];
-					outTri1.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri1.color = this.color;
 					outTris.push(outTri1);
 
@@ -391,26 +368,11 @@
 					outTri2.worldVertices[0] = this.worldVertices[frontPoints[1]].clone();
 					outTri2.worldVertices[1] = Vector3.lerp(this.worldVertices[frontPoints[1]], this.worldVertices[behindPoints[0]], t2);
 					outTri2.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
-					outTri2.uv[0] = this.uv[frontPoints[1]].clone();
-					outTri2.uv[1] = Vector2.lerp(this.uv[frontPoints[1]], this.uv[behindPoints[0]], t2);
-					outTri2.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri2.color = this.color;
 					outTris.push(outTri2);
 				}
 
 				return outTris;
-			}
-
-			isPointInTriangle(p) {
-				const v0 = [this.vertices[0].x, this.vertices[0].y];
-				const v1 = [this.vertices[1].x, this.vertices[1].y];
-				const v2 = [this.vertices[2].x, this.vertices[2].y];
-
-				const e1 = edgeFunction(v0, v1, p);
-				const e2 = edgeFunction(v1, v2, p);
-				const e3 = edgeFunction(v2, v0, p);
-
-				return e1 < 0 && e2 < 0 && e3 < 0;
 			}
 
 			boundingBox() {
@@ -427,16 +389,8 @@
 				return [minX, maxX, minY, maxY];
 			}
 
-			barycentricCoords(p) {
-				const v0 = [this.vertices[0].x, this.vertices[0].y];
-				const v1 = [this.vertices[1].x, this.vertices[1].y];
-				const v2 = [this.vertices[2].x, this.vertices[2].y];
-
-				const area = edgeFunction(v0, v1, v2);
-				const w0 = edgeFunction(v1, v2, p) / area;
-				const w1 = edgeFunction(v2, v0, p) / area;
-				const w2 = edgeFunction(v0, v1, p) / area;
-				return [w0, w1, w2];
+			calculateSignedDoubleArea() {
+				this.signedDoubleArea = edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
 			}
 		}
 
@@ -526,78 +480,66 @@
 				this.tris.push(new Triangle([
 					new Vector3(-0.5, -0.5, -0.5),
 					new Vector3(-0.5, 0.5, -0.5),
-					new Vector3(0.5, 0.5, -0.5)],
-					[new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)], this.color));
+					new Vector3(0.5, 0.5, -0.5)], this.color));
 				this.tris.push(new Triangle([
 					new Vector3(-0.5, -0.5, -0.5),
 					new Vector3(0.5, 0.5, -0.5),
-					new Vector3(0.5, -0.5, -0.5)],
-					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)], this.color));
+					new Vector3(0.5, -0.5, -0.5)], this.color));
 
 				// RIGHT
 				this.tris.push(new Triangle([
 					new Vector3(0.5, -0.5, -0.5),
 					new Vector3(0.5, 0.5, -0.5),
-					new Vector3(0.5, 0.5, 0.5)],
-					[new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1)], this.color));
+					new Vector3(0.5, 0.5, 0.5)], this.color));
 
 				this.tris.push(new Triangle([
 					new Vector3(0.5, -0.5, -0.5),
 					new Vector3(0.5, 0.5, 0.5),
-					new Vector3(0.5, -0.5, 0.5)],
-					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(0, 1)], this.color));
+					new Vector3(0.5, -0.5, 0.5)], this.color));
 
 				// BACK
 				this.tris.push(new Triangle([
 					new Vector3(0.5, -0.5, 0.5),
 					new Vector3(0.5, 0.5, 0.5),
-					new Vector3(-0.5, 0.5, 0.5)],
-					[new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)], this.color));
+					new Vector3(-0.5, 0.5, 0.5)], this.color));
 
 				this.tris.push(new Triangle([
 					new Vector3(0.5, -0.5, 0.5),
 					new Vector3(-0.5, 0.5, 0.5),
-					new Vector3(-0.5, -0.5, 0.5)],
-					[new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)], this.color));
+					new Vector3(-0.5, -0.5, 0.5)], this.color));
 
 				// LEFT
 				this.tris.push(new Triangle([
 					new Vector3(-0.5, -0.5, 0.5),
 					new Vector3(-0.5, 0.5, 0.5),
-					new Vector3(-0.5, 0.5, -0.5)],
-					[new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0)], this.color));
+					new Vector3(-0.5, 0.5, -0.5)], this.color));
 
 				this.tris.push(new Triangle([
 					new Vector3(-0.5, -0.5, 0.5),
 					new Vector3(-0.5, 0.5, -0.5),
-					new Vector3(-0.5, -0.5, -0.5)],
-					[new Vector2(0, 1), new Vector2(1, 0), new Vector2(0, 0)], this.color));
+					new Vector3(-0.5, -0.5, -0.5)], this.color));
 
 				// TOP
 				this.tris.push(new Triangle([
 					new Vector3(-0.5, 0.5, -0.5),
 					new Vector3(-0.5, 0.5, 0.5),
-					new Vector3(0.5, 0.5, 0.5)],
-					[new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)], this.color));
+					new Vector3(0.5, 0.5, 0.5)], this.color));
 
 				this.tris.push(new Triangle([
 					new Vector3(-0.5, 0.5, -0.5),
 					new Vector3(0.5, 0.5, 0.5),
-					new Vector3(0.5, 0.5, -0.5)],
-					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)], this.color));
+					new Vector3(0.5, 0.5, -0.5)], this.color));
 
 				// BOTTOM
 				this.tris.push(new Triangle([
 					new Vector3(0.5, -0.5, 0.5),
 					new Vector3(-0.5, -0.5, 0.5),
-					new Vector3(-0.5, -0.5, -0.5)],
-					[new Vector2(1, 1), new Vector2(0, 1), new Vector2(0, 0)], this.color));
+					new Vector3(-0.5, -0.5, -0.5)], this.color));
 
 				this.tris.push(new Triangle([
 					new Vector3(0.5, -0.5, 0.5),
 					new Vector3(-0.5, -0.5, -0.5),
-					new Vector3(0.5, -0.5, -0.5)],
-					[new Vector2(1, 1), new Vector2(0, 0), new Vector2(1, 0)], this.color));
+					new Vector3(0.5, -0.5, -0.5)], this.color));
 			}
 
 			rotate(eulerX, eulerY, eulerZ) {
@@ -625,6 +567,12 @@
 				this.g = g;
 				this.b = b;
 			}
+
+			updateColor(r, g, b) {
+				this.r = r;
+				this.g = g;
+				this.b = b;
+			}
 		}
 
 		class Rasterizer {
@@ -648,14 +596,10 @@
 			clearScreen() {
 				for (let i = 0; i < this.screenBuffer.length; i++) {
 					for (let j = 0; j < this.screenBuffer[i].length; j++) {
-						this.screenBuffer[i][j] = new Color(240, 240, 240);
+						this.screenBuffer[i][j].updateColor(240, 240, 240);
 						this.depthBuffer[i][j] = Infinity;
 					}
 				}
-			}
-			placePixel(pos, color) {
-				if (pos[1] >= 0 && pos[1] < canvas.height && pos[0] >= 0 && pos[0] < canvas.width)
-					this.screenBuffer[parseInt(pos[1])][parseInt(pos[0])] = color;
 			}
 
 			processTriangles(tris) {
@@ -668,22 +612,43 @@
 							vertices[i].z);
 					}
 
+					tri.calculateSignedDoubleArea();
+
 					let triWorldNormal = tri.getWorldNormal();
 					let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, lightDir) + 1) / 2) * dirLightIntensity;
 					const bbox = tri.boundingBox();
+
+					let edgeFunctionRow01 = edgeFunction(
+						tri.vertices[0],
+						tri.vertices[1],
+						new Vector3(bbox[0], bbox[2], 0));
+					let edgeFunctionRow12 = edgeFunction(
+						tri.vertices[1],
+						tri.vertices[2],
+						new Vector3(bbox[0], bbox[2], 0));
+					let edgeFunctionRow20 = edgeFunction(
+						tri.vertices[2],
+						tri.vertices[0],
+						new Vector3(bbox[0], bbox[2], 0));
+
 					for (let y = bbox[2]; y <= bbox[3]; y++) {
+						let edgeFunction01 = edgeFunctionRow01;
+						let edgeFunction12 = edgeFunctionRow12;
+						let edgeFunction20 = edgeFunctionRow20;
 						for (let x = bbox[0]; x <= bbox[1]; x++) {
-							if (tri.isPointInTriangle([x, y])) {
-								const baryCoords = tri.barycentricCoords([x, y]);
-								const z = tri.vertices[0].z * baryCoords[0] + tri.vertices[1].z * baryCoords[1] + tri.vertices[2].z * baryCoords[2];
+							if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+								const baryCoord0 = edgeFunction12 / tri.signedDoubleArea;
+								const baryCoord1 = edgeFunction20 / tri.signedDoubleArea;
+								const baryCoord2 = edgeFunction01 / tri.signedDoubleArea;
+								const z = tri.vertices[0].z * baryCoord0 + tri.vertices[1].z * baryCoord1 + tri.vertices[2].z * baryCoord2;
 
 								if (z < this.depthBuffer[y][x]) {
 									this.depthBuffer[y][x] = z;
 
 									let pixelWorldPos = new Vector3(
-										tri.worldVertices[0].x * baryCoords[0] + tri.worldVertices[1].x * baryCoords[1] + tri.worldVertices[2].x * baryCoords[2],
-										tri.worldVertices[0].y * baryCoords[0] + tri.worldVertices[1].y * baryCoords[1] + tri.worldVertices[2].y * baryCoords[2],
-										tri.worldVertices[0].z * baryCoords[0] + tri.worldVertices[1].z * baryCoords[1] + tri.worldVertices[2].z * baryCoords[2]
+										tri.worldVertices[0].x * baryCoord0 + tri.worldVertices[1].x * baryCoord1 + tri.worldVertices[2].x * baryCoord2,
+										tri.worldVertices[0].y * baryCoord0 + tri.worldVertices[1].y * baryCoord1 + tri.worldVertices[2].y * baryCoord2,
+										tri.worldVertices[0].z * baryCoord0 + tri.worldVertices[1].z * baryCoord1 + tri.worldVertices[2].z * baryCoord2
 									);
 
 									let pointLightVec = Vector3.sub(pixelWorldPos, lightCube.pos);
@@ -695,26 +660,20 @@
 
 									let lightIntensity = dirLightDiffuse + pointLightDiffuse;
 
-									let texColor = tri.color;
-									if (imgPixels != null) {
-										let pixelUV = new Vector2(
-											tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
-											tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2]
-										);
-										const texX = Math.floor(pixelUV.u * (img.width - 1));
-										const texY = Math.floor(pixelUV.v * (img.height - 1));
-										const texIndex = (texY * img.width + texX) * 4;
-										texColor = new Color(imgPixels[texIndex], imgPixels[texIndex + 1], imgPixels[texIndex + 2]);
-									}
-
-									this.placePixel([x, y], new Color(
-										Math.min(255, texColor.r * lightIntensity),
-										Math.min(255, texColor.g * lightIntensity),
-										Math.min(255, texColor.b * lightIntensity)
-									));
+									this.screenBuffer[y][x].updateColor(
+										Math.min(255, tri.color.r * lightIntensity),
+										Math.min(255, tri.color.g * lightIntensity),
+										Math.min(255, tri.color.b * lightIntensity)
+									);
 								}
 							}
+							edgeFunction01 += (tri.vertices[0].y - tri.vertices[1].y);
+							edgeFunction12 += (tri.vertices[1].y - tri.vertices[2].y);
+							edgeFunction20 += (tri.vertices[2].y - tri.vertices[0].y);
 						}
+						edgeFunctionRow01 += (tri.vertices[1].x - tri.vertices[0].x);
+						edgeFunctionRow12 += (tri.vertices[2].x - tri.vertices[1].x);
+						edgeFunctionRow20 += (tri.vertices[0].x - tri.vertices[2].x);
 					}
 				}
 			}
@@ -735,7 +694,7 @@
 			}
 		}
 		function edgeFunction(v0, v1, p) {
-			return (p[0] - v0[0]) * (v1[1] - v0[1]) - (p[1] - v0[1]) * (v1[0] - v0[0]);
+			return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
 		}
 
 		const canvas = document.getElementById("gameCanvas");
@@ -769,19 +728,6 @@
 		let cube1 = new Cube(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0));
 		let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0));
 		let lightCube = new Cube(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255));
-
-		const img = new Image();
-		img.crossOrigin = "anonymous";
-		img.src = "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg";
-		img.onload = () => {
-			const tempCanvas = document.createElement("canvas");
-			tempCanvas.width = img.width;
-			tempCanvas.height = img.height;
-			const tempCtx = tempCanvas.getContext("2d");
-			tempCtx.drawImage(img, 0, 0);
-			imgPixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
-		};
-		let imgPixels = null;
 
 		let lastTime = performance.now();
 		let dt = 0;

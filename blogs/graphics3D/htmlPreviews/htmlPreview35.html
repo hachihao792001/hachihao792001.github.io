@@ -16,9 +16,18 @@
 		<span id="dirIntensityText" class="slider-value">1.0</span>
 	</div>
 	<div>
+		Directional light rotate speed:
+		<input type="range" id="dirRotateSpeed" min="0" max="50" step="0.1" value="10" />
+		<span id="dirRotateSpeedText" class="slider-value">10</span>
+	</div>
+	<div>
 		Point light intensity:
 		<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
 		<span id="pointIntensityText" class="slider-value">1.0</span>
+	</div>
+	<div>
+		Shadow:
+		<input type="checkbox" id="useShadow" checked="checked" />
 	</div>
 	<script>
 		class Vector2 {
@@ -146,6 +155,16 @@
 				return matrix;
 			}
 
+			static Orthographic(size, zNear, zFar) {
+				let matrix = new Mat4x4();
+				matrix.m[0][0] = 2.0 / size;
+				matrix.m[1][1] = 2.0 / size;
+				matrix.m[2][2] = 1.0 / (zFar - zNear);
+				matrix.m[2][3] = -zNear / (zFar - zNear);
+				matrix.m[3][3] = 1.0;
+				return matrix;
+			}
+
 			static View(r, u, f, t) {
 				let matrix = new Mat4x4();
 				matrix.m[0][0] = r.x;
@@ -261,6 +280,7 @@
 				this.uv = uv;
 				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
 				this.color = color;
+				this.texture = null;
 			}
 
 			clone() {
@@ -271,6 +291,7 @@
 					tri.uv[i] = this.uv[i].clone();
 				}
 				tri.color = this.color;
+				tri.texture = this.texture;
 				return tri;
 			}
 
@@ -364,6 +385,7 @@
 					outTri.uv[1] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
 					outTri.color = this.color;
+					outTri.texture = this.texture;
 					outTris.push(outTri);
 				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
 					let outTri1 = new Triangle(), outTri2 = new Triangle();
@@ -390,6 +412,7 @@
 					outTri1.uv[1] = this.uv[frontPoints[1]];
 					outTri1.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri1.color = this.color;
+					outTri1.texture = this.texture;
 					outTris.push(outTri1);
 
 					outTri2.vertices[0] = f1.clone();
@@ -402,22 +425,23 @@
 					outTri2.uv[1] = Vector2.lerp(this.uv[frontPoints[1]], this.uv[behindPoints[0]], t2);
 					outTri2.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri2.color = this.color;
+					outTri2.texture = this.texture;
 					outTris.push(outTri2);
 				}
 
 				return outTris;
 			}
 
-			boundingBox() {
+			boundingBox(maxWidth = canvas.width, maxHeight = canvas.height) {
 				let minX = Math.min(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
 				let maxX = Math.max(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
 				let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
 				let maxY = Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
 
 				minX = Math.max(0, parseInt(minX));
-				maxX = Math.min(canvas.width - 1, parseInt(maxX));
+				maxX = Math.min(maxWidth - 1, parseInt(maxX));
 				minY = Math.max(0, parseInt(minY));
-				maxY = Math.min(canvas.height - 1, parseInt(maxY));
+				maxY = Math.min(maxHeight - 1, parseInt(maxY));
 
 				return [minX, maxX, minY, maxY];
 			}
@@ -454,6 +478,16 @@
 				this.rotation = Quaternion.buildQuaternionEuler(euler);
 				this.speed = speed;
 				this.sensitivity = sensitivity;
+			}
+
+			getFrustumCenter(customZFar = -1) {
+				let forward = this.rotation.rotateVector(Vector3.forward);
+
+				let near = Vector3.add(this.pos, Vector3.mul(forward, znear));
+				if (customZFar == -1)
+					customZFar = zfar;
+				let far = Vector3.add(this.pos, Vector3.mul(forward, customZFar));
+				return Vector3.div(Vector3.add(near, far), 2);
 			}
 
 			updateRotation(mouseMovementX, mouseMovementY) {
@@ -497,94 +531,178 @@
 			}
 		}
 
-		class Cube {
-			constructor(pos, eulerAngles, scale, color) {
+		class Mesh {
+			constructor(tris = []) {
+				this.tris = tris;
+			}
+
+			setTriangles(tris, color) {
 				this.tris = [];
+				for (let tri of tris) {
+					this.tris.push(new Triangle(
+						[tri.vertices[0].clone(), tri.vertices[1].clone(), tri.vertices[2].clone()],
+						[tri.uv[0].clone(), tri.uv[1].clone(), tri.uv[2].clone()],
+						color
+					));
+				}
+			}
+		}
+
+		class Cube extends Mesh {
+			constructor() {
+				super(Cube.generateInitialTriangles());
+			}
+
+			static generateInitialTriangles() {
+				let tris = [];
+				let color = new Color(255, 255, 255);
+
+				// FRONT
+				tris.push(new Triangle([
+					new Vector3(-0.5, -0.5, -0.5),
+					new Vector3(-0.5, 0.5, -0.5),
+					new Vector3(0.5, 0.5, -0.5)],
+					[new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)], color));
+				tris.push(new Triangle([
+					new Vector3(-0.5, -0.5, -0.5),
+					new Vector3(0.5, 0.5, -0.5),
+					new Vector3(0.5, -0.5, -0.5)],
+					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)], color));
+
+				// RIGHT
+				tris.push(new Triangle([
+					new Vector3(0.5, -0.5, -0.5),
+					new Vector3(0.5, 0.5, -0.5),
+					new Vector3(0.5, 0.5, 0.5)],
+					[new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1)], color));
+
+				tris.push(new Triangle([
+					new Vector3(0.5, -0.5, -0.5),
+					new Vector3(0.5, 0.5, 0.5),
+					new Vector3(0.5, -0.5, 0.5)],
+					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(0, 1)], color));
+
+				// BACK
+				tris.push(new Triangle([
+					new Vector3(0.5, -0.5, 0.5),
+					new Vector3(0.5, 0.5, 0.5),
+					new Vector3(-0.5, 0.5, 0.5)],
+					[new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)], color));
+
+				tris.push(new Triangle([
+					new Vector3(0.5, -0.5, 0.5),
+					new Vector3(-0.5, 0.5, 0.5),
+					new Vector3(-0.5, -0.5, 0.5)],
+					[new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)], color));
+
+				// LEFT
+				tris.push(new Triangle([
+					new Vector3(-0.5, -0.5, 0.5),
+					new Vector3(-0.5, 0.5, 0.5),
+					new Vector3(-0.5, 0.5, -0.5)],
+					[new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0)], color));
+
+				tris.push(new Triangle([
+					new Vector3(-0.5, -0.5, 0.5),
+					new Vector3(-0.5, 0.5, -0.5),
+					new Vector3(-0.5, -0.5, -0.5)],
+					[new Vector2(0, 1), new Vector2(1, 0), new Vector2(0, 0)], color));
+
+				// TOP
+				tris.push(new Triangle([
+					new Vector3(-0.5, 0.5, -0.5),
+					new Vector3(-0.5, 0.5, 0.5),
+					new Vector3(0.5, 0.5, 0.5)],
+					[new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)], color));
+
+				tris.push(new Triangle([
+					new Vector3(-0.5, 0.5, -0.5),
+					new Vector3(0.5, 0.5, 0.5),
+					new Vector3(0.5, 0.5, -0.5)],
+					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)], color));
+
+				// BOTTOM
+				tris.push(new Triangle([
+					new Vector3(0.5, -0.5, 0.5),
+					new Vector3(-0.5, -0.5, 0.5),
+					new Vector3(-0.5, -0.5, -0.5)],
+					[new Vector2(1, 1), new Vector2(0, 1), new Vector2(0, 0)], color));
+
+				tris.push(new Triangle([
+					new Vector3(0.5, -0.5, 0.5),
+					new Vector3(-0.5, -0.5, -0.5),
+					new Vector3(0.5, -0.5, -0.5)],
+					[new Vector2(1, 1), new Vector2(0, 0), new Vector2(1, 0)], color));
+
+				return tris;
+			}
+		}
+
+		class ObjMesh extends Mesh {
+			constructor(objURL) {
+				super();
+				this.load(objURL);
+			}
+
+			async load(url) {
+				const response = await fetch(url);
+				const objText = await response.text();
+				const triangles = this.parseOBJ(objText);
+				this.setTriangles(triangles);
+			}
+
+			parseOBJ(objText) {
+				const vertices = [];
+				const uvs = [];
+				const triangles = [];
+				const lines = objText.split("\n");
+
+				for (let line of lines) {
+					if (!line || line.startsWith("#")) continue;
+
+					if (line.startsWith("v ")) {
+						const values = line.split(" ");
+						vertices.push(new Vector3(
+							parseFloat(values[1]),
+							parseFloat(values[2]),
+							parseFloat(values[3])
+						));
+					} else if (line.startsWith("vt ")) {
+						const values = line.split(" ");
+						uvs.push(new Vector2(
+							parseFloat(values[1]),
+							1 - parseFloat(values[2])
+						));
+					} else if (line.startsWith("f ")) {
+						const vertexInfoStrs = line.split(" ").slice(1);
+
+						let triVertices = [];
+						let triUVs = [];
+						for (let vertexInfoStr of vertexInfoStrs) {
+							const vertexInfo = vertexInfoStr.split("/");
+							const vertexCoord = vertices[parseInt(vertexInfo[0]) - 1];
+							const vertexUV = uvs[parseInt(vertexInfo[1]) - 1];
+
+							triVertices.push(vertexCoord);
+							triUVs.push(vertexUV);
+						}
+						let newTri = new Triangle(triVertices, triUVs, this.color);
+						triangles.push(newTri);
+					}
+				}
+
+				return triangles;
+			}
+		}
+
+		class GameObject {
+			constructor(pos, eulerAngles, scale, color, mesh, texture = null) {
 				this.pos = pos;
 				this.scale = scale;
 				this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
 				this.color = color;
-
-				this.generateInitialTriangles();
-			}
-
-			generateInitialTriangles() {
-				// FRONT
-				this.tris.push(new Triangle([
-					new Vector3(-0.5, -0.5, -0.5),
-					new Vector3(-0.5, 0.5, -0.5),
-					new Vector3(0.5, 0.5, -0.5)],
-					[new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)], this.color));
-				this.tris.push(new Triangle([
-					new Vector3(-0.5, -0.5, -0.5),
-					new Vector3(0.5, 0.5, -0.5),
-					new Vector3(0.5, -0.5, -0.5)],
-					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)], this.color));
-
-				// RIGHT
-				this.tris.push(new Triangle([
-					new Vector3(0.5, -0.5, -0.5),
-					new Vector3(0.5, 0.5, -0.5),
-					new Vector3(0.5, 0.5, 0.5)],
-					[new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1)], this.color));
-
-				this.tris.push(new Triangle([
-					new Vector3(0.5, -0.5, -0.5),
-					new Vector3(0.5, 0.5, 0.5),
-					new Vector3(0.5, -0.5, 0.5)],
-					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(0, 1)], this.color));
-
-				// BACK
-				this.tris.push(new Triangle([
-					new Vector3(0.5, -0.5, 0.5),
-					new Vector3(0.5, 0.5, 0.5),
-					new Vector3(-0.5, 0.5, 0.5)],
-					[new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)], this.color));
-
-				this.tris.push(new Triangle([
-					new Vector3(0.5, -0.5, 0.5),
-					new Vector3(-0.5, 0.5, 0.5),
-					new Vector3(-0.5, -0.5, 0.5)],
-					[new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)], this.color));
-
-				// LEFT
-				this.tris.push(new Triangle([
-					new Vector3(-0.5, -0.5, 0.5),
-					new Vector3(-0.5, 0.5, 0.5),
-					new Vector3(-0.5, 0.5, -0.5)],
-					[new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0)], this.color));
-
-				this.tris.push(new Triangle([
-					new Vector3(-0.5, -0.5, 0.5),
-					new Vector3(-0.5, 0.5, -0.5),
-					new Vector3(-0.5, -0.5, -0.5)],
-					[new Vector2(0, 1), new Vector2(1, 0), new Vector2(0, 0)], this.color));
-
-				// TOP
-				this.tris.push(new Triangle([
-					new Vector3(-0.5, 0.5, -0.5),
-					new Vector3(-0.5, 0.5, 0.5),
-					new Vector3(0.5, 0.5, 0.5)],
-					[new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)], this.color));
-
-				this.tris.push(new Triangle([
-					new Vector3(-0.5, 0.5, -0.5),
-					new Vector3(0.5, 0.5, 0.5),
-					new Vector3(0.5, 0.5, -0.5)],
-					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)], this.color));
-
-				// BOTTOM
-				this.tris.push(new Triangle([
-					new Vector3(0.5, -0.5, 0.5),
-					new Vector3(-0.5, -0.5, 0.5),
-					new Vector3(-0.5, -0.5, -0.5)],
-					[new Vector2(1, 1), new Vector2(0, 1), new Vector2(0, 0)], this.color));
-
-				this.tris.push(new Triangle([
-					new Vector3(0.5, -0.5, 0.5),
-					new Vector3(-0.5, -0.5, -0.5),
-					new Vector3(0.5, -0.5, -0.5)],
-					[new Vector2(1, 1), new Vector2(0, 0), new Vector2(1, 0)], this.color));
+				this.mesh = mesh;
+				this.texture = texture;
 			}
 
 			rotate(eulerX, eulerY, eulerZ) {
@@ -594,15 +712,128 @@
 
 			getTransformedTriangles() {
 				let transformedTris = [];
-				for (let tri of this.tris) {
+				for (let tri of this.mesh.tris) {
 					let transformedTri = tri.clone();
 					transformedTri.mulMat4x4(Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z));
 					transformedTri.rotate(this.rotation);
 					transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
 					transformedTri.updateWorldVertices();
+					transformedTri.texture = this.texture;
 					transformedTris.push(transformedTri);
 				}
 				return transformedTris;
+			}
+		}
+
+		class DirectionalLight {
+			constructor(dir, intensity) {
+				this.dir = dir.normalize();
+				this.intensity = intensity;
+				this.shadowMap = [];
+				for (let i = 0; i < shadowMapSize; i++) {
+					let row = [];
+					for (let j = 0; j < shadowMapSize; j++) {
+						row.push(Infinity);
+					}
+					this.shadowMap.push(row);
+				}
+			}
+
+			buildViewAndProjectionMatrix() {
+				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
+				let right = Vector3.cross(up, this.dir).normalize();
+				up = Vector3.cross(this.dir, right).normalize();
+				//let frustumCenter = camera.getFrustumCenter(shadowMapDistance);
+				let frustumCenter = Vector3.zero;
+				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
+				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
+				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
+			}
+
+			buildShadowMap(tris) {
+
+				for (let i = 0; i < shadowMapSize; i++) {
+					for (let j = 0; j < shadowMapSize; j++) {
+						this.shadowMap[i][j] = Infinity;
+					}
+				}
+
+				for (let tri of tris) {
+					let shadowTri = tri.clone();
+
+					if (Vector3.dot(tri.getWorldNormal(), this.dir) >= 0) continue;
+
+					shadowTri.mulMat4x4(this.viewMatrix);
+					shadowTri.mulMat4x4(this.projectionMatrix);
+					shadowTri.perspectiveDivide();
+
+					for (let i = 0; i < shadowTri.vertices.length; i++) {
+						shadowTri.vertices[i].x = (shadowTri.vertices[i].x + 1) * shadowMapSize / 2;
+						shadowTri.vertices[i].y = (-shadowTri.vertices[i].y + 1) * shadowMapSize / 2;
+					}
+
+					const bbox = shadowTri.boundingBox(shadowMapSize, shadowMapSize);
+
+					shadowTri.calculateSignedDoubleArea();
+
+					let edgeFunctionRow01 = edgeFunction(
+						shadowTri.vertices[0],
+						shadowTri.vertices[1],
+						new Vector3(bbox[0], bbox[2], 0));
+					let edgeFunctionRow12 = edgeFunction(
+						shadowTri.vertices[1],
+						shadowTri.vertices[2],
+						new Vector3(bbox[0], bbox[2], 0));
+					let edgeFunctionRow20 = edgeFunction(
+						shadowTri.vertices[2],
+						shadowTri.vertices[0],
+						new Vector3(bbox[0], bbox[2], 0));
+
+					for (let y = bbox[2]; y <= bbox[3]; y++) {
+						let edgeFunction01 = edgeFunctionRow01;
+						let edgeFunction12 = edgeFunctionRow12;
+						let edgeFunction20 = edgeFunctionRow20;
+						for (let x = bbox[0]; x <= bbox[1]; x++) {
+							if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+								const baryCoord0 = edgeFunction12 / shadowTri.signedDoubleArea;
+								const baryCoord1 = edgeFunction20 / shadowTri.signedDoubleArea;
+								const baryCoord2 = edgeFunction01 / shadowTri.signedDoubleArea;
+								const z = shadowTri.vertices[0].z * baryCoord0 + shadowTri.vertices[1].z * baryCoord1 + shadowTri.vertices[2].z * baryCoord2;
+								if (z < this.shadowMap[y][x]) {
+									this.shadowMap[y][x] = z;
+								}
+							}
+							edgeFunction01 += (shadowTri.vertices[0].y - shadowTri.vertices[1].y);
+							edgeFunction12 += (shadowTri.vertices[1].y - shadowTri.vertices[2].y);
+							edgeFunction20 += (shadowTri.vertices[2].y - shadowTri.vertices[0].y);
+						}
+						edgeFunctionRow01 += (shadowTri.vertices[1].x - shadowTri.vertices[0].x);
+						edgeFunctionRow12 += (shadowTri.vertices[2].x - shadowTri.vertices[1].x);
+						edgeFunctionRow20 += (shadowTri.vertices[0].x - shadowTri.vertices[2].x);
+					}
+				}
+			}
+
+			isInShadow(pixelWorldPos, triWorldNormal) {
+				let dotProduct = Vector3.dot(triWorldNormal, this.dir);
+				if (dotProduct >= 0) return false;
+
+				let texelSize = shadowMapDistance / shadowMapSize;
+				let normalOffset = texelSize * (1 - Math.abs(dotProduct));
+
+				let lightSpacePos = Vector3.add(pixelWorldPos, Vector3.mul(triWorldNormal, normalOffset));
+				lightSpacePos.mulMat4x4(this.viewMatrix);
+				lightSpacePos.mulMat4x4(this.projectionMatrix);
+
+				lightSpacePos = Vector3.div(lightSpacePos, lightSpacePos.w);
+
+				const x = Math.floor((lightSpacePos.x + 1) * shadowMapSize / 2);
+				const y = Math.floor((-lightSpacePos.y + 1) * shadowMapSize / 2);
+
+				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize)
+					return false;
+
+				return lightSpacePos.z > this.shadowMap[y][x] + shadowBias;
 			}
 		}
 
@@ -617,6 +848,34 @@
 				this.r = r;
 				this.g = g;
 				this.b = b;
+			}
+		}
+
+		class Texture {
+			constructor(url) {
+				this.pixels = null;
+				this.width = 0;
+				this.height = 0;
+				this.load(url);
+			}
+
+			async load(url) {
+				const img = new Image();
+				img.crossOrigin = "anonymous";
+				img.src = url;
+				await new Promise((resolve) => {
+					img.onload = () => {
+						resolve();
+					};
+				});
+				const tempCanvas = document.createElement("canvas");
+				tempCanvas.width = img.width;
+				tempCanvas.height = img.height;
+				const tempCtx = tempCanvas.getContext("2d");
+				tempCtx.drawImage(img, 0, 0);
+				this.pixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
+				this.width = img.width;
+				this.height = img.height;
 			}
 		}
 
@@ -660,7 +919,7 @@
 					tri.calculateSignedDoubleArea();
 
 					let triWorldNormal = tri.getWorldNormal();
-					let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, lightDir) + 1) / 2) * dirLightIntensity;
+					let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
 					const bbox = tri.boundingBox();
 
 					let edgeFunctionRow01 = edgeFunction(
@@ -676,6 +935,12 @@
 						tri.vertices[0],
 						new Vector3(bbox[0], bbox[2], 0));
 
+					let perspectiveWorldVertices = [
+						Vector3.mul(tri.worldVertices[0], tri.uv[0].w),
+						Vector3.mul(tri.worldVertices[1], tri.uv[1].w),
+						Vector3.mul(tri.worldVertices[2], tri.uv[2].w)
+					];
+
 					for (let y = bbox[2]; y <= bbox[3]; y++) {
 						let edgeFunction01 = edgeFunctionRow01;
 						let edgeFunction12 = edgeFunctionRow12;
@@ -690,11 +955,17 @@
 								if (z < this.depthBuffer[y][x]) {
 									this.depthBuffer[y][x] = z;
 
+									let pixelInvZ = tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2;
+
 									let pixelWorldPos = new Vector3(
-										tri.worldVertices[0].x * baryCoord0 + tri.worldVertices[1].x * baryCoord1 + tri.worldVertices[2].x * baryCoord2,
-										tri.worldVertices[0].y * baryCoord0 + tri.worldVertices[1].y * baryCoord1 + tri.worldVertices[2].y * baryCoord2,
-										tri.worldVertices[0].z * baryCoord0 + tri.worldVertices[1].z * baryCoord1 + tri.worldVertices[2].z * baryCoord2
+										(perspectiveWorldVertices[0].x * baryCoord0 + perspectiveWorldVertices[1].x * baryCoord1 + perspectiveWorldVertices[2].x * baryCoord2),
+										(perspectiveWorldVertices[0].y * baryCoord0 + perspectiveWorldVertices[1].y * baryCoord1 + perspectiveWorldVertices[2].y * baryCoord2),
+										(perspectiveWorldVertices[0].z * baryCoord0 + perspectiveWorldVertices[1].z * baryCoord1 + perspectiveWorldVertices[2].z * baryCoord2)
 									);
+									pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
+
+									let inShadow = useShadow ? dirLight.isInShadow(pixelWorldPos, triWorldNormal) : false;
+									let shadowFactor = inShadow ? 0.5 : 1.0;
 
 									let pointLightVec = Vector3.sub(pixelWorldPos, lightCube.pos);
 									let distance = pointLightVec.magnitude();
@@ -703,21 +974,21 @@
 									let attenuation = 1 / (1 + 0.1 * distance * distance);
 									pointLightDiffuse *= attenuation * pointLightIntensity;
 
-									let lightIntensity = dirLightDiffuse + pointLightDiffuse;
+									let lightIntensity = (dirLightDiffuse + pointLightDiffuse) * shadowFactor;
 
 									let texColor = tri.color;
-									if (imgPixels != null) {
+									if (tri.texture && tri.texture.pixels) {
 										let pixelUV = new Vector2(
 											tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,
 											tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2,
-											tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2
+											pixelInvZ
 										);
 										pixelUV = Vector2.div(pixelUV, pixelUV.w);
 
-										const texX = Math.floor(pixelUV.u * (img.width - 1));
-										const texY = Math.floor(pixelUV.v * (img.height - 1));
-										const texIndex = (texY * img.width + texX) * 4;
-										texColor = new Color(imgPixels[texIndex], imgPixels[texIndex + 1], imgPixels[texIndex + 2]);
+										const texX = Math.floor(pixelUV.u * (tri.texture.width - 1));
+										const texY = Math.floor(pixelUV.v * (tri.texture.height - 1));
+										const texIndex = (texY * tri.texture.width + texX) * 4;
+										texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
 									}
 
 									this.screenBuffer[y][x].updateColor(
@@ -754,8 +1025,8 @@
 			}
 		}
 		function edgeFunction(v0, v1, p) {
-			return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
-		}
+            return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
+        }
 
 		const canvas = document.getElementById("gameCanvas");
 		const ctx = canvas.getContext("2d");
@@ -763,7 +1034,7 @@
 		const fov = 60;
 		let znear = 0.01, zfar = 1000;
 		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
-		let camera = new Camera(new Vector3(0, 1.5, 1.5), new Vector3(-15, 0, 0), 2, 0.2);
+		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 2, 0.2);
 		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
 		let edgePlanes = [
 			new Plane(Vector3.down, new Vector3(0, 1, 0)),
@@ -778,29 +1049,31 @@
 
 		const lightDirIntensitySlider = document.getElementById("dirIntensity");
 		const lightDirIntensityText = document.getElementById("dirIntensityText");
-		let lightDir = new Vector3(-1, -1, -1).normalize();
-		let dirLightIntensity = parseFloat(lightDirIntensitySlider.value);
+		const lightDirRotateSpeedSlider = document.getElementById("dirRotateSpeed");
+		const lightDirRotateSpeedText = document.getElementById("dirRotateSpeedText");
+		const shadowCheckbox = document.getElementById("useShadow");
+		let useShadow = true;
+		let shadowMapSize = 512;
+		let shadowBias = 0.01;
+		let shadowMapDistance = 20;
+		let dirLightDefaultDir = new Vector3(-1, -1, -1);
+		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
+		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
+		let dirLightRotateSpeed = parseFloat(lightDirRotateSpeedSlider.value);
 
 		const pointLightIntensitySlider = document.getElementById("pointIntensity");
 		const pointLightIntensityText = document.getElementById("pointIntensityText");
 		let pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
 
-		let cube1 = new Cube(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0));
-		let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0));
-		let lightCube = new Cube(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255));
+		let brickTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg");
+		let woodTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/Wood_Tower_Col.jpg");
 
-		const img = new Image();
-		img.crossOrigin = "anonymous";
-		img.src = "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg";
-		img.onload = () => {
-			const tempCanvas = document.createElement("canvas");
-			tempCanvas.width = img.width;
-			tempCanvas.height = img.height;
-			const tempCtx = tempCanvas.getContext("2d");
-			tempCtx.drawImage(img, 0, 0);
-			imgPixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
-		};
-		let imgPixels = null;
+		let cubeMesh = new Cube();
+		let woodTower = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(1, 1, 1), new Color(255, 255, 255),
+			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj"),
+			woodTexture);
+		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
+		let lightCube = new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh);
 
 		let lastTime = performance.now();
 		let dt = 0;
@@ -822,7 +1095,10 @@
 			camera.updateMovement(dt, keyStates);
 			const viewMat = camera.getViewMatrix();
 
-			cube1.rotate(0, 50 * dt, 0);
+			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
+			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
+			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
+
 			if (keyStates['i']) {
 				lightCube.pos.z += dt * 2;
 			} else if (keyStates['k']) {
@@ -838,9 +1114,14 @@
 			}
 
 			let objectTris = [];
-			objectTris.push(...cube1.getTransformedTriangles());
-			objectTris.push(...cube2.getTransformedTriangles());
+			objectTris.push(...ground.getTransformedTriangles());
 			objectTris.push(...lightCube.getTransformedTriangles());
+			objectTris.push(...woodTower.getTransformedTriangles());
+
+			if (useShadow) {
+				dirLight.buildViewAndProjectionMatrix();
+				dirLight.buildShadowMap(objectTris);
+			}
 
 			let visibleTris = [];
 			for (let tri of objectTris) {
@@ -855,16 +1136,7 @@
 				tri.perspectiveDivide();
 			}
 
-			let clippedTris = visibleTris;
-			for (let plane of edgePlanes) {
-				let newTris = [];
-				for (let tri of clippedTris) {
-					newTris.push(...tri.clipAgainstPlane(plane));
-				}
-				clippedTris = newTris;
-			}
-
-			rasterizer.processTriangles(clippedTris);
+			rasterizer.processTriangles(visibleTris);
 			rasterizer.drawCall();
 
 			requestAnimationFrame(update);
@@ -873,13 +1145,22 @@
 		update();
 
 		lightDirIntensitySlider.addEventListener("input", () => {
-			dirLightIntensity = parseFloat(lightDirIntensitySlider.value);
-			lightDirIntensityText.textContent = dirLightIntensity.toFixed(2);
+			dirLight.intensity = parseFloat(lightDirIntensitySlider.value);
+			lightDirIntensityText.textContent = dirLight.intensity.toFixed(2);
+		});
+
+		lightDirRotateSpeedSlider.addEventListener("input", () => {
+			dirLightRotateSpeed = parseFloat(lightDirRotateSpeedSlider.value);
+			lightDirRotateSpeedText.textContent = dirLightRotateSpeed.toFixed(2);
 		});
 
 		pointLightIntensitySlider.addEventListener("input", () => {
 			pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
 			pointLightIntensityText.textContent = pointLightIntensity.toFixed(2);
+		});
+
+		shadowCheckbox.addEventListener("change", () => {
+			useShadow = shadowCheckbox.checked;
 		});
 
 		canvas.addEventListener("click", async () => {

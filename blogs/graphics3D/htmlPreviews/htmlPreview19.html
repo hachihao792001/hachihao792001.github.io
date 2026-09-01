@@ -11,8 +11,8 @@
 	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
 	<script>
 		function edgeFunction(a, b, p) {
-			return (a[1] - b[1]) * (p[0] - a[0]) + (b[0] - a[0]) * (p[1] - a[1]);
-		}
+            return (a[1] - b[1]) * (p[0] - a[0]) + (b[0] - a[0]) * (p[1] - a[1]);
+        }
 
 		class Triangle {
 			constructor(vertices = []) {
@@ -30,7 +30,7 @@
 				const e1 = edgeFunction(this.vertices[0], this.vertices[1], p);
 				const e2 = edgeFunction(this.vertices[1], this.vertices[2], p);
 				const e3 = edgeFunction(this.vertices[2], this.vertices[0], p);
-				return e1 < 0 && e2 < 0 && e3 < 0;
+				return e1 > 0 && e2 > 0 && e3 > 0;
 			}
 
 			boundingBox() {
@@ -54,6 +54,12 @@
 				this.g = g;
 				this.b = b;
 			}
+
+			updateColor(r, g, b) {
+				this.r = r;
+				this.g = g;
+				this.b = b;
+			}
 		}
 
 		class Rasterizer {
@@ -73,13 +79,9 @@
 			clearScreen() {
 				for (let i = 0; i < this.screenBuffer.length; i++) {
 					for (let j = 0; j < this.screenBuffer[i].length; j++) {
-						this.screenBuffer[i][j] = new Color(240, 240, 240);
+						this.screenBuffer[i][j].updateColor(240, 240, 240);
 					}
 				}
-			}
-			placePixel(pos, color) {
-				if (pos[1] >= 0 && pos[1] < canvas.height && pos[0] >= 0 && pos[0] < canvas.width)
-					this.screenBuffer[parseInt(pos[1])][parseInt(pos[0])] = color;
 			}
 			drawCall() {
 				let index = 0;
@@ -103,8 +105,8 @@
 
 		let testTri = new Triangle([
 			[-0.25, -0.25],
-			[0.25, -0.25],
 			[0, 0.25],
+			[0.25, -0.25],
 		]);
 
 		let lastTime = performance.now();
@@ -128,7 +130,7 @@
 			for (let y = bbox[2]; y <= bbox[3]; y++) {
 				for (let x = bbox[0]; x <= bbox[1]; x++) {
 					if (screenTri.isPointInTriangle([x, y])) {
-						rasterizer.placePixel([x, y], new Color(255, 0, 0));
+						rasterizer.screenBuffer[y][x].updateColor(255, 0, 0);
 					}
 				}
 			}

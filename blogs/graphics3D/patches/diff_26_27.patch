@@ -1,52 +1,52 @@
 --- "a/htmlPreviews\\htmlPreview26.html"
 +++ "b/htmlPreviews\\htmlPreview27.html"
-@@ -687,11 +687,19 @@
- 								if (z < this.depthBuffer[y][x]) {
- 									this.depthBuffer[y][x] = z;
+@@ -22,17 +22,22 @@
+ 	</div>
+ 	<script>
+ 		class Vector2 {
+-			constructor(u = 0, v = 0) {
++			constructor(u = 0, v = 0, w = 1) {
+ 				this.u = u;
+ 				this.v = v;
++				this.w = w;
+ 			}
+ 			clone() {
+-				return new Vector2(this.u, this.v);
++				return new Vector2(this.u, this.v, this.w);
++			}
++			static div(vec, value) {
++				return new Vector2(vec.u / value, vec.v / value, vec.w / value);
+ 			}
+ 			static lerp(vec1, vec2, t) {
+ 				return new Vector2(
+ 					vec1.u + (vec2.u - vec1.u) * t,
+-					vec1.v + (vec2.v - vec1.v) * t);
++					vec1.v + (vec2.v - vec1.v) * t,
++					vec1.w + (vec2.w - vec1.w) * t);
+ 			}
+ 		}
  
-+									let pixelInvZ = tri.uv[0].w * baryCoords[0] + tri.uv[1].w * baryCoords[1] + tri.uv[2].w * baryCoords[2];
-+
-+									let perspectiveWorldVertices = [
-+										Vector3.mul(tri.worldVertices[0], tri.uv[0].w),
-+										Vector3.mul(tri.worldVertices[1], tri.uv[1].w),
-+										Vector3.mul(tri.worldVertices[2], tri.uv[2].w)
-+									];
- 									let pixelWorldPos = new Vector3(
--										tri.worldVertices[0].x * baryCoords[0] + tri.worldVertices[1].x * baryCoords[1] + tri.worldVertices[2].x * baryCoords[2],
--										tri.worldVertices[0].y * baryCoords[0] + tri.worldVertices[1].y * baryCoords[1] + tri.worldVertices[2].y * baryCoords[2],
--										tri.worldVertices[0].z * baryCoords[0] + tri.worldVertices[1].z * baryCoords[1] + tri.worldVertices[2].z * baryCoords[2]
-+										(perspectiveWorldVertices[0].x * baryCoords[0] + perspectiveWorldVertices[1].x * baryCoords[1] + perspectiveWorldVertices[2].x * baryCoords[2]),
-+										(perspectiveWorldVertices[0].y * baryCoords[0] + perspectiveWorldVertices[1].y * baryCoords[1] + perspectiveWorldVertices[2].y * baryCoords[2]),
-+										(perspectiveWorldVertices[0].z * baryCoords[0] + perspectiveWorldVertices[1].z * baryCoords[1] + perspectiveWorldVertices[2].z * baryCoords[2])
- 									);
-+									pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
+@@ -312,7 +317,9 @@
  
- 									let pointLightVec = Vector3.sub(pixelWorldPos, lightCube.pos);
- 									let distance = pointLightVec.magnitude();
-@@ -707,7 +715,7 @@
- 										let pixelUV = new Vector2(
- 											tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
- 											tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2],
--											tri.uv[0].w * baryCoords[0] + tri.uv[1].w * baryCoords[1] + tri.uv[2].w * baryCoords[2]
-+											pixelInvZ
- 										);
- 										pixelUV = Vector2.div(pixelUV, pixelUV.w);
- 
-@@ -846,16 +854,7 @@
- 				tri.perspectiveDivide();
+ 			perspectiveDivide() {
+ 				for (let i = 0; i < this.vertices.length; i++) {
+-					this.vertices[i] = Vector3.div(this.vertices[i], this.vertices[i].w);
++					let z = this.vertices[i].w;
++					this.vertices[i] = Vector3.div(this.vertices[i], z);
++					this.uv[i] = Vector2.div(this.uv[i], z);
+ 				}
  			}
  
--			let clippedTris = visibleTris;
--			for (let plane of edgePlanes) {
--				let newTris = [];
--				for (let tri of clippedTris) {
--					newTris.push(...tri.clipAgainstPlane(plane));
--				}
--				clippedTris = newTris;
--			}
--
--			rasterizer.processTriangles(clippedTris);
-+			rasterizer.processTriangles(visibleTris);
- 			rasterizer.drawCall();
- 
- 			requestAnimationFrame(update);
+@@ -702,8 +709,11 @@
+ 									if (imgPixels != null) {
+ 										let pixelUV = new Vector2(
+ 											tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,
+-											tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2
++											tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2,
++											tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2
+ 										);
++										pixelUV = Vector2.div(pixelUV, pixelUV.w);
++
+ 										const texX = Math.floor(pixelUV.u * (img.width - 1));
+ 										const texY = Math.floor(pixelUV.v * (img.height - 1));
+ 										const texIndex = (texY * img.width + texX) * 4;

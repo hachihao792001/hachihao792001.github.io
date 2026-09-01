@@ -5,7 +5,7 @@
  				const e2 = edgeFunction(v1, v2, p);
  				const e3 = edgeFunction(v2, v0, p);
 +
- 				return e1 < 0 && e2 < 0 && e3 < 0;
+ 				return e1 > 0 && e2 > 0 && e3 > 0;
  			}
  
 @@ -353,6 +354,18 @@
@@ -27,7 +27,7 @@
  		}
  
  		class Plane {
-@@ -532,13 +545,17 @@
+@@ -538,13 +551,17 @@
  			constructor() {
  				this.imageData = ctx.createImageData(canvas.width, canvas.height);
  				this.screenBuffer = [];
@@ -45,15 +45,15 @@
  				}
  			}
  
-@@ -546,6 +563,7 @@
+@@ -552,6 +569,7 @@
  				for (let i = 0; i < this.screenBuffer.length; i++) {
  					for (let j = 0; j < this.screenBuffer[i].length; j++) {
- 						this.screenBuffer[i][j] = new Color(240, 240, 240);
+ 						this.screenBuffer[i][j].updateColor(240, 240, 240);
 +						this.depthBuffer[i][j] = Infinity;
  					}
  				}
  			}
-@@ -561,14 +579,20 @@
+@@ -563,14 +581,20 @@
  						vertices[i] = new Vector3(
  							vertices[i].x * (canvas.width / 2) + canvas.width / 2,
  							-vertices[i].y * (canvas.height / 2) + canvas.height / 2,
@@ -65,18 +65,18 @@
  					for (let y = bbox[2]; y <= bbox[3]; y++) {
  						for (let x = bbox[0]; x <= bbox[1]; x++) {
  							if (tri.isPointInTriangle([x, y])) {
--								this.placePixel([x, y], tri.color);
+-								this.screenBuffer[y][x].updateColor(tri.color.r, tri.color.g, tri.color.b);
 +								const baryCoords = tri.barycentricCoords([x, y]);
 +								const z = tri.vertices[0].z * baryCoords[0] + tri.vertices[1].z * baryCoords[1] + tri.vertices[2].z * baryCoords[2];
 +
 +								if (z < this.depthBuffer[y][x]) {
 +									this.depthBuffer[y][x] = z;
-+									this.placePixel([x, y], tri.color);
++									this.screenBuffer[y][x].updateColor(tri.color.r, tri.color.g, tri.color.b);
 +								}
  							}
  						}
  					}
-@@ -649,11 +673,6 @@
+@@ -651,11 +675,6 @@
  					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
  				}
  			}

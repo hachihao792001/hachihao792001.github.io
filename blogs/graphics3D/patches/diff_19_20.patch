@@ -1,13 +1,14 @@
 --- "a/htmlPreviews\\htmlPreview19.html"
 +++ "b/htmlPreviews\\htmlPreview20.html"
-@@ -9,9 +9,205 @@
+@@ -9,35 +9,336 @@
  <body style="text-align: center; background: #f0f0f0">
  	<h1>3D Engine</h1>
  	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
 +	<h2 id="fps">FPS: 0</h2>
  	<script>
 -		function edgeFunction(a, b, p) {
--			return (a[1] - b[1]) * (p[0] - a[0]) + (b[0] - a[0]) * (p[1] - a[1]);
+-            return (a[1] - b[1]) * (p[0] - a[0]) + (b[0] - a[0]) * (p[1] - a[1]);
+-        }
 +		class Vector3 {
 +			constructor(x = 0, y = 0, z = 0, w = 1) {
 +				this.x = x;
@@ -205,10 +206,10 @@
 +					res.c,
 +					res.d);
 +			}
- 		}
++		}
  
  		class Triangle {
-@@ -19,25 +215,130 @@
+ 			constructor(vertices = []) {
  				if (vertices.length == 0) {
  					this.vertices = [];
  					for (let i = 0; i < 3; i++) {
@@ -332,7 +333,7 @@
 +				const e1 = edgeFunction(v0, v1, p);
 +				const e2 = edgeFunction(v1, v2, p);
 +				const e3 = edgeFunction(v2, v0, p);
- 				return e1 < 0 && e2 < 0 && e3 < 0;
+ 				return e1 > 0 && e2 > 0 && e3 > 0;
  			}
  
  			boundingBox() {
@@ -518,9 +519,9 @@
  		class Color {
  			constructor(r, g, b) {
  				this.r = r;
-@@ -81,6 +546,28 @@
- 				if (pos[1] >= 0 && pos[1] < canvas.height && pos[0] >= 0 && pos[0] < canvas.width)
- 					this.screenBuffer[parseInt(pos[1])][parseInt(pos[0])] = color;
+@@ -83,6 +548,28 @@
+ 					}
+ 				}
  			}
 +
 +			processTriangles(tris) {
@@ -537,7 +538,7 @@
 +					for (let y = bbox[2]; y <= bbox[3]; y++) {
 +						for (let x = bbox[0]; x <= bbox[1]; x++) {
 +							if (tri.isPointInTriangle([x, y])) {
-+								this.placePixel([x, y], new Color(204, 204, 204));
++								this.screenBuffer[y][x].updateColor(204, 204, 204);
 +							}
 +						}
 +					}
@@ -547,13 +548,13 @@
  			drawCall() {
  				let index = 0;
  				for (let y = 0; y < canvas.height; y++) {
-@@ -96,16 +583,32 @@
+@@ -98,16 +585,32 @@
  				ctx.putImageData(this.imageData, 0, 0);
  			}
  		}
-+		function edgeFunction(v0, v1, p) {
-+			return (p[0] - v0[0]) * (v1[1] - v0[1]) - (p[1] - v0[1]) * (v1[0] - v0[0]);
-+		}
++		function edgeFunction(a, b, p) {
++            return (a[1] - b[1]) * (p[0] - a[0]) + (b[0] - a[0]) * (p[1] - a[1]);
++        }
  
  		const canvas = document.getElementById("gameCanvas");
  		const ctx = canvas.getContext("2d");
@@ -570,22 +571,22 @@
 +			new Plane(Vector3.left, new Vector3(1, 0, 0))
 +		];
 +		let keyStates = [];
++
++		const fpsInfo = document.getElementById("fps");
++		let frames = 0, fpsTimeCounter = 0;
  
 -		let testTri = new Triangle([
 -			[-0.25, -0.25],
--			[0.25, -0.25],
 -			[0, 0.25],
+-			[0.25, -0.25],
 -		]);
-+		const fpsInfo = document.getElementById("fps");
-+		let frames = 0, fpsTimeCounter = 0;
-+
 +		let cube1 = new Cube(new Vector3(0.7, -0.7, 3), new Vector3(45, 0, 0), new Vector3(1, 1, 1));
 +		let cube2 = new Cube(new Vector3(1, 0, 2.5), new Vector3(0, 0, 15), new Vector3(1, 0.7, 0.7));
 +		cube2.pos = Vector3.sub(cube2.pos, new Vector3(1.6, 0, 0));
  
  		let lastTime = performance.now();
  		let dt = 0;
-@@ -114,31 +617,79 @@
+@@ -116,31 +619,79 @@
  			dt = (time - lastTime) / 1000;
  			lastTime = time;
  
@@ -632,7 +633,7 @@
 -			for (let y = bbox[2]; y <= bbox[3]; y++) {
 -				for (let x = bbox[0]; x <= bbox[1]; x++) {
 -					if (screenTri.isPointInTriangle([x, y])) {
--						rasterizer.placePixel([x, y], new Color(255, 0, 0));
+-						rasterizer.screenBuffer[y][x].updateColor(255, 0, 0);
 -					}
 +			for (let tri of visibleTris) {
 +				tri.mulMat4x4(projectionMatrix);

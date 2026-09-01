@@ -271,7 +271,6 @@
 				this.uv = uv;
 				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
 				this.color = color;
-				this.texture = null;
 			}
 
 			clone() {
@@ -282,7 +281,6 @@
 					tri.uv[i] = this.uv[i].clone();
 				}
 				tri.color = this.color;
-				tri.texture = this.texture;
 				return tri;
 			}
 
@@ -376,7 +374,6 @@
 					outTri.uv[1] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
 					outTri.color = this.color;
-					outTri.texture = this.texture;
 					outTris.push(outTri);
 				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
 					let outTri1 = new Triangle(), outTri2 = new Triangle();
@@ -403,7 +400,6 @@
 					outTri1.uv[1] = this.uv[frontPoints[1]];
 					outTri1.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri1.color = this.color;
-					outTri1.texture = this.texture;
 					outTris.push(outTri1);
 
 					outTri2.vertices[0] = f1.clone();
@@ -416,23 +412,10 @@
 					outTri2.uv[1] = Vector2.lerp(this.uv[frontPoints[1]], this.uv[behindPoints[0]], t2);
 					outTri2.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri2.color = this.color;
-					outTri2.texture = this.texture;
 					outTris.push(outTri2);
 				}
 
 				return outTris;
-			}
-
-			isPointInTriangle(p) {
-				const v0 = [this.vertices[0].x, this.vertices[0].y];
-				const v1 = [this.vertices[1].x, this.vertices[1].y];
-				const v2 = [this.vertices[2].x, this.vertices[2].y];
-
-				const e1 = edgeFunction(v0, v1, p);
-				const e2 = edgeFunction(v1, v2, p);
-				const e3 = edgeFunction(v2, v0, p);
-
-				return e1 < 0 && e2 < 0 && e3 < 0;
 			}
 
 			boundingBox(maxWidth = canvas.width, maxHeight = canvas.height) {
@@ -449,16 +432,8 @@
 				return [minX, maxX, minY, maxY];
 			}
 
-			barycentricCoords(p) {
-				const v0 = [this.vertices[0].x, this.vertices[0].y];
-				const v1 = [this.vertices[1].x, this.vertices[1].y];
-				const v2 = [this.vertices[2].x, this.vertices[2].y];
-
-				const area = edgeFunction(v0, v1, v2);
-				const w0 = edgeFunction(v1, v2, p) / area;
-				const w1 = edgeFunction(v2, v0, p) / area;
-				const w2 = edgeFunction(v0, v1, p) / area;
-				return [w0, w1, w2];
+			calculateSignedDoubleArea() {
+				this.signedDoubleArea = edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
 			}
 		}
 
@@ -707,13 +682,12 @@
 		}
 
 		class GameObject {
-			constructor(pos, eulerAngles, scale, color, mesh, texture = null) {
+			constructor(pos, eulerAngles, scale, color, mesh) {
 				this.pos = pos;
 				this.scale = scale;
 				this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
 				this.color = color;
 				this.mesh = mesh;
-				this.texture = texture;
 			}
 
 			rotate(eulerX, eulerY, eulerZ) {
@@ -729,7 +703,6 @@
 					transformedTri.rotate(this.rotation);
 					transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
 					transformedTri.updateWorldVertices();
-					transformedTri.texture = this.texture;
 					transformedTris.push(transformedTri);
 				}
 				return transformedTris;
@@ -783,16 +756,43 @@
 					}
 
 					const bbox = shadowTri.boundingBox(shadowMapSize, shadowMapSize);
+
+					shadowTri.calculateSignedDoubleArea();
+
+					let edgeFunctionRow01 = edgeFunction(
+						shadowTri.vertices[0],
+						shadowTri.vertices[1],
+						new Vector3(bbox[0], bbox[2], 0));
+					let edgeFunctionRow12 = edgeFunction(
+						shadowTri.vertices[1],
+						shadowTri.vertices[2],
+						new Vector3(bbox[0], bbox[2], 0));
+					let edgeFunctionRow20 = edgeFunction(
+						shadowTri.vertices[2],
+						shadowTri.vertices[0],
+						new Vector3(bbox[0], bbox[2], 0));
+
 					for (let y = bbox[2]; y <= bbox[3]; y++) {
+						let edgeFunction01 = edgeFunctionRow01;
+						let edgeFunction12 = edgeFunctionRow12;
+						let edgeFunction20 = edgeFunctionRow20;
 						for (let x = bbox[0]; x <= bbox[1]; x++) {
-							if (shadowTri.isPointInTriangle([x, y])) {
-								const baryCoords = shadowTri.barycentricCoords([x, y]);
-								const z = shadowTri.vertices[0].z * baryCoords[0] + shadowTri.vertices[1].z * baryCoords[1] + shadowTri.vertices[2].z * baryCoords[2];
+							if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+								const baryCoord0 = edgeFunction12 / shadowTri.signedDoubleArea;
+								const baryCoord1 = edgeFunction20 / shadowTri.signedDoubleArea;
+								const baryCoord2 = edgeFunction01 / shadowTri.signedDoubleArea;
+								const z = shadowTri.vertices[0].z * baryCoord0 + shadowTri.vertices[1].z * baryCoord1 + shadowTri.vertices[2].z * baryCoord2;
 								if (z < this.shadowMap[y][x]) {
 									this.shadowMap[y][x] = z;
 								}
 							}
+							edgeFunction01 += (shadowTri.vertices[0].y - shadowTri.vertices[1].y);
+							edgeFunction12 += (shadowTri.vertices[1].y - shadowTri.vertices[2].y);
+							edgeFunction20 += (shadowTri.vertices[2].y - shadowTri.vertices[0].y);
 						}
+						edgeFunctionRow01 += (shadowTri.vertices[1].x - shadowTri.vertices[0].x);
+						edgeFunctionRow12 += (shadowTri.vertices[2].x - shadowTri.vertices[1].x);
+						edgeFunctionRow20 += (shadowTri.vertices[0].x - shadowTri.vertices[2].x);
 					}
 				}
 			}
@@ -826,33 +826,11 @@
 				this.g = g;
 				this.b = b;
 			}
-		}
 
-		class Texture {
-			constructor(url) {
-				this.pixels = null;
-				this.width = 0;
-				this.height = 0;
-				this.load(url);
-			}
-
-			async load(url) {
-				const img = new Image();
-				img.crossOrigin = "anonymous";
-				img.src = url;
-				await new Promise((resolve) => {
-					img.onload = () => {
-						resolve();
-					};
-				});
-				const tempCanvas = document.createElement("canvas");
-				tempCanvas.width = img.width;
-				tempCanvas.height = img.height;
-				const tempCtx = tempCanvas.getContext("2d");
-				tempCtx.drawImage(img, 0, 0);
-				this.pixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
-				this.width = img.width;
-				this.height = img.height;
+			updateColor(r, g, b) {
+				this.r = r;
+				this.g = g;
+				this.b = b;
 			}
 		}
 
@@ -877,14 +855,10 @@
 			clearScreen() {
 				for (let i = 0; i < this.screenBuffer.length; i++) {
 					for (let j = 0; j < this.screenBuffer[i].length; j++) {
-						this.screenBuffer[i][j] = new Color(240, 240, 240);
+						this.screenBuffer[i][j].updateColor(240, 240, 240);
 						this.depthBuffer[i][j] = Infinity;
 					}
 				}
-			}
-			placePixel(pos, color) {
-				if (pos[1] >= 0 && pos[1] < canvas.height && pos[0] >= 0 && pos[0] < canvas.width)
-					this.screenBuffer[parseInt(pos[1])][parseInt(pos[0])] = color;
 			}
 
 			processTriangles(tris) {
@@ -897,29 +871,51 @@
 							vertices[i].z);
 					}
 
+					tri.calculateSignedDoubleArea();
+
 					let triWorldNormal = tri.getWorldNormal();
 					let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
 					const bbox = tri.boundingBox();
+
+					let edgeFunctionRow01 = edgeFunction(
+						tri.vertices[0],
+						tri.vertices[1],
+						new Vector3(bbox[0], bbox[2], 0));
+					let edgeFunctionRow12 = edgeFunction(
+						tri.vertices[1],
+						tri.vertices[2],
+						new Vector3(bbox[0], bbox[2], 0));
+					let edgeFunctionRow20 = edgeFunction(
+						tri.vertices[2],
+						tri.vertices[0],
+						new Vector3(bbox[0], bbox[2], 0));
+
+					let perspectiveWorldVertices = [
+						Vector3.mul(tri.worldVertices[0], tri.uv[0].w),
+						Vector3.mul(tri.worldVertices[1], tri.uv[1].w),
+						Vector3.mul(tri.worldVertices[2], tri.uv[2].w)
+					];
+
 					for (let y = bbox[2]; y <= bbox[3]; y++) {
+						let edgeFunction01 = edgeFunctionRow01;
+						let edgeFunction12 = edgeFunctionRow12;
+						let edgeFunction20 = edgeFunctionRow20;
 						for (let x = bbox[0]; x <= bbox[1]; x++) {
-							if (tri.isPointInTriangle([x, y])) {
-								const baryCoords = tri.barycentricCoords([x, y]);
-								const z = tri.vertices[0].z * baryCoords[0] + tri.vertices[1].z * baryCoords[1] + tri.vertices[2].z * baryCoords[2];
+							if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+								const baryCoord0 = edgeFunction12 / tri.signedDoubleArea;
+								const baryCoord1 = edgeFunction20 / tri.signedDoubleArea;
+								const baryCoord2 = edgeFunction01 / tri.signedDoubleArea;
+								const z = tri.vertices[0].z * baryCoord0 + tri.vertices[1].z * baryCoord1 + tri.vertices[2].z * baryCoord2;
 
 								if (z < this.depthBuffer[y][x]) {
 									this.depthBuffer[y][x] = z;
 
-									let pixelInvZ = tri.uv[0].w * baryCoords[0] + tri.uv[1].w * baryCoords[1] + tri.uv[2].w * baryCoords[2];
+									let pixelInvZ = tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2;
 
-									let perspectiveWorldVertices = [
-										Vector3.mul(tri.worldVertices[0], tri.uv[0].w),
-										Vector3.mul(tri.worldVertices[1], tri.uv[1].w),
-										Vector3.mul(tri.worldVertices[2], tri.uv[2].w)
-									];
 									let pixelWorldPos = new Vector3(
-										(perspectiveWorldVertices[0].x * baryCoords[0] + perspectiveWorldVertices[1].x * baryCoords[1] + perspectiveWorldVertices[2].x * baryCoords[2]),
-										(perspectiveWorldVertices[0].y * baryCoords[0] + perspectiveWorldVertices[1].y * baryCoords[1] + perspectiveWorldVertices[2].y * baryCoords[2]),
-										(perspectiveWorldVertices[0].z * baryCoords[0] + perspectiveWorldVertices[1].z * baryCoords[1] + perspectiveWorldVertices[2].z * baryCoords[2])
+										(perspectiveWorldVertices[0].x * baryCoord0 + perspectiveWorldVertices[1].x * baryCoord1 + perspectiveWorldVertices[2].x * baryCoord2),
+										(perspectiveWorldVertices[0].y * baryCoord0 + perspectiveWorldVertices[1].y * baryCoord1 + perspectiveWorldVertices[2].y * baryCoord2),
+										(perspectiveWorldVertices[0].z * baryCoord0 + perspectiveWorldVertices[1].z * baryCoord1 + perspectiveWorldVertices[2].z * baryCoord2)
 									);
 									pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
 
@@ -936,28 +932,34 @@
 									let lightIntensity = (dirLightDiffuse + pointLightDiffuse) * shadowFactor;
 
 									let texColor = tri.color;
-									if (tri.texture && tri.texture.pixels) {
+									if (imgPixels != null) {
 										let pixelUV = new Vector2(
-											tri.uv[0].u * baryCoords[0] + tri.uv[1].u * baryCoords[1] + tri.uv[2].u * baryCoords[2],
-											tri.uv[0].v * baryCoords[0] + tri.uv[1].v * baryCoords[1] + tri.uv[2].v * baryCoords[2],
+											tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,
+											tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2,
 											pixelInvZ
 										);
 										pixelUV = Vector2.div(pixelUV, pixelUV.w);
 
-										const texX = Math.floor(pixelUV.u * (tri.texture.width - 1));
-										const texY = Math.floor(pixelUV.v * (tri.texture.height - 1));
-										const texIndex = (texY * tri.texture.width + texX) * 4;
-										texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
+										const texX = Math.floor(pixelUV.u * (img.width - 1));
+										const texY = Math.floor(pixelUV.v * (img.height - 1));
+										const texIndex = (texY * img.width + texX) * 4;
+										texColor = new Color(imgPixels[texIndex], imgPixels[texIndex + 1], imgPixels[texIndex + 2]);
 									}
 
-									this.placePixel([x, y], new Color(
+									this.screenBuffer[y][x].updateColor(
 										Math.min(255, texColor.r * lightIntensity),
 										Math.min(255, texColor.g * lightIntensity),
 										Math.min(255, texColor.b * lightIntensity)
-									));
+									);
 								}
 							}
+							edgeFunction01 += (tri.vertices[0].y - tri.vertices[1].y);
+							edgeFunction12 += (tri.vertices[1].y - tri.vertices[2].y);
+							edgeFunction20 += (tri.vertices[2].y - tri.vertices[0].y);
 						}
+						edgeFunctionRow01 += (tri.vertices[1].x - tri.vertices[0].x);
+						edgeFunctionRow12 += (tri.vertices[2].x - tri.vertices[1].x);
+						edgeFunctionRow20 += (tri.vertices[0].x - tri.vertices[2].x);
 					}
 				}
 			}
@@ -978,7 +980,7 @@
 			}
 		}
 		function edgeFunction(v0, v1, p) {
-			return (p[0] - v0[0]) * (v1[1] - v0[1]) - (p[1] - v0[1]) * (v1[0] - v0[0]);
+			return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
 		}
 
 		const canvas = document.getElementById("gameCanvas");
@@ -1011,17 +1013,25 @@
 		const pointLightIntensityText = document.getElementById("pointIntensityText");
 		let pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
 
-		let brickTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg");
-		let grassTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/grass.jpg");
-
 		let cubeMesh = new Cube();
-		let cube1 = new GameObject(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0), cubeMesh, brickTexture);
-		let cube2 = new GameObject(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0), cubeMesh, brickTexture);
-		let lightCube = new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, brickTexture);
-
+		let cube1 = new GameObject(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0), cubeMesh);
+		let cube2 = new GameObject(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0), cubeMesh);
+		let lightCube = new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh);
 		let loadedObj = new GameObject(new Vector3(0, 0, 10), Vector3.zero, Vector3.one, new Color(255, 255, 255),
-			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"),
-			grassTexture);
+			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"));
+
+		const img = new Image();
+		img.crossOrigin = "anonymous";
+		img.src = "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/grass.jpg";
+		img.onload = () => {
+			const tempCanvas = document.createElement("canvas");
+			tempCanvas.width = img.width;
+			tempCanvas.height = img.height;
+			const tempCtx = tempCanvas.getContext("2d");
+			tempCtx.drawImage(img, 0, 0);
+			imgPixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
+		};
+		let imgPixels = null;
 
 		let lastTime = performance.now();
 		let dt = 0;

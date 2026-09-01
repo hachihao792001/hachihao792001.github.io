@@ -94,7 +94,7 @@ lightDirIntensitySlider.addEventListener("input", () => {
     this.color = new Color(this.color.r * dirLightDiffuse, this.color.g * dirLightDiffuse, this.color.b * dirLightDiffuse);
 }</code></pre>
                     Full code (mình chỉnh rotation ban đầu của cube1 thành 0 hết cho dễ nhìn thấy ánh sáng):
-                    <div class="htmlPreview" id="htmlPreview23"></div>
+                    <div class="htmlPreview" id="htmlPreview24"></div>
                     <br/>
                     Nhưng mà Directional light là loại ánh sáng "chán" (vì dễ làm hê hê), để engine trông thực tế hơn, ta cần một loại ánh sáng mà càng xa nó càng tối, như
                     một bóng đèn, nó gọi là point light 😳 <br/><br/>
@@ -303,11 +303,19 @@ pointLightIntensitySlider.addEventListener("input", () => {
         // chuyển phần code tính cường độ Directional Light vào đây, để cộng vào cường độ của point light
         let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, lightDir) + 1) / 2) * dirLightIntensity;
         const bbox = tri.boundingBox();
+
+        ...     // 3 biến edgeFunctionRow01/12/20 y như blog 8
+
         for (let y = bbox[2]; y <= bbox[3]; y++) {
+            let edgeFunction01 = edgeFunctionRow01;
+            let edgeFunction12 = edgeFunctionRow12;
+            let edgeFunction20 = edgeFunctionRow20;
             for (let x = bbox[0]; x <= bbox[1]; x++) {
-                if (tri.isPointInTriangle([x, y])) {
-                    const baryCoords = tri.barycentricCoords([x, y]);
-                    const z = tri.vertices[0].z * baryCoords[0] + tri.vertices[1].z * baryCoords[1] + tri.vertices[2].z * baryCoords[2];
+                if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+                    const baryCoord0 = edgeFunction12 / tri.signedDoubleArea;
+                    const baryCoord1 = edgeFunction20 / tri.signedDoubleArea;
+                    const baryCoord2 = edgeFunction01 / tri.signedDoubleArea;
+                    const z = tri.vertices[0].z * baryCoord0 + tri.vertices[1].z * baryCoord1 + tri.vertices[2].z * baryCoord2;
 
                     if (z < this.depthBuffer[y][x]) {
                         this.depthBuffer[y][x] = z;
@@ -315,9 +323,9 @@ pointLightIntensitySlider.addEventListener("input", () => {
                         // tính tọa độ thế giới của pixel hiện tại dựa vào tọa độ thế giới của 3 đỉnh tam giác
                         // (y hệt cách ta tính độ sâu của pixel hiện tại, bằng barycentric coordinates)
                         let pixelWorldPos = new Vector3(
-                            tri.worldVertices[0].x * baryCoords[0] + tri.worldVertices[1].x * baryCoords[1] + tri.worldVertices[2].x * baryCoords[2],
-                            tri.worldVertices[0].y * baryCoords[0] + tri.worldVertices[1].y * baryCoords[1] + tri.worldVertices[2].y * baryCoords[2],
-                            tri.worldVertices[0].z * baryCoords[0] + tri.worldVertices[1].z * baryCoords[1] + tri.worldVertices[2].z * baryCoords[2]
+                            tri.worldVertices[0].x * baryCoord0 + tri.worldVertices[1].x * baryCoord1 + tri.worldVertices[2].x * baryCoord2,
+                            tri.worldVertices[0].y * baryCoord0 + tri.worldVertices[1].y * baryCoord1 + tri.worldVertices[2].y * baryCoord2,
+                            tri.worldVertices[0].z * baryCoord0 + tri.worldVertices[1].z * baryCoord1 + tri.worldVertices[2].z * baryCoord2
                         );
 
                         let pointLightVec = Vector3.sub(pixelWorldPos, lightCube.pos);      //vector tia sáng
@@ -329,19 +337,23 @@ pointLightIntensitySlider.addEventListener("input", () => {
 
                         let lightIntensity = dirLightDiffuse + pointLightDiffuse;   // kết hợp 2 ánh sáng
 
-                        this.placePixel([x, y], new Color(
+                        this.screenBuffer[y][x].updateColor(
                             Math.min(255, tri.color.r * lightIntensity),
                             Math.min(255, tri.color.g * lightIntensity),
                             Math.min(255, tri.color.b * lightIntensity)
-                        ));
+                        );
                     }
                 }
+
+                ...     // cộng dồn 3 biến edgeFunction y như blog 8
             }
+
+            ...         // cộng dồn 3 biến edgeFunctionRow y như blog 8
         }
     }
 }</code></pre>
                     Kết quả (chỉnh directional light xuống để thấy rõ sự ảnh hưởng của point light, dùng i,k,j,l,u,o để di chuyển point light):
-                    <div class="htmlPreview" id="htmlPreview24"></div>
+                    <div class="htmlPreview" id="htmlPreview25"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 

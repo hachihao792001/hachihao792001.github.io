@@ -441,7 +441,7 @@
 				const e2 = edgeFunction(v1, v2, p);
 				const e3 = edgeFunction(v2, v0, p);
 
-				return e1 < 0 && e2 < 0 && e3 < 0;
+				return e1 > 0 && e2 > 0 && e3 > 0;
 			}
 
 			boundingBox(maxWidth = canvas.width, maxHeight = canvas.height) {
@@ -987,9 +987,9 @@
 				ctx.putImageData(this.imageData, 0, 0);
 			}
 		}
-		function edgeFunction(v0, v1, p) {
-			return (p[0] - v0[0]) * (v1[1] - v0[1]) - (p[1] - v0[1]) * (v1[0] - v0[0]);
-		}
+		function edgeFunction(a, b, p) {
+            return (a[1] - b[1]) * (p[0] - a[0]) + (b[0] - a[0]) * (p[1] - a[1]);
+        }
 
 		const canvas = document.getElementById("gameCanvas");
 		const ctx = canvas.getContext("2d");

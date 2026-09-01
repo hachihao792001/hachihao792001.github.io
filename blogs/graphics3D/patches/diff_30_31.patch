@@ -1,27 +1,62 @@
 --- "a/htmlPreviews\\htmlPreview30.html"
 +++ "b/htmlPreviews\\htmlPreview31.html"
-@@ -710,10 +710,13 @@
+@@ -468,6 +468,16 @@
+ 				this.sensitivity = sensitivity;
  			}
  
- 			isInShadow(pixelWorldPos, triWorldNormal) {
--				let lightSpacePos = pixelWorldPos.clone();
-+				let dotProduct = Vector3.dot(triWorldNormal, this.dir);
-+				if (dotProduct >= 0) return false;
++			getFrustumCenter(customZFar = -1) {
++				let forward = this.rotation.rotateVector(Vector3.forward);
++
++				let near = Vector3.add(this.pos, Vector3.mul(forward, znear));
++				if (customZFar == -1)
++					customZFar = zfar;
++				let far = Vector3.add(this.pos, Vector3.mul(forward, customZFar));
++				return Vector3.div(Vector3.add(near, far), 2);
++			}
++
+ 			updateRotation(mouseMovementX, mouseMovementY) {
+ 				let q = Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity);
  
--				if (Vector3.dot(triWorldNormal, this.dir) >= 0) return false;
-+				let texelSize = shadowMapDistance / shadowMapSize;
-+				let normalOffset = texelSize * (1 - Math.abs(dotProduct));
+@@ -630,11 +640,14 @@
+ 					}
+ 					this.shadowMap.push(row);
+ 				}
++			}
  
-+				let lightSpacePos = Vector3.add(pixelWorldPos, Vector3.mul(triWorldNormal, normalOffset));
- 				lightSpacePos.mulMat4x4(this.viewMatrix);
- 				lightSpacePos.mulMat4x4(this.projectionMatrix);
++			buildViewAndProjectionMatrix() {
+ 				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
+ 				let right = Vector3.cross(up, this.dir).normalize();
+ 				up = Vector3.cross(this.dir, right).normalize();
+-				let lightPos = Vector3.mul(this.dir, -shadowMapDistance);
++				let frustumCenter = camera.getFrustumCenter(shadowMapDistance);
++				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
+ 				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
+ 				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
+ 			}
+@@ -719,7 +732,7 @@
+ 				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize)
+ 					return false;
  
-@@ -884,7 +887,7 @@
+-				return lightSpacePos.z > this.shadowMap[y][x];
++				return lightSpacePos.z > this.shadowMap[y][x] + shadowBias;
+ 			}
+ 		}
+ 
+@@ -908,7 +921,8 @@
  		const lightDirIntensitySlider = document.getElementById("dirIntensity");
  		const lightDirIntensityText = document.getElementById("dirIntensityText");
  		let shadowMapSize = 512;
--		let shadowBias = 0.04;
-+		let shadowBias = 0.01;
- 		let shadowMapDistance = 5;
+-		let shadowMapDistance = 20;
++		let shadowBias = 0.04;
++		let shadowMapDistance = 5;
  		let dirLight = new DirectionalLight(new Vector3(-1, -1, -1), parseFloat(lightDirIntensitySlider.value));
+ 
+ 		const pointLightIntensitySlider = document.getElementById("pointIntensity");
+@@ -988,6 +1002,7 @@
+ 			objectTris.push(...cube2.getTransformedTriangles());
+ 			objectTris.push(...lightCube.getTransformedTriangles());
+ 
++			dirLight.buildViewAndProjectionMatrix();
+ 			dirLight.buildShadowMap(objectTris);
+ 			drawShadowMapDebug();
  

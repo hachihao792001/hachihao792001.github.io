@@ -156,18 +156,45 @@
             shadowTri.vertices[i].y = (-shadowTri.vertices[i].y + 1) * shadowMapSize / 2;
         }
 
-        // rasterize để fill depth buffer
+        // rasterize để fill depth buffer, y hệt rasterizer chính (bao gồm cả kỹ thuật incremental edge function ở blog 8)
         const bbox = shadowTri.boundingBox(shadowMapSize, shadowMapSize);
+
+        shadowTri.calculateSignedDoubleArea();
+
+        let edgeFunctionRow01 = edgeFunction(
+            shadowTri.vertices[0],
+            shadowTri.vertices[1],
+            new Vector3(bbox[0], bbox[2], 0));
+        let edgeFunctionRow12 = edgeFunction(
+            shadowTri.vertices[1],
+            shadowTri.vertices[2],
+            new Vector3(bbox[0], bbox[2], 0));
+        let edgeFunctionRow20 = edgeFunction(
+            shadowTri.vertices[2],
+            shadowTri.vertices[0],
+            new Vector3(bbox[0], bbox[2], 0));
+
         for (let y = bbox[2]; y <= bbox[3]; y++) {
+            let edgeFunction01 = edgeFunctionRow01;
+            let edgeFunction12 = edgeFunctionRow12;
+            let edgeFunction20 = edgeFunctionRow20;
             for (let x = bbox[0]; x <= bbox[1]; x++) {
-                if (shadowTri.isPointInTriangle([x, y])) {
-                    const baryCoords = shadowTri.barycentricCoords([x, y]);
-                    const z = shadowTri.vertices[0].z * baryCoords[0] + shadowTri.vertices[1].z * baryCoords[1] + shadowTri.vertices[2].z * baryCoords[2];
+                if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+                    const baryCoord0 = edgeFunction12 / shadowTri.signedDoubleArea;
+                    const baryCoord1 = edgeFunction20 / shadowTri.signedDoubleArea;
+                    const baryCoord2 = edgeFunction01 / shadowTri.signedDoubleArea;
+                    const z = shadowTri.vertices[0].z * baryCoord0 + shadowTri.vertices[1].z * baryCoord1 + shadowTri.vertices[2].z * baryCoord2;
                     if (z < this.shadowMap[y][x]) {
                         this.shadowMap[y][x] = z;
                     }
                 }
+                edgeFunction01 += (shadowTri.vertices[1].y - shadowTri.vertices[0].y);
+                edgeFunction12 += (shadowTri.vertices[2].y - shadowTri.vertices[1].y);
+                edgeFunction20 += (shadowTri.vertices[0].y - shadowTri.vertices[2].y);
             }
+            edgeFunctionRow01 -= (shadowTri.vertices[1].x - shadowTri.vertices[0].x);
+            edgeFunctionRow12 -= (shadowTri.vertices[2].x - shadowTri.vertices[1].x);
+            edgeFunctionRow20 -= (shadowTri.vertices[0].x - shadowTri.vertices[2].x);
         }
     }
 }</code></pre>
@@ -243,7 +270,7 @@ dirLight.buildShadowMap(objectTris);</code></pre>
     ...
 }</code></pre>
                     Kết quả của chúng ta (nó hơi lag vì nó cùng lúc chạy 2 cái preview ở dưới nữa hê hê, bạn có thể bấm nút Disable để dừng chạy một demo):
-                    <div class="htmlPreview" id="htmlPreview28"></div>
+                    <div class="htmlPreview" id="htmlPreview29"></div>
                     Damn not bad, nhưng mà nó có 2 vấn đề. Một là có vẻ như shadow nó hơi "blocky". Và hai là nếu bạn nhìn phần của cube1 mà hướng về phía ánh sáng,
                     bạn sẽ thấy nhiều điểm shadow nhỏ nhỏ, giống như nó đang cast shadow lên chính nó.<br/><br/>
                     Đối với vấn đề 1 thì ta có thể chỉnh shadow map distance hoặc shadow map size cho tới khi nó ra chuẩn, nhưng mà thay vì chỉnh 1 cách mù quáng thì thật
@@ -269,7 +296,7 @@ function drawShadowMapDebug() {
     shadowCtx.putImageData(imageData, 0, 0);
 }</code></pre>
                     Chỉ cần gọi hàm này ngay sau khi build shadow map, ra như sau (kéo xuống):
-                    <div class="htmlPreview" id="htmlPreview29"></div>
+                    <div class="htmlPreview" id="htmlPreview30"></div>
                     Ta thấy rằng là các cube của chúng ta quá nhỏ từ góc nhìn của nguồn sáng, ta chỉ cần chỉnh shadow map distance thấp hơn để nguồn sáng gần hơn là oke.
                     Ngoài ra các cube còn không ngay chính giữa, là vì ta giả định nguồn sáng chiếu vào góc tọa độ, nhưng các cube của chúng ta lại nằm đâu đó ở z = 5.
                     Nhưng mà thay vì đơn giản là chỉnh "chỗ mà nguồn sáng chiếu vào" là (0, 0, 5), thì nó phải đi theo camera để cho shadow luôn hiện chuẩn cho mọi nơi.
@@ -336,7 +363,7 @@ let shadowMapDistance = 5;</code></pre>
                     <pre><code class="language-javascript">dirLight.buildViewAndProjectionMatrix();
 dirLight.buildShadowMap(objectTris);</code></pre>
                     Kết quả:
-                    <div class="htmlPreview" id="htmlPreview30"></div>
+                    <div class="htmlPreview" id="htmlPreview31"></div>
                     Oke, bóng của chúng ta đã hết bị blocky, ta có thể thấy được shadow map di chuyển theo camera của chúng ta, tuy nhiên nếu bạn đi đủ xa ra
                     thì bóng sẽ bị cắt đi và rồi biến mất luôn, đó là vì nó đã nằm ngoài "tầm nhìn" của nguồn sáng. Trong engine thật người ta sử dụng một kỹ thuật
                     gọi là Cascading Shadow Mapping (CSM), là dựng nhiều shadow map, mỗi shadow map tương ứng với một zfar - kích thước frustum để hiện rõ khi gần
@@ -369,7 +396,7 @@ dirLight.buildShadowMap(objectTris);</code></pre>
     return lightSpacePos.z > this.shadowMap[y][x] + shadowBias;
 }</code></pre>
                     Kết quả:
-                    <div class="htmlPreview" id="htmlPreview31"></div>
+                    <div class="htmlPreview" id="htmlPreview32"></div>
                     Shadow đã quá nice 😳<br/><br/>
                     Tiếp theo bạn expect mình sẽ nói tiếp về shadow mapping cho point light, nhưng mà bạn thấy rằng mới shadow cho Directional Light thôi thì nó đã lag
                     như vậy rồi. Làm shadow mapping cho point light thật ra còn lag hơn vậy 6 lần 😳 Đó là vì point light bắn tia sáng ra mọi hướng, 1 shadow map không thể
