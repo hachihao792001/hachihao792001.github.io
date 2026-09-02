@@ -26,11 +26,12 @@
     <div style="margin-top: 30px">
         W, A, S, D to move<br />
         Space, shift to fly up and down<br />
-        Mouse to look around<br /><br />
+        Mouse to look around, left/right click to place portal<br /><br />
         P to change controlling object<br />
         I, K, J, L to move controlling object.<br />
         U, O to move controlling object up and down<br />
         B, N, M to rotate controlling object around the X, Y, Z world axis<br /><br />
+        E to pick up grass block (when looking at it), E again to throw grass block<br />
         G to toggle gravity for grass block<br />
         F to reset grass block position and velocity
     </div>
@@ -399,7 +400,7 @@
         }
 
         class Triangle {
-            constructor(vertices = [], uv = [], color = new Color(255, 255, 255), portal = null) {
+            constructor(vertices = [], uv = [], color = new Color(255, 255, 255), portal = null, gameObject = null) {
                 if (vertices.length == 0) {
                     this.vertices = [];
                     for (let i = 0; i < 3; i++) {
@@ -414,6 +415,7 @@
                 this.color = color;
                 this.texture = null;
                 this.portal = portal;
+                this.gameObject = gameObject;
             }
 
             clone() {
@@ -426,6 +428,7 @@
                 tri.color = this.color;
                 tri.texture = this.texture;
                 tri.portal = this.portal;
+                tri.gameObject = this.gameObject;
                 return tri;
             }
 
@@ -958,6 +961,7 @@
                 this.texture = texture;
                 this.currentTransformedTris = [];
                 this.velocity = Vector3.zero.clone();
+                this.useGravity = false;
             }
 
             rotate(eulerX, eulerY, eulerZ) {
@@ -998,9 +1002,24 @@
                     transformedTri.updateWorldVertices();
                     transformedTri.texture = this.texture;
                     transformedTri.color = this.color;
+                    transformedTri.gameObject = this;
                     this.currentTransformedTris.push(transformedTri);
                 }
                 return this.currentTransformedTris;
+            }
+
+            updatePhysics() {
+                if (this.useGravity) {
+                    this.velocity = Vector3.add(this.velocity, Vector3.mul(Vector3.down, 9.8 * dt));
+                    if (this.velocity.magnitude() >= 50) {
+                        this.velocity = Vector3.mul(this.velocity.normalize(), 50);
+                    }
+                }
+                this.pos = Vector3.add(this.pos, Vector3.mul(this.velocity, dt));
+                if (this.pos.y < 1.5) {
+                    this.pos.y = 1.5;
+                    this.velocity = Vector3.zero.clone();
+                }
             }
         }
 
@@ -1059,6 +1078,9 @@
                 this.screenBuffer = [];
                 this.depthBuffer = [];
                 this.portal = portal;
+                this.pointingPos = new Vector3(0, 0, 0);
+                this.pointingPosNormal = new Vector3(0, 0, 0);
+                this.pointingTri = null;
 
                 for (let i = 0; i < canvas.height; i++) {
                     let screenRow = [];
@@ -1131,6 +1153,21 @@
                                 if (z < this.depthBuffer[y][x]) {
                                     this.depthBuffer[y][x] = z;
 
+                                    let pixelInvZ = tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2;
+
+                                    let pixelWorldPos = new Vector3(
+                                        (perspectiveWorldVertices[0].x * baryCoord0 + perspectiveWorldVertices[1].x * baryCoord1 + perspectiveWorldVertices[2].x * baryCoord2),
+                                        (perspectiveWorldVertices[0].y * baryCoord0 + perspectiveWorldVertices[1].y * baryCoord1 + perspectiveWorldVertices[2].y * baryCoord2),
+                                        (perspectiveWorldVertices[0].z * baryCoord0 + perspectiveWorldVertices[1].z * baryCoord1 + perspectiveWorldVertices[2].z * baryCoord2)
+                                    );
+                                    pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
+
+                                    if (x == screenCenter.x && y == screenCenter.y) {
+                                        this.pointingPos = pixelWorldPos;
+                                        this.pointingPosNormal = triWorldNormal;
+                                        this.pointingTri = tri;
+                                    }
+
                                     let texColor = tri.color;
                                     let lightIntensity = dirLightDiffuse;
 
@@ -1141,8 +1178,6 @@
                                             const texIndex = (y * tri.texture.width + x) * 4;
                                             texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
                                         } else {
-                                            let pixelInvZ = tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2;
-
                                             let pixelUV = new Vector2(
                                                 tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,
                                                 tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2,
@@ -1258,6 +1293,17 @@
                 );
             }
 
+            getAllTransformedTriangles() {
+                let allTris = [];
+                allTris.push(...this.quad.getTransformedTriangles());
+                allTris.push(...this.topCube.getTransformedTriangles());
+                allTris.push(...this.bottomCube.getTransformedTriangles());
+                allTris.push(...this.leftCube.getTransformedTriangles());
+                allTris.push(...this.rightCube.getTransformedTriangles());
+                allTris.push(...this.backQuad.getTransformedTriangles());
+                return allTris;
+            }
+
             setOtherPortal(otherPortal) {
                 this.otherPortal = otherPortal;
             }
@@ -1284,6 +1330,14 @@
                 this.rightCube.pos = Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, this.scale.x / 2 + portalEdgeThickness / 2), backOffset));
 
                 this.backQuad.pos = Vector3.add(pos, Vector3.mul(portalBack, portalEdgeThickness));
+            }
+
+            setRotation(newRotation) {
+                let parts = [this.quad, this.topCube, this.bottomCube, this.leftCube, this.rightCube, this.backQuad];
+                for (let part of parts) {
+                    part.rotation = newRotation;
+                }
+                this.rotation = newRotation;
             }
 
             rotate(eulerX, eulerY, eulerZ) {
@@ -1333,6 +1387,15 @@
                 );
                 cloneObject.rotation = cloneObjectTransform[1];
                 return cloneObject;
+            }
+
+            getClippedTris(gameObject) {
+                let plane = this.getPlane();
+                let clippedTris = [];
+                for (let tri of gameObject.currentTransformedTris) {
+                    clippedTris.push(...tri.clipAgainstPlane(plane));
+                }
+                return clippedTris;
             }
 
             updatePortalCameraBaseOnPlayer(playerCameraPos, playerCameraRotation) {
@@ -1486,7 +1549,7 @@
                     }
 
                     const bbox = tri.boundingBox();
-                   let edgeFunctionRow01 = edgeFunction(
+                    let edgeFunctionRow01 = edgeFunction(
                         tri.vertices[0],
                         tri.vertices[1],
                         new Vector3(bbox[0], bbox[2], 0));
@@ -1565,6 +1628,7 @@
             new Plane(Vector3.left, new Vector3(1, 0, 0)),
         ];
         let keyStates = [];
+        const screenCenter = new Vector3(canvas.width / 2, canvas.height / 2, 0);
 
         let cameraRotLerpStart = camera.rotation;
         let cameraRotLerpEnd = camera.rotation;
@@ -1582,7 +1646,7 @@
         const portalLimitInput = document.getElementById("portalLimit");
         const controllingObjectText = document.getElementById("controllingObject");
 
-        let useGravity = false;
+        let holdingObject = null;
 
         let dirLightDefaultDir = new Vector3(-1, -1, -1);
         let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
@@ -1617,6 +1681,7 @@
             new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"),
             grassTexture,
         );
+        let testCubeId = testCube.id;
 
         let objectTris = [];
 
@@ -1652,6 +1717,11 @@
                 fpsTimeCounter = 0;
             }
             frameCount++;
+
+            // ----------------------------------- Begin Updating GameObject transforms -----------------------------------
+            if (holdingObject != null) {
+                holdingObject.pos = Vector3.add(camera.pos, Vector3.mul(camera.getForward(), 5));
+            }
 
             let controllingPos = portal1Pos;
             switch (controllingObject) {
@@ -1697,18 +1767,7 @@
                 controllingPos.y = newPos.y;
                 controllingPos.z = newPos.z;
             }
-            if (useGravity) {
-                testCube.velocity = Vector3.add(testCube.velocity, Vector3.mul(Vector3.down, 9.8 * dt));
-                if (testCube.velocity.magnitude() >= 50) {
-                    testCube.velocity = Vector3.mul(testCube.velocity.normalize(), 50);
-                }
-            }
-            testCube.pos = Vector3.add(testCube.pos, Vector3.mul(testCube.velocity, dt));
-            // hardcoded, no collision yet
-            if (testCube.pos.y < 1.5) {
-                testCube.pos.y = 1.5;
-                testCube.velocity = Vector3.zero.clone();
-            }
+            testCube.updatePhysics();
 
             let rotateEuler = Vector3.zero.clone();
             if (keyStates["b"]) {
@@ -1734,14 +1793,28 @@
                 }
             }
 
-            rasterizer.clearScreen();
-
             camera.updateMovement(dt, keyStates);
+
+            if (cameraRotLerpCount > 0) {
+                camera.rotation = Quaternion.lerp(
+                    cameraRotLerpStart,
+                    cameraRotLerpEnd,
+                    (cameraRotLerpDuration - cameraRotLerpCount) / cameraRotLerpDuration,
+                );
+                cameraRotLerpCount -= dt;
+                if (cameraRotLerpCount <= 0) {
+                    camera.rotation = cameraRotLerpEnd;
+                }
+            }
 
             portal1.setPos(portal1Pos);
             portal1.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
             portal2.setPos(portal2Pos);
             portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+
+            dirLight.dir = new Vector3(0.2, 1, 0);
+
+            // ----------------------------------- End Updating GameObject transforms -----------------------------------
 
             // ---------------- Begin Portal teleport ----------------
 
@@ -1779,84 +1852,39 @@
 
             // ---------------- End Portal teleport ----------------
 
-            if (cameraRotLerpCount > 0) {
-                camera.rotation = Quaternion.lerp(
-                    cameraRotLerpStart,
-                    cameraRotLerpEnd,
-                    (cameraRotLerpDuration - cameraRotLerpCount) / cameraRotLerpDuration,
-                );
-                cameraRotLerpCount -= dt;
-                if (cameraRotLerpCount <= 0) {
-                    camera.rotation = cameraRotLerpEnd;
-                }
-            }
 
-            let viewMat = camera.getViewMatrix();
-
-            dirLight.dir = new Vector3(0.2, 1, 0);
-
+            // ---------------- Begin Preparing Object Space Triangles ----------------
             objectTris = [];
             objectTris.push(...ground.getTransformedTriangles());
             //objectTris.push(...woodTower.getTransformedTriangles());
-            objectTris.push(...portal1.quad.getTransformedTriangles());
-            objectTris.push(...portal2.quad.getTransformedTriangles());
-            objectTris.push(...portal1.topCube.getTransformedTriangles());
-            objectTris.push(...portal1.bottomCube.getTransformedTriangles());
-            objectTris.push(...portal1.leftCube.getTransformedTriangles());
-            objectTris.push(...portal1.rightCube.getTransformedTriangles());
-            objectTris.push(...portal2.topCube.getTransformedTriangles());
-            objectTris.push(...portal2.bottomCube.getTransformedTriangles());
-            objectTris.push(...portal2.leftCube.getTransformedTriangles());
-            objectTris.push(...portal2.rightCube.getTransformedTriangles());
-            objectTris.push(...portal1.backQuad.getTransformedTriangles());
-            objectTris.push(...portal2.backQuad.getTransformedTriangles());
+            objectTris.push(...portal1.getAllTransformedTriangles());
+            objectTris.push(...portal2.getAllTransformedTriangles());
             for (let gameObject of canInteractWithPortalGameObjects) {
                 gameObject.getTransformedTriangles();
-            }
-
-            let clonedObjectDatas = [];
-            let notclonedGameObjects = [];
-            for (let gameObject of canInteractWithPortalGameObjects) {
+            
                 if (portal1.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && gameObject.isIntersectingWithPlane(portal1.getPlane())) {
-                    let cloneObject = portal1.createCloneObjectOnOtherPortal(gameObject);
-                    clonedObjectDatas.push([gameObject, cloneObject, portal1]);
+                    let clonedGameObject = portal1.createCloneObjectOnOtherPortal(gameObject);
+                    clonedGameObject.getTransformedTriangles();
+                    objectTris.push(...portal1.getClippedTris(gameObject));
+                    objectTris.push(...portal2.getClippedTris(clonedGameObject));
                 } else {
                     if (portal2.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && gameObject.isIntersectingWithPlane(portal2.getPlane())) {
-                        let cloneObject = portal2.createCloneObjectOnOtherPortal(gameObject);
-                        clonedObjectDatas.push([gameObject, cloneObject, portal2]);
+                        let clonedGameObject = portal2.createCloneObjectOnOtherPortal(gameObject);
+                        clonedGameObject.getTransformedTriangles();
+                        objectTris.push(...portal2.getClippedTris(gameObject));
+                        objectTris.push(...portal1.getClippedTris(clonedGameObject));
                     } else {
-                        notclonedGameObjects.push(gameObject);
+                        objectTris.push(...gameObject.currentTransformedTris);
                     }
                 }
             }
 
-            for (let data of clonedObjectDatas) {
-                let gameObject = data[0];
-                let clonedGameObject = data[1];
-                let portal = data[2];
-
-                let portalPlane = portal.getPlane();
-                let otherPortalPlane = portal.otherPortal.getPlane();
-
-                let tris = gameObject.currentTransformedTris;
-                let clippedTris = [];
-                for (let tri of tris) {
-                    clippedTris.push(...tri.clipAgainstPlane(portalPlane));
-                }
-
-                tris = clonedGameObject.getTransformedTriangles();
-                for (let tri of tris) {
-                    clippedTris.push(...tri.clipAgainstPlane(otherPortalPlane));
-                }
-
-                objectTris.push(...clippedTris);
-            }
-            for (let gameObject of notclonedGameObjects) {
-                objectTris.push(...gameObject.currentTransformedTris);
-            }
+            // ---------------- End Preparing Object Space Triangles ----------------
 
             portal1.recursivePortalOperation(camera);
             portal2.recursivePortalOperation(camera);
+
+            let viewMat = camera.getViewMatrix();
 
             let visibleTris = [];
             for (let tri of objectTris) {
@@ -1871,6 +1899,7 @@
                 tri.perspectiveDivide();
             }
 
+            rasterizer.clearScreen();
             rasterizer.rasterizeClipSpaceTriangle(visibleTris);
             rasterizer.drawCall();
 
@@ -1883,7 +1912,23 @@
             //     ctx.stroke();
             // }
 
+            let x = screenCenter.x, y = screenCenter.y;
+            ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+            ctx.fillRect(x - 2, y - 2, 5, 5);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(x - 1, y - 1, 3, 3);
+
             requestAnimationFrame(update);
+        }
+
+        function shootPortal(portal) {
+            if (portal == 0) {
+                portal1Pos = Vector3.add(rasterizer.pointingPos, Vector3.mul(rasterizer.pointingPosNormal, 0.1));
+                portal1.setRotation(Quaternion.lookRotation(rasterizer.pointingPosNormal, Vector3.up));
+            } else if (portal == 1) {
+                portal2Pos = Vector3.add(rasterizer.pointingPos, Vector3.mul(rasterizer.pointingPosNormal, 0.1));
+                portal2.setRotation(Quaternion.lookRotation(rasterizer.pointingPosNormal, Vector3.up));
+            }
         }
 
         update();
@@ -1897,11 +1942,22 @@
             portalLimit = parseInt(portalLimitInput.value);
         });
 
-        canvas.addEventListener("click", async () => {
-            await canvas.requestPointerLock({
-                unadjustedMovement: true,
-            });
+        canvas.addEventListener("mousedown", async (e) => {
+            if (document.pointerLockElement !== canvas) {
+                await canvas.requestPointerLock({
+                    unadjustedMovement: true,
+                });
+                return;
+            }
+
+            if (e.button == 0) {
+                shootPortal(0);
+            } else if (e.button == 2) {
+                shootPortal(1);
+            }
         });
+
+        canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
         canvas.addEventListener("mousemove", (e) => {
             if (document.pointerLockElement === canvas) {
@@ -1920,11 +1976,26 @@
                 controllingObject++;
                 if (controllingObject > 2) controllingObject = 0;
             } else if (e.key == "g") {
-                useGravity = !useGravity;
+                testCube.useGravity = !testCube.useGravity;
             } else if (e.key == "f") {
-                useGravity = false;
+                testCube.useGravity = false;
                 testCube.velocity = Vector3.zero.clone();
-                testCube.pos = new Vector3(0, 7, 0);
+                testCube.pos = new Vector3(0, 2, 0);
+            }
+
+            if (e.key == "e") {
+                if (holdingObject != null) {
+                    holdingObject.velocity = Vector3.mul(camera.getForward(), 10);
+                    holdingObject = null;
+                } else {
+                    if (rasterizer.pointingTri != null && rasterizer.pointingTri.gameObject != null) {
+                        let gameObject = rasterizer.pointingTri.gameObject;
+                        if (gameObject.id == testCubeId) {
+                            holdingObject = gameObject;
+                            gameObject.useGravity = false;
+                        }
+                    }
+                }
             }
         });
     </script>
