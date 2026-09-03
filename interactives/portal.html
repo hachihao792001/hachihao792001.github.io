@@ -625,6 +625,28 @@
                 this.signedDoubleArea = edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
             }
         }
+        function unionBoundingBox(bbox1, bbox2) {
+            return [
+                Math.min(bbox1[0], bbox2[0]),
+                Math.max(bbox1[1], bbox2[1]),
+                Math.min(bbox1[2], bbox2[2]),
+                Math.max(bbox1[3], bbox2[3])
+            ];
+        }
+        function intersectBoundingBox(bbox1, bbox2) {
+            return [
+                Math.max(bbox1[0], bbox2[0]),
+                Math.min(bbox1[1], bbox2[1]),
+                Math.max(bbox1[2], bbox2[2]),
+                Math.min(bbox1[3], bbox2[3])
+            ];
+        }
+        function isBoundingBoxOverlap(bbox1, bbox2) {
+            return ((bbox1[0] < bbox2[1] && bbox1[1] > bbox2[0]) ||
+                (bbox2[0] < bbox1[1] && bbox2[1] > bbox1[0])) &&
+                ((bbox1[2] < bbox2[3] && bbox1[3] > bbox2[2]) ||
+                    (bbox2[2] < bbox1[3] && bbox2[3] > bbox1[2]));
+        }
 
         class Plane {
             constructor(normal, P) {
@@ -727,10 +749,14 @@
             }
 
             getViewMatrix() {
-                let forward = this.rotation.rotateVector(Vector3.forward);
-                let right = this.rotation.rotateVector(Vector3.right);
-                let up = this.rotation.rotateVector(Vector3.up);
-                return Mat4x4.View(right, up, forward, this.pos);
+                return Camera.GetViewMatrix(this.pos, this.rotation);
+            }
+
+            static GetViewMatrix(pos, rotation) {
+                let forward = rotation.rotateVector(Vector3.forward);
+                let right = rotation.rotateVector(Vector3.right);
+                let up = rotation.rotateVector(Vector3.up);
+                return Mat4x4.View(right, up, forward, pos);
             }
         }
 
@@ -1245,7 +1271,7 @@
                 this.lastFramePlayerInFrontOfPortal = false;
                 this.lastFrameGameObjectInFrontOfPortal = [];
 
-                let portalEdgeThickness = 0.2;
+                let portalEdgeThickness = 0.1;
                 let portalForward = this.rotation.rotateVector(Vector3.forward).normalize();
                 let forwardOffset = Vector3.mul(portalForward, portalEdgeThickness / 2);
                 this.topCube = new GameObject(
@@ -1313,7 +1339,7 @@
                 this.pos = pos;
                 this.quad.pos = pos;
 
-                let portalEdgeThickness = 0.2;
+                let portalEdgeThickness = 0.1;
                 let portalBack = this.rotation.rotateVector(Vector3.back).normalize();
                 let backOffset = Vector3.mul(portalBack, portalEdgeThickness / 2);
 
@@ -1518,19 +1544,20 @@
                 this.quad.texture = this.renderTexture;
             }
 
-            isQuadVisible(playerCamera) {
-                let viewMatPortal = playerCamera.getViewMatrix();
+            getQuadBoundingBox(cameraPos, cameraRot) {
+                let viewMatPortal = Camera.GetViewMatrix(cameraPos, cameraRot);
                 let quadTris = [];
                 quadTris.push(...this.quad.getTransformedTriangles());
 
                 let visibleTris = [];
                 for (let tri of quadTris) {
-                    if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), playerCamera.pos)) < 0) {
+                    if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), cameraPos)) < 0) {
                         tri.mulMat4x4(viewMatPortal);
                         visibleTris.push(...tri.clipAgainstPlane(nearPlane));
                     }
                 }
 
+                let totalBBox = null;
                 for (let tri of visibleTris) {
                     tri.mulMat4x4(projectionMatrix);
                     tri.perspectiveDivide();
@@ -1545,11 +1572,19 @@
                     }
 
                     const bbox = tri.boundingBox();
-                    if ((bbox[0] > canvas.width || bbox[1] < 0) && (bbox[2] > canvas.height || bbox[3] < 0))
-                        return false;
+                    if (bbox[0] > bbox[1] || bbox[2] > bbox[3]) continue;
+
+                    if (totalBBox == null)
+                        totalBBox = bbox;
+                    else
+                        totalBBox = unionBoundingBox(totalBBox, bbox);
                 }
 
-                return true;
+                return totalBBox;
+            }
+
+            isQuadVisible(camera) {
+                return this.getQuadBoundingBox(camera.pos, camera.rotation) != null;
             }
 
             //- c0 (người chơi) thấy P1
@@ -1558,18 +1593,28 @@
             //- P3 cần render, tạo c3 từ c2, hỏi c3 thấy gì, c3 thấy P3 (nhưng nhỏ hơn), gọi là P4
             //- P4 là limit, render đen
             recursivePortalOperation(playerCamera) {
-                if (!this.isQuadVisible(playerCamera)) return;
-
                 let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
+
+                let currentQuadBoundingBox = this.getQuadBoundingBox(playerCamera.pos, playerCamera.rotation);
+                if (currentQuadBoundingBox == null) return;
+
+                let deepest = 0;
                 for (let i = 1; i <= portalLimit; i++) {
                     cameraTransforms.push(this.calculateTransformToOtherPortalTransform(cameraTransforms[i - 1][0], cameraTransforms[i - 1][1]));
+                    deepest = i;
+
+                    let newQuadBoundingBox = this.getQuadBoundingBox(cameraTransforms[i][0], cameraTransforms[i][1]);
+                    if (newQuadBoundingBox == null || !isBoundingBoxOverlap(currentQuadBoundingBox, newQuadBoundingBox))
+                        break;
+                    currentQuadBoundingBox = intersectBoundingBox(currentQuadBoundingBox, newQuadBoundingBox);
                 }
 
-                this.camera.pos = cameraTransforms[portalLimit][0];
-                this.camera.rotation = cameraTransforms[portalLimit][1];
+                if (deepest == 0) return;
+                this.camera.pos = cameraTransforms[deepest][0];
+                this.camera.rotation = cameraTransforms[deepest][1];
                 let clipSpaceTris = this.runRenderPipeline(objectTris, null);
                 this.updateTextureForQuad(clipSpaceTris);
-                for (let i = portalLimit - 1; i >= 1; i--) {
+                for (let i = deepest - 1; i >= 1; i--) {
                     this.camera.pos = cameraTransforms[i][0];
                     this.camera.rotation = cameraTransforms[i][1];
                     clipSpaceTris = this.runRenderPipeline(objectTris, this.renderTexture);
@@ -1718,8 +1763,8 @@
         // let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(90, 0, 0), new Vector3(3, 6, 1), new Color(17, 155, 255), quadMesh, null);
         let portal1Pos = new Vector3(-12, 1.5, 2);
         let portal2Pos = new Vector3(-10, 1.5, 32);
-        let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, -90, 0), new Vector3(3, 6, 1), new Color(255, 201, 94));
-        let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 180, 0), new Vector3(3, 6, 1), new Color(17, 155, 255), quadMesh, null);
+        let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, -90, 0), new Vector3(2, 4, 1), new Color(255, 201, 94));
+        let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 180, 0), new Vector3(2, 4, 1), new Color(17, 155, 255), quadMesh, null);
         portal1.setOtherPortal(portal2);
         portal2.setOtherPortal(portal1);
         let portalLimit = 4;
