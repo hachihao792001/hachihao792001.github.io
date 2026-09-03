@@ -1545,37 +1545,11 @@
                     }
 
                     const bbox = tri.boundingBox();
-                    let edgeFunctionRow01 = edgeFunction(
-                        tri.vertices[0],
-                        tri.vertices[1],
-                        new Vector3(bbox[0], bbox[2], 0));
-                    let edgeFunctionRow12 = edgeFunction(
-                        tri.vertices[1],
-                        tri.vertices[2],
-                        new Vector3(bbox[0], bbox[2], 0));
-                    let edgeFunctionRow20 = edgeFunction(
-                        tri.vertices[2],
-                        tri.vertices[0],
-                        new Vector3(bbox[0], bbox[2], 0));
-                    for (let y = bbox[2]; y <= bbox[3]; y++) {
-                        let edgeFunction01 = edgeFunctionRow01;
-                        let edgeFunction12 = edgeFunctionRow12;
-                        let edgeFunction20 = edgeFunctionRow20;
-                        for (let x = bbox[0]; x <= bbox[1]; x++) {
-                            if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
-                                return true;
-                            }
-                            edgeFunction01 += (tri.vertices[0].y - tri.vertices[1].y);
-                            edgeFunction12 += (tri.vertices[1].y - tri.vertices[2].y);
-                            edgeFunction20 += (tri.vertices[2].y - tri.vertices[0].y);
-                        }
-                        edgeFunctionRow01 += (tri.vertices[1].x - tri.vertices[0].x);
-                        edgeFunctionRow12 += (tri.vertices[2].x - tri.vertices[1].x);
-                        edgeFunctionRow20 += (tri.vertices[0].x - tri.vertices[2].x);
-                    }
+                    if ((bbox[0] > canvas.width || bbox[1] < 0) && (bbox[2] > canvas.height || bbox[3] < 0))
+                        return false;
                 }
 
-                return false;
+                return true;
             }
 
             //- c0 (người chơi) thấy P1
