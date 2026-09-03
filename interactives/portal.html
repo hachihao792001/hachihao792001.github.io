@@ -17,7 +17,7 @@
     </div>
     <div>
         Portal recursion limit:
-        <input id="portalLimit" value="10" />
+        <input id="portalLimit" value="4" />
     </div>
     <div>
         Controlling object:
@@ -33,7 +33,7 @@
         B, N, M to rotate controlling object around the X, Y, Z world axis<br /><br />
         E to pick up grass block (when looking at it), E again to throw grass block<br />
         G to toggle gravity for grass block<br />
-        F to reset grass block position and velocity
+        F to place grass block if holding it, otherwise reset grass block position and velocity
     </div>
     <div style="position: fixed; top: 10px; left: 20px">
         <p style="font-weight: 100">What orange portal is showing<br />(what blue camera is seeing):</p>
@@ -1016,10 +1016,6 @@
                     }
                 }
                 this.pos = Vector3.add(this.pos, Vector3.mul(this.velocity, dt));
-                if (this.pos.y < 1.5) {
-                    this.pos.y = 1.5;
-                    this.velocity = Vector3.zero.clone();
-                }
             }
         }
 
@@ -1169,7 +1165,7 @@
                                     }
 
                                     let texColor = tri.color;
-                                    let lightIntensity = dirLightDiffuse;
+                                    let lightIntensity = Math.max(0.2, dirLightDiffuse);
 
                                     if (tri.texture && tri.texture.pixels) {
                                         if (tri.portal) {
@@ -1619,7 +1615,7 @@
         let znear = 0.01,
             zfar = 1000;
         let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
-        let camera = new Camera(new Vector3(0, 5, 0), new Vector3(0, 90, 0), 6, 0.2);
+        let camera = new Camera(new Vector3(0, 1, -10), new Vector3(0, 0, 0), 6, 0.2);
         let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
         let edgePlanes = [
             new Plane(Vector3.down, new Vector3(0, 1, 0)),
@@ -1651,15 +1647,17 @@
         let dirLightDefaultDir = new Vector3(-1, -1, -1);
         let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
 
-        let brickTexture = new Texture(
-            "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
-        );
+        // let brickTexture = new Texture(
+        //     "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
+        // );
         // let woodTexture = new Texture(
         //     "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/Wood_Tower_Col.jpg",
         // );
         let grassTexture = new Texture(
             "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/grass.jpg",
         );
+        let wallTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/concrete_modular_wall001a.png");
+        let floorTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/concrete_modular_floor001a.png");
 
         // let woodTower = new GameObject(
         //     new Vector3(0, 0, 0),
@@ -1672,9 +1670,10 @@
         //     woodTexture,
         // );
         let cubeMesh = new Cube();
-        let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
+        let quadMesh = new Quad();
+        //let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
         let testCube = new GameObject(
-            new Vector3(0, 2, 0),
+            new Vector3(2, -0.7, 1.2),
             Vector3.zero,
             new Vector3(1, 1, 1),
             new Color(0, 255, 0),
@@ -1683,20 +1682,73 @@
         );
         let testCubeId = testCube.id;
 
+        let sceneObjects = [new GameObject(new Vector3(0.2, 3.6481, -7.8), new Vector3(-90.00001, -5.008955E-06, 5.191899E-05), new Vector3(7.83142, 11.06904, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(0.3058997, 1.8329, -3.146), new Vector3(-90.00001, -5.008955E-06, 5.191899E-05), new Vector3(4.066794, 1.901698, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(-2.5711, 1.9274, -5.198), new Vector3(180, -43.02916, 180), new Vector3(2.273089, 15.04024, 13.24423), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-3.2608, 1.9275, -8.660001), new Vector3(0, -90, 0), new Vector3(5.559667, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-2.3958, 1.9274, -12.319), new Vector3(0, -44.73019, 0), new Vector3(2.907802, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(3.1424, 1.9275, -12.316), new Vector3(0, 45, 0), new Vector3(2.76853, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(3.1304, 1.9274, -5.113), new Vector3(180, 45.07051, 180), new Vector3(2.494697, 15.04024, 13.17559), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(0.2901998, 2.7635, -4.095), new Vector3(180, -6.943873E-06, 180), new Vector3(4.114781, 1.82969, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(0.3882995, 1.9298, -13.6), new Vector3(0, 6.943873E-06, 0), new Vector3(4.200275, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(3.9694, 1.9275, -8.646001), new Vector3(0, 90, 0), new Vector3(5.4898, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(2.2604, 1.9275, -3.209), new Vector3(0, 90, 0), new Vector3(2.032757, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-1.733, 1.9275, -3.343), new Vector3(0, -90, 0), new Vector3(2.277527, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-43.8306, 3.6481, 27.293), new Vector3(-90.00001, 3.415095E-06, 90.00011), new Vector3(7.831416, 11.06903, 12.63415), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(-39.1646, 1.8329, 27.187), new Vector3(-90.00001, 3.415095E-06, 90.00011), new Vector3(4.066792, 1.877661, 12.63415), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(-41.1886, 1.9275, 29.964), new Vector3(180, 44.81219, -180), new Vector3(2.199165, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-44.6906, 1.9275, 30.645), new Vector3(180, -6.943873E-06, 180), new Vector3(5.559665, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-48.2876, 1.9275, 29.951), new Vector3(180, -45.26986, 180), new Vector3(2.730843, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-48.3466, 1.9275, 24.35), new Vector3(-9.241176E-07, -44.99997, 2.231018E-06), new Vector3(2.76853, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-41.1506, 1.9275, 24.441), new Vector3(0, 41.4403, 0), new Vector3(2.444581, 15.04024, 12.80276), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-40.1256, 2.7635, 27.202), new Vector3(0, 90, 0), new Vector3(4.114781, 1.82969, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-49.3646, 1.9275, 27.158), new Vector3(0, -90, 0), new Vector3(4.14433, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-44.6766, 1.9275, 23.651), new Vector3(0, 6.943873E-06, 0), new Vector3(5.489798, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-39.2396, 1.9275, 25.232), new Vector3(0, 6.943873E-06, 0), new Vector3(2.032756, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-39.3736, 1.9275, 29.226), new Vector3(180, -6.943873E-06, 180), new Vector3(2.277526, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-4.2555, -1.8277, -1.2929), new Vector3(90.00001, -5.008955E-06, -5.191899E-05), new Vector3(16.48973, 24.08109, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(-21.9806, 9.1088, 16.8934), new Vector3(-90.00001, -5.008955E-06, 5.191899E-05), new Vector3(53.5527, 60.46481, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(-8.8833, -3.6687, 10.6384), new Vector3(0, 6.943873E-06, 0), new Vector3(7.23404, 3.653632, 12.63415), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(-9.038799, -3.6483, 21.862), new Vector3(180, -6.943873E-06, 180), new Vector3(7.545298, 3.694562, 12.63415), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(-9.0801, -5.5034, 16.2038), new Vector3(90.00001, -5.008955E-06, -5.191899E-05), new Vector3(7.514056, 11.32989, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(-16.6919, -2.4297, 27.296), new Vector3(-90.00001, 0, -180), new Vector3(0.9131537, 10.93103, 0.2006815), new Color(0, 255, 0), cubeMesh, floorTexture),
+        new GameObject(new Vector3(-15.5588, -1.9487, 27.296), new Vector3(-90.00001, 0, -180), new Vector3(0.9131537, 10.93103, 0.2006815), new Color(0, 255, 0), cubeMesh, floorTexture),
+        new GameObject(new Vector3(-17.6009, -2.9107, 27.296), new Vector3(-90.00001, 0, -180), new Vector3(0.9131537, 10.93103, 0.2006815), new Color(0, 255, 0), cubeMesh, floorTexture),
+        new GameObject(new Vector3(-18.5316, -3.36, 27.296), new Vector3(-90.00001, 0, -180), new Vector3(0.9131537, 10.93103, 0.2006815), new Color(0, 255, 0), cubeMesh, floorTexture),
+        new GameObject(new Vector3(-19.4616, -3.8198, 27.296), new Vector3(-90.00001, 0, -180), new Vector3(0.9131537, 10.93103, 0.2006815), new Color(0, 255, 0), cubeMesh, floorTexture),
+        new GameObject(new Vector3(-20.3816, -4.2903, 27.296), new Vector3(-90.00001, 0, -180), new Vector3(0.9131537, 10.93103, 0.2006815), new Color(0, 255, 0), cubeMesh, floorTexture),
+        new GameObject(new Vector3(-21.3116, -4.7607, 27.296), new Vector3(-90.00001, 0, -180), new Vector3(0.9131537, 10.93103, 0.2006815), new Color(0, 255, 0), cubeMesh, floorTexture),
+        new GameObject(new Vector3(-22.1996, -5.1994, 27.296), new Vector3(-90.00001, 0, -180), new Vector3(0.9131537, 10.93103, 0.2006815), new Color(0, 255, 0), cubeMesh, floorTexture),
+        new GameObject(new Vector3(-10.6403, -1.8126, 27.296), new Vector3(90.00001, -5.008955E-06, -5.191899E-05), new Vector3(10.70788, 10.93103, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(-27.0476, -5.5185, 27.341), new Vector3(90.00001, -5.008955E-06, -5.191899E-05), new Vector3(8.567732, 11.07942, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(-40.9626, -1.8428, 27.217), new Vector3(90.00001, -5.008955E-06, -5.191899E-05), new Vector3(20.19933, 10.83138, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(-30.9876, -3.6913, 27.217), new Vector3(0, -90, 0), new Vector3(11.27006, 3.658077, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(-12.5335, 1.9275, 9.8131), new Vector3(0, -90, 0), new Vector3(24.12724, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-5.3031, 1.9275, 17.9755), new Vector3(0, 90, 0), new Vector3(29.80716, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-21.7456, 1.9275, 32.829), new Vector3(180, -6.943873E-06, 180), new Vector3(33.24902, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-38.2636, 5.5413, 27.23), new Vector3(0, -90, 0), new Vector3(11.12619, 7.81261, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-38.2636, -0.077855, 23.52), new Vector3(0, -90, 0), new Vector3(3.706135, 3.593764, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-38.2636, -0.077855, 31.074), new Vector3(0, -90, 0), new Vector3(3.706135, 3.593764, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-25.4373, 1.9275, 21.817), new Vector3(0, 6.943873E-06, 0), new Vector3(25.7823, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-0.5768999, 1.9275, 3.2716), new Vector3(180, -6.943873E-06, 180), new Vector3(9.30831, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-7.17383, 1.9275, -2.189), new Vector3(0, 6.943873E-06, 0), new Vector3(10.9605, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(1.2044, 5.7501, -2.189), new Vector3(0, 6.943873E-06, 0), new Vector3(5.955787, 7.808895, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(3.2174, 0.0047355, -2.189), new Vector3(0, 6.943873E-06, 0), new Vector3(1.890546, 3.725321, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(4.0604, 2.0276, 0.6412001), new Vector3(0, 90, 0), new Vector3(5.776629, 14.84066, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture)];
+
         let objectTris = [];
 
-        let quadMesh = new Quad();
         // let portal1Pos = new Vector3(0, 12, 0);
         // let portal2Pos = new Vector3(0, 6, 0);
         // let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(-90, 0, 0), new Vector3(3, 6, 1), new Color(255, 201, 94));
         // let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(90, 0, 0), new Vector3(3, 6, 1), new Color(17, 155, 255), quadMesh, null);
-        let portal1Pos = new Vector3(-5, 3.7, 0);
-        let portal2Pos = new Vector3(5, 3.7, 0);
+        let portal1Pos = new Vector3(-12, 1.5, 2);
+        let portal2Pos = new Vector3(-10, 1.5, 32);
         let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, -90, 0), new Vector3(3, 6, 1), new Color(255, 201, 94));
-        let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 90, 0), new Vector3(3, 6, 1), new Color(17, 155, 255), quadMesh, null);
+        let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 180, 0), new Vector3(3, 6, 1), new Color(17, 155, 255), quadMesh, null);
         portal1.setOtherPortal(portal2);
         portal2.setOtherPortal(portal1);
-        let portalLimit = 10;
+        let portalLimit = 4;
         let controllingObject = 0;
         let controllingMoveSpeed = 6;
         let controllingRotateSpeed = 60;
@@ -1812,7 +1864,7 @@
             portal2.setPos(portal2Pos);
             portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
 
-            dirLight.dir = new Vector3(0.2, 1, 0);
+            dirLight.dir = new Vector3(0.4, 1, 0.4);
 
             // ----------------------------------- End Updating GameObject transforms -----------------------------------
 
@@ -1855,13 +1907,18 @@
 
             // ---------------- Begin Preparing Object Space Triangles ----------------
             objectTris = [];
-            objectTris.push(...ground.getTransformedTriangles());
+            //objectTris.push(...ground.getTransformedTriangles());
             //objectTris.push(...woodTower.getTransformedTriangles());
             objectTris.push(...portal1.getAllTransformedTriangles());
             objectTris.push(...portal2.getAllTransformedTriangles());
+
+            for (let gameObject of sceneObjects) {
+                objectTris.push(...gameObject.getTransformedTriangles());
+            }
+
             for (let gameObject of canInteractWithPortalGameObjects) {
                 gameObject.getTransformedTriangles();
-            
+
                 if (portal1.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && gameObject.isIntersectingWithPlane(portal1.getPlane())) {
                     let clonedGameObject = portal1.createCloneObjectOnOtherPortal(gameObject);
                     clonedGameObject.getTransformedTriangles();
@@ -1978,9 +2035,15 @@
             } else if (e.key == "g") {
                 testCube.useGravity = !testCube.useGravity;
             } else if (e.key == "f") {
-                testCube.useGravity = false;
-                testCube.velocity = Vector3.zero.clone();
-                testCube.pos = new Vector3(0, 2, 0);
+                if (holdingObject != null) {
+                    holdingObject.useGravity = false;
+                    holdingObject.velocity = Vector3.zero.clone();
+                    holdingObject = null;
+                } else {
+                    testCube.useGravity = false;
+                    testCube.velocity = Vector3.zero.clone();
+                    testCube.pos = new Vector3(2, -0.7, 1.2);
+                }
             }
 
             if (e.key == "e") {
@@ -1992,6 +2055,7 @@
                         let gameObject = rasterizer.pointingTri.gameObject;
                         if (gameObject.id == testCubeId) {
                             holdingObject = gameObject;
+                            gameObject.velocity = Vector3.zero.clone();
                             gameObject.useGravity = false;
                         }
                     }
