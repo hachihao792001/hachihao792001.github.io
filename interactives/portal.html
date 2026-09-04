@@ -1176,6 +1176,13 @@
                         Vector3.mul(tri.worldVertices[2], tri.uv[2].w)
                     ];
 
+                    const edgeSlopeX01 = tri.vertices[0].y - tri.vertices[1].y;
+                    const edgeSlopeX12 = tri.vertices[1].y - tri.vertices[2].y;
+                    const edgeSlopeX20 = tri.vertices[2].y - tri.vertices[0].y;
+                    const edgeSlopeY01 = tri.vertices[1].x - tri.vertices[0].x;
+                    const edgeSlopeY12 = tri.vertices[2].x - tri.vertices[1].x;
+                    const edgeSlopeY20 = tri.vertices[0].x - tri.vertices[2].x;
+
                     for (let y = triBBox.minY; y <= triBBox.maxY; y++) {
                         let edgeFunction01 = edgeFunctionRow01;
                         let edgeFunction12 = edgeFunctionRow12;
@@ -1236,13 +1243,13 @@
                                     );
                                 }
                             }
-                            edgeFunction01 += (tri.vertices[0].y - tri.vertices[1].y);
-                            edgeFunction12 += (tri.vertices[1].y - tri.vertices[2].y);
-                            edgeFunction20 += (tri.vertices[2].y - tri.vertices[0].y);
+                            edgeFunction01 += edgeSlopeX01;
+                            edgeFunction12 += edgeSlopeX12;
+                            edgeFunction20 += edgeSlopeX20;
                         }
-                        edgeFunctionRow01 += (tri.vertices[1].x - tri.vertices[0].x);
-                        edgeFunctionRow12 += (tri.vertices[2].x - tri.vertices[1].x);
-                        edgeFunctionRow20 += (tri.vertices[0].x - tri.vertices[2].x);
+                        edgeFunctionRow01 += edgeSlopeY01;
+                        edgeFunctionRow12 += edgeSlopeY12;
+                        edgeFunctionRow20 += edgeSlopeY20;
                     }
                 }
             }
