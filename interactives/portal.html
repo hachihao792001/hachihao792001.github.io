@@ -1198,14 +1198,14 @@
 
                                     let pixelInvZ = tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2;
 
-                                    let pixelWorldPos = new Vector3(
-                                        (perspectiveWorldVertices[0].x * baryCoord0 + perspectiveWorldVertices[1].x * baryCoord1 + perspectiveWorldVertices[2].x * baryCoord2),
-                                        (perspectiveWorldVertices[0].y * baryCoord0 + perspectiveWorldVertices[1].y * baryCoord1 + perspectiveWorldVertices[2].y * baryCoord2),
-                                        (perspectiveWorldVertices[0].z * baryCoord0 + perspectiveWorldVertices[1].z * baryCoord1 + perspectiveWorldVertices[2].z * baryCoord2)
-                                    );
-                                    pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
-
                                     if (x == screenCenter.x && y == screenCenter.y) {
+                                        let pixelWorldPos = new Vector3(
+                                            (perspectiveWorldVertices[0].x * baryCoord0 + perspectiveWorldVertices[1].x * baryCoord1 + perspectiveWorldVertices[2].x * baryCoord2),
+                                            (perspectiveWorldVertices[0].y * baryCoord0 + perspectiveWorldVertices[1].y * baryCoord1 + perspectiveWorldVertices[2].y * baryCoord2),
+                                            (perspectiveWorldVertices[0].z * baryCoord0 + perspectiveWorldVertices[1].z * baryCoord1 + perspectiveWorldVertices[2].z * baryCoord2)
+                                        );
+                                        pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
+
                                         this.pointingPos = pixelWorldPos;
                                         this.pointingPosNormal = triWorldNormal;
                                         this.pointingTri = tri;
