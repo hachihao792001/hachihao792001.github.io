@@ -14,6 +14,9 @@
             style="display:none; font-size: 4px; font-family: 'Courier New', Courier, monospace;letter-spacing: 0.2em;">
         </p>
     </div>
+    <div>
+        <button id="mouseLookButton" style="display:none">Mouse look</button>
+    </div>
     <h2 id="fps">FPS: 0</h2>
     <div>
         ASCII:
@@ -1669,6 +1672,8 @@
         const ctx = canvas.getContext("2d");
         const asciiParagraph = document.getElementById("asciiParagraph");
         const asciiCheckBox = document.getElementById("useASCII");
+        const renderDiv = document.getElementById("render");
+        const mouseLookButton = document.getElementById("mouseLookButton");
         let useASCII = false;
         const rasterizer = new Rasterizer(null);
         const fov = 60;
@@ -2068,33 +2073,53 @@
             portalLimit = parseInt(portalLimitInput.value);
         });
 
-        canvas.addEventListener("mousedown", async (e) => {
-            if (document.pointerLockElement !== canvas) {
-                await canvas.requestPointerLock({
-                    unadjustedMovement: true,
-                });
-                return;
-            }
+        async function requestMouseLook() {
+            await renderDiv.requestPointerLock({
+                unadjustedMovement: true,
+            });
+        }
 
-            if (e.button == 0) {
-                shootPortal(0);
-            } else if (e.button == 2) {
-                shootPortal(1);
+        mouseLookButton.addEventListener("click", requestMouseLook);
+        canvas.addEventListener("mousedown", () => {
+            if (document.pointerLockElement !== renderDiv)
+                requestMouseLook();
+        });
+
+        document.addEventListener("mousedown", (e) => {
+            if (document.pointerLockElement === renderDiv) {
+                if (e.button == 0) {
+                    shootPortal(0);
+                } else if (e.button == 2) {
+                    shootPortal(1);
+                }
             }
         });
 
-        canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+        document.addEventListener("contextmenu", (e) => {
+            if (document.pointerLockElement === renderDiv)
+                e.preventDefault();
+        });
 
-        canvas.addEventListener("mousemove", (e) => {
-            if (document.pointerLockElement === canvas) {
-                if (cameraRotLerpCount <= 0) camera.updateRotation(e.movementX, e.movementY);
+        document.addEventListener("mousemove", (e) => {
+            if (document.pointerLockElement === renderDiv) {
+                if (cameraRotLerpCount <= 0)
+                    camera.updateRotation(e.movementX, e.movementY);
             }
+        });
+
+        document.addEventListener("pointerlockchange", () => {
+            mouseLookButton.textContent = document.pointerLockElement === renderDiv
+                ? "Mouse look on - Esc to release"
+                : "Mouse look";
         });
 
         asciiCheckBox.addEventListener("change", () => {
             useASCII = asciiCheckBox.checked;
             asciiParagraph.style.display = useASCII ? "" : "none";
             gameCanvas.style.display = useASCII ? "none" : "";
+            mouseLookButton.style.display = useASCII ? "" : "none";
+            if (document.pointerLockElement != null)
+                document.exitPointerLock();
         });
 
         window.addEventListener("keydown", (e) => {
