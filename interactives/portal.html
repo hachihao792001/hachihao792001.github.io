@@ -8,8 +8,17 @@
 
 <body style="text-align: center; background: #f0f0f0">
     <h1>3D Engine</h1>
-    <canvas id="gameCanvas" width="800" height="600" style="border: 2px solid #aaa; background: #fff"></canvas>
+    <div id="render">
+        <canvas id="gameCanvas" width="800" height="600" style="border: 2px solid #aaa; background: #fff"></canvas>
+        <p id="asciiParagraph"
+            style="display:none; font-size: 4px; font-family: 'Courier New', Courier, monospace;letter-spacing: 0.2em;">
+        </p>
+    </div>
     <h2 id="fps">FPS: 0</h2>
+    <div>
+        ASCII:
+        <input type="checkbox" id="useASCII" />
+    </div>
     <div>
         Directional light intensity:
         <input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1.5" />
@@ -1069,6 +1078,10 @@
                 this.g = g;
                 this.b = b;
             }
+
+            grayScale01() {
+                return (this.r + this.g + this.b) / 3.0 / 255.0;
+            }
         }
 
         class Texture {
@@ -1105,6 +1118,7 @@
                 this.screenBuffer = this.imageData.data;
                 this.depthBuffer = new Float64Array(canvas.width * canvas.height);
                 this.portal = portal;
+
                 this.pointingPos = new Vector3(0, 0, 0);
                 this.pointingPosNormal = new Vector3(0, 0, 0);
                 this.pointingTri = null;
@@ -1254,7 +1268,34 @@
             }
 
             drawCall() {
-                ctx.putImageData(this.imageData, 0, 0);
+                if (!useASCII) {
+                    ctx.putImageData(this.imageData, 0, 0);
+                } else {
+                    let renderString = "";
+                    let grayScaleASCII = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'.";
+                    let asciiPivot = 0.3;
+                    let asciiContrast = 2;
+                    let asciiWidth = 200;
+                    let asciiHeight = 150;
+                    let widthRatio = canvas.width / asciiWidth;
+                    let heightRatio = canvas.height / asciiHeight;
+
+                    for (let y = 0; y < asciiHeight; y++) {
+                        for (let x = 0; x < asciiWidth; x++) {
+                            let sampleY = y * heightRatio;
+                            let sampleX = x * widthRatio;
+                            let index = Math.floor((sampleY * canvas.width + sampleX) * 4);
+                            let color = new Color(this.imageData.data[index], this.imageData.data[index + 1], this.imageData.data[index + 2]);
+                            let grayScale01 = color.grayScale01();
+                            let pixelLetter = grayScaleASCII[Math.floor((1 - grayScale01) * (grayScaleASCII.length - 1))];
+                            renderString += pixelLetter;
+                        }
+                        renderString += "\n";
+                    }
+
+                    if (asciiParagraph.innerText != renderString)
+                        asciiParagraph.innerText = renderString;
+                }
             }
         }
         function edgeFunction(v0, v1, p) {
@@ -1626,6 +1667,9 @@
 
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
+        const asciiParagraph = document.getElementById("asciiParagraph");
+        const asciiCheckBox = document.getElementById("useASCII");
+        let useASCII = false;
         const rasterizer = new Rasterizer(null);
         const fov = 60;
         let znear = 0.01,
@@ -1640,7 +1684,8 @@
             new Plane(Vector3.left, new Vector3(1, 0, 0)),
         ];
         let keyStates = [];
-        const screenCenter = new Vector3(canvas.width / 2, canvas.height / 2, 0);
+        const screenCenter = new Vector3(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 0);
+
 
         let cameraRotLerpStart = camera.rotation;
         let cameraRotLerpEnd = camera.rotation;
@@ -2044,6 +2089,12 @@
             if (document.pointerLockElement === canvas) {
                 if (cameraRotLerpCount <= 0) camera.updateRotation(e.movementX, e.movementY);
             }
+        });
+
+        asciiCheckBox.addEventListener("change", () => {
+            useASCII = asciiCheckBox.checked;
+            asciiParagraph.style.display = useASCII ? "" : "none";
+            gameCanvas.style.display = useASCII ? "none" : "";
         });
 
         window.addEventListener("keydown", (e) => {
