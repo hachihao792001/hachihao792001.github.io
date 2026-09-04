@@ -618,35 +618,48 @@
                 minY = Math.max(0, Math.floor(minY));
                 maxY = Math.min(maxHeight - 1, Math.floor(maxY));
 
-                return [minX, maxX, minY, maxY];
+                return new BoundingBox(minX, maxX, minY, maxY);
             }
 
             calculateSignedDoubleArea() {
                 this.signedDoubleArea = edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
             }
         }
-        function unionBoundingBox(bbox1, bbox2) {
-            return [
-                Math.min(bbox1[0], bbox2[0]),
-                Math.max(bbox1[1], bbox2[1]),
-                Math.min(bbox1[2], bbox2[2]),
-                Math.max(bbox1[3], bbox2[3])
-            ];
+
+        class BoundingBox {
+            constructor(minX, maxX, minY, maxY) {
+                this.minX = minX;
+                this.maxX = maxX;
+                this.minY = minY;
+                this.maxY = maxY;
+            }
+
+            isValid() {
+                return this.minX <= this.maxX && this.minY <= this.maxY;
+            }
+
+            static union(bbox1, bbox2) {
+                return new BoundingBox(
+                    Math.min(bbox1.minX, bbox2.minX),
+                    Math.max(bbox1.maxX, bbox2.maxX),
+                    Math.min(bbox1.minY, bbox2.minY),
+                    Math.max(bbox1.maxY, bbox2.maxY)
+                );
+            }
+            static intersect(bbox1, bbox2) {
+                return new BoundingBox(
+                    Math.max(bbox1.minX, bbox2.minX),
+                    Math.min(bbox1.maxX, bbox2.maxX),
+                    Math.max(bbox1.minY, bbox2.minY),
+                    Math.min(bbox1.maxY, bbox2.maxY)
+                );
+            }
+            static isOverlap(bbox1, bbox2) {
+                return ((bbox1.minX < bbox2.maxX && bbox1.maxX > bbox2.minX) || (bbox2.minX < bbox1.maxX && bbox2.maxX > bbox1.minX)) &&
+                    ((bbox1.minY < bbox2.maxY && bbox1.maxY > bbox2.minY) || (bbox2.minY < bbox1.maxY && bbox2.maxY > bbox1.minY));
+            }
         }
-        function intersectBoundingBox(bbox1, bbox2) {
-            return [
-                Math.max(bbox1[0], bbox2[0]),
-                Math.min(bbox1[1], bbox2[1]),
-                Math.max(bbox1[2], bbox2[2]),
-                Math.min(bbox1[3], bbox2[3])
-            ];
-        }
-        function isBoundingBoxOverlap(bbox1, bbox2) {
-            return ((bbox1[0] < bbox2[1] && bbox1[1] > bbox2[0]) ||
-                (bbox2[0] < bbox1[1] && bbox2[1] > bbox1[0])) &&
-                ((bbox1[2] < bbox2[3] && bbox1[3] > bbox2[2]) ||
-                    (bbox2[2] < bbox1[3] && bbox2[3] > bbox1[2]));
-        }
+
 
         class Plane {
             constructor(normal, P) {
@@ -1145,15 +1158,15 @@
                     let edgeFunctionRow01 = edgeFunction(
                         tri.vertices[0],
                         tri.vertices[1],
-                        new Vector3(bbox[0], bbox[2], 0));
+                        new Vector3(bbox.minX, bbox.minY, 0));
                     let edgeFunctionRow12 = edgeFunction(
                         tri.vertices[1],
                         tri.vertices[2],
-                        new Vector3(bbox[0], bbox[2], 0));
+                        new Vector3(bbox.minX, bbox.minY, 0));
                     let edgeFunctionRow20 = edgeFunction(
                         tri.vertices[2],
                         tri.vertices[0],
-                        new Vector3(bbox[0], bbox[2], 0));
+                        new Vector3(bbox.minX, bbox.minY, 0));
 
                     let perspectiveWorldVertices = [
                         Vector3.mul(tri.worldVertices[0], tri.uv[0].w),
@@ -1161,11 +1174,11 @@
                         Vector3.mul(tri.worldVertices[2], tri.uv[2].w)
                     ];
 
-                    for (let y = bbox[2]; y <= bbox[3]; y++) {
+                    for (let y = bbox.minY; y <= bbox.maxY; y++) {
                         let edgeFunction01 = edgeFunctionRow01;
                         let edgeFunction12 = edgeFunctionRow12;
                         let edgeFunction20 = edgeFunctionRow20;
-                        for (let x = bbox[0]; x <= bbox[1]; x++) {
+                        for (let x = bbox.minX; x <= bbox.maxX; x++) {
                             if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
                                 const baryCoord0 = edgeFunction12 / tri.signedDoubleArea;
                                 const baryCoord1 = edgeFunction20 / tri.signedDoubleArea;
@@ -1521,8 +1534,8 @@
                 for (let tri of clipSpaceTris) {
                     if (!tri.portal) continue;
                     const bbox = tri.boundingBox();
-                    for (let y = bbox[2]; y <= bbox[3]; y++) {
-                        for (let x = bbox[0]; x <= bbox[1]; x++) {
+                    for (let y = bbox.minY; y <= bbox.maxY; y++) {
+                        for (let x = bbox.minX; x <= bbox.maxX; x++) {
                             let color = this.rasterizer.screenBuffer[y][x];
                             const texIndex = (y * canvas.width + x) * 4;
                             this.renderTexture.pixels[texIndex] = color.r;
@@ -1571,13 +1584,13 @@
                         );
                     }
 
-                    const bbox = tri.boundingBox();
-                    if (bbox[0] > bbox[1] || bbox[2] > bbox[3]) continue;
-
-                    if (totalBBox == null)
-                        totalBBox = bbox;
-                    else
-                        totalBBox = unionBoundingBox(totalBBox, bbox);
+                    const triBBox = tri.boundingBox();
+                    if (triBBox.isValid()) {
+                        if (totalBBox == null)
+                            totalBBox = triBBox;
+                        else
+                            totalBBox = BoundingBox.union(totalBBox, triBBox);
+                    }
                 }
 
                 return totalBBox;
@@ -1604,9 +1617,9 @@
                     deepest = i;
 
                     let newQuadBoundingBox = this.getQuadBoundingBox(cameraTransforms[i][0], cameraTransforms[i][1]);
-                    if (newQuadBoundingBox == null || !isBoundingBoxOverlap(currentQuadBoundingBox, newQuadBoundingBox))
+                    if (newQuadBoundingBox == null || !BoundingBox.isOverlap(currentQuadBoundingBox, newQuadBoundingBox))
                         break;
-                    currentQuadBoundingBox = intersectBoundingBox(currentQuadBoundingBox, newQuadBoundingBox);
+                    currentQuadBoundingBox = BoundingBox.intersect(currentQuadBoundingBox, newQuadBoundingBox);
                 }
 
                 if (deepest == 0) return;
