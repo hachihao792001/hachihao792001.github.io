@@ -3,15 +3,15 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>3D Engine</title>
+    <title>Portal in browser</title>
 </head>
 
-<body style="text-align: center; background: #f0f0f0">
-    <h1>3D Engine</h1>
+<body style="text-align: center; background: #f0f0f0; font-family: 'Bahnschrift', 'Arial Sans-Serif', sans-serif;">
+    <h1>CPU Rasterizer + Portal mechanic in HTML Canvas</h1>
     <div id="render">
         <canvas id="gameCanvas" width="800" height="600" style="border: 2px solid #aaa; background: #fff"></canvas>
         <p id="asciiParagraph"
-            style="display:none; font-size: 4px; font-family: 'Courier New', Courier, monospace;letter-spacing: 0.2em;">
+            style="display:none; font-size: 4px; font-family: 'Courier New', Courier, monospace;letter-spacing: 0.3em;">
         </p>
     </div>
     <div>
@@ -35,24 +35,33 @@
         Controlling object:
         <span id="controllingObject">Orange portal</span>
     </div>
-    <button id="controlsButton" style="position: fixed; top: 8px; left: 8px">Controls</button>
-    <div id="controlsPopup" style="display: none; position: fixed; top: 36px; left: 8px; text-align: left; background: #fff; border: 1px solid #aaa; padding: 10px; width: 400px">
+    <button id="controlsButton"
+        style="position: fixed; top: 8px; left: 8px; font-size: 15px; width: 200px; height: 50px; font-family: 'Bahnschrift', 'Arial Sans-Serif', sans-serif;">Controls
+        and
+        Credits</button>
+    <div id="controlsPopup"
+        style="display: none; position: fixed; top: 66px; left: 8px; text-align: left; background: #fff; border: 1px solid #aaa; padding: 10px; width: 400px">
         <ul>
             <li>W, A, S, D to move</li>
             <li>Space, shift to fly up and down</li>
-            <li>Mouse to look around, left/right click to place portal</li>
+            <li>Mouse to look around, left/right click to shoot portal</li>
             <li style="margin-top: 15px;">P to change controlling object</li>
             <li>I, K, J, L to move controlling object.</li>
             <li>U, O to move controlling object up and down</li>
             <li>B, N, M to rotate controlling object around the X, Y, Z world axis</li>
-            <li style="margin-top: 15px;">E to pick up grass block (when looking at it), E again to throw grass block</li>
-            <li>F to place grass block if holding it, otherwise reset grass block position and velocity</li>
-            <li>G to toggle gravity for grass block</li>
+            <li style="margin-top: 15px;">When looking at companion cube, E to pick it up</li>
+            <li>When holding companion cube, E again to throw it</li>
+            <li>When holding companion cube, F to let go of it</li>
+            <li>When not holding companion cube, F to reset its position and velocity</li>
+            <li>G to toggle gravity for companion cube</li>
         </ul>
         <p>
-            Wall and floor texture: <a href="https://sketchfab.com/3d-models/test-chamber-03-04-b51d1910a6324b659b2e15de5727c161">sketchfab</a><br/>
-            Companion cube texture: <a href="https://www.deviantart.com/bulbablaaah/art/Companion-Cube-Face-214302563">deviantart</a><br/>
-            Wheatly cube texture: <a href="https://www.supercoloring.com/media/paper-craft/603552/wheatley-paper-toy">supercoloring</a> 
+            Wall and floor texture: <a
+                href="https://sketchfab.com/3d-models/test-chamber-03-04-b51d1910a6324b659b2e15de5727c161">sketchfab</a><br />
+            Companion cube texture: <a
+                href="https://www.deviantart.com/bulbablaaah/art/Companion-Cube-Face-214302563">deviantart</a><br />
+            Wheatly cube texture: <a
+                href="https://www.supercoloring.com/media/paper-craft/603552/wheatley-paper-toy">supercoloring</a>
         </p>
     </div>
 
@@ -1284,8 +1293,6 @@
                 } else {
                     let renderString = "";
                     let grayScaleASCII = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'.";
-                    let asciiPivot = 0.3;
-                    let asciiContrast = 2;
                     let asciiWidth = 200;
                     let asciiHeight = 150;
                     let widthRatio = canvas.width / asciiWidth;
@@ -1800,10 +1807,10 @@
 
         let objectTris = [];
 
-        let portal1Pos = new Vector3(-12, 1.5, 2);
-        let portal2Pos = new Vector3(-10, 1.5, 32);
-        let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, -90, 0), new Vector3(2, 4, 1), new Color(255, 201, 94));
-        let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 180, 0), new Vector3(2, 4, 1), new Color(17, 155, 255), quadMesh, null);
+        let portal1Pos = new Vector3(-10, 1.5, 32);
+        let portal2Pos = new Vector3(-12, 1.5, 2);
+        let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, 180, 0), new Vector3(2, 4, 1), new Color(255, 201, 94));
+        let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, -90, 0), new Vector3(2, 4, 1), new Color(17, 155, 255), quadMesh, null);
         portal1.setOtherPortal(portal2);
         portal2.setOtherPortal(portal1);
         let portalLimit = 10;
@@ -1849,7 +1856,7 @@
                     break;
                 case 2:
                     controllingPos = testCube.pos;
-                    controllingObjectText.innerText = "Grass block";
+                    controllingObjectText.innerText = "Companion cube";
                     break;
             }
 
@@ -2136,6 +2143,9 @@
                 if (controllingObject > 2) controllingObject = 0;
             } else if (e.key == "g") {
                 testCube.useGravity = !testCube.useGravity;
+                if (!testCube.useGravity) {
+                    testCube.velocity = Vector3.zero.clone();
+                }
             } else if (e.key == "f") {
                 if (holdingObject != null) {
                     holdingObject.useGravity = false;
