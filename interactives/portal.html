@@ -38,17 +38,22 @@
     <button id="controlsButton" style="position: fixed; top: 8px; left: 8px">Controls</button>
     <div id="controlsPopup" style="display: none; position: fixed; top: 36px; left: 8px; text-align: left; background: #fff; border: 1px solid #aaa; padding: 10px; width: 400px">
         <ul>
-        <li>W, A, S, D to move</li>
-        <li>Space, shift to fly up and down</li>
-        <li>Mouse to look around, left/right click to place portal</li>
-        <li style="margin-top: 15px;">P to change controlling object</li>
-        <li>I, K, J, L to move controlling object.</li>
-        <li>U, O to move controlling object up and down</li>
-        <li>B, N, M to rotate controlling object around the X, Y, Z world axis</li>
-        <li style="margin-top: 15px;">E to pick up grass block (when looking at it), E again to throw grass block</li>
-        <li>F to place grass block if holding it, otherwise reset grass block position and velocity</li>
-        <li>G to toggle gravity for grass block</li>
+            <li>W, A, S, D to move</li>
+            <li>Space, shift to fly up and down</li>
+            <li>Mouse to look around, left/right click to place portal</li>
+            <li style="margin-top: 15px;">P to change controlling object</li>
+            <li>I, K, J, L to move controlling object.</li>
+            <li>U, O to move controlling object up and down</li>
+            <li>B, N, M to rotate controlling object around the X, Y, Z world axis</li>
+            <li style="margin-top: 15px;">E to pick up grass block (when looking at it), E again to throw grass block</li>
+            <li>F to place grass block if holding it, otherwise reset grass block position and velocity</li>
+            <li>G to toggle gravity for grass block</li>
         </ul>
+        <p>
+            Wall and floor texture: <a href="https://sketchfab.com/3d-models/test-chamber-03-04-b51d1910a6324b659b2e15de5727c161">sketchfab</a><br/>
+            Companion cube texture: <a href="https://www.deviantart.com/bulbablaaah/art/Companion-Cube-Face-214302563">deviantart</a><br/>
+            Wheatly cube texture: <a href="https://www.supercoloring.com/media/paper-craft/603552/wheatley-paper-toy">supercoloring</a> 
+        </p>
     </div>
 
     <script>
@@ -1718,38 +1723,24 @@
         let dirLightDefaultDir = new Vector3(-1, -1, -1);
         let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
 
-        // let brickTexture = new Texture(
-        //     "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
-        // );
-        // let woodTexture = new Texture(
-        //     "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/Wood_Tower_Col.jpg",
-        // );
-        let grassTexture = new Texture(
-            "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/grass.jpg",
-        );
+        let playerCubeTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/wheatly.png");
+        let companionCubeTexure = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/companion_cube.png");
         let wallTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/concrete_modular_wall001a.png");
         let floorTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/concrete_modular_floor001a.png");
 
-        // let woodTower = new GameObject(
-        //     new Vector3(0, 0, 0),
-        //     Vector3.zero,
-        //     new Vector3(1, 1, 1),
-        //     new Color(255, 255, 255),
-        //     new ObjMesh(
-        //         "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj",
-        //     ),
-        //     woodTexture,
-        // );
         let cubeMesh = new Cube();
         let quadMesh = new Quad();
-        //let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
+
+        let playerCube = new GameObject(camera.pos, camera.rotation, new Vector3(0.5, 0.5, 0.5), new Color(255, 255, 255),
+            new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), playerCubeTexture);
+
         let testCube = new GameObject(
             new Vector3(2, -0.7, 1.2),
             Vector3.zero,
             new Vector3(1, 1, 1),
             new Color(0, 255, 0),
-            new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"),
-            grassTexture,
+            cubeMesh,
+            companionCubeTexure,
         );
         let testCubeId = testCube.id;
 
@@ -1809,10 +1800,6 @@
 
         let objectTris = [];
 
-        // let portal1Pos = new Vector3(0, 12, 0);
-        // let portal2Pos = new Vector3(0, 6, 0);
-        // let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(-90, 0, 0), new Vector3(3, 6, 1), new Color(255, 201, 94));
-        // let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(90, 0, 0), new Vector3(3, 6, 1), new Color(17, 155, 255), quadMesh, null);
         let portal1Pos = new Vector3(-12, 1.5, 2);
         let portal2Pos = new Vector3(-10, 1.5, 32);
         let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, -90, 0), new Vector3(2, 4, 1), new Color(255, 201, 94));
@@ -1823,7 +1810,7 @@
         let controllingObject = 0;
         let controllingMoveSpeed = 6;
         let controllingRotateSpeed = 60;
-        let canInteractWithPortalGameObjects = [testCube];
+        let canInteractWithPortalGameObjects = [playerCube, testCube];
 
         let lastTime = performance.now();
         let dt = 0;
@@ -1842,6 +1829,10 @@
             frameCount++;
 
             // ----------------------------------- Begin Updating GameObject transforms -----------------------------------
+
+            playerCube.pos = camera.pos;
+            playerCube.rotation = camera.rotation;
+
             if (holdingObject != null) {
                 holdingObject.pos = Vector3.add(camera.pos, Vector3.mul(camera.getForward(), 5));
             }
@@ -1978,8 +1969,7 @@
 
             // ---------------- Begin Preparing Object Space Triangles ----------------
             objectTris = [];
-            //objectTris.push(...ground.getTransformedTriangles());
-            //objectTris.push(...woodTower.getTransformedTriangles());
+            objectTris.push(...playerCube.getTransformedTriangles());
             objectTris.push(...portal1.getAllTransformedTriangles());
             objectTris.push(...portal2.getAllTransformedTriangles());
 
@@ -2052,14 +2042,16 @@
         function shootPortal(portal) {
             if (portal == 0) {
                 portal1Pos = Vector3.add(rasterizer.pointingPos, Vector3.mul(rasterizer.pointingPosNormal, 0.1));
-                if (Vector3.dot(rasterizer.pointingPosNormal, Vector3.up) >= 0.9) {
+                let dot = Vector3.dot(rasterizer.pointingPosNormal, Vector3.up);
+                if (dot >= 0.9 || dot <= -0.9) {
                     portal1.setRotation(Quaternion.lookRotation(rasterizer.pointingPosNormal, camera.getForward()));
                 } else {
                     portal1.setRotation(Quaternion.lookRotation(rasterizer.pointingPosNormal, Vector3.up));
                 }
             } else if (portal == 1) {
                 portal2Pos = Vector3.add(rasterizer.pointingPos, Vector3.mul(rasterizer.pointingPosNormal, 0.1));
-                if (Vector3.dot(rasterizer.pointingPosNormal, Vector3.up) >= 0.9) {
+                let dot = Vector3.dot(rasterizer.pointingPosNormal, Vector3.up);
+                if (dot >= 0.9 || dot <= -0.9) {
                     portal2.setRotation(Quaternion.lookRotation(rasterizer.pointingPosNormal, camera.getForward()));
                 } else {
                     portal2.setRotation(Quaternion.lookRotation(rasterizer.pointingPosNormal, Vector3.up));
