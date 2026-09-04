@@ -35,17 +35,20 @@
         Controlling object:
         <span id="controllingObject">Orange portal</span>
     </div>
-    <div style="margin-top: 30px">
-        W, A, S, D to move<br />
-        Space, shift to fly up and down<br />
-        Mouse to look around, left/right click to place portal<br /><br />
-        P to change controlling object<br />
-        I, K, J, L to move controlling object.<br />
-        U, O to move controlling object up and down<br />
-        B, N, M to rotate controlling object around the X, Y, Z world axis<br /><br />
-        E to pick up grass block (when looking at it), E again to throw grass block<br />
-        G to toggle gravity for grass block<br />
-        F to place grass block if holding it, otherwise reset grass block position and velocity
+    <button id="controlsButton" style="position: fixed; top: 8px; left: 8px">Controls</button>
+    <div id="controlsPopup" style="display: none; position: fixed; top: 36px; left: 8px; text-align: left; background: #fff; border: 1px solid #aaa; padding: 10px; width: 400px">
+        <ul>
+        <li>W, A, S, D to move</li>
+        <li>Space, shift to fly up and down</li>
+        <li>Mouse to look around, left/right click to place portal</li>
+        <li style="margin-top: 15px;">P to change controlling object</li>
+        <li>I, K, J, L to move controlling object.</li>
+        <li>U, O to move controlling object up and down</li>
+        <li>B, N, M to rotate controlling object around the X, Y, Z world axis</li>
+        <li style="margin-top: 15px;">E to pick up grass block (when looking at it), E again to throw grass block</li>
+        <li>F to place grass block if holding it, otherwise reset grass block position and velocity</li>
+        <li>G to toggle gravity for grass block</li>
+        </ul>
     </div>
 
     <script>
@@ -1674,6 +1677,8 @@
         const asciiCheckBox = document.getElementById("useASCII");
         const renderDiv = document.getElementById("render");
         const mouseLookButton = document.getElementById("mouseLookButton");
+        const controlsButton = document.getElementById("controlsButton");
+        const controlsPopup = document.getElementById("controlsPopup");
         let useASCII = false;
         const rasterizer = new Rasterizer(null);
         const fov = 60;
@@ -2080,6 +2085,11 @@
         }
 
         mouseLookButton.addEventListener("click", requestMouseLook);
+
+        controlsButton.addEventListener("click", () => {
+            controlsPopup.style.display = controlsPopup.style.display == "none" ? "" : "none";
+            controlsButton.blur();
+        });
         canvas.addEventListener("mousedown", () => {
             if (document.pointerLockElement !== renderDiv)
                 requestMouseLook();
