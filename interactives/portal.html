@@ -8,7 +8,7 @@
 
 <body style="text-align: center; background: #f0f0f0">
     <h1>3D Engine</h1>
-    <canvas id="gameCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff"></canvas>
+    <canvas id="gameCanvas" width="800" height="600" style="border: 2px solid #aaa; background: #fff"></canvas>
     <h2 id="fps">FPS: 0</h2>
     <div>
         Directional light intensity:
@@ -1102,34 +1102,32 @@
         class Rasterizer {
             constructor(portal) {
                 this.imageData = ctx.createImageData(canvas.width, canvas.height);
-                this.screenBuffer = [];
-                this.depthBuffer = [];
+                this.screenBuffer = this.imageData.data;
+                this.depthBuffer = new Float64Array(canvas.width * canvas.height);
                 this.portal = portal;
                 this.pointingPos = new Vector3(0, 0, 0);
                 this.pointingPosNormal = new Vector3(0, 0, 0);
                 this.pointingTri = null;
 
-                for (let i = 0; i < canvas.height; i++) {
-                    let screenRow = [];
-                    let depthRow = [];
-                    for (let j = 0; j < canvas.width; j++) {
-                        screenRow.push(new Color(255, 255, 255));
-                        depthRow.push(Infinity);
-                    }
-                    this.screenBuffer.push(screenRow);
-                    this.depthBuffer.push(depthRow);
-                }
+                this.screenBuffer.fill(255);
+                this.depthBuffer.fill(Infinity);
             }
 
             clearScreen(bbox = null) {
                 if (bbox == null) {
-                    bbox = new BoundingBox(0, this.screenBuffer[0].length - 1, 0, this.screenBuffer.length - 1);
+                    bbox = new BoundingBox(0, canvas.width - 1, 0, canvas.height - 1);
                 }
 
                 for (let i = bbox.minY; i <= bbox.maxY; i++) {
+                    let pixelIndex = i * canvas.width + bbox.minX;
+                    let colorIndex = pixelIndex * 4;
                     for (let j = bbox.minX; j <= bbox.maxX; j++) {
-                        this.screenBuffer[i][j].updateColor(240, 240, 240);
-                        this.depthBuffer[i][j] = Infinity;
+                        this.screenBuffer[colorIndex] = 240;
+                        this.screenBuffer[colorIndex + 1] = 240;
+                        this.screenBuffer[colorIndex + 2] = 240;
+                        this.depthBuffer[pixelIndex] = Infinity;
+                        pixelIndex++;
+                        colorIndex += 4;
                     }
                 }
             }
@@ -1187,6 +1185,7 @@
                         let edgeFunction01 = edgeFunctionRow01;
                         let edgeFunction12 = edgeFunctionRow12;
                         let edgeFunction20 = edgeFunctionRow20;
+                        let pixelIndex = y * canvas.width + triBBox.minX;
                         for (let x = triBBox.minX; x <= triBBox.maxX; x++) {
                             if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
                                 const baryCoord0 = edgeFunction12 / tri.signedDoubleArea;
@@ -1194,8 +1193,8 @@
                                 const baryCoord2 = edgeFunction01 / tri.signedDoubleArea;
                                 const z = tri.vertices[0].z * baryCoord0 + tri.vertices[1].z * baryCoord1 + tri.vertices[2].z * baryCoord2;
 
-                                if (z < this.depthBuffer[y][x]) {
-                                    this.depthBuffer[y][x] = z;
+                                if (z < this.depthBuffer[pixelIndex]) {
+                                    this.depthBuffer[pixelIndex] = z;
 
                                     let pixelInvZ = tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2;
 
@@ -1236,16 +1235,16 @@
                                         }
                                     }
 
-                                    this.screenBuffer[y][x].updateColor(
-                                        Math.min(255, texColor.r * lightIntensity),
-                                        Math.min(255, texColor.g * lightIntensity),
-                                        Math.min(255, texColor.b * lightIntensity)
-                                    );
+                                    const colorIndex = pixelIndex * 4;
+                                    this.screenBuffer[colorIndex] = Math.min(255, texColor.r * lightIntensity);
+                                    this.screenBuffer[colorIndex + 1] = Math.min(255, texColor.g * lightIntensity);
+                                    this.screenBuffer[colorIndex + 2] = Math.min(255, texColor.b * lightIntensity);
                                 }
                             }
                             edgeFunction01 += edgeSlopeX01;
                             edgeFunction12 += edgeSlopeX12;
                             edgeFunction20 += edgeSlopeX20;
+                            pixelIndex++;
                         }
                         edgeFunctionRow01 += edgeSlopeY01;
                         edgeFunctionRow12 += edgeSlopeY12;
@@ -1255,17 +1254,6 @@
             }
 
             drawCall() {
-                let index = 0;
-                for (let y = 0; y < canvas.height; y++) {
-                    for (let x = 0; x < canvas.width; x++) {
-                        const c = this.screenBuffer[y][x];
-                        this.imageData.data[index++] = c.r;
-                        this.imageData.data[index++] = c.g;
-                        this.imageData.data[index++] = c.b;
-                        this.imageData.data[index++] = 255;
-                    }
-                }
-
                 ctx.putImageData(this.imageData, 0, 0);
             }
         }
@@ -1550,14 +1538,9 @@
                     }
 
                     for (let y = bbox.minY; y <= bbox.maxY; y++) {
-                        for (let x = bbox.minX; x <= bbox.maxX; x++) {
-                            let color = this.rasterizer.screenBuffer[y][x];
-                            const texIndex = (y * canvas.width + x) * 4;
-                            this.renderTexture.pixels[texIndex] = color.r;
-                            this.renderTexture.pixels[texIndex + 1] = color.g;
-                            this.renderTexture.pixels[texIndex + 2] = color.b;
-                            this.renderTexture.pixels[texIndex + 3] = 255;
-                        }
+                        const rowStart = (y * canvas.width + bbox.minX) * 4;
+                        const rowEnd = (y * canvas.width + bbox.maxX + 1) * 4;
+                        this.renderTexture.pixels.set(this.rasterizer.screenBuffer.subarray(rowStart, rowEnd), rowStart);
                     }
                 }
 
