@@ -17,13 +17,10 @@
             justify-content: center;
         }
 
-        #mobileControls .group {
-            margin: 8px;
-        }
 
         #mobileControls button {
-            width: 44px;
-            height: 42px;
+            width: 40px;
+            height: 40px;
             margin: 2px;
             padding: 0px;
             font-family: inherit;
@@ -31,17 +28,6 @@
             touch-action: none;
             -webkit-user-select: none;
             user-select: none;
-        }
-
-        #mobileControls button.wide {
-            width: 148px;
-        }
-
-        #mobileControlsButton {
-            font-family: inherit;
-            font-size: 15px;
-            height: 42px;
-            padding: 0 16px;
         }
     </style>
 </head>
@@ -51,13 +37,40 @@
     <div id="render">
         <canvas id="gameCanvas" width="800" height="600" style="border: 2px solid #aaa; background: #fff"></canvas>
         <p id="asciiParagraph"
-            style="display:none; font-size: 4px; font-family: 'Courier New', Courier, monospace;letter-spacing: 0.3em;">
+            style="display:none; font-size: 2px; font-family: 'Courier New', Courier, monospace;letter-spacing: 0.3em;white-space: nowrap">
         </p>
     </div>
     <div>
-        <button id="mouseLookButton" style="display:none">Mouse look</button>
+        <button id="mouseLookButton" style="display:none">Press here to look around (ASCII)</button>
     </div>
-    <h2 id="fps">FPS: 0</h2>
+    <h2 id="fps" style="margin-top: 0px; margin-bottom: 0px;">FPS: 0</h2>
+    <div>
+        <button id="mobileControlsButton"
+            style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Mobile
+            controls</button>
+        <div id="mobileControls" style="display: none">
+            <div class="row">
+                <div class="group">
+                    <b>Move</b><br />
+                    <button data-key=" ">Up</button><button data-key="w">W</button><button
+                        data-key="Shift">Down</button><br />
+                    <button data-key="a">A</button><button data-key="s">S</button><button data-key="d">D</button><br />
+                </div>
+                <div class="group">
+                    <b style="font-size: 10px">Companion cube</b><br />
+                    <button data-tap="e" >Pick / throw</button><br />
+                    <button data-tap="f" >Drop / reset</button><br />
+                </div>
+                <div class="group">
+                    <b>Look and shoot</b><br />
+                    <button data-portal="0">Orange</button><button data-look="0,-1">&uarr;</button><button
+                        data-portal="1">Blue</button><br />
+                    <button data-look="-1,0">&larr;</button><button data-look="0,1">&darr;</button><button
+                        data-look="1,0">&rarr;</button><br />
+                </div>
+            </div>
+        </div>
+    </div>
     <div>
         ASCII:
         <input type="checkbox" id="useASCII" />
@@ -72,7 +85,7 @@
         ASCII resolution:
         <input id="asciiResWidth" value="200" size="4" />
         x
-        <input id="asciiResHeight" value="150" size="4" />
+        <input id="asciiResHeight" value="140" size="4" />
     </div>
     <div>
         Directional light intensity:
@@ -86,46 +99,6 @@
     <div>
         Controlling object:
         <span id="controllingObject">Orange portal</span>
-    </div>
-    <hr />
-    <div>
-        <button id="mobileControlsButton">Mobile controls</button>
-    </div>
-    <div id="mobileControls" style="display: none">
-        <div class="row">
-            <div class="group">
-                <b>Move</b><br />
-                <button data-key=" ">Up</button><button data-key="w">W</button><button data-key="Shift">Down</button><br />
-                <button data-key="a">A</button><button data-key="s">S</button><button data-key="d">D</button><br />
-            </div>
-            <div class="group">
-                <b>Look and shoot</b><br />
-                <button data-portal="0">Orange</button><button data-look="0,-1">&uarr;</button><button
-                    data-portal="1">Blue</button><br />
-                <button data-look="-1,0">&larr;</button><button data-look="0,1">&darr;</button><button
-                    data-look="1,0">&rarr;</button><br />
-
-
-            </div>
-        </div>
-        <!-- <div class="row">
-            <div class="group">
-                <b>Companion cube</b><br />
-                <button data-tap="e" class="wide">E - pick / throw</button><br />
-                <button data-tap="f" class="wide">F - drop / reset</button><br />
-                <button data-tap="g" class="wide">G - gravity</button>
-            </div>
-            <div class="group">
-                <b>Controlling object</b><br />
-                <button data-tap="p" class="wide">P - change object</button><br />
-                <span>Move</span><br />
-                <button data-key="i">I</button><button data-key="k">K</button><button data-key="j">J</button><button
-                    data-key="l">L</button><br />
-                <button data-key="u">U</button><button data-key="o">O</button><br />
-                <span>Rotate around X, Y, Z</span><br />
-                <button data-key="b">B</button><button data-key="n">N</button><button data-key="m">M</button>
-            </div>
-        </div> -->
     </div>
     <button id="controlsButton"
         style="position: fixed; top: 8px; left: 8px; font-size: 15px; width: 200px; height: 50px; font-family: 'Bahnschrift', 'Arial Sans-Serif', sans-serif;">Controls
@@ -1779,7 +1752,7 @@
         const controlsPopup = document.getElementById("controlsPopup");
         let useASCII = false;
         let asciiWidth = 200;
-        let asciiHeight = 150;
+        let asciiHeight = 140;
         let canvasRenderWidth = 800;
         let canvasRenderHeight = 600;
         const rasterizer = new Rasterizer(null);
@@ -2262,7 +2235,7 @@
         document.addEventListener("pointerlockchange", () => {
             mouseLookButton.textContent = document.pointerLockElement === renderDiv
                 ? "Mouse look on - Esc to release"
-                : "Mouse look";
+                : "Press here to look around (ASCII)";
         });
 
         asciiCheckBox.addEventListener("change", () => {
