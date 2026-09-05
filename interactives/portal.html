@@ -58,16 +58,16 @@
     </div>
     <h2 id="fps">FPS: 0</h2>
     <div>
+        ASCII:
+        <input type="checkbox" id="useASCII" />
+    </div>
+    <div id="canvasResRow">
         Canvas resolution:
         <input id="canvasResWidth" value="800" size="4" />
         x
         <input id="canvasResHeight" value="600" size="4" />
     </div>
-    <div>
-        ASCII:
-        <input type="checkbox" id="useASCII" />
-    </div>
-    <div>
+    <div id="asciiResRow" style="display: none">
         ASCII resolution:
         <input id="asciiResWidth" value="200" size="4" />
         x
@@ -1786,6 +1786,8 @@
         const ctx = canvas.getContext("2d");
         const asciiParagraph = document.getElementById("asciiParagraph");
         const asciiCheckBox = document.getElementById("useASCII");
+        const asciiResRow = document.getElementById("asciiResRow");
+        const canvasResRow = document.getElementById("canvasResRow");
         const renderDiv = document.getElementById("render");
         const mouseLookButton = document.getElementById("mouseLookButton");
         const controlsButton = document.getElementById("controlsButton");
@@ -2272,6 +2274,8 @@
             asciiParagraph.style.display = useASCII ? "" : "none";
             gameCanvas.style.display = useASCII ? "none" : "";
             mouseLookButton.style.display = useASCII ? "" : "none";
+            asciiResRow.style.display = useASCII ? "" : "none";
+            canvasResRow.style.display = useASCII ? "none" : "";
             if (document.pointerLockElement != null)
                 document.exitPointerLock();
         });
