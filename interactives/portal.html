@@ -1390,14 +1390,9 @@
                 } else {
                     let renderString = "";
                     let grayScaleASCII = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'.";
-                    let widthRatio = canvas.width / asciiWidth;
-                    let heightRatio = canvas.height / asciiHeight;
-
-                    for (let y = 0; y < asciiHeight; y++) {
-                        for (let x = 0; x < asciiWidth; x++) {
-                            let sampleY = Math.floor(y * heightRatio);
-                            let sampleX = Math.floor(x * widthRatio);
-                            let index = (sampleY * canvas.width + sampleX) * 4;
+                    for (let y = 0; y < canvas.height; y++) {
+                        for (let x = 0; x < canvas.width; x++) {
+                            let index = (y * canvas.width + x) * 4;
                             let color = new Color(this.imageData.data[index], this.imageData.data[index + 1], this.imageData.data[index + 2]);
                             let grayScale01 = color.grayScale01();
                             let pixelLetter = grayScaleASCII[Math.floor((1 - grayScale01) * (grayScaleASCII.length - 1))];
@@ -1785,6 +1780,8 @@
         let useASCII = false;
         let asciiWidth = 200;
         let asciiHeight = 150;
+        let canvasRenderWidth = 800;
+        let canvasRenderHeight = 600;
         const rasterizer = new Rasterizer(null);
         const fov = 60;
         let znear = 0.01,
@@ -2188,11 +2185,9 @@
             return Math.max(min, Math.min(max, value));
         }
 
-        function applyCanvasResolution() {
-            canvas.width = readResolution(canvasResWidthInput, 16, 1920, canvas.width);
-            canvas.height = readResolution(canvasResHeightInput, 16, 1440, canvas.height);
-            canvasResWidthInput.value = canvas.width;
-            canvasResHeightInput.value = canvas.height;
+        function applyRenderResolution() {
+            canvas.width = useASCII ? asciiWidth : canvasRenderWidth;
+            canvas.height = useASCII ? asciiHeight : canvasRenderHeight;
 
             screenCenter = new Vector3(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 0);
             projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
@@ -2200,15 +2195,26 @@
             portal1.resize();
             portal2.resize();
         }
+
+        function applyCanvasResolution() {
+            canvasRenderWidth = readResolution(canvasResWidthInput, 16, 1920, canvasRenderWidth);
+            canvasRenderHeight = readResolution(canvasResHeightInput, 16, 1440, canvasRenderHeight);
+            canvasResWidthInput.value = canvasRenderWidth;
+            canvasResHeightInput.value = canvasRenderHeight;
+            if (!useASCII) applyRenderResolution();
+        }
         canvasResWidthInput.addEventListener("change", applyCanvasResolution);
         canvasResHeightInput.addEventListener("change", applyCanvasResolution);
 
         function applyAsciiResolution() {
             asciiWidth = readResolution(asciiResWidthInput, 8, 500, asciiWidth);
             asciiHeight = readResolution(asciiResHeightInput, 8, 400, asciiHeight);
+            asciiResWidthInput.value = asciiWidth;
+            asciiResHeightInput.value = asciiHeight;
+            if (useASCII) applyRenderResolution();
         }
-        asciiResWidthInput.addEventListener("input", applyAsciiResolution);
-        asciiResHeightInput.addEventListener("input", applyAsciiResolution);
+        asciiResWidthInput.addEventListener("change", applyAsciiResolution);
+        asciiResHeightInput.addEventListener("change", applyAsciiResolution);
 
         async function requestMouseLook() {
             try {
@@ -2261,6 +2267,7 @@
 
         asciiCheckBox.addEventListener("change", () => {
             useASCII = asciiCheckBox.checked;
+            applyRenderResolution();
             asciiParagraph.style.display = useASCII ? "" : "none";
             gameCanvas.style.display = useASCII ? "none" : "";
             mouseLookButton.style.display = useASCII ? "" : "none";
