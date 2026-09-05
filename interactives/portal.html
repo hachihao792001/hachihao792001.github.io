@@ -58,8 +58,20 @@
     </div>
     <h2 id="fps">FPS: 0</h2>
     <div>
+        Canvas resolution:
+        <input id="canvasResWidth" value="800" size="4" />
+        x
+        <input id="canvasResHeight" value="600" size="4" />
+    </div>
+    <div>
         ASCII:
         <input type="checkbox" id="useASCII" />
+    </div>
+    <div>
+        ASCII resolution:
+        <input id="asciiResWidth" value="200" size="4" />
+        x
+        <input id="asciiResHeight" value="150" size="4" />
     </div>
     <div>
         Directional light intensity:
@@ -1214,14 +1226,19 @@
 
         class Rasterizer {
             constructor(portal) {
-                this.imageData = ctx.createImageData(canvas.width, canvas.height);
-                this.screenBuffer = this.imageData.data;
-                this.depthBuffer = new Float64Array(canvas.width * canvas.height);
                 this.portal = portal;
 
                 this.pointingPos = new Vector3(0, 0, 0);
                 this.pointingPosNormal = new Vector3(0, 0, 0);
                 this.pointingTri = null;
+
+                this.resize();
+            }
+
+            resize() {
+                this.imageData = ctx.createImageData(canvas.width, canvas.height);
+                this.screenBuffer = this.imageData.data;
+                this.depthBuffer = new Float64Array(canvas.width * canvas.height);
 
                 this.screenBuffer.fill(255);
                 this.depthBuffer.fill(Infinity);
@@ -1373,8 +1390,6 @@
                 } else {
                     let renderString = "";
                     let grayScaleASCII = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'.";
-                    let asciiWidth = 200;
-                    let asciiHeight = 150;
                     let widthRatio = canvas.width / asciiWidth;
                     let heightRatio = canvas.height / asciiHeight;
 
@@ -1408,11 +1423,8 @@
                 this.scale = scale;
 
                 this.renderTexture = new Texture();
-                this.renderTexture.width = canvas.width;
-                this.renderTexture.height = canvas.height;
-                this.renderTexture.pixels = new Uint8ClampedArray(canvas.width * canvas.height * 4);
-
                 this.rasterizer = new Rasterizer(this);
+                this.resize();
                 let portalQuadMesh = new Quad(this);
                 this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
                 this.camera = new Camera(pos, eulerAngles, 8, 0.2);
@@ -1462,6 +1474,13 @@
                     color,
                     normalQuadMesh,
                 );
+            }
+
+            resize() {
+                this.renderTexture.width = canvas.width;
+                this.renderTexture.height = canvas.height;
+                this.renderTexture.pixels = new Uint8ClampedArray(canvas.width * canvas.height * 4);
+                this.rasterizer.resize();
             }
 
             getAllTransformedTriangles() {
@@ -1772,6 +1791,8 @@
         const controlsButton = document.getElementById("controlsButton");
         const controlsPopup = document.getElementById("controlsPopup");
         let useASCII = false;
+        let asciiWidth = 200;
+        let asciiHeight = 150;
         const rasterizer = new Rasterizer(null);
         const fov = 60;
         let znear = 0.01,
@@ -1786,7 +1807,7 @@
             new Plane(Vector3.left, new Vector3(1, 0, 0)),
         ];
         let keyStates = [];
-        const screenCenter = new Vector3(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 0);
+        let screenCenter = new Vector3(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 0);
 
 
         let cameraRotLerpStart = camera.rotation;
@@ -2163,6 +2184,39 @@
         portalLimitInput.addEventListener("input", () => {
             portalLimit = parseInt(portalLimitInput.value);
         });
+
+        const canvasResWidthInput = document.getElementById("canvasResWidth");
+        const canvasResHeightInput = document.getElementById("canvasResHeight");
+        const asciiResWidthInput = document.getElementById("asciiResWidth");
+        const asciiResHeightInput = document.getElementById("asciiResHeight");
+
+        function readResolution(input, min, max, current) {
+            let value = parseInt(input.value);
+            if (isNaN(value)) return current;
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function applyCanvasResolution() {
+            canvas.width = readResolution(canvasResWidthInput, 16, 1920, canvas.width);
+            canvas.height = readResolution(canvasResHeightInput, 16, 1440, canvas.height);
+            canvasResWidthInput.value = canvas.width;
+            canvasResHeightInput.value = canvas.height;
+
+            screenCenter = new Vector3(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 0);
+            projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
+            rasterizer.resize();
+            portal1.resize();
+            portal2.resize();
+        }
+        canvasResWidthInput.addEventListener("change", applyCanvasResolution);
+        canvasResHeightInput.addEventListener("change", applyCanvasResolution);
+
+        function applyAsciiResolution() {
+            asciiWidth = readResolution(asciiResWidthInput, 8, 500, asciiWidth);
+            asciiHeight = readResolution(asciiResHeightInput, 8, 400, asciiHeight);
+        }
+        asciiResWidthInput.addEventListener("input", applyAsciiResolution);
+        asciiResHeightInput.addEventListener("input", applyAsciiResolution);
 
         async function requestMouseLook() {
             try {
