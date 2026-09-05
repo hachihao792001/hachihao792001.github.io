@@ -25,8 +25,9 @@
             width: 44px;
             height: 42px;
             margin: 2px;
+            padding: 0px;
             font-family: inherit;
-            font-size: 15px;
+            font-size: 12px;
             touch-action: none;
             -webkit-user-select: none;
             user-select: none;
@@ -94,21 +95,20 @@
         <div class="row">
             <div class="group">
                 <b>Move</b><br />
-                <button data-key="w">W</button><br />
+                <button data-key=" ">Up</button><button data-key="w">W</button><button data-key="Shift">Down</button><br />
                 <button data-key="a">A</button><button data-key="s">S</button><button data-key="d">D</button><br />
-                <button data-key=" " class="wide">Space - up</button><br />
-                <button data-key="Shift" class="wide">Shift - down</button>
             </div>
             <div class="group">
                 <b>Look and shoot</b><br />
-                <button data-look="0,-1">&uarr;</button><br />
+                <button data-portal="0">Orange</button><button data-look="0,-1">&uarr;</button><button
+                    data-portal="1">Blue</button><br />
                 <button data-look="-1,0">&larr;</button><button data-look="0,1">&darr;</button><button
                     data-look="1,0">&rarr;</button><br />
-                <button data-portal="0" class="wide">Orange portal</button><br />
-                <button data-portal="1" class="wide">Blue portal</button>
+
+
             </div>
         </div>
-        <div class="row">
+        <!-- <div class="row">
             <div class="group">
                 <b>Companion cube</b><br />
                 <button data-tap="e" class="wide">E - pick / throw</button><br />
@@ -125,7 +125,7 @@
                 <span>Rotate around X, Y, Z</span><br />
                 <button data-key="b">B</button><button data-key="n">N</button><button data-key="m">M</button>
             </div>
-        </div>
+        </div> -->
     </div>
     <button id="controlsButton"
         style="position: fixed; top: 8px; left: 8px; font-size: 15px; width: 200px; height: 50px; font-family: 'Bahnschrift', 'Arial Sans-Serif', sans-serif;">Controls
@@ -1395,9 +1395,9 @@
 
                     for (let y = 0; y < asciiHeight; y++) {
                         for (let x = 0; x < asciiWidth; x++) {
-                            let sampleY = y * heightRatio;
-                            let sampleX = x * widthRatio;
-                            let index = Math.floor((sampleY * canvas.width + sampleX) * 4);
+                            let sampleY = Math.floor(y * heightRatio);
+                            let sampleX = Math.floor(x * widthRatio);
+                            let index = (sampleY * canvas.width + sampleX) * 4;
                             let color = new Color(this.imageData.data[index], this.imageData.data[index + 1], this.imageData.data[index + 2]);
                             let grayScale01 = color.grayScale01();
                             let pixelLetter = grayScaleASCII[Math.floor((1 - grayScale01) * (grayScaleASCII.length - 1))];
@@ -1678,16 +1678,6 @@
             }
 
             updateTextureForQuad(clipSpaceTris, renderBBox = null) {
-                // for (let y = 0; y < canvas.height; y++) {
-                //     for (let x = 0; x < canvas.width; x++) {
-                //         const texIndex = (y * canvas.width + x) * 4;
-                //         this.renderTexture.pixels[texIndex] = 0;
-                //         this.renderTexture.pixels[texIndex + 1] = 0;
-                //         this.renderTexture.pixels[texIndex + 2] = 0;
-                //         this.renderTexture.pixels[texIndex + 3] = 255;
-                //     }
-                // }
-
                 for (let tri of clipSpaceTris) {
                     if (!tri.portal) continue;
                     let bbox = tri.boundingBox();
