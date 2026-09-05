@@ -3,7 +3,46 @@
 
 <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Portal in browser</title>
+    <style>
+        #gameCanvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        #mobileControls .row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #mobileControls .group {
+            margin: 8px;
+        }
+
+        #mobileControls button {
+            width: 44px;
+            height: 42px;
+            margin: 2px;
+            font-family: inherit;
+            font-size: 15px;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        #mobileControls button.wide {
+            width: 148px;
+        }
+
+        #mobileControlsButton {
+            font-family: inherit;
+            font-size: 15px;
+            height: 42px;
+            padding: 0 16px;
+        }
+    </style>
 </head>
 
 <body style="text-align: center; background: #f0f0f0; font-family: 'Bahnschrift', 'Arial Sans-Serif', sans-serif;">
@@ -34,6 +73,47 @@
     <div>
         Controlling object:
         <span id="controllingObject">Orange portal</span>
+    </div>
+    <hr />
+    <div>
+        <button id="mobileControlsButton">Mobile controls</button>
+    </div>
+    <div id="mobileControls" style="display: none">
+        <div class="row">
+            <div class="group">
+                <b>Move</b><br />
+                <button data-key="w">W</button><br />
+                <button data-key="a">A</button><button data-key="s">S</button><button data-key="d">D</button><br />
+                <button data-key=" " class="wide">Space - up</button><br />
+                <button data-key="Shift" class="wide">Shift - down</button>
+            </div>
+            <div class="group">
+                <b>Look and shoot</b><br />
+                <button data-look="0,-1">&uarr;</button><br />
+                <button data-look="-1,0">&larr;</button><button data-look="0,1">&darr;</button><button
+                    data-look="1,0">&rarr;</button><br />
+                <button data-portal="0" class="wide">Orange portal</button><br />
+                <button data-portal="1" class="wide">Blue portal</button>
+            </div>
+        </div>
+        <div class="row">
+            <div class="group">
+                <b>Companion cube</b><br />
+                <button data-tap="e" class="wide">E - pick / throw</button><br />
+                <button data-tap="f" class="wide">F - drop / reset</button><br />
+                <button data-tap="g" class="wide">G - gravity</button>
+            </div>
+            <div class="group">
+                <b>Controlling object</b><br />
+                <button data-tap="p" class="wide">P - change object</button><br />
+                <span>Move</span><br />
+                <button data-key="i">I</button><button data-key="k">K</button><button data-key="j">J</button><button
+                    data-key="l">L</button><br />
+                <button data-key="u">U</button><button data-key="o">O</button><br />
+                <span>Rotate around X, Y, Z</span><br />
+                <button data-key="b">B</button><button data-key="n">N</button><button data-key="m">M</button>
+            </div>
+        </div>
     </div>
     <button id="controlsButton"
         style="position: fixed; top: 8px; left: 8px; font-size: 15px; width: 200px; height: 50px; font-family: 'Bahnschrift', 'Arial Sans-Serif', sans-serif;">Controls
@@ -1715,6 +1795,9 @@
         let cameraRotLerpCount = 0;
         let cameraRotLerpRate = 4;
 
+        let lookInput = { x: 0, y: 0 };
+        let lookSpeed = 450;
+
         const fpsInfo = document.getElementById("fps");
         let frames = 0,
             fpsTimeCounter = 0;
@@ -1916,6 +1999,10 @@
 
             camera.updateMovement(dt, keyStates);
 
+            if ((lookInput.x != 0 || lookInput.y != 0) && cameraRotLerpCount <= 0) {
+                camera.updateRotation(lookInput.x * dt * lookSpeed, lookInput.y * dt * lookSpeed);
+            }
+
             if (cameraRotLerpCount > 0) {
                 camera.rotation = Quaternion.lerp(
                     cameraRotLerpStart,
@@ -2078,9 +2165,13 @@
         });
 
         async function requestMouseLook() {
-            await renderDiv.requestPointerLock({
-                unadjustedMovement: true,
-            });
+            try {
+                await renderDiv.requestPointerLock({
+                    unadjustedMovement: true,
+                });
+            } catch (e) {
+                // mobile
+            }
         }
 
         mouseLookButton.addEventListener("click", requestMouseLook);
@@ -2138,15 +2229,77 @@
             keyStates[e.key] = false;
         });
         window.addEventListener("keypress", (e) => {
-            if (e.key == "p") {
+            doKeyAction(e.key);
+        });
+
+        const mobileControls = document.getElementById("mobileControls");
+        const mobileControlsButton = document.getElementById("mobileControlsButton");
+
+        mobileControlsButton.addEventListener("click", () => {
+            mobileControls.style.display = mobileControls.style.display == "none" ? "" : "none";
+            mobileControlsButton.blur();
+        });
+
+        mobileControls.querySelectorAll("button[data-key]").forEach((button) => {
+            const key = button.dataset.key;
+            button.addEventListener("pointerdown", (e) => {
+                e.preventDefault();
+                keyStates[key] = true;
+                button.setPointerCapture(e.pointerId);
+            });
+            const release = () => {
+                keyStates[key] = false;
+            };
+            button.addEventListener("pointerup", release);
+            button.addEventListener("pointercancel", release);
+        });
+
+        mobileControls.querySelectorAll("button[data-tap]").forEach((button) => {
+            button.addEventListener("click", () => {
+                doKeyAction(button.dataset.tap);
+                button.blur();
+            });
+        });
+
+        mobileControls.querySelectorAll("button[data-portal]").forEach((button) => {
+            button.addEventListener("click", () => {
+                shootPortal(parseInt(button.dataset.portal));
+                button.blur();
+            });
+        });
+
+        mobileControls.querySelectorAll("button[data-look]").forEach((button) => {
+            const dir = button.dataset.look.split(",");
+            const x = parseInt(dir[0]), y = parseInt(dir[1]);
+            let pressed = false;
+            button.addEventListener("pointerdown", (e) => {
+                e.preventDefault();
+                if (pressed) return;
+                pressed = true;
+                lookInput.x += x;
+                lookInput.y += y;
+                button.setPointerCapture(e.pointerId);
+            });
+            const release = () => {
+                if (!pressed) return;
+                pressed = false;
+                lookInput.x -= x;
+                lookInput.y -= y;
+            };
+            button.addEventListener("pointerup", release);
+            button.addEventListener("pointercancel", release);
+        });
+
+        function doKeyAction(key) {
+            if (key == "p") {
                 controllingObject++;
                 if (controllingObject > 2) controllingObject = 0;
-            } else if (e.key == "g") {
+            } else if (key == "g") {
                 testCube.useGravity = !testCube.useGravity;
                 if (!testCube.useGravity) {
                     testCube.velocity = Vector3.zero.clone();
                 }
-            } else if (e.key == "f") {
+            } else if (key == "f") {
                 if (holdingObject != null) {
                     holdingObject.useGravity = false;
                     holdingObject.velocity = Vector3.zero.clone();
@@ -2158,7 +2311,7 @@
                 }
             }
 
-            if (e.key == "e") {
+            if (key == "e") {
                 if (holdingObject != null) {
                     holdingObject.velocity = Vector3.mul(camera.getForward(), 10);
                     holdingObject = null;
@@ -2173,7 +2326,7 @@
                     }
                 }
             }
-        });
+        }
     </script>
 </body>
 
