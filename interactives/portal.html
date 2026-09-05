@@ -45,6 +45,9 @@
     </div>
     <h2 id="fps" style="margin-top: 0px; margin-bottom: 0px;">FPS: 0</h2>
     <div>
+        <button id="helpButton"
+            style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Helps and
+            Credits</button>
         <button id="mobileControlsButton"
             style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Mobile
             controls</button>
@@ -58,8 +61,8 @@
                 </div>
                 <div class="group">
                     <b style="font-size: 10px">Companion cube</b><br />
-                    <button data-tap="e" >Pick / throw</button><br />
-                    <button data-tap="f" >Drop / reset</button><br />
+                    <button data-tap="e">Pick / throw</button><br />
+                    <button data-tap="f">Drop / reset</button><br />
                 </div>
                 <div class="group">
                     <b>Look and shoot</b><br />
@@ -100,12 +103,9 @@
         Controlling object:
         <span id="controllingObject">Orange portal</span>
     </div>
-    <button id="controlsButton"
-        style="position: fixed; top: 8px; left: 8px; font-size: 15px; width: 200px; height: 50px; font-family: 'Bahnschrift', 'Arial Sans-Serif', sans-serif;">Controls
-        and
-        Credits</button>
-    <div id="controlsPopup"
-        style="display: none; position: fixed; top: 66px; left: 8px; text-align: left; background: #fff; border: 1px solid #aaa; padding: 10px; width: 400px">
+    <div id="helpPopup"
+        style="display: none; position: fixed; top: 80px; left: 50%;transform: translate(-50%, 0); text-align: left; background: #fff; border: 1px solid #aaa; padding: 10px; width: 400px">
+        PC controls:
         <ul>
             <li>W, A, S, D to move</li>
             <li>Space, shift to fly up and down</li>
@@ -1748,8 +1748,8 @@
         const canvasResRow = document.getElementById("canvasResRow");
         const renderDiv = document.getElementById("render");
         const mouseLookButton = document.getElementById("mouseLookButton");
-        const controlsButton = document.getElementById("controlsButton");
-        const controlsPopup = document.getElementById("controlsPopup");
+        const helpButton = document.getElementById("helpButton");
+        const helpPopup = document.getElementById("helpPopup");
         let useASCII = false;
         let asciiWidth = 200;
         let asciiHeight = 140;
@@ -2201,9 +2201,9 @@
 
         mouseLookButton.addEventListener("click", requestMouseLook);
 
-        controlsButton.addEventListener("click", () => {
-            controlsPopup.style.display = controlsPopup.style.display == "none" ? "" : "none";
-            controlsButton.blur();
+        helpButton.addEventListener("click", () => {
+            helpPopup.style.display = helpPopup.style.display == "none" ? "" : "none";
+            helpButton.blur();
         });
         canvas.addEventListener("mousedown", () => {
             if (document.pointerLockElement !== renderDiv)
