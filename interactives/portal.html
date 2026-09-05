@@ -105,6 +105,10 @@
     </div>
     <div id="helpPopup"
         style="display: none; position: fixed; top: 80px; left: 50%;transform: translate(-50%, 0); text-align: left; background: #fff; border: 1px solid #aaa; padding: 10px; width: 400px">
+        <div style="text-align: right">
+            <button id="helpCloseButton"
+                style="font-family: inherit; font-size: 15px; height: 30px; padding: 0 16px">Close</button>
+        </div>
         PC controls:
         <ul>
             <li>W, A, S, D to move</li>
@@ -1750,6 +1754,7 @@
         const mouseLookButton = document.getElementById("mouseLookButton");
         const helpButton = document.getElementById("helpButton");
         const helpPopup = document.getElementById("helpPopup");
+        const helpCloseButton = document.getElementById("helpCloseButton");
         let useASCII = false;
         let asciiWidth = 200;
         let asciiHeight = 140;
@@ -2204,6 +2209,11 @@
         helpButton.addEventListener("click", () => {
             helpPopup.style.display = helpPopup.style.display == "none" ? "" : "none";
             helpButton.blur();
+        });
+
+        helpCloseButton.addEventListener("click", () => {
+            helpPopup.style.display = "none";
+            helpCloseButton.blur();
         });
         canvas.addEventListener("mousedown", () => {
             if (document.pointerLockElement !== renderDiv)
