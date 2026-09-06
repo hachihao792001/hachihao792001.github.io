@@ -114,24 +114,47 @@
         return tris;
     }
 }</code></pre>
-                Có được class Quad, ta tạo 2 GameObject portal sử dụng mesh quad đó, với 2 màu cam và xanh kinh điển:
-                <pre><code class="language-javascript">let quadMesh = new Quad();
-...
-let portal1 = new GameObject(new Vector3(-3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94), quadMesh);
-let portal2 = new GameObject(new Vector3(3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255), quadMesh);
-
-...
-function update(time = performance.now()) {
+                    Có được class Quad, ta tạo 2 GameObject portal sử dụng mesh quad đó, với 2 màu cam và xanh kinh điển:
+                    <pre><code class="language-javascript">let quadMesh = new Quad();
     ...
-    objectTris.push(...portal1.getTransformedTriangles());
-    objectTris.push(...portal2.getTransformedTriangles());
+    let portal1 = new GameObject(new Vector3(-3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94), quadMesh);
+    let portal2 = new GameObject(new Vector3(3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255), quadMesh);
+
     ...
-}</code></pre>
+    function update(time = performance.now()) {
+        ...
+        objectTris.push(...portal1.getTransformedTriangles());
+        objectTris.push(...portal2.getTransformedTriangles());
+        ...
+    }</code></pre>
 
-                Kết quả:
-                <div class="htmlPreview" id="htmlPreview3"></div>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview3"></div>
 
-                
+                    Oke, phần chuẩn bị về engine đã xong, bây giờ ta chính thức vào làm portal.
+
+                    <h2>1. Cơ chế lõi của Portal</h2>
+                    Bạn hãy thử suy nghĩ với trường hợp như sau:
+                    <div align="center">
+                        <img style="max-height: 250px; max-width: 100vw; display: block;" src="images/portaldemo.png"/>
+                    </div>
+                    2 Portal vuông góc với nhau, nhìn vào cùng 1 chỗ, player đang nhìn vào portal cam, ngoài ra có 2 cục cube xanh lá và đỏ. Câu hỏi ta cần trả lời là: <b>Portal cam
+                    hiện gì?</b><br/><br/>
+
+                    Ta biết Portal sẽ hiển thị theo kiểu 1 "cửa sổ" với góc nhìn ở portal bên kia. Nghĩa là ta phải giả sử 1 player khác đang đứng đằng sau Portal xanh, player ảo đó
+                    thấy cái gì, thì Portal cam sẽ hiển thị cái đó. Với engine chúng ta thì 1 player chỉ là 1 camera, và player ảo này đang phục vụ cho portal cam, nên mình minh họa camera màu cam:
+                    <div align="center">
+                        <img style="max-height: 250px; max-width: 100vw; display: block;" src="images/portaldemo_withcamera.png"/>
+                    </div>
+                    Tuy nhiên ta biết là Portal cam không thể nào hiển thị hết được góc nhìn từ camera cam, mà sẽ cắt ra 1 hình chữ nhật để hiển thị, hình chữ nhật đó
+                    trùng với viền của Portal xanh:
+                    <div align="center">
+                        <img style="max-height: 250px; max-width: 100vw;" src="images/portaldemo_withcamera2.png"/>
+                        <img style="max-height: 250px; max-width: 100vw;" src="images/portalcamerapov.png"/>
+                    </div>
+
+                    
+
                 </div>
             </div>
         </div>
