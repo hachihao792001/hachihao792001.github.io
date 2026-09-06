@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="Implement các tính năng Social với Facebook trong Unity - Facebook SDK, PlayFab và Messenger trong game Unity.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="portalblog.css">
+
+    <script src="/js/prism.js"></script>
+
+    <style>
+        .blog-content pre {
+            background: #f6f8fa;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
+        .blog-content img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 1rem 0;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        .blog-content code {
+            font-size: 0.95rem;
+        }
+    </style>
+
+    <title>Implement các tính năng Social với Facebook trong Unity</title>
+</head>
+
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <h1>Cách làm Portal mechanic trong HTML Canvas engine</h1>
+
+                    Portal mechanic trong game Portal của Valve là một thứ khá là thú vị và ko kém phần challenging để implement nếu bạn là 1 game dev. Đã có nhiều video về
+                    chủ đề này, cái mình thấy hay nhất là của <a href="https://www.youtube.com/watch?v=cWpFZbjtSQg">Sebastian Lague</a>. Mình đã viết 1 <a href="../graphics3D/graphics3D-intro.html">3D graphics engine</a>
+                    (thuật ngữ đúng là cpu rasterizer/software rasterizer) trong HTML Canvas rồi thì sao mình không implement thử Portal mechanic vào nó luôn nhỉ 😳 Đó chính là thứ mà
+                    mình hướng đến trong blog này.
+                    <div align="center">
+                        <img style="max-height: 400px; max-width: 100vw; display: block;" src="https://gamingbolt.com/wp-content/uploads/2010/06/portal.jpg"/>
+                        <i>Nguồn ảnh: <a href="https://gamingbolt.com/e3-2010-valve-sheds-more-light-on-their-surprise-confirms-its-portal-2-themed">gamingbolt</a>, Game: Portal 2 (Valve).</i>
+                    </div>
+
+                    Đây là kết quả cuối cùng mà mình có được sau 12 blogs về CPU rasterizer:
+                    <div class="htmlPreview" id="htmlPreview1"></div>
+
+                    Cái đầu tiên ta cần làm là bỏ đi những thứ không cần thiết trong engine có sẵn. Cụ thể là Point light, Shadow, cái tòa tháp gỗ và vụ xoay ánh sáng,
+                    vừa bớt code đi, vừa tăng performance đáng kể.
+                    Bạn chỉ cần Ctrl + F tìm hết những chỗ có liên quan rồi bỏ đi thôi.<br/><br/>
+                    Cũng như series blogs Rasterzier, bạn có thể xem diff với phiên bản trước ở nút dưới.
+                    <div class="htmlPreview" id="htmlPreview2"></div>
+
+                    OK, trước khi làm gì liên quan tới Portal. Bạn cần phải biết là khi bạn nhìn vào portal, thứ bạn nhìn thấy chỉ là 1 texture hiển thị góc nhìn ở portal bên kia,
+                    chứ không thật sự là đang "xuyên không", everything is an illusion. Portal thật ra là 1 quad có texture và có effect viền, that's it, cái magic là ở việc ta hiển
+                    thị gì lên texture đó và việc xử lý khi vật thể hoặc player đi qua nó.<br/><br/>
+
+                    Như vậy, trước tiên ta cần tạo một class Quad mới, kế thừa từ Mesh. Cũng đơn giản, ta copy lại mặt back của cube (để pháp tuyến của nó hướng theo trục Z thế giới):
+                    <pre><code class="language-javascript">class Quad extends Mesh {
+    constructor() {
+        super(Quad.generateInitialTriangles());
+    }
+
+    static generateInitialTriangles() {
+        let tris = [];
+        let color = new Color(255, 255, 255);
+
+        tris.push(
+            new Triangle(
+                [new Vector3(0.5, -0.5, 0), new Vector3(0.5, 0.5, 0), new Vector3(-0.5, 0.5, 0)],
+                [new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
+                color,
+            ),
+        );
+
+        tris.push(
+            new Triangle(
+                [new Vector3(0.5, -0.5, 0), new Vector3(-0.5, 0.5, 0), new Vector3(-0.5, -0.5, 0)],
+                [new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
+                color,
+            ),
+        );
+
+        return tris;
+    }
+}</code></pre>
+                Có được class Quad, ta tạo 2 GameObject portal sử dụng mesh quad đó, với 2 màu cam và xanh kinh điển:
+                <pre><code class="language-javascript">let quadMesh = new Quad();
+...
+let portal1 = new GameObject(new Vector3(-3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94), quadMesh);
+let portal2 = new GameObject(new Vector3(3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255), quadMesh);
+
+...
+function update(time = performance.now()) {
+    ...
+    objectTris.push(...portal1.getTransformedTriangles());
+    objectTris.push(...portal2.getTransformedTriangles());
+    ...
+}</code></pre>
+
+                Kết quả:
+                <div class="htmlPreview" id="htmlPreview3"></div>
+
+                
+                </div>
+            </div>
+        </div>
+    </main>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="portalblog.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

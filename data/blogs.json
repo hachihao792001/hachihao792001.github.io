@@ -7,6 +7,13 @@
         "isSeries": true
     },
     {
+        "title": "Cách làm Portal mechanic trong HTML Canvas engine",
+        "route": "/blogs/portalblog/portalblog.html",
+        "date": "06/9/2026",
+        "isWritten": true,
+        "isSeries": false
+    },
+    {
         "title": "Implement các tính năng Social với Facebook trong Unity",
         "route": "/blogs/unity_facebook/unity-facebook-social-features.html",
         "date": "31/7/2026",
