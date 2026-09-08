@@ -26,6 +26,7 @@
     <link rel="stylesheet" href="portalblog.css">
 
     <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
         .blog-content pre {
@@ -188,7 +189,93 @@
                     Mình vẽ vector tím trên (là vector forward local của player) để dễ nhìn và hiểu rotation, chứ thật ra phải làm toán với Quaternion cho ổn định chứ đừng
                     xoay dựa trên forward, sẽ gặp rất nhiều vấn đề về sau (mình đã thử 😭).<br/><br/>
 
-                    
+                    Oke vẽ vời tưởng tượng các thứ đã đủ, bây giờ ta cần phải hiện thực hóa 🥶 Đầu tiên thì ta thấy là ta cần phải tạo một class riêng cho Portal rồi đấy.<br/>
+                    Cũng giống như GameObject, class Portal cũng có pos, eulerAngles, scale, color, ngoài ra cần thêm một trường name để sau này dễ phân biệt 2 portal. Trong constructor,
+                    ngoài set các thứ truyền vào thì mình còn phải tạo một camera khác của riêng portal đó (như những gì chúng ta đã bàn), và có camera thì cũng cần có thêm một Rasterizer
+                    đi kèm. Như vậy thì constructor của class Portal sẽ như sau:
+                    <pre><code class="language-javascript">class Portal {
+    constructor(name, pos, eulerAngles, scale, color) {
+        this.name = name;
+        this.pos = pos;
+        this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
+        this.scale = scale;
+
+        let portalQuadMesh = new Quad();
+        this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
+        this.rasterizer = new Rasterizer();
+        this.camera = new Camera(pos, eulerAngles, 8, 0.2);
+    }
+}</code></pre>
+                    Có camera, có rasterizer, nghĩa là Portal sẽ phải tự chạy 1 render pipeline của riêng mình (như Shadow mapping), nhưng từ góc nhìn của camera của portal:
+                    <pre><code class="language-javascript">runRenderPipeline(objectTris) {
+    let tris = [];
+    for (let tri of objectTris) {
+        let cloneTri = tri.clone();     // clone ra cho an toàn
+        tris.push(cloneTri);
+    }
+
+    this.rasterizer.clearScreen();
+
+    let viewMatPortal = this.camera.getViewMatrix();    // camera của portal này
+
+    let visibleTris = [];
+    for (let tri of tris) {
+        if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), this.camera.pos)) < 0) {
+            tri.mulMat4x4(viewMatPortal);
+            visibleTris.push(...tri.clipAgainstPlane(nearPlane));
+        }
+    }
+
+    for (let tri of visibleTris) {
+        tri.mulMat4x4(projectionMatrix);
+        tri.perspectiveDivide();
+    }
+
+    this.rasterizer.processTriangles(visibleTris);
+}</code></pre>
+                    Nhìn lại ý tưởng ở trên, ta thấy là portal này sẽ cần reference tới portal kia, ta thêm 1 hàm để set:
+                    <pre><code class="language-javascript">setOtherPortal(otherPortal) {
+    this.otherPortal = otherPortal;
+}</code></pre>
+                    Nguyên nhân mình không để vụ set otherPortal ở constructor là vì definition 2 portal sẽ đệ quy lẫn nhau =)))<br/><br/>
+                    Tiếp theo, ta sẽ thấy cấn cấn ở chỗ "chuyển vector từ world về local" và "chuyển vector từ local ra world". Ở Unity thì có hàm <a href="https://docs.unity3d.com/6000.5/Documentation/ScriptReference/Transform.TransformDirection.html">TransformDirection</a>
+                    và <a href="https://docs.unity3d.com/6000.5/Documentation/ScriptReference/Transform.InverseTransformDirection.html">InverseTransformDirection</a>. Ở engine chúng ta thì có gì?<br/>
+                    Thật ra hàm <code>Quaternion.rotateVector</code> chính là để chuyển từ local ra world. Bạn phải nhớ lại bản chất Quaterninon, là nó là một phép xoay, mỗi GameObject có 1 Quaternion rotation,
+                    vai trò của rotation là để xoay mọi vector local thành vector world. Trong hàm updateRotation và updateMovement của Camera bạn cũng thấy mình sử dụng hàm rotateVector
+                    để chuyển vector forward, right local sang world.<br/>
+                    Thế là local sang world đã xong, bây giờ world sang local ta cần 1 hàm "inverseRotateVector" nào đó. Và bạn sẽ ngạc nhiên bởi sự đơn giản của nó, rotateVector là
+                    \(pvp^*\), thì inverseRotateVector chỉ là \(p^*vp\) 😳 (tbh I don't even know how it is like this intuitively, let's just use it):
+                    <pre><code class="language-javascript">inverseRotateVector(v) {
+    const qVec = new Quaternion(0, v.x, v.y, v.z);
+    const res = Quaternion.multiply(Quaternion.multiply(this.conjugate(), qVec), this);
+    return new Vector3(res.b, res.c, res.d);
+}</code></pre>
+
+                    Tiếp theo là hàm tính position và rotation của camera dựa trên position và rotation của player, xem lại ý tưởng ở trên và so sánh:
+                    <pre><code class="language-javascript">calculateTransformToOtherPortalTransform(position, rotation) {
+    let otherPortalUp = this.otherPortal.rotation.rotateVector(Vector3.up).normalize();
+    let rotate180 = Quaternion.buildQuaternionAxisAngle(otherPortalUp, 180);
+
+    let worldPositionRelativeToThisPortal = Vector3.sub(position, this.pos);
+    let localPositionRelativeToThisPortal = this.rotation.inverseRotateVector(worldPositionRelativeToThisPortal);
+    let worldPositionRelativeToOtherPortal = this.otherPortal.rotation.rotateVector(localPositionRelativeToThisPortal);
+    let newPos = Vector3.add(this.otherPortal.pos, rotate180.rotateVector(worldPositionRelativeToOtherPortal));
+
+    let thisPortalInverseRotation = this.rotation.conjugate();
+    let localRotationRelativeToThisPortal = Quaternion.multiply(thisPortalInverseRotation, rotation);
+    let worldRotationRelativeToOtherPortal = Quaternion.multiply(this.otherPortal.rotation, localRotationRelativeToThisPortal);
+    let newRotation = Quaternion.multiply(rotate180, worldRotationRelativeToOtherPortal);
+
+    return [newPos, newRotation];
+}
+
+updatePortalCameraBaseOnPlayer(playerCameraPos, playerCameraRotation) {
+    let [cameraPos, cameraRotation] = this.calculateTransformToOtherPortalTransform(playerCameraPos, playerCameraRotation);
+    this.camera.pos = cameraPos;
+    this.camera.rotation = cameraRotation;
+}</code></pre>
+
+                    <div class="htmlPreview" id="htmlPreview4"></div>
                 </div>
             </div>
         </div>

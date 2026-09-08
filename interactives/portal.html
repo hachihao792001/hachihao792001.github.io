@@ -1224,9 +1224,7 @@
         }
 
         class Rasterizer {
-            constructor(portal) {
-                this.portal = portal;
-
+            constructor() {
                 this.pointingPos = new Vector3(0, 0, 0);
                 this.pointingPosNormal = new Vector3(0, 0, 0);
                 this.pointingTri = null;
@@ -1410,14 +1408,14 @@
         }
 
         class Portal {
-            constructor(name, pos, eulerAngles, scale, color, otherPortal) {
+            constructor(name, pos, eulerAngles, scale, color) {
                 this.name = name;
                 this.pos = pos;
                 this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
                 this.scale = scale;
 
                 this.renderTexture = new Texture();
-                this.rasterizer = new Rasterizer(this);
+                this.rasterizer = new Rasterizer();
                 this.resize();
                 let portalQuadMesh = new Quad(this);
                 this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
