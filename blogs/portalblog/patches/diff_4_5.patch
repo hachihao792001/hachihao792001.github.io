@@ -1,0 +1,130 @@
+--- "a/htmlPreviews\\htmlPreview4.html"
++++ "b/htmlPreviews\\htmlPreview5.html"
+@@ -824,7 +824,7 @@
+                 }
+             }
+ 
+-            processTriangles(tris) {
++            processClipSpaceTriangles(tris) {
+                 for (let tri of tris) {
+                     let vertices = tri.vertices;
+                     for (let i = 0; i < vertices.length; i++) {
+@@ -979,7 +979,7 @@
+                     tri.perspectiveDivide();
+                 }
+ 
+-                this.rasterizer.processTriangles(visibleTris);
++                this.rasterizer.processClipSpaceTriangles(visibleTris);
+             }
+ 
+             calculateTransformToOtherPortalTransform(position, rotation) {
+@@ -1031,47 +1031,48 @@
+         let dirLightDefaultDir = new Vector3(0.2, -1, 0);
+         let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
+ 
++        let playerCubeTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/wheatly.png");
+         let brickTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg");
+ 
+         let cubeMesh = new Cube();
+         let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
+-        let portal1 = new Portal("Portal 1", new Vector3(-3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
+-        let portal2 = new Portal("Portal 2", new Vector3(3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));
++        let playerCube = new GameObject(camera.pos, camera.rotation, new Vector3(0.5, 0.5, 0.5), new Color(255, 255, 255),
++            new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), playerCubeTexture);
++        let portal1 = new Portal("Portal 1", new Vector3(-3, 3, -3), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
++        let portal2 = new Portal("Portal 2", new Vector3(3, 3, -3), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));
+         portal1.setOtherPortal(portal2);
+         portal2.setOtherPortal(portal1);
+ 
+         let lastTime = performance.now();
+         let dt = 0;
+ 
+-        function update(time = performance.now()) {
+-            dt = (time - lastTime) / 1000;
+-            lastTime = time;
+-
+-            fpsTimeCounter += dt;
+-            frames++;
+-            if (fpsTimeCounter >= 1) {
+-                fpsInfo.textContent = `FPS: ${frames}`;
+-                frames = 0;
+-                fpsTimeCounter = 0;
+-            }
+-
+-            rasterizer.clearScreen();
++        function updateGameObjectTransforms() {
++            playerCube.pos = camera.pos;
++            playerCube.rotation = camera.rotation;
+ 
+             camera.updateMovement(dt, keyStates);
+ 
+             portal1.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+             portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
++        }
+ 
+-            const viewMat = camera.getViewMatrix();
+-
++        function gameObjectToObjectSpaceTriangles() {
+             let objectTris = [];
+             objectTris.push(...ground.getTransformedTriangles());
++            objectTris.push(...playerCube.getTransformedTriangles());
+             objectTris.push(...portal1.quad.getTransformedTriangles());
+             objectTris.push(...portal2.quad.getTransformedTriangles());
++            
++            return objectTris;
++        }
+ 
++        function portalRenderOperations(objectTris) {
+             portal1.runRenderPipeline(objectTris);
+             portal2.runRenderPipeline(objectTris);
++        }
+ 
++        function objectSpaceToViewSpace(objectTris) {
++            const viewMat = camera.getViewMatrix();
+             let visibleTris = [];
+             for (let tri of objectTris) {
+                 if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
+@@ -1080,15 +1081,42 @@
+                 }
+             }
+ 
++            return visibleTris;
++        }
++
++        function viewSpaceToClipSpace(visibleTris) {
+             for (let tri of visibleTris) {
+                 tri.mulMat4x4(projectionMatrix);
+                 tri.perspectiveDivide();
+             }
++        }
+ 
++        function rasterize(visibleTris) {
+             portal1.rasterizer.drawCall(portal1Ctx);
+ 
+-            rasterizer.processTriangles(visibleTris);
++            rasterizer.clearScreen();
++            rasterizer.processClipSpaceTriangles(visibleTris);
+             rasterizer.drawCall();
++        }
++
++        function update(time = performance.now()) {
++            dt = (time - lastTime) / 1000;
++            lastTime = time;
++
++            fpsTimeCounter += dt;
++            frames++;
++            if (fpsTimeCounter >= 1) {
++                fpsInfo.textContent = `FPS: ${frames}`;
++                frames = 0;
++                fpsTimeCounter = 0;
++            }
++
++            updateGameObjectTransforms();
++            let objectTris = gameObjectToObjectSpaceTriangles();
++            portalRenderOperations(objectTris);
++            let visibleTris = objectSpaceToViewSpace(objectTris);
++            viewSpaceToClipSpace(visibleTris);
++            rasterize(visibleTris);
+ 
+             requestAnimationFrame(update);
+         }

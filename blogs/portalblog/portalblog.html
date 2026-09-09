@@ -233,36 +233,53 @@
 
     this.rasterizer.processTriangles(visibleTris);
 }</code></pre>
-                    Nhìn lại ý tưởng ở trên, ta thấy là portal này sẽ cần reference tới portal kia, ta thêm 1 hàm để set:
+                    Nhìn lại ý tưởng ở trên, ta cần phải xử lí thêm những thứ sau trong class Portal:
+                    <ol>
+                        <li>Set reference tới portal kia</li>
+                        <li>Chuyển 1 vector từ world về local của Portal và ngược lại</li>
+                        <li>Chuyển 1 rotation từ world về local của Portal và ngược lại</li>
+                    </ol>
+                    Về reference tới portal kia, ta thêm 1 hàm để set:
                     <pre><code class="language-javascript">setOtherPortal(otherPortal) {
     this.otherPortal = otherPortal;
 }</code></pre>
                     Nguyên nhân mình không để vụ set otherPortal ở constructor là vì definition 2 portal sẽ đệ quy lẫn nhau =)))<br/><br/>
-                    Tiếp theo, ta sẽ thấy cấn cấn ở chỗ "chuyển vector từ world về local" và "chuyển vector từ local ra world". Ở Unity thì có hàm <a href="https://docs.unity3d.com/6000.5/Documentation/ScriptReference/Transform.TransformDirection.html">TransformDirection</a>
-                    và <a href="https://docs.unity3d.com/6000.5/Documentation/ScriptReference/Transform.InverseTransformDirection.html">InverseTransformDirection</a>. Ở engine chúng ta thì có gì?<br/>
-                    Thật ra hàm <code>Quaternion.rotateVector</code> chính là để chuyển từ local ra world. Bạn phải nhớ lại bản chất Quaterninon, là nó là một phép xoay, mỗi GameObject có 1 Quaternion rotation,
-                    vai trò của rotation là để xoay mọi vector local thành vector world. Trong hàm updateRotation và updateMovement của Camera bạn cũng thấy mình sử dụng hàm rotateVector
-                    để chuyển vector forward, right local sang world.<br/>
-                    Thế là local sang world đã xong, bây giờ world sang local ta cần 1 hàm "inverseRotateVector" nào đó. Và bạn sẽ ngạc nhiên bởi sự đơn giản của nó, rotateVector là
-                    \(pvp^*\), thì inverseRotateVector chỉ là \(p^*vp\) 😳 (tbh I don't even know how it is like this intuitively, let's just use it):
-                    <pre><code class="language-javascript">inverseRotateVector(v) {
-    const qVec = new Quaternion(0, v.x, v.y, v.z);
-    const res = Quaternion.multiply(Quaternion.multiply(this.conjugate(), qVec), this);
-    return new Vector3(res.b, res.c, res.d);
-}</code></pre>
 
-                    Tiếp theo là hàm tính position và rotation của camera dựa trên position và rotation của player, xem lại ý tưởng ở trên và so sánh:
+                    Về việc chuyển vector, ở Unity thì có hàm <a href="https://docs.unity3d.com/6000.5/Documentation/ScriptReference/Transform.TransformDirection.html">TransformDirection</a>
+                    và <a href="https://docs.unity3d.com/6000.5/Documentation/ScriptReference/Transform.InverseTransformDirection.html">InverseTransformDirection</a>. Ở engine chúng ta thì có gì?<br/>
+                    Thật ra hàm <code>Quaternion.rotateVector</code> chính là để chuyển từ local ra world. Vì bản chất Quaterninon là một phép xoay, mỗi GameObject có 1 Quaternion rotation,
+                    vai trò của rotation là để xoay mọi vector local thành vector world.<br/>
+                    Thế là local sang world đã xong, bây giờ world sang local ta cần 1 hàm "inverseRotateVector" nào đó. Và bạn sẽ ngạc nhiên bởi sự đơn giản của nó, rotateVector là
+                    \(pvp^*\), thì inverseRotateVector chỉ là \(p^*vp\) 😳 (tbh I don't even know how it works intuitively, let's just use it):
+                    <pre><code class="language-javascript">class Quaternion {
+    ...
+    inverseRotateVector(v) {
+        const qVec = new Quaternion(0, v.x, v.y, v.z);
+        const res = Quaternion.multiply(Quaternion.multiply(this.conjugate(), qVec), this);
+        return new Vector3(res.b, res.c, res.d);
+    }
+    ...
+}</code></pre><br/>
+                    Sau cùng là "chuyển rotation từ world về local" và ngược lại, thì ta chỉ cần dùng phép nhân Quaternion:<br/>
+                    - Local ra world thì lấy rotation của Portal nhân với rotation player, simple as that.<br/>
+                    - World về local thì ta dùng nghịch đảo của rotation của
+                    Portal nhân với rotation player, là "áp dụng phép xoay ngược lại của rotation của Portal lên rotation của player". Và như ta đã biết thì nghịch đảo của 1 Quaternion 
+                    đơn vị chính là liên hợp của Quaternion đó (xem lại blog <a href="../graphics3D/graphics3D6-quaternion.html">Quaternion</a>).<br/><br/>
+
+                    Có hết những công cụ đó rồi, thì hàm của chúng ta sẽ như sau (xem lại ý tưởng ở trên và so sánh):
                     <pre><code class="language-javascript">calculateTransformToOtherPortalTransform(position, rotation) {
+    // Lấy trục y local của portal kia để làm phép xoay 180 độ quanh nó
     let otherPortalUp = this.otherPortal.rotation.rotateVector(Vector3.up).normalize();
     let rotate180 = Quaternion.buildQuaternionAxisAngle(otherPortalUp, 180);
 
+    // 4 dòng này chính là 5 dòng ý tưởng ở trên, dòng cuối mình gộp 2 ý lại
     let worldPositionRelativeToThisPortal = Vector3.sub(position, this.pos);
     let localPositionRelativeToThisPortal = this.rotation.inverseRotateVector(worldPositionRelativeToThisPortal);
     let worldPositionRelativeToOtherPortal = this.otherPortal.rotation.rotateVector(localPositionRelativeToThisPortal);
     let newPos = Vector3.add(this.otherPortal.pos, rotate180.rotateVector(worldPositionRelativeToOtherPortal));
 
-    let thisPortalInverseRotation = this.rotation.conjugate();
-    let localRotationRelativeToThisPortal = Quaternion.multiply(thisPortalInverseRotation, rotation);
+    // 3 dòng này chính là 3 dòng ý tưởng ở trên
+    let localRotationRelativeToThisPortal = Quaternion.multiply(this.rotation.conjugate(), rotation);
     let worldRotationRelativeToOtherPortal = Quaternion.multiply(this.otherPortal.rotation, localRotationRelativeToThisPortal);
     let newRotation = Quaternion.multiply(rotate180, worldRotationRelativeToOtherPortal);
 
@@ -274,8 +291,173 @@ updatePortalCameraBaseOnPlayer(playerCameraPos, playerCameraRotation) {
     this.camera.pos = cameraPos;
     this.camera.rotation = cameraRotation;
 }</code></pre>
+                    Mình tách hàm tính toán và hàm áp dụng lên camera ra riêng, vì lúc sau còn dùng hàm tính toán cho vài cái khác 😳<br/><br/>
 
+                    Như thế thì nó đã hoạt động đúng rồi, tuy nhiên Portal có camera và rasterizer nhưng không biết nên hiện nó chỗ nào, nên chúng ta tạo tạm 1 canvas
+                    để hiện những gì mà camera Portal 1 (cam) thấy:
+                    <pre><code class="language-html">&lt;canvas id="portal1Canvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"&gt;&lt;/canvas&gt;</code></pre>
+                    Ở hàm Rasterizer.drawCall, ta cho truyền vào context của canvas mà ta muốn vẽ lên thay vì mặc định là ctx của canvas chính:
+                    <pre><code class="language-javascript">drawCall(canvasCtx = null) {
+    if (canvasCtx == null)
+        canvasCtx = ctx;
+
+    ...
+
+    canvasCtx.putImageData(this.imageData, 0, 0);
+}</code></pre>
+                    Lấy reference tới portal1Canvas và context của nó:
+                    <pre><code class="language-javascript">const portal1Canvas = document.getElementById("portal1Canvas");
+const portal1Ctx = portal1Canvas.getContext("2d");</code></pre>
+
+                    Với lại bây giờ Portal đã có class riêng chứ không phải GameObject nữa (nhớ set otherPortal sau khi tạo 2 cái):
+                    <pre><code class="language-javascript">let portal1 = new Portal("Portal 1", new Vector3(-3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
+let portal2 = new Portal("Portal 2", new Vector3(3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));
+portal1.setOtherPortal(portal2);
+portal2.setOtherPortal(portal1);</code></pre>
+
+                    Hàm update mới:
+                    <pre><code class="language-javascript">function update(time = performance.now()) {
+    ...
+
+    camera.updateMovement(dt, keyStates);
+    // update vị trí camera player trước mới update camera của 2 portal
+    portal1.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+    portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+
+    const viewMat = camera.getViewMatrix();
+
+    let objectTris = [];
+    objectTris.push(...ground.getTransformedTriangles());
+    objectTris.push(...portal1.quad.getTransformedTriangles());     // <-------- thêm .quad
+    objectTris.push(...portal2.quad.getTransformedTriangles());     // <-------- thêm .quad 
+
+    portal1.runRenderPipeline(objectTris);
+    portal2.runRenderPipeline(objectTris);
+
+    ...
+
+    portal1.rasterizer.drawCall(portal1Ctx);        // <---------- portal1 drawCall lên portal1Ctx
+
+    rasterizer.processTriangles(visibleTris);
+    rasterizer.drawCall();
+
+    requestAnimationFrame(update);
+}</code></pre>
+                    Full code:
                     <div class="htmlPreview" id="htmlPreview4"></div>
+                    Hmmmmm, canvas dưới nhìn y hệt canvas trên chỉ là không có 2 portal. Thật ra là nó hiện đúng rồi, chỉ là vị trí 2 portal đối xứng nhau và ở chính giữa
+                    cục ground nên khi nhìn ngược lại nó y hệt. Để cải thiện vụ này cũng như có cái để reference dễ debug thì mình tạo thêm một cube đại diện cho player, luôn đi
+                    theo camera player (dùng texture của con Wheatly trong Portal 2, funny British robot):
+                    <pre><code class="language-javascript">let playerCubeTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/wheatly.png");
+...
+let playerCube = new GameObject(camera.pos, camera.rotation, new Vector3(0.5, 0.5, 0.5), new Color(255, 255, 255),
+            new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), playerCubeTexture);
+...
+function update(time = performance.now()) {
+    
+    ...
+
+    playerCube.pos = camera.pos;
+    playerCube.rotation = camera.rotation;
+
+    ...
+
+}</code></pre>
+                    Lùi 2 portal lại 1 chút:
+                    <pre><code class="language-javascript">let portal1 = new Portal("Portal 1", new Vector3(-3, 3, -3), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
+let portal2 = new Portal("Portal 2", new Vector3(3, 3, -3), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));</code></pre>
+
+                    Nhân cơ hội này, mình nghĩ đã tới lúc refactor lại hàm update, cụ thể là tách ra từng phần của hàm update vì nó sẽ nở ra khá là nhanh về sau.<br/>
+                    Hiện tại trong hàm update ta có làm những thứ sau:
+                    <ol>
+                        <li>Tính delta time, tính fps</li>
+                        <li>Update vị trí, rotation của mọi object trong thế giới</li>
+                        <li>Chuẩn bị các triangles của các object ở object space</li>
+                        <li>Render hình ảnh cho portal</li>
+                        <li>Đưa các triangles về view space, backface culling, near plane clipping</li>
+                        <li>Đưa các triangles về clip space (nhân projection matrix và chia z)</li>
+                        <li>Clear screen, đưa triangles cho rasteriezer xử lí và gọi drawCall</li>
+                    </ol>
+                    
+                    Ngoại trừ phần đầu, bóc những phần đó ra thành các hàm riêng:
+                    <pre style="height: 400px;"><code class="language-javascript">function updateGameObjectTransforms() {
+    playerCube.pos = camera.pos;
+    playerCube.rotation = camera.rotation;
+
+    camera.updateMovement(dt, keyStates);
+
+    portal1.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+    portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+}
+
+function gameObjectToObjectSpaceTriangles() {
+    let objectTris = [];
+    objectTris.push(...ground.getTransformedTriangles());
+    objectTris.push(...playerCube.getTransformedTriangles());
+    objectTris.push(...portal1.quad.getTransformedTriangles());
+    objectTris.push(...portal2.quad.getTransformedTriangles());
+    
+    return objectTris;
+}
+
+function portalRenderOperations(objectTris) {
+    portal1.runRenderPipeline(objectTris);
+    portal2.runRenderPipeline(objectTris);
+}
+
+function objectSpaceToViewSpace(objectTris) {
+    const viewMat = camera.getViewMatrix();
+    let visibleTris = [];
+    for (let tri of objectTris) {
+        if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
+            tri.mulMat4x4(viewMat);
+            visibleTris.push(...tri.clipAgainstPlane(nearPlane));
+        }
+    }
+
+    return visibleTris;
+}
+
+function viewSpaceToClipSpace(visibleTris) {
+    for (let tri of visibleTris) {
+        tri.mulMat4x4(projectionMatrix);
+        tri.perspectiveDivide();
+    }
+}
+
+function rasterize(visibleTris) {
+    portal1.rasterizer.drawCall(portal1Ctx);
+
+    rasterizer.clearScreen();
+    rasterizer.processClipSpaceTriangles(visibleTris);  // đổi tên processTriangles thành processClipSpaceTriangles
+    rasterizer.drawCall();
+}</code></pre>
+                Mình có đổi tên hàm processTriangles thành processClipSpaceTriangles để cho rõ đối tượng và mục đích của hàm.<br/><br/>
+
+                Như vậy hàm update sẽ thành:
+                <pre><code class="language-javascript">function update(time = performance.now()) {
+    dt = (time - lastTime) / 1000;
+    lastTime = time;
+
+    fpsTimeCounter += dt;
+    frames++;
+    if (fpsTimeCounter >= 1) {
+        fpsInfo.textContent = `FPS: ${frames}`;
+        frames = 0;
+        fpsTimeCounter = 0;
+    }
+
+    updateGameObjectTransforms();
+    let objectTris = gameObjectToObjectSpaceTriangles();
+    portalRenderOperations(objectTris);
+    let visibleTris = objectSpaceToViewSpace(objectTris);
+    viewSpaceToClipSpace(visibleTris);
+    rasterize(visibleTris);
+
+    requestAnimationFrame(update);
+}</code></pre>
+                Khá gọn hề hề.
+
                 </div>
             </div>
         </div>

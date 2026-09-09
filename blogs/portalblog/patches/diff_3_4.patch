@@ -33,7 +33,7 @@
                  let index = 0;
                  for (let y = 0; y < canvas.height; y++) {
                      for (let x = 0; x < canvas.width; x++) {
-@@ -922,15 +932,84 @@
+@@ -922,15 +932,83 @@
                      }
                  }
  
@@ -97,8 +97,7 @@
 +                let worldPositionRelativeToOtherPortal = this.otherPortal.rotation.rotateVector(localPositionRelativeToThisPortal);
 +                let newPos = Vector3.add(this.otherPortal.pos, rotate180.rotateVector(worldPositionRelativeToOtherPortal));
 +
-+                let thisPortalInverseRotation = this.rotation.conjugate();
-+                let localRotationRelativeToThisPortal = Quaternion.multiply(thisPortalInverseRotation, rotation);
++                let localRotationRelativeToThisPortal = Quaternion.multiply(this.rotation.conjugate(), rotation);
 +                let worldRotationRelativeToOtherPortal = Quaternion.multiply(this.otherPortal.rotation, localRotationRelativeToThisPortal);
 +                let newRotation = Quaternion.multiply(rotate180, worldRotationRelativeToOtherPortal);
 +
@@ -119,11 +118,8 @@
          const rasterizer = new Rasterizer();
          const fov = 60;
          let znear = 0.01, zfar = 1000;
-@@ -953,13 +1032,17 @@
-         let dirLightDefaultDir = new Vector3(0.2, -1, 0);
-         let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
+@@ -955,11 +1033,12 @@
  
-+        let playerCubeTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/wheatly.png");
          let brickTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg");
  
 -        let quadMesh = new Quad();
@@ -131,8 +127,6 @@
          let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
 -        let portal1 = new GameObject(new Vector3(-3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94), quadMesh);
 -        let portal2 = new GameObject(new Vector3(3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255), quadMesh);
-+        let playerCube = new GameObject(camera.pos, camera.rotation, new Vector3(0.5, 0.5, 0.5), new Color(255, 255, 255),
-+            new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), playerCubeTexture);
 +        let portal1 = new Portal("Portal 1", new Vector3(-3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
 +        let portal2 = new Portal("Portal 2", new Vector3(3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));
 +        portal1.setOtherPortal(portal2);
@@ -140,13 +134,7 @@
  
          let lastTime = performance.now();
          let dt = 0;
-@@ -976,15 +1059,26 @@
-                 fpsTimeCounter = 0;
-             }
- 
-+            playerCube.pos = camera.pos;
-+            playerCube.rotation = camera.rotation;
-+
+@@ -979,12 +1058,19 @@
              rasterizer.clearScreen();
  
              camera.updateMovement(dt, keyStates);
@@ -160,7 +148,6 @@
              objectTris.push(...ground.getTransformedTriangles());
 -            objectTris.push(...portal1.getTransformedTriangles());
 -            objectTris.push(...portal2.getTransformedTriangles());
-+            objectTris.push(...playerCube.getTransformedTriangles());
 +            objectTris.push(...portal1.quad.getTransformedTriangles());
 +            objectTris.push(...portal2.quad.getTransformedTriangles());
 +
@@ -169,7 +156,7 @@
  
              let visibleTris = [];
              for (let tri of objectTris) {
-@@ -999,6 +1093,8 @@
+@@ -999,6 +1085,8 @@
                  tri.perspectiveDivide();
              }
  
