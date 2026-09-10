@@ -435,186 +435,305 @@ function rasterize(visibleTris) {
     rasterizer.processClipSpaceTriangles(visibleTris);  // đổi tên processTriangles thành processClipSpaceTriangles
     rasterizer.drawCall();
 }</code></pre>
-                Mình có đổi tên hàm processTriangles thành processClipSpaceTriangles để cho rõ đối tượng và mục đích của hàm.<br/><br/>
+                    Mình có đổi tên hàm processTriangles thành processClipSpaceTriangles để cho rõ đối tượng và mục đích của hàm.<br/><br/>
 
-                Như vậy hàm update sẽ thành:
-                <pre><code class="language-javascript">function update(time = performance.now()) {
-    dt = (time - lastTime) / 1000;
-    lastTime = time;
+                    Như vậy hàm update sẽ thành:
+                    <pre><code class="language-javascript">function update(time = performance.now()) {
+        dt = (time - lastTime) / 1000;
+        lastTime = time;
 
-    fpsTimeCounter += dt;
-    frames++;
-    if (fpsTimeCounter >= 1) {
-        fpsInfo.textContent = `FPS: ${frames}`;
-        frames = 0;
-        fpsTimeCounter = 0;
+        fpsTimeCounter += dt;
+        frames++;
+        if (fpsTimeCounter >= 1) {
+            fpsInfo.textContent = `FPS: ${frames}`;
+            frames = 0;
+            fpsTimeCounter = 0;
+        }
+
+        updateGameObjectTransforms();
+        let objectTris = gameObjectToObjectSpaceTriangles();
+        portalRenderOperations(objectTris);
+        let visibleTris = objectSpaceToViewSpace(objectTris);
+        viewSpaceToClipSpace(visibleTris);
+        rasterize(visibleTris);
+
+        requestAnimationFrame(update);
+    }</code></pre>
+                    Khá gọn hề hề.<br/><br/>
+                    Full code, nhìn lên tí bạn sẽ thấy chính bạn ở canvas của portal 1.
+                    <div class="htmlPreview" id="htmlPreview5"></div>
+
+                    <h3>c. Implement việc render lên texture của Portal</h3>
+                    Ta đã biết là Portal nên hiển thị gì rồi, đã render được nó ra canvas riêng rồi, giờ là tới lúc thật sự áp cái đó vào texture của Portal.<br/><br/>
+                    Bạn nhớ lại blog về <a href="../graphics3D/graphics3D10-texture.html">Texture</a>, với texture bình thường thì với mỗi pixel ta sẽ cần phải tìm tọa độ UV của nó
+                    bằng barycentric coords với 3 đỉnh tam giác. Tuy nhiên, texture của portal đơn giản hơn nhiều, tại vì cái mà ta render ở canvas bên dưới khớp hoàn toàn với những
+                    gì mà portal sẽ hiển thị, chỉ là được cắt ra thôi. Như vậy với mỗi pixel thì ta lấy lại y hệt tọa độ pixel đó ở canvas bên dưới là xong.<br/><br/>
+                    Việc bây giờ cần làm là thay vì rasterize những gì mà camera Portal thấy ra canvas, thì rasterize nó ra một Texture riêng, kỹ thuật này chính là 
+                    <a href="https://docs.unity3d.com/6000.5/Documentation/ScriptReference/RenderTexture.html">Render Texture trong Unity</a>.<br/><br/>
+                    Đầu tiên ta tạo một biến renderTexture trong class Portal, là một texture rỗng có width height bằng với canvas, biến pixels phải có cùng kiểu với
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/ImageData/data">ImageData.data</a> là 
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray">Uint8ClampedArray</a>:
+                    <pre><code class="language-javascript">class Portal {
+        constructor(name, pos, eulerAngles, scale, color) {
+            ...
+            this.renderTexture = new Texture();
+            this.renderTexture.width = canvas.width;
+            this.renderTexture.height = canvas.height;
+            this.renderTexture.pixels = new Uint8ClampedArray(canvas.width * canvas.height * 4);
+            ...
+        }
+    }</code></pre>
+                    Tuy nhiên bạn nhìn lên lại class Texture thì constructor của nó luôn assume là URL không null, nếu truyền URL là null thì nó sẽ load với URL null đó gây lỗi,
+                    thêm dòng if check:
+                    <pre><code class="language-javascript">class Texture {
+        constructor(url) {
+            this.pixels = null;
+            this.width = 0;
+            this.height = 0;
+            if (url) this.load(url);    // <--------------
+        }
+    }</code></pre>
+                    Sau đó tạo một hàm để copy screenBuffer của rasterizer vào renderTexture. Gọi hàm này sau khi đã chạy runRenderPipeline:
+                    <pre><code class="language-javascript">class Portal {
+        ...
+        updateTextureForQuad() {
+            let index = 0;
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const c = this.rasterizer.screenBuffer[y][x];
+                    this.renderTexture.pixels[index++] = c.r;
+                    this.renderTexture.pixels[index++] = c.g;
+                    this.renderTexture.pixels[index++] = c.b;
+                    this.renderTexture.pixels[index++] = 255;
+                }
+            }
+
+            this.quad.texture = this.renderTexture;
+        }
+        ...
     }
+    ...
 
-    updateGameObjectTransforms();
-    let objectTris = gameObjectToObjectSpaceTriangles();
-    portalRenderOperations(objectTris);
-    let visibleTris = objectSpaceToViewSpace(objectTris);
-    viewSpaceToClipSpace(visibleTris);
-    rasterize(visibleTris);
+    function portalRenderOperations(objectTris) {
+        portal1.runRenderPipeline(objectTris);
+        portal1.updateTextureForQuad();
+        portal2.runRenderPipeline(objectTris);
+        portal2.updateTextureForQuad();
+    }</code></pre>
+                    Ở trên mình có nói là xử lí texture Portal sẽ khác với xử lí texture bình thường, nghĩa là ta phải có cách nào đó nói với Rasterizer là "tam giác hiện tại là
+                    thuộc quad của portal, sample texture cho cái này khác đi".<br/>
+                    Nghĩa là, ta phải thêm reference tới Portal ngay từ constructor của tam giác, và các hàm có clone tam giác:
+                    <pre><code class="language-javascript">class Triangle {
+        constructor(vertices = [], uv = [], color = new Color(255, 255, 255), portal = null) {
+            ...
+            this.portal = portal;
+        }
 
-    requestAnimationFrame(update);
-}</code></pre>
-                Khá gọn hề hề.<br/><br/>
-                Full code, nhìn lên tí bạn sẽ thấy chính bạn ở canvas của portal 1.
-                <div class="htmlPreview" id="htmlPreview5"></div>
+        clone() {
+            ...
+            tri.portal = this.portal;
+            return tri;
+        }
 
-                <h3>c. Implement việc render lên texture của Portal</h3>
-                Ta đã biết là Portal nên hiển thị gì rồi, đã render được nó ra canvas riêng rồi, giờ là tới lúc thật sự áp cái đó vào texture của Portal.<br/><br/>
-                Bạn nhớ lại blog về <a href="../graphics3D/graphics3D10-texture.html">Texture</a>, với texture bình thường thì với mỗi pixel ta sẽ cần phải tìm tọa độ UV của nó
-                bằng barycentric coords với 3 đỉnh tam giác. Tuy nhiên, texture của portal đơn giản hơn nhiều, tại vì cái mà ta render ở canvas bên dưới khớp hoàn toàn với những
-                gì mà portal sẽ hiển thị, chỉ là được cắt ra thôi. Như vậy với mỗi pixel thì ta lấy lại y hệt tọa độ pixel đó ở canvas bên dưới là xong.<br/><br/>
-                Việc bây giờ cần làm là thay vì rasterize những gì mà camera Portal thấy ra canvas, thì rasterize nó ra một Texture riêng, kỹ thuật này chính là 
-                <a href="https://docs.unity3d.com/6000.5/Documentation/ScriptReference/RenderTexture.html">Render Texture trong Unity</a>.<br/><br/>
-                Đầu tiên ta tạo một biến renderTexture trong class Portal, là một texture rỗng có width height bằng với canvas, biến pixels phải có cùng kiểu với
-                <a href="https://developer.mozilla.org/en-US/docs/Web/API/ImageData/data">ImageData.data</a> là 
-                <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray">Uint8ClampedArray</a>:
-                <pre><code class="language-javascript">class Portal {
+        ...
+
+        clipAgainstPlane(plane) {
+            ...
+
+            if (frontPoints.length == 3) {
+                outTris.push(this.clone());
+            } else if (frontPoints.length == 1 && behindPoints.length == 2) {
+                ...
+                outTri.portal = this.portal;
+                outTris.push(outTri);
+            } else if (frontPoints.length == 2 && behindPoints.length == 1) {
+                ...
+                outTri1.portal = this.portal;
+                outTris.push(outTri1);
+
+                ...
+                outTri2.portal = this.portal;
+                outTris.push(outTri2);
+            }
+
+            return outTris;
+        }</code></pre>
+
+                    Xong cho tam giác rồi, tới mesh. Vì mesh sẽ hiển thị texture Portal chỉ có thể là Quad nên ta chỉ cần thêm reference vào class Quad:
+                    <pre><code class="language-javascript">class Quad extends Mesh {
+        constructor(portal = null) {
+            super(Quad.generateInitialTriangles(portal));   // <-------------------
+        }
+
+        static generateInitialTriangles(portal) {
+            let tris = [];
+            let color = new Color(255, 255, 255);
+
+            tris.push(
+                new Triangle(
+                    [new Vector3(0.5, -0.5, 0), new Vector3(0.5, 0.5, 0), new Vector3(-0.5, 0.5, 0)],
+                    [new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
+                    color, portal   // <-------------------
+                ),
+            );
+
+            tris.push(
+                new Triangle(
+                    [new Vector3(0.5, -0.5, 0), new Vector3(-0.5, 0.5, 0), new Vector3(-0.5, -0.5, 0)],
+                    [new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
+                    color, portal   // <-------------------
+                ),
+            );
+
+            return tris;
+        }
+    }</code></pre>
+                    Thế là lúc tạo quadMesh ở Portal ta truyền vào <code>this</code>:
+                    <pre><code class="language-javascript">class Portal {
+        constructor(name, pos, eulerAngles, scale, color) {
+            ...
+            let portalQuadMesh = new Quad(this);
+            this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
+            ...
+        }
+        ...
+    }</code></pre>
+
+                    Xong phần reference tới Portal, bây giờ tới phần ta nói cho Rasterizer biết là cần sample texture khác đi cho các triangle thuộc Portal:
+                    <pre><code class="language-javascript">processClipSpaceTriangles(tris) {
+        ...
+        if (tri.texture && tri.texture.pixels) {
+            if (tri.portal) {
+                lightIntensity = 1;     // ánh sáng không tác động lên portal
+                const texIndex = (y * tri.texture.width + x) * 4;
+                texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
+            } else {
+                ... // đoạn code tính theo barycentric coords cũ
+            }
+        }
+        ...
+    }</code></pre>
+                    Full code:
+                    <div class="htmlPreview" id="htmlPreview6"></div>
+
+                    Oke. Hiện texture đã ổn rồi, tuy nhiên 2 portal hiện nhìn như 2 tấm gương. Sẽ tốt hơn nếu ta thêm viền cho 2 portal 😳 Cho đơn giản thì viền chỉ 
+                    là 4 cube cho 4 cạnh quanh portal, ngoài ra thêm 1 cái quad đằng sau che lại để dễ phân biệt đằng sau và đằng trước portal.<br/><br/>
+                    Cái này mình quy định sớm luôn, có 4 cái cạnh này thì mình đẩy 4 cạnh này về sau sao cho cái quad portal khớp với viền trước, còn quad đằng sau sẽ đẩy ra khớp với viền sau 
+                    (hope that make sense):
+                    <pre><code class="language-javascript">class Portal {
     constructor(name, pos, eulerAngles, scale, color) {
         ...
-        this.renderTexture = new Texture();
-        this.renderTexture.width = canvas.width;
-        this.renderTexture.height = canvas.height;
-        this.renderTexture.pixels = new Uint8ClampedArray(canvas.width * canvas.height * 4);
+
+        let portalEdgeThickness = 0.2;
+        let portalBack = this.rotation.rotateVector(Vector3.back).normalize();      // nhớ thêm Vector3.back, trước giờ ko có 😅
+        let backOffset = Vector3.mul(portalBack, portalEdgeThickness / 2);          // offset để đẩy 4 cạnh về sau, 1 nửa thickness
+        let portalUp = this.rotation.rotateVector(Vector3.up);
+        let portalForward = this.rotation.rotateVector(Vector3.forward).normalize();
+        let portalRight = this.rotation.rotateVector(Vector3.right);
+
+        this.topCube = new GameObject(
+            Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, this.scale.y / 2 + portalEdgeThickness / 2), backOffset)),
+            eulerAngles,
+            new Vector3(scale.x, portalEdgeThickness, portalEdgeThickness),
+            color,
+            cubeMesh,
+        );
+        this.bottomCube = new GameObject(
+            Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, -this.scale.y / 2 - portalEdgeThickness / 2), backOffset)),
+            eulerAngles,
+            new Vector3(scale.x, portalEdgeThickness, portalEdgeThickness),
+            color,
+            cubeMesh,
+        );
+        this.leftCube = new GameObject(
+            Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, -this.scale.x / 2 - portalEdgeThickness / 2), backOffset)),
+            eulerAngles,
+            new Vector3(portalEdgeThickness, scale.y + portalEdgeThickness * 2, portalEdgeThickness),
+            color,
+            cubeMesh,
+        );
+        this.rightCube = new GameObject(
+            Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, this.scale.x / 2 + portalEdgeThickness / 2), backOffset)),
+            eulerAngles,
+            new Vector3(portalEdgeThickness, scale.y + portalEdgeThickness * 2, portalEdgeThickness),
+            color,
+            cubeMesh,
+        );
+        let normalQuadMesh = new Quad();
+        this.backQuad = new GameObject(
+            Vector3.add(pos, Vector3.mul(portalBack, portalEdgeThickness)),
+            eulerAngles,
+            new Vector3(scale.x, scale.y, 0.05),
+            color,
+            normalQuadMesh,
+        );
+        // làm cái quad bình thường rồi xoay ngược lại 180 độ theo chiều y local
+        this.backQuad.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(portalUp, 180), this.backQuad.rotation);
+    }</code></pre>
+
+                    Có thêm nhiều GameObject như vậy thì ta tạo thêm 1 hàm tổng hợp lại:
+                    <pre><code class="language-javascript">class Portal {
+        ...
+        getAllTransformedTriangles() {
+            let allTris = [];
+            allTris.push(...this.quad.getTransformedTriangles());
+            allTris.push(...this.topCube.getTransformedTriangles());
+            allTris.push(...this.bottomCube.getTransformedTriangles());
+            allTris.push(...this.leftCube.getTransformedTriangles());
+            allTris.push(...this.rightCube.getTransformedTriangles());
+            allTris.push(...this.backQuad.getTransformedTriangles());
+            return allTris;
+        }
         ...
     }
-}</code></pre>
-                Tuy nhiên bạn nhìn lên lại class Texture thì constructor của nó luôn assume là URL không null, nếu truyền URL là null thì nó sẽ load với URL null đó gây lỗi,
-                thêm dòng if check:
-                <pre><code class="language-javascript">class Texture {
-    constructor(url) {
-        this.pixels = null;
-        this.width = 0;
-        this.height = 0;
-        if (url) this.load(url);    // <--------------
-    }
-}</code></pre>
-                Sau đó tạo một hàm để copy screenBuffer của rasterizer vào renderTexture. Gọi hàm này sau khi đã chạy runRenderPipeline:
-                <pre><code class="language-javascript">class Portal {
+
     ...
-    updateTextureForQuad() {
-        let index = 0;
-        for (let y = 0; y < canvas.height; y++) {
-            for (let x = 0; x < canvas.width; x++) {
-                const c = this.rasterizer.screenBuffer[y][x];
-                this.renderTexture.pixels[index++] = c.r;
-                this.renderTexture.pixels[index++] = c.g;
-                this.renderTexture.pixels[index++] = c.b;
-                this.renderTexture.pixels[index++] = 255;
+
+    function gameObjectToObjectSpaceTriangles() {
+        let objectTris = [];
+        objectTris.push(...ground.getTransformedTriangles());
+        objectTris.push(...playerCube.getTransformedTriangles());
+        objectTris.push(...portal1.getAllTransformedTriangles());
+        objectTris.push(...portal2.getAllTransformedTriangles());
+
+        return objectTris;
+    }</code></pre>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview7"></div>
+                    Oke 4 cạnh đã hiện, và cả luôn cái backQuad, nó che luôn những gì mà camera portal sẽ thấy ở otherPortal, nên thành ra chỉ có 1 màu như vậy 😅.
+                    Để giải quyết vấn đề này, thay vì ta hard code ignore backQuad ở chỗ nào đó trong lúc render cho camera portal, thì ta implement thứ sau:
+                    những gì nằm đằng sau otherPortal thì cắt hết không render.<br/><br/>
+                    Cái này khá đơn giản, chỉ cần thêm 1 lần gọi clipAgainstPlane với plane của portal kia. Ta thêm hàm để tìm plane khớp với Portal, tuy nhiên nên 
+                    lùi cái plane lại 1 tí vì nó sẽ clip luôn với cái quad của portal:
+                    <pre><code class="language-javascript">class Portal {
+    ...
+    getPlane() {
+        let forward = this.rotation.rotateVector(Vector3.forward);
+        return new Plane(forward, Vector3.sub(this.pos, Vector3.mul(forward, 0.01)));
+    }
+
+    runRenderPipeline(objectTris) {
+        ...
+
+        let viewMatPortal = this.camera.getViewMatrix();
+        let otherPortalPlane = this.otherPortal.getPlane();     // <---------------
+
+        let visibleTris = [];
+        for (let tri of tris) {
+            if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), this.camera.pos)) < 0) {
+                let clippedWithPortalTris = tri.clipAgainstPlane(otherPortalPlane); // <--------------
+                for (let clippedTri of clippedWithPortalTris) {
+                    clippedTri.mulMat4x4(viewMatPortal);
+                    visibleTris.push(...clippedTri.clipAgainstPlane(nearPlane));
+                }
             }
         }
 
-        this.quad.texture = this.renderTexture;
-    }
-    ...
-}
-...
-
-function portalRenderOperations(objectTris) {
-    portal1.runRenderPipeline(objectTris);
-    portal1.updateTextureForQuad();
-    portal2.runRenderPipeline(objectTris);
-    portal2.updateTextureForQuad();
+        ...
+    }    
 }</code></pre>
-                Ở trên mình có nói là xử lí texture Portal sẽ khác với xử lí texture bình thường, nghĩa là ta phải có cách nào đó nói với Rasterizer là "tam giác hiện tại là
-                thuộc quad của portal, sample texture cho cái này khác đi".<br/>
-                Nghĩa là, ta phải thêm reference tới Portal ngay từ constructor của tam giác, và các hàm có clone tam giác:
-                <pre><code class="language-javascript">class Triangle {
-    constructor(vertices = [], uv = [], color = new Color(255, 255, 255), portal = null) {
-        ...
-        this.portal = portal;
-    }
-
-    clone() {
-        ...
-        tri.portal = this.portal;
-        return tri;
-    }
-
-    ...
-
-    clipAgainstPlane(plane) {
-        ...
-
-        if (frontPoints.length == 3) {
-            outTris.push(this.clone());
-        } else if (frontPoints.length == 1 && behindPoints.length == 2) {
-            ...
-            outTri.portal = this.portal;
-            outTris.push(outTri);
-        } else if (frontPoints.length == 2 && behindPoints.length == 1) {
-            ...
-            outTri1.portal = this.portal;
-            outTris.push(outTri1);
-
-            ...
-            outTri2.portal = this.portal;
-            outTris.push(outTri2);
-        }
-
-        return outTris;
-    }</code></pre>
-
-                Xong cho tam giác rồi, tới mesh. Vì mesh sẽ hiển thị texture Portal chỉ có thể là Quad nên ta chỉ cần thêm reference vào class Quad:
-                <pre><code class="language-javascript">class Quad extends Mesh {
-    constructor(portal = null) {
-        super(Quad.generateInitialTriangles(portal));   // <-------------------
-    }
-
-    static generateInitialTriangles(portal) {
-        let tris = [];
-        let color = new Color(255, 255, 255);
-
-        tris.push(
-            new Triangle(
-                [new Vector3(0.5, -0.5, 0), new Vector3(0.5, 0.5, 0), new Vector3(-0.5, 0.5, 0)],
-                [new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
-                color, portal   // <-------------------
-            ),
-        );
-
-        tris.push(
-            new Triangle(
-                [new Vector3(0.5, -0.5, 0), new Vector3(-0.5, 0.5, 0), new Vector3(-0.5, -0.5, 0)],
-                [new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
-                color, portal   // <-------------------
-            ),
-        );
-
-        return tris;
-    }
-}</code></pre>
-                Thế là lúc tạo quadMesh ở Portal ta truyền vào <code>this</code>:
-                <pre><code class="language-javascript">class Portal {
-    constructor(name, pos, eulerAngles, scale, color) {
-        ...
-        let portalQuadMesh = new Quad(this);
-        this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
-        ...
-    }
-    ...
-}</code></pre>
-
-                Xong phần reference tới Portal, bây giờ tới phần ta nói cho Rasterizer biết là cần sample texture khác đi cho các triangle thuộc Portal:
-                <pre><code class="language-javascript">processClipSpaceTriangles(tris) {
-    ...
-    if (tri.texture && tri.texture.pixels) {
-        if (tri.portal) {
-            lightIntensity = 1;
-            const texIndex = (y * tri.texture.width + x) * 4;
-            texColor.updateColor(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
-        } else {
-            ... // đoạn code tính theo barycentric coords cũ
-        }
-    }
-    ...
-}</code></pre>
-                Full code:
-                <div class="htmlPreview" id="htmlPreview6"></div>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview8"></div>
                 </div>
             </div>
         </div>

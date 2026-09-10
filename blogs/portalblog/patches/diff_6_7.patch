@@ -1,0 +1,97 @@
+--- "a/htmlPreviews\\htmlPreview6.html"
++++ "b/htmlPreviews\\htmlPreview7.html"
+@@ -52,6 +52,7 @@
+             static up;
+             static down;
+             static forward;
++            static back;
+ 
+             clone() {
+                 return new Vector3(this.x, this.y, this.z, this.w);
+@@ -120,6 +121,7 @@
+         Vector3.up = new Vector3(0, 1, 0);
+         Vector3.down = new Vector3(0, -1, 0);
+         Vector3.forward = new Vector3(0, 0, 1);
++        Vector3.back = new Vector3(0, 0, -1);
+ 
+         class Mat4x4 {
+             constructor() {
+@@ -967,11 +969,67 @@
+                 this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
+                 this.rasterizer = new Rasterizer();
+                 this.camera = new Camera(pos, eulerAngles, 8, 0.2);
++
++                let portalEdgeThickness = 0.2;
++                let portalBack = this.rotation.rotateVector(Vector3.back).normalize();
++                let backOffset = Vector3.mul(portalBack, portalEdgeThickness / 2);
++                let portalUp = this.rotation.rotateVector(Vector3.up);
++                let portalForward = this.rotation.rotateVector(Vector3.forward).normalize();
++                let portalRight = this.rotation.rotateVector(Vector3.right);
++
++                this.topCube = new GameObject(
++                    Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, this.scale.y / 2 + portalEdgeThickness / 2), backOffset)),
++                    eulerAngles,
++                    new Vector3(scale.x, portalEdgeThickness, portalEdgeThickness),
++                    color,
++                    cubeMesh,
++                );
++                this.bottomCube = new GameObject(
++                    Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, -this.scale.y / 2 - portalEdgeThickness / 2), backOffset)),
++                    eulerAngles,
++                    new Vector3(scale.x, portalEdgeThickness, portalEdgeThickness),
++                    color,
++                    cubeMesh,
++                );
++                this.leftCube = new GameObject(
++                    Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, -this.scale.x / 2 - portalEdgeThickness / 2), backOffset)),
++                    eulerAngles,
++                    new Vector3(portalEdgeThickness, scale.y + portalEdgeThickness * 2, portalEdgeThickness),
++                    color,
++                    cubeMesh,
++                );
++                this.rightCube = new GameObject(
++                    Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, this.scale.x / 2 + portalEdgeThickness / 2), backOffset)),
++                    eulerAngles,
++                    new Vector3(portalEdgeThickness, scale.y + portalEdgeThickness * 2, portalEdgeThickness),
++                    color,
++                    cubeMesh,
++                );
++                let normalQuadMesh = new Quad();
++                this.backQuad = new GameObject(
++                    Vector3.add(pos, Vector3.mul(portalBack, portalEdgeThickness)),
++                    eulerAngles,
++                    new Vector3(scale.x, scale.y, 0.05),
++                    color,
++                    normalQuadMesh,
++                );
++                this.backQuad.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(portalUp, 180), this.backQuad.rotation);
+             }
+             setOtherPortal(otherPortal) {
+                 this.otherPortal = otherPortal;
+             }
+ 
++            getAllTransformedTriangles() {
++                let allTris = [];
++                allTris.push(...this.quad.getTransformedTriangles());
++                allTris.push(...this.topCube.getTransformedTriangles());
++                allTris.push(...this.bottomCube.getTransformedTriangles());
++                allTris.push(...this.leftCube.getTransformedTriangles());
++                allTris.push(...this.rightCube.getTransformedTriangles());
++                allTris.push(...this.backQuad.getTransformedTriangles());
++                return allTris;
++            }
++
+             runRenderPipeline(objectTris) {
+                 let tris = [];
+                 for (let tri of objectTris) {
+@@ -1092,8 +1150,8 @@
+             let objectTris = [];
+             objectTris.push(...ground.getTransformedTriangles());
+             objectTris.push(...playerCube.getTransformedTriangles());
+-            objectTris.push(...portal1.quad.getTransformedTriangles());
+-            objectTris.push(...portal2.quad.getTransformedTriangles());
++            objectTris.push(...portal1.getAllTransformedTriangles());
++            objectTris.push(...portal2.getAllTransformedTriangles());
+ 
+             return objectTris;
+         }

@@ -1,0 +1,33 @@
+--- "a/htmlPreviews\\htmlPreview7.html"
++++ "b/htmlPreviews\\htmlPreview8.html"
+@@ -1030,6 +1030,11 @@
+                 return allTris;
+             }
+ 
++            getPlane() {
++                let forward = this.rotation.rotateVector(Vector3.forward);
++                return new Plane(forward, Vector3.sub(this.pos, Vector3.mul(forward, 0.01)));
++            }
++
+             runRenderPipeline(objectTris) {
+                 let tris = [];
+                 for (let tri of objectTris) {
+@@ -1040,12 +1045,16 @@
+                 this.rasterizer.clearScreen();
+ 
+                 let viewMatPortal = this.camera.getViewMatrix();
++                let otherPortalPlane = this.otherPortal.getPlane();
+ 
+                 let visibleTris = [];
+                 for (let tri of tris) {
+                     if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), this.camera.pos)) < 0) {
+-                        tri.mulMat4x4(viewMatPortal);
+-                        visibleTris.push(...tri.clipAgainstPlane(nearPlane));
++                        let clippedWithPortalTris = tri.clipAgainstPlane(otherPortalPlane);
++                        for (let clippedTri of clippedWithPortalTris) {
++                            clippedTri.mulMat4x4(viewMatPortal);
++                            visibleTris.push(...clippedTri.clipAgainstPlane(nearPlane));
++                        }
+                     }
+                 }
+ 

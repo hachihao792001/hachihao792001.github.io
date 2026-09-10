@@ -1,0 +1,182 @@
+--- "a/htmlPreviews\\htmlPreview5.html"
++++ "b/htmlPreviews\\htmlPreview6.html"
+@@ -260,7 +260,7 @@
+         }
+ 
+         class Triangle {
+-            constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
++            constructor(vertices = [], uv = [], color = new Color(255, 255, 255), portal = null) {
+                 if (vertices.length == 0) {
+                     this.vertices = [];
+                     for (let i = 0; i < 3; i++) {
+@@ -274,6 +274,7 @@
+                 this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
+                 this.color = color;
+                 this.texture = null;
++                this.portal = portal;
+             }
+ 
+             clone() {
+@@ -285,6 +286,7 @@
+                 }
+                 tri.color = this.color;
+                 tri.texture = this.texture;
++                tri.portal = this.portal;
+                 return tri;
+             }
+ 
+@@ -379,6 +381,7 @@
+                     outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
+                     outTri.color = this.color;
+                     outTri.texture = this.texture;
++                    outTri.portal = this.portal;
+                     outTris.push(outTri);
+                 } else if (frontPoints.length == 2 && behindPoints.length == 1) {
+                     let outTri1 = new Triangle(), outTri2 = new Triangle();
+@@ -406,6 +409,7 @@
+                     outTri1.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
+                     outTri1.color = this.color;
+                     outTri1.texture = this.texture;
++                    outTri1.portal = this.portal;
+                     outTris.push(outTri1);
+ 
+                     outTri2.vertices[0] = f1.clone();
+@@ -419,6 +423,7 @@
+                     outTri2.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
+                     outTri2.color = this.color;
+                     outTri2.texture = this.texture;
++                    outTri2.portal = this.portal;
+                     outTris.push(outTri2);
+                 }
+ 
+@@ -542,11 +547,11 @@
+         }
+ 
+         class Quad extends Mesh {
+-            constructor() {
+-                super(Quad.generateInitialTriangles());
++            constructor(portal = null) {
++                super(Quad.generateInitialTriangles(portal));
+             }
+ 
+-            static generateInitialTriangles() {
++            static generateInitialTriangles(portal) {
+                 let tris = [];
+                 let color = new Color(255, 255, 255);
+ 
+@@ -554,7 +559,7 @@
+                     new Triangle(
+                         [new Vector3(0.5, -0.5, 0), new Vector3(0.5, 0.5, 0), new Vector3(-0.5, 0.5, 0)],
+                         [new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
+-                        color,
++                        color, portal
+                     ),
+                 );
+ 
+@@ -562,7 +567,7 @@
+                     new Triangle(
+                         [new Vector3(0.5, -0.5, 0), new Vector3(-0.5, 0.5, 0), new Vector3(-0.5, -0.5, 0)],
+                         [new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
+-                        color,
++                        color, portal
+                     ),
+                 );
+ 
+@@ -774,7 +779,7 @@
+                 this.pixels = null;
+                 this.width = 0;
+                 this.height = 0;
+-                this.load(url);
++                if (url) this.load(url);
+             }
+ 
+             async load(url) {
+@@ -886,17 +891,24 @@
+ 
+                                     let texColor = tri.color;
+                                     if (tri.texture && tri.texture.pixels) {
+-                                        let pixelUV = new Vector2(
+-                                            tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,
+-                                            tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2,
+-                                            pixelInvZ
+-                                        );
+-                                        pixelUV = Vector2.div(pixelUV, pixelUV.w);
+-
+-                                        const texX = Math.floor(pixelUV.u * (tri.texture.width - 1));
+-                                        const texY = Math.floor(pixelUV.v * (tri.texture.height - 1));
+-                                        const texIndex = (texY * tri.texture.width + texX) * 4;
+-                                        texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
++                                        if (tri.portal) {
++                                            lightIntensity = 1;
++
++                                            const texIndex = (y * tri.texture.width + x) * 4;
++                                            texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
++                                        } else {
++                                            let pixelUV = new Vector2(
++                                                tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,
++                                                tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2,
++                                                pixelInvZ
++                                            );
++                                            pixelUV = Vector2.div(pixelUV, pixelUV.w);
++
++                                            const texX = Math.floor(pixelUV.u * (tri.texture.width - 1));
++                                            const texY = Math.floor(pixelUV.v * (tri.texture.height - 1));
++                                            const texIndex = (texY * tri.texture.width + texX) * 4;
++                                            texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
++                                        }
+                                     }
+ 
+                                     this.screenBuffer[y][x].updateColor(
+@@ -946,7 +958,12 @@
+                 this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
+                 this.scale = scale;
+ 
+-                let portalQuadMesh = new Quad();
++                this.renderTexture = new Texture();
++                this.renderTexture.width = canvas.width;
++                this.renderTexture.height = canvas.height;
++                this.renderTexture.pixels = new Uint8ClampedArray(canvas.width * canvas.height * 4);
++
++                let portalQuadMesh = new Quad(this);
+                 this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
+                 this.rasterizer = new Rasterizer();
+                 this.camera = new Camera(pos, eulerAngles, 8, 0.2);
+@@ -982,6 +999,21 @@
+                 this.rasterizer.processClipSpaceTriangles(visibleTris);
+             }
+ 
++            updateTextureForQuad() {
++                let index = 0;
++                for (let y = 0; y < canvas.height; y++) {
++                    for (let x = 0; x < canvas.width; x++) {
++                        const c = this.rasterizer.screenBuffer[y][x];
++                        this.renderTexture.pixels[index++] = c.r;
++                        this.renderTexture.pixels[index++] = c.g;
++                        this.renderTexture.pixels[index++] = c.b;
++                        this.renderTexture.pixels[index++] = 255;
++                    }
++                }
++
++                this.quad.texture = this.renderTexture;
++            }
++
+             calculateTransformToOtherPortalTransform(position, rotation) {
+                 let otherPortalUp = this.otherPortal.rotation.rotateVector(Vector3.up).normalize();
+                 let rotate180 = Quaternion.buildQuaternionAxisAngle(otherPortalUp, 180);
+@@ -1062,13 +1094,15 @@
+             objectTris.push(...playerCube.getTransformedTriangles());
+             objectTris.push(...portal1.quad.getTransformedTriangles());
+             objectTris.push(...portal2.quad.getTransformedTriangles());
+-            
++
+             return objectTris;
+         }
+ 
+         function portalRenderOperations(objectTris) {
+             portal1.runRenderPipeline(objectTris);
++            portal1.updateTextureForQuad();
+             portal2.runRenderPipeline(objectTris);
++            portal2.updateTextureForQuad();
+         }
+ 
+         function objectSpaceToViewSpace(objectTris) {
