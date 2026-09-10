@@ -48,6 +48,7 @@
     font-size: 1.2rem;
     font-weight: 600;
     margin: var(--space-5) 0 var(--space-2);
+    color: orange;
 }
 
 .blog-content h4,

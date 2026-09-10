@@ -78,6 +78,8 @@ async function updatePreview() {
         codeTag.innerHTML = htmlCode.replace(/</g, "&lt;").replace(/>/g, "&gt;");
         preTag.appendChild(codeTag);
         Prism.highlightElement(codeTag);
+
+        disableButton.click();
     }
 }
 
