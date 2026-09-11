@@ -737,6 +737,7 @@ function rasterize(visibleTris) {
                     <div class="htmlPreview" id="htmlPreview8"></div>
 
                     <h2>2. Đi qua Portal</h2>
+                    <h3>a. Teleport cơ bản</h3>
                     Hiển thị được Portal đúng đã xong, bây giờ ta phải implement the other half of the illusion, là đi qua được Portal.<br/><br/>
                     Đi qua Portal thật ra chỉ là teleport qua Portal bên kia mà sao cho position và rotation so với portal vẫn giữ nguyên, và điều đó ta đã làm với
                     portal camera 😳 Đó là vì sao mình đặt tên hàm là <code>calculateTransformToOtherPortalTransform</code>, vì nó áp dụng cho mọi thứ mà ta cần giữ nguyên position, rotation
@@ -806,7 +807,161 @@ function rasterize(visibleTris) {
                     cho phép người chơi bắn vào bất kỳ bề mặt xiêng nào, và khi người chơi đi qua Portal thì game tự động correct lại cho player đứng thẳng. Nếu ta muốn theo
                     đuổi tới cùng thì xử lí các trường hợp đó là một điều không thể tránh khỏi.<br/><br/>
 
-                    Để test được các trường hợp đó, thay vì set cứng cho Portal rồi chạy lại mỗi lần, thì mình thêm khả năng điều khiển portal luôn.
+                    <h3>b. Thêm khả năng điều khiển Portal</h3>
+
+                    Để test được các trường hợp đó, thay vì set cứng cho Portal rồi chạy lại mỗi lần, thì mình thêm khả năng điều khiển portal luôn.<br/><br/>
+
+                    Các phím điều khiển mình để như sau:
+                    <ul>
+                        <li>P để đổi Portal đang điều khiển</li>
+                        <li>I, J, K, L để di chuyển 4 hướng</li>
+                        <li>U, O để di chuyển lên xuống</li>
+                        <li>B, N, M để xoay theo trục x, y, z thế giới</li>
+                    </ul>
+
+                    Trước tiên ta thêm 1 element để hiện bây giờ đang điều khiển gì:
+                    <pre><code class="language-html">&lt;div&gt;
+    Controlling object:
+    &lt;span id="controllingObject">Orange portal&lt;/span&gt;
+&lt;/div&gt;</code></pre>
+                    <pre><code class="language-javascript">const controllingObjectText = document.getElementById("controllingObject");</code></pre>
+                    Thêm biến để track vật hiện tại đang điều khiển, và check bấm nút P để đổi nó:
+                    <pre><code class="language-javascript">let controllingObject = 0;
+...
+window.addEventListener("keypress", (e) => {
+    if (e.key == "p") {
+        controllingObject = 1 - controllingObject;
+        controllingObjectText.innerText = controllingObject == 0 ? "Orange portal" : "Blue Portal";
+    }
+});</code></pre>
+
+                    Muốn điều khiển portal thì ta tạo thêm hàm cập nhật vị trí và xoay portal (chủ yếu là để di chuyển hoặc xoay mấy GameObject của Portal đi chung):
+                    <pre><code class="language-javascript">class Portal {
+    ...
+                    
+    setPos(pos) {
+        this.pos = pos;
+        this.quad.pos = pos;
+
+        let portalEdgeThickness = 0.2;
+        let portalBack = this.rotation.rotateVector(Vector3.back).normalize();
+        let backOffset = Vector3.mul(portalBack, portalEdgeThickness / 2);
+
+        let portalUp = this.rotation.rotateVector(Vector3.up);
+        this.topCube.pos = Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, this.scale.y / 2 + portalEdgeThickness / 2), backOffset));
+        this.bottomCube.pos = Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, -this.scale.y / 2 - portalEdgeThickness / 2), backOffset));
+
+        let portalRight = this.rotation.rotateVector(Vector3.right);
+        this.leftCube.pos = Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, -this.scale.x / 2 - portalEdgeThickness / 2), backOffset));
+        this.rightCube.pos = Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, this.scale.x / 2 + portalEdgeThickness / 2), backOffset));
+
+        this.backQuad.pos = Vector3.add(pos, Vector3.mul(portalBack, portalEdgeThickness));
+    }
+
+    rotate(eulerX, eulerY, eulerZ) {
+        let q = Quaternion.buildQuaternionEuler(new Vector3(eulerX, eulerY, eulerZ));
+        this.rotation = Quaternion.multiply(q, this.rotation);
+        this.quad.rotate(eulerX, eulerY, eulerZ);
+        this.topCube.rotate(eulerX, eulerY, eulerZ);
+        this.bottomCube.rotate(eulerX, eulerY, eulerZ);
+        this.leftCube.rotate(eulerX, eulerY, eulerZ);
+        this.rightCube.rotate(eulerX, eulerY, eulerZ);
+        this.backQuad.rotate(eulerX, eulerY, eulerZ);
+    }
+
+    ...
+}</code></pre>
+                    Cuối cùng ở phần chính, ta tạo thêm 2 biến vị trí Portal để 2 portal liên tục cập nhật theo nó:
+                    <pre><code class="language-javascript">let portal1Pos = new Vector3(-3, 3, -3);
+let portal2Pos = new Vector3(3, 3, -3);
+let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
+let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));</code></pre>
+                    2 biến tốc độ (I feel compelled to write all the changes out like this even though I know they are trivial):
+                    <pre><code class="language-javascript">let controllingMoveSpeed = 6;
+let controllingRotateSpeed = 60;</code></pre>
+                    Và finally trong hàm updateGameObjectTransforms, ta thêm các đoạn code để điều khiển:
+                    <pre><code class="language-javascript">function updateGameObjectTransforms() {
+   ...
+
+    let controllingPos = controllingObject == 0 ? portal1Pos : portal2Pos;
+    let posDelta = Vector3.zero;
+    if (keyStates["i"]) {
+        posDelta = Vector3.add(posDelta, Vector3.forward);
+    }
+    if (keyStates["k"]) {
+        posDelta = Vector3.add(posDelta, Vector3.back);
+    }
+    if (keyStates["j"]) {
+        posDelta = Vector3.add(posDelta, Vector3.left);
+    }
+    if (keyStates["l"]) {
+        posDelta = Vector3.add(posDelta, Vector3.right);
+    }
+    if (keyStates["u"]) {
+        posDelta = Vector3.add(posDelta, Vector3.up);
+    }
+    if (keyStates["o"]) {
+        posDelta = Vector3.add(posDelta, Vector3.down);
+    }
+    if (!posDelta.equal(Vector3.zero)) {
+        posDelta.normalize();
+        posDelta = Vector3.mul(posDelta, dt * controllingMoveSpeed);
+
+        let newPos = Vector3.add(controllingPos, posDelta);
+        controllingPos.x = newPos.x;
+        controllingPos.y = newPos.y;
+        controllingPos.z = newPos.z;
+    }
+
+    let rotateEuler = Vector3.zero.clone();
+    if (keyStates["b"]) {
+        rotateEuler.x = dt * controllingRotateSpeed;
+    }
+    if (keyStates["n"]) {
+        rotateEuler.y = dt * controllingRotateSpeed;
+    }
+    if (keyStates["m"]) {
+        rotateEuler.z = dt * controllingRotateSpeed;
+    }
+    if (!rotateEuler.equal(Vector3.zero)) {
+        switch (controllingObject) {
+            case 0:
+                portal1.rotate(rotateEuler.x, rotateEuler.y, rotateEuler.z);
+                break;
+            case 1:
+                portal2.rotate(rotateEuler.x, rotateEuler.y, rotateEuler.z);
+                break;
+        }
+    }
+
+    camera.updateMovement(dt, keyStates);
+
+    portal1.setPos(portal1Pos);
+    portal1.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+    portal2.setPos(portal2Pos);
+    portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+
+    ...
+}</code></pre>
+                    Ở trên mình không xài == Vector3.zero mà xài hàm equal dưới đây vì javascript không so sánh được kiểu == với class:
+                    <pre><code class="language-javascript">class Vector3 {
+    ...
+    equal(vec) {
+        return this.x == vec.x && this.y == vec.y && this.z == vec.z;
+    }
+    ...
+}</code></pre>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview10"></div>
+                    Khi bạn xoay theo trục y (bấm N) và đi qua Portal thì nó vẫn oke. Vấn đề chỉ xảy ra khi bạn xoay theo trục X và Z, lúc bạn đi qua Portal thì rotation so
+                    với Portal vẫn giữ, là chạy đúng với những gì ta đã viết, tuy nhiên rotation mà ta "giữ" đó đã bị xoay theo portal, khá chóng mặt, không còn giống như
+                    mình đang đứng thẳng trên mặt đất nữa. Xoay theo kiểu đó (theo trục Z local) người ta gọi là Roll (giống như bị lăn trên mặt đất).<br/><br/>
+                    <i>Btw có thể bạn đã thử quay 2 portal nhìn vào nhau để xem effect đường hầm vô tận, và thấy nó bị kiểu buffer frame trước hay sao đó chứ không thấy 
+                    đường hầm nào. Don't worry, we'll cross that bridge when we get there.</i><br/><br/>
+                    Như vậy, sau khi teleport, ta phải có một cơ chế nào đó correct roll của người chơi về lại vị trí thẳng đứng, như game Portal.
+
+                    <h3>c. Correct roll của người chơi sau khi teleport</h3>
+                    
                 </div>
             </div>
         </div>
