@@ -702,7 +702,8 @@ function rasterize(visibleTris) {
                     <div class="htmlPreview" id="htmlPreview7"></div>
                     Oke 4 cạnh đã hiện, và cả luôn cái backQuad, nó che luôn những gì mà camera portal sẽ thấy ở otherPortal, nên thành ra chỉ có 1 màu như vậy 😅.
                     Để giải quyết vấn đề này, thay vì ta hard code ignore backQuad ở chỗ nào đó trong lúc render cho camera portal, thì ta implement thứ sau:
-                    những gì nằm đằng sau otherPortal thì cắt hết không render.<br/><br/>
+                    những gì nằm đằng sau otherPortal thì cắt hết không render. Implement cái này cũng giải quyết cho trường hợp camera portal nằm sau 1 bức tường
+                    cũng không thấy gì.<br/><br/>
                     Cái này khá đơn giản, chỉ cần thêm 1 lần gọi clipAgainstPlane với plane của portal kia. Ta thêm hàm để tìm plane khớp với Portal, tuy nhiên nên 
                     lùi cái plane lại 1 tí vì nó sẽ clip luôn với cái quad của portal:
                     <pre><code class="language-javascript">class Portal {
@@ -734,6 +735,78 @@ function rasterize(visibleTris) {
 }</code></pre>
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview8"></div>
+
+                    <h2>2. Đi qua Portal</h2>
+                    Hiển thị được Portal đúng đã xong, bây giờ ta phải implement the other half of the illusion, là đi qua được Portal.<br/><br/>
+                    Đi qua Portal thật ra chỉ là teleport qua Portal bên kia mà sao cho position và rotation so với portal vẫn giữ nguyên, và điều đó ta đã làm với
+                    portal camera 😳 Đó là vì sao mình đặt tên hàm là <code>calculateTransformToOtherPortalTransform</code>, vì nó áp dụng cho mọi thứ mà ta cần giữ nguyên position, rotation
+                    so với portal.<br/><br/>
+                    Biết được cách teleport rồi, giờ thì sao ta detect được Player có đi qua Portal hay không? Engine ta chưa hề có hệ thống collision gì cả.<br/>
+                    Thật ra cũng dễ thôi,
+                    trước tiên ta hãy xem Portal như là một mặt phẳng vô tận, là 1 Plane, player sẽ đi qua Portal nếu frame trước player ở trước plane và frame này player ở sau plane,
+                    ta cũng đã có sẵn hàm <code>Plane.isPointInFrontOfPlane()</code> rồi.<br/>
+                    Nhưng Portal thì không phải một mặt phẳng vô tận, ta cần giới hạn lại chỉ nằm trong khung Portal, tức là chỉ xét việc "đi qua" nếu player nằm ở ngay
+                    đằng trước hoặc ngay đằng sau Portal. Ta có thể xác nhận điều này bằng cách lấy vector từ Portal tới vị trí player, chuyển nó từ world về local của Portal, 
+                    rồi xét giá trị x và y của vector local đó xem có nhỏ hơn 2 kích thước của Portal là xong 😳<br/><br/>
+
+                    Như vậy hàm check ở ngay đằng trước/ngay đằng sau Portal như sau:
+                    <pre><code class="language-javascript">isPointDirectlyInFrontOrBackOfPortal(point) {
+    let worldPointRelativeToThisPortal = Vector3.sub(point, this.pos);
+    let localPointRelativeToThisPortal = this.rotation.inverseRotateVector(worldPointRelativeToThisPortal);
+
+    return Math.abs(localPointRelativeToThisPortal.x) <= this.scale.x / 2 && Math.abs(localPointRelativeToThisPortal.y) <= this.scale.y / 2;
+}</code></pre>
+                    Về việc "đi qua" thì ta thêm 1 biến lưu lại trạng thái "đằng trước portal" ở frame trước:
+                    <pre><code class="language-javascript">class Portal {
+    constructor(name, pos, eulerAngles, scale, color) {
+        ...
+
+        this.lastFramePlayerInFrontOfPortal = false;
+
+        ...
+    }
+    ...
+}</code></pre>
+                    Và hàm tính vị trí và rotation player nếu player có đi qua Portal như sau. Sử dụng lại hàm <code>calculateTransformToOtherPortalTransform</code> khá gọn:
+                    <pre><code class="language-javascript">getPlayerTeleportedTransformIfGoThroughPortal(playerCameraPos, playerCameraRotation) {
+    let plane = this.getPlane();
+    let isPlayerInFrontOfPortal = plane.isPointInFrontOfPlane(playerCameraPos);
+
+    if (this.lastFramePlayerInFrontOfPortal && !isPlayerInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(playerCameraPos)) {
+        this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
+        let [newPlayerPos, newPlayerRotation] = this.calculateTransformToOtherPortalTransform(playerCameraPos, playerCameraRotation);
+        return [newPlayerPos, newPlayerRotation];
+    } else {
+        this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
+        return null;
+    }
+}</code></pre>
+
+                    Ta sẽ gọi hàm trên ở hàm updateGameObjectTransforms. Check portal 1 nếu có teleport thì update transform của player, không thì check portal 2:
+                    <pre><code class="language-javascript">function updateGameObjectTransforms() {
+    ...
+
+    let cameraTeleportedTransform = portal1.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
+    if (cameraTeleportedTransform != null) {
+        camera.pos = cameraTeleportedTransform[0];
+        camera.rotation = cameraTeleportedTransform[1];
+    } else {
+        cameraTeleportedTransform = portal2.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
+        if (cameraTeleportedTransform != null) {
+            camera.pos = cameraTeleportedTransform[0];
+            camera.rotation = cameraTeleportedTransform[1];
+        }
+    }
+}</code></pre>
+                    Kết quả (mình có tăng tốc độ camera lên 6 đi cho lẹ):
+                    <div class="htmlPreview" id="htmlPreview9"></div>
+
+                    Như vậy là việc đi qua Portal xong rồi đúng không?<br/><br/>
+                    Nếu xong rồi thì tất nhiên mình sẽ không hỏi câu như trên 😅 Từ đầu tới giờ ta chỉ cho 2 Portal đứng thẳng khá là lý tưởng, nhưng thực tế game Portal
+                    cho phép người chơi bắn vào bất kỳ bề mặt xiêng nào, và khi người chơi đi qua Portal thì game tự động correct lại cho player đứng thẳng. Nếu ta muốn theo
+                    đuổi tới cùng thì xử lí các trường hợp đó là một điều không thể tránh khỏi.<br/><br/>
+
+                    Để test được các trường hợp đó, thay vì set cứng cho Portal rồi chạy lại mỗi lần, thì mình thêm khả năng điều khiển portal luôn.
                 </div>
             </div>
         </div>
