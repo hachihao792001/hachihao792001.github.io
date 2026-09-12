@@ -794,9 +794,7 @@
             }
 
             distanceToPoint(p) {
-                let numerator = Math.abs(this.normal.x * p.x + this.normal.y * p.y + this.normal.z * p.z - this.D);
-                let denominator = Math.hypot(this.normal.x, this.normal.y, this.normal.z);
-                return numerator / denominator;
+                return Vector3.dot(p, this.normal) - this.D;
             }
         }
 
@@ -861,15 +859,17 @@
 
             updateTransformAndCorrectRoll(newPos, newRot) {
                 this.pos = newPos;
+                this.rotation = newRot;
 
                 let newForward = newRot.rotateVector(Vector3.forward).normalize();
+                if (Math.abs(Vector3.dot(newForward, Vector3.up)) > 0.999)
+                    return;
+
                 let correctRotation = Quaternion.lookRotation(newForward, Vector3.up);
                 if (!Quaternion.isClose(newRot, correctRotation, 0.001)) {
                     cameraRotLerpStart = newRot;
                     cameraRotLerpEnd = correctRotation;
                     cameraRotLerpCount = cameraRotLerpDuration;
-                } else {
-                    this.rotation = newRot;
                 }
             }
 
@@ -1605,15 +1605,19 @@
                 return false;
             }
 
+            refreshLastFramePlayerInFrontOfPortal(playerCameraPos) {
+                let plane = this.getPlane();
+                this.lastFramePlayerInFrontOfPortal = plane.distanceToPoint(playerCameraPos) >= portalCrossMargin;
+            }
+
             getPlayerTeleportedTransformIfGoThroughPortal(playerCameraPos, playerCameraRotation) {
                 let plane = this.getPlane();
-                let distanceToPlane = Vector3.dot(playerCameraPos, plane.normal) - plane.D;
+                let distanceToPlane = plane.distanceToPoint(playerCameraPos);
                 let isPlayerInFrontOfPortal = distanceToPlane >= portalCrossMargin;
 
                 if (this.lastFramePlayerInFrontOfPortal && !isPlayerInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(playerCameraPos)) {
                     this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
-                    let enterPos = Vector3.sub(playerCameraPos, Vector3.mul(plane.normal, distanceToPlane + portalCrossMargin));
-                    let [newPlayerPos, newPlayerRotation] = this.calculateTransformToOtherPortalTransform(enterPos, playerCameraRotation);
+                    let [newPlayerPos, newPlayerRotation] = this.calculateTransformToOtherPortalTransform(playerCameraPos, playerCameraRotation);
                     return [newPlayerPos, newPlayerRotation];
                 } else {
                     this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
@@ -1787,7 +1791,7 @@
         const fov = 60;
         let znear = 0.01,
             zfar = 1000;
-        let portalCrossMargin = znear * 5;
+        let portalCrossMargin = znear * 2;
         let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
         let camera = new Camera(new Vector3(0, 1, -10), new Vector3(0, 0, 0), 6, 0.2);
         let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
@@ -2039,13 +2043,12 @@
             // ---------------- Begin Portal teleport ----------------
 
             let cameraTeleportedTransform = portal1.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
+            if (cameraTeleportedTransform == null)
+                cameraTeleportedTransform = portal2.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
             if (cameraTeleportedTransform != null) {
                 camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
-            } else {
-                cameraTeleportedTransform = portal2.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
-                if (cameraTeleportedTransform != null) {
-                    camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
-                }
+                portal1.refreshLastFramePlayerInFrontOfPortal(camera.pos);
+                portal2.refreshLastFramePlayerInFrontOfPortal(camera.pos);
             }
 
             for (let gameObject of canInteractWithPortalGameObjects) {
