@@ -59,7 +59,7 @@
     <div id="render">
         <canvas id="gameCanvas" width="800" height="600" style="border: 2px solid #aaa; background: #fff"></canvas>
         <p id="asciiParagraph"
-            style="display:none; font-size: 2px; font-family: 'Courier New', Courier, monospace;letter-spacing: 2px; line-height: 3px; white-space: pre;">
+            style="display:none; font-size: 2px; font-family: 'Courier New', Courier, monospace;letter-spacing: 1px; line-height: 2px; white-space: pre;">
         </p>
     </div>
     <div>
@@ -114,8 +114,13 @@
     </div>
     <div>
         Directional light intensity:
-        <input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1.5" />
-        <span id="dirIntensityText" class="slider-value">1.5</span>
+        <input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="0.5" />
+        <span id="dirIntensityText" class="slider-value">0.5</span>
+    </div>
+    <div>
+        Point light intensity:
+        <input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
+        <span id="pointIntensityText" class="slider-value">1.0</span>
     </div>
     <div>
         Portal recursion limit:
@@ -1275,6 +1280,7 @@
 
                     let triWorldNormal = tri.getWorldNormal();
                     let dirLightDiffuse = ((Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
+                    let activeLightCount = pointLightIntensity > 0 ? getPointLightsThatCanAffectTri(tri, triWorldNormal) : 0;
 
                     let triBBox = tri.boundingBox();
                     if (renderBBox != null) {
@@ -1326,21 +1332,41 @@
 
                                     let pixelInvZ = tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2;
 
-                                    if (x == screenCenter.x && y == screenCenter.y) {
-                                        let pixelWorldPos = new Vector3(
-                                            (perspectiveWorldVertices[0].x * baryCoord0 + perspectiveWorldVertices[1].x * baryCoord1 + perspectiveWorldVertices[2].x * baryCoord2),
-                                            (perspectiveWorldVertices[0].y * baryCoord0 + perspectiveWorldVertices[1].y * baryCoord1 + perspectiveWorldVertices[2].y * baryCoord2),
-                                            (perspectiveWorldVertices[0].z * baryCoord0 + perspectiveWorldVertices[1].z * baryCoord1 + perspectiveWorldVertices[2].z * baryCoord2)
-                                        );
-                                        pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
+                                    let pixelWorldPos = new Vector3(
+                                        (perspectiveWorldVertices[0].x * baryCoord0 + perspectiveWorldVertices[1].x * baryCoord1 + perspectiveWorldVertices[2].x * baryCoord2),
+                                        (perspectiveWorldVertices[0].y * baryCoord0 + perspectiveWorldVertices[1].y * baryCoord1 + perspectiveWorldVertices[2].y * baryCoord2),
+                                        (perspectiveWorldVertices[0].z * baryCoord0 + perspectiveWorldVertices[1].z * baryCoord1 + perspectiveWorldVertices[2].z * baryCoord2)
+                                    );
+                                    pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
 
+                                    if (x == screenCenter.x && y == screenCenter.y) {
                                         this.pointingPos = pixelWorldPos;
                                         this.pointingPosNormal = triWorldNormal;
                                         this.pointingTri = tri;
                                     }
 
+                                    let pointLightDiffuse = 0;
+                                    if (pointLightIntensity > 0) {
+                                        for (let i = 0; i < activeLightCount; i++) {
+                                            const lightPos = activeLights[i];
+                                            const pointLightVecX = pixelWorldPos.x - lightPos.x;
+                                            const pointLightVecY = pixelWorldPos.y - lightPos.y;
+                                            const pointLightVecZ = pixelWorldPos.z - lightPos.z;
+                                            const distanceFromPixelToPointLight2 = pointLightVecX * pointLightVecX + pointLightVecY * pointLightVecY + pointLightVecZ * pointLightVecZ;
+                                            if (distanceFromPixelToPointLight2 >= pointLightRange2)
+                                                continue;
+
+                                            const distance = Math.sqrt(distanceFromPixelToPointLight2);
+                                            const dot = (triWorldNormal.x * pointLightVecX + triWorldNormal.y * pointLightVecY + triWorldNormal.z * pointLightVecZ) / distance;
+                                            const falloff = 1 - distanceFromPixelToPointLight2 / pointLightRange2;
+                                            const attenuation = falloff * falloff / (1 + 0.1 * distanceFromPixelToPointLight2);
+                                            pointLightDiffuse += (1 - (dot + 1) / 2) * attenuation;
+                                        }
+                                        pointLightDiffuse *= pointLightIntensity;
+                                    }
+
                                     let texColor = tri.color;
-                                    let lightIntensity = Math.max(0.2, dirLightDiffuse);
+                                    let lightIntensity = Math.max(0.2, dirLightDiffuse + pointLightDiffuse);
 
                                     if (tri.texture && tri.texture.pixels) {
                                         if (tri.portal) {
@@ -1386,7 +1412,7 @@
                     ctx.putImageData(this.imageData, 0, 0);
                 } else {
                     let renderString = "";
-                    let grayScaleASCII = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'.";
+                    let grayScaleASCII = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. ";
                     for (let y = 0; y < canvas.height; y++) {
                         for (let x = 0; x < canvas.width; x++) {
                             let index = (y * canvas.width + x) * 4;
@@ -1403,6 +1429,47 @@
                 }
             }
         }
+        function getPointLightsThatCanAffectTri(tri, triWorldNormal) {
+            function hypotSquare(ax, ay, az, bx, by, bz) {
+                const dx = ax - bx;
+                const dy = ay - by;
+                const dz = az - bz;
+                return dx * dx + dy * dy + dz * dz;
+            }
+
+            const triWorldCenterX = (tri.worldVertices[0].x + tri.worldVertices[1].x + tri.worldVertices[2].x) / 3;
+            const triWorldCenterY = (tri.worldVertices[0].y + tri.worldVertices[1].y + tri.worldVertices[2].y) / 3;
+            const triWorldCenterZ = (tri.worldVertices[0].z + tri.worldVertices[1].z + tri.worldVertices[2].z) / 3;
+
+            let triBoundingCircleRadius2 = 0;
+            for (let i = 0; i < 3; i++) {
+                const currentWorldVertex = tri.worldVertices[i];
+                const currentRadius2 = hypotSquare(currentWorldVertex.x, currentWorldVertex.y, currentWorldVertex.z, triWorldCenterX, triWorldCenterY, triWorldCenterZ);
+                if (currentRadius2 > triBoundingCircleRadius2)
+                    triBoundingCircleRadius2 = currentRadius2;
+            }
+            const reach = pointLightRange + Math.sqrt(triBoundingCircleRadius2);
+
+            const triPlaneD = Vector3.dot(triWorldNormal, tri.worldVertices[0]);
+
+            let count = 0;
+            for (let i = 0; i < pointLights.length; i++) {
+                const lightPos = pointLights[i].pos;
+
+                if (Vector3.dot(triWorldNormal, lightPos) <= triPlaneD)
+                    continue;
+
+                const lightDistance2 = hypotSquare(lightPos.x, lightPos.y, lightPos.z, triWorldCenterX, triWorldCenterY, triWorldCenterZ);
+                if (lightDistance2 > reach * reach)
+                    continue;
+
+                activeLights[count] = lightPos;
+                count++;
+                if (count == maxActiveLights) break;
+            }
+            return count;
+        }
+
         function edgeFunction(v0, v1, p) {
             return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
         }
@@ -1826,6 +1893,15 @@
 
         let holdingObject = null;
 
+        const pointLightIntensitySlider = document.getElementById("pointIntensity");
+        const pointLightIntensityText = document.getElementById("pointIntensityText");
+        let pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
+        let pointLightRange = 14;
+        let pointLightRange2 = pointLightRange * pointLightRange;
+
+        const maxActiveLights = 24;
+        const activeLights = new Array(maxActiveLights);
+
         let dirLightDefaultDir = new Vector3(-1, -1, -1);
         let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
 
@@ -1836,6 +1912,19 @@
 
         let cubeMesh = new Cube();
         let quadMesh = new Quad();
+
+        let pointLights = [
+            new GameObject(new Vector3(0.43, 3.53, -8.69), new Vector3(0, -90, 0), new Vector3(0.2, 0.2, 0.2), new Color(255, 255, 255), cubeMesh, null),
+            new GameObject(new Vector3(0.43, 1.747, -3.37), new Vector3(0, -90, 0), new Vector3(0.2, 0.2, 0.2), new Color(255, 255, 255), cubeMesh, null),
+            new GameObject(new Vector3(0.43, 9, 0.71), new Vector3(0, -90, 0), new Vector3(0.2, 0.2, 0.2), new Color(255, 255, 255), cubeMesh, null),
+            new GameObject(new Vector3(-9.2, 9, 0.7), new Vector3(0, -90, 0), new Vector3(0.2, 0.2, 0.2), new Color(255, 255, 255), cubeMesh, null),
+            new GameObject(new Vector3(-9.2, 9, 6.2), new Vector3(0, -90, 0), new Vector3(0.2, 0.2, 0.2), new Color(255, 255, 255), cubeMesh, null),
+            new GameObject(new Vector3(-9.2, 9, 16.4), new Vector3(0, -90, 0), new Vector3(0.2, 0.2, 0.2), new Color(255, 255, 255), cubeMesh, null),
+            new GameObject(new Vector3(-9.2, 9, 27.5), new Vector3(0, -90, 0), new Vector3(0.2, 0.2, 0.2), new Color(255, 255, 255), cubeMesh, null),
+            new GameObject(new Vector3(-19.9, 9, 27.5), new Vector3(0, -90, 0), new Vector3(0.2, 0.2, 0.2), new Color(255, 255, 255), cubeMesh, null),
+            new GameObject(new Vector3(-30.2, 9, 27.5), new Vector3(0, -90, 0), new Vector3(0.2, 0.2, 0.2), new Color(255, 255, 255), cubeMesh, null),
+            new GameObject(new Vector3(-39.225, 1.736, 27.5), new Vector3(0, -90, 0), new Vector3(0.2, 0.2, 0.2), new Color(255, 255, 255), cubeMesh, null),
+            new GameObject(new Vector3(-44.54, 3.531, 27.5), new Vector3(0, -90, 0), new Vector3(0.2, 0.2, 0.2), new Color(255, 255, 255), cubeMesh, null)];
 
         let playerCube = new GameObject(camera.pos, camera.rotation, new Vector3(0.5, 0.5, 0.5), new Color(255, 255, 255),
             new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), playerCubeTexture);
@@ -1851,7 +1940,7 @@
         let testCubeId = testCube.id;
 
         let sceneObjects = [new GameObject(new Vector3(0.2, 3.6481, -7.8), new Vector3(-90.00001, -5.008955E-06, 5.191899E-05), new Vector3(7.83142, 11.06904, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
-        new GameObject(new Vector3(0.3058997, 1.8329, -3.146), new Vector3(-90.00001, -5.008955E-06, 5.191899E-05), new Vector3(4.066794, 1.901698, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(0.3059, 1.8329, -3.1662), new Vector3(-90.00001, -5.008955E-06, 5.191899E-05), new Vector3(4.066794, 1.948939, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-2.5711, 1.9274, -5.198), new Vector3(180, -43.02916, 180), new Vector3(2.273089, 15.04024, 13.24423), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-3.2608, 1.9275, -8.660001), new Vector3(0, -90, 0), new Vector3(5.559667, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-2.3958, 1.9274, -12.319), new Vector3(0, -44.73019, 0), new Vector3(2.907802, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
@@ -1859,21 +1948,21 @@
         new GameObject(new Vector3(3.1304, 1.9274, -5.113), new Vector3(180, 45.07051, 180), new Vector3(2.494697, 15.04024, 13.17559), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(0.2901998, 2.7635, -4.095), new Vector3(180, -6.943873E-06, 180), new Vector3(4.114781, 1.82969, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(0.3882995, 1.9298, -13.6), new Vector3(0, 6.943873E-06, 0), new Vector3(4.200275, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
-        new GameObject(new Vector3(3.9694, 1.9275, -8.646001), new Vector3(0, 90, 0), new Vector3(5.4898, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
-        new GameObject(new Vector3(2.2604, 1.9275, -3.209), new Vector3(0, 90, 0), new Vector3(2.032757, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(3.9694, 1.9275, -8.698), new Vector3(0, 90, 0), new Vector3(5.593557, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(2.2604, 1.9275, -3.2116), new Vector3(0, 90, 0), new Vector3(2.027405, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-1.733, 1.9275, -3.343), new Vector3(0, -90, 0), new Vector3(2.277527, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-43.8306, 3.6481, 27.293), new Vector3(-90.00001, 3.415095E-06, 90.00011), new Vector3(7.831416, 11.06903, 12.63415), new Color(0, 255, 0), quadMesh, floorTexture),
-        new GameObject(new Vector3(-39.1646, 1.8329, 27.187), new Vector3(-90.00001, 3.415095E-06, 90.00011), new Vector3(4.066792, 1.877661, 12.63415), new Color(0, 255, 0), quadMesh, floorTexture),
+        new GameObject(new Vector3(-39.1774, 1.639, 27.187), new Vector3(-90.00001, 3.415095E-06, 90.00011), new Vector3(4.066792, 1.903347, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-41.1886, 1.9275, 29.964), new Vector3(180, 44.81219, -180), new Vector3(2.199165, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-44.6906, 1.9275, 30.645), new Vector3(180, -6.943873E-06, 180), new Vector3(5.559665, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-48.2876, 1.9275, 29.951), new Vector3(180, -45.26986, 180), new Vector3(2.730843, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-48.3466, 1.9275, 24.35), new Vector3(-9.241176E-07, -44.99997, 2.231018E-06), new Vector3(2.76853, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-41.1506, 1.9275, 24.441), new Vector3(0, 41.4403, 0), new Vector3(2.444581, 15.04024, 12.80276), new Color(0, 255, 0), quadMesh, wallTexture),
-        new GameObject(new Vector3(-40.1256, 2.7635, 27.202), new Vector3(0, 90, 0), new Vector3(4.114781, 1.82969, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-40.1256, 2.6506, 27.202), new Vector3(0, 90, 0), new Vector3(4.114781, 2.055498, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-49.3646, 1.9275, 27.158), new Vector3(0, -90, 0), new Vector3(4.14433, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-44.6766, 1.9275, 23.651), new Vector3(0, 6.943873E-06, 0), new Vector3(5.489798, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
-        new GameObject(new Vector3(-39.2396, 1.9275, 25.232), new Vector3(0, 6.943873E-06, 0), new Vector3(2.032756, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
-        new GameObject(new Vector3(-39.3736, 1.9275, 29.226), new Vector3(180, -6.943873E-06, 180), new Vector3(2.277526, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-39.2683, 1.9275, 25.232), new Vector3(0, 6.943873E-06, 0), new Vector3(1.97539, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-39.3905, 1.9275, 29.226), new Vector3(180, -6.943873E-06, 180), new Vector3(2.243582, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-4.2555, -1.8277, -1.2929), new Vector3(90.00001, -5.008955E-06, -5.191899E-05), new Vector3(16.48973, 24.08109, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
         new GameObject(new Vector3(-21.9806, 9.1088, 16.8934), new Vector3(-90.00001, -5.008955E-06, 5.191899E-05), new Vector3(53.5527, 60.46481, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
         new GameObject(new Vector3(-8.8833, -3.6687, 10.6384), new Vector3(0, 6.943873E-06, 0), new Vector3(7.23404, 3.653632, 12.63415), new Color(0, 255, 0), quadMesh, floorTexture),
@@ -1892,16 +1981,16 @@
         new GameObject(new Vector3(-40.9626, -1.8428, 27.217), new Vector3(90.00001, -5.008955E-06, -5.191899E-05), new Vector3(20.19933, 10.83138, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
         new GameObject(new Vector3(-30.9876, -3.6913, 27.217), new Vector3(0, -90, 0), new Vector3(11.27006, 3.658077, 12.63416), new Color(0, 255, 0), quadMesh, floorTexture),
         new GameObject(new Vector3(-12.5335, 1.9275, 9.8131), new Vector3(0, -90, 0), new Vector3(24.12724, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
-        new GameObject(new Vector3(-5.3031, 1.9275, 17.9755), new Vector3(0, 90, 0), new Vector3(29.80716, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-5.3031, 1.9275, 18.0775), new Vector3(0, 90, 0), new Vector3(29.60447, 15.04024, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-21.7456, 1.9275, 32.829), new Vector3(180, -6.943873E-06, 180), new Vector3(33.24902, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-38.2636, 5.5413, 27.23), new Vector3(0, -90, 0), new Vector3(11.12619, 7.81261, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
-        new GameObject(new Vector3(-38.2636, -0.077855, 23.52), new Vector3(0, -90, 0), new Vector3(3.706135, 3.593764, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
-        new GameObject(new Vector3(-38.2636, -0.077855, 31.074), new Vector3(0, -90, 0), new Vector3(3.706135, 3.593764, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-38.2636, -0.1106, 23.4379), new Vector3(0, -90, 0), new Vector3(3.541953, 3.52794, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-38.2636, -0.1039, 31.0677), new Vector3(0, -90, 0), new Vector3(3.718827, 3.541654, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-25.4373, 1.9275, 21.817), new Vector3(0, 6.943873E-06, 0), new Vector3(25.7823, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
-        new GameObject(new Vector3(-0.5768999, 1.9275, 3.2716), new Vector3(180, -6.943873E-06, 180), new Vector3(9.30831, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(-0.6133, 1.9275, 3.28), new Vector3(180, -6.943873E-06, 180), new Vector3(9.381053, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(-7.17383, 1.9275, -2.189), new Vector3(0, 6.943873E-06, 0), new Vector3(10.9605, 15.04024, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(1.2044, 5.7501, -2.189), new Vector3(0, 6.943873E-06, 0), new Vector3(5.955787, 7.808895, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
-        new GameObject(new Vector3(3.2174, 0.0047355, -2.189), new Vector3(0, 6.943873E-06, 0), new Vector3(1.890546, 3.725321, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
+        new GameObject(new Vector3(3.2087, -0.0041, -2.189), new Vector3(0, 6.943873E-06, 0), new Vector3(1.907939, 3.707439, 12.63415), new Color(0, 255, 0), quadMesh, wallTexture),
         new GameObject(new Vector3(4.0604, 2.0276, 0.6412001), new Vector3(0, 90, 0), new Vector3(5.776629, 14.84066, 12.63416), new Color(0, 255, 0), quadMesh, wallTexture)];
 
         let objectTris = [];
@@ -2079,6 +2168,9 @@
             // ---------------- Begin Preparing Object Space Triangles ----------------
             objectTris = [];
             objectTris.push(...playerCube.getTransformedTriangles());
+            for (let light of pointLights) {
+                objectTris.push(...light.getTransformedTriangles());
+            }
             objectTris.push(...portal1.getAllTransformedTriangles());
             objectTris.push(...portal2.getAllTransformedTriangles());
 
@@ -2173,6 +2265,11 @@
         lightDirIntensitySlider.addEventListener("input", () => {
             dirLight.intensity = parseFloat(lightDirIntensitySlider.value);
             lightDirIntensityText.textContent = dirLight.intensity.toFixed(2);
+        });
+
+        pointLightIntensitySlider.addEventListener("input", () => {
+            pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
+            pointLightIntensityText.textContent = pointLightIntensity.toFixed(2);
         });
 
         portalLimitInput.addEventListener("input", () => {
