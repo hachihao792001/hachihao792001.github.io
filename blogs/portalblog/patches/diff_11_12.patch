@@ -1,0 +1,77 @@
+--- "a/htmlPreviews\\htmlPreview11.html"
++++ "b/htmlPreviews\\htmlPreview12.html"
+@@ -238,6 +238,29 @@
+                 this.d = d;
+             }
+ 
++            static dot(p, q) {
++                return p.a * q.a + p.b * q.b + p.c * q.c + p.d * q.d;
++            }
++
++            static lerp(from, to, t) {
++                let toA = to.a, toB = to.b, toC = to.c, toD = to.d;
++
++                let dot = Quaternion.dot(from, to);
++                if (dot < 0) {
++                    toA = -toA;
++                    toB = -toB;
++                    toC = -toC;
++                    toD = -toD;
++                }
++
++                return new Quaternion(
++                    from.a + (toA - from.a) * t,
++                    from.b + (toB - from.b) * t,
++                    from.c + (toC - from.c) * t,
++                    from.d + (toD - from.d) * t
++                )
++            }
++
+             static buildQuaternionAxisAngle(axis, angle) {
+                 let radian = angle / 180.0 * Math.PI;
+                 const half = radian / 2;
+@@ -591,7 +614,12 @@
+                 if (Math.abs(Vector3.dot(newForward, Vector3.up)) > 0.999)
+                     return;
+ 
+-                this.rotation = Quaternion.lookRotation(newForward, Vector3.up);
++                let correctRotation = Quaternion.lookRotation(newForward, Vector3.up);
++                if (Math.abs(Quaternion.dot(newRot, correctRotation)) < 0.999) {
++                    cameraRotLerpStart = newRot;
++                    cameraRotLerpEnd = correctRotation;
++                    cameraRotLerpCountDown = cameraRotLerpDuration;
++                }
+             }
+         }
+ 
+@@ -1239,6 +1267,11 @@
+         ];
+         let keyStates = [];
+ 
++        let cameraRotLerpStart = camera.rotation;
++        let cameraRotLerpEnd = camera.rotation;
++        let cameraRotLerpDuration = 0.2;
++        let cameraRotLerpCountDown = 0;
++
+         const fpsInfo = document.getElementById("fps");
+         let frames = 0, fpsTimeCounter = 0;
+ 
+@@ -1326,6 +1359,18 @@
+ 
+             camera.updateMovement(dt, keyStates);
+ 
++            if (cameraRotLerpCountDown > 0) {
++                camera.rotation = Quaternion.lerp(
++                    cameraRotLerpStart,
++                    cameraRotLerpEnd,
++                    (cameraRotLerpDuration - cameraRotLerpCountDown) / cameraRotLerpDuration,
++                );
++                cameraRotLerpCountDown -= dt;
++                if (cameraRotLerpCountDown <= 0) {
++                    camera.rotation = cameraRotLerpEnd;
++                }
++            }
++
+             portal1.setPos(portal1Pos);
+             portal1.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+             portal2.setPos(portal2Pos);

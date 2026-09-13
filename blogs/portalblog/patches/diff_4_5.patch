@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview4.html"
 +++ "b/htmlPreviews\\htmlPreview5.html"
-@@ -824,7 +824,7 @@
+@@ -820,7 +820,7 @@
                  }
              }
  
@@ -9,7 +9,7 @@
                  for (let tri of tris) {
                      let vertices = tri.vertices;
                      for (let i = 0; i < vertices.length; i++) {
-@@ -979,7 +979,7 @@
+@@ -975,7 +975,7 @@
                      tri.perspectiveDivide();
                  }
  
@@ -18,7 +18,7 @@
              }
  
              calculateTransformToOtherPortalTransform(position, rotation) {
-@@ -1031,47 +1031,48 @@
+@@ -1027,47 +1027,48 @@
          let dirLightDefaultDir = new Vector3(0.2, -1, 0);
          let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
  
@@ -84,7 +84,7 @@
              let visibleTris = [];
              for (let tri of objectTris) {
                  if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
-@@ -1080,15 +1081,42 @@
+@@ -1076,15 +1077,42 @@
                  }
              }
  

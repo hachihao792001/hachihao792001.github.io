@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview7.html"
 +++ "b/htmlPreviews\\htmlPreview8.html"
-@@ -1030,6 +1030,11 @@
+@@ -1026,6 +1026,11 @@
                  return allTris;
              }
  
@@ -12,7 +12,7 @@
              runRenderPipeline(objectTris) {
                  let tris = [];
                  for (let tri of objectTris) {
-@@ -1040,12 +1045,16 @@
+@@ -1036,12 +1041,16 @@
                  this.rasterizer.clearScreen();
  
                  let viewMatPortal = this.camera.getViewMatrix();

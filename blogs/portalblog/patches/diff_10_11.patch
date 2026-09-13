@@ -1,0 +1,107 @@
+--- "a/htmlPreviews\\htmlPreview10.html"
++++ "b/htmlPreviews\\htmlPreview11.html"
+@@ -120,6 +120,35 @@
+                 this.z = m.m[2][0] * x + m.m[2][1] * y + m.m[2][2] * z + m.m[2][3] * w;
+                 this.w = m.m[3][0] * x + m.m[3][1] * y + m.m[3][2] * z + m.m[3][3] * w;
+             }
++            projectVectorToPlane(planeNormal) {
++                let dot = Vector3.dot(this, planeNormal);
++                return Vector3.sub(this, Vector3.mul(planeNormal, dot));
++            }
++            static getAxisAndRadianBetween(vec1, vec2) {
++                let dot = Vector3.dot(vec1, vec2);
++                let almostOne = 0.9999;
++                if (dot >= almostOne) return [Vector3.up, 0];
++                if (dot <= -almostOne) return [Vector3.up, Math.PI];
++
++                let axis = Vector3.cross(vec1, vec2);
++                axis.normalize();
++
++                let angle = -Math.acos(dot);
++
++                return [axis, angle];
++            }
++            static getRadianBetweenWithAxis(vec1, vec2, axis) {
++                let projectedV1 = vec1.projectVectorToPlane(axis);
++                let projectedV2 = vec2.projectVectorToPlane(axis);
++                projectedV1.normalize();
++                projectedV2.normalize();
++
++                let dot = Vector3.dot(projectedV1, projectedV2);
++                let angle = Math.acos(dot);
++
++                let cross = Vector3.cross(projectedV1, projectedV2);
++                return Vector3.dot(cross, axis) > 0 ? -angle : angle;
++            }
+         }
+         Vector3.zero = new Vector3(0, 0, 0);
+         Vector3.one = new Vector3(1, 1, 1);
+@@ -215,6 +244,11 @@
+                 const s = -Math.sin(half);
+                 return new Quaternion(Math.cos(half), axis.x * s, axis.y * s, axis.z * s);
+             }
++            static buildQuaternionAxisRadian(axis, angle) {
++                const half = angle / 2.0;
++                const s = -Math.sin(half);
++                return new Quaternion(Math.cos(half), axis.x * s, axis.y * s, axis.z * s);
++            }
+ 
+             static buildQuaternionEuler(eulerAngles) {
+                 const a = eulerAngles.x / 180 * Math.PI * 0.5;
+@@ -262,6 +296,22 @@
+                 const res = Quaternion.multiply(Quaternion.multiply(this.conjugate(), qVec), this);
+                 return new Vector3(res.b, res.c, res.d);
+             }
++
++            static lookRotation(forward, up) {
++                let [fixForwardAxis, fixForwardAngle] = Vector3.getAxisAndRadianBetween(Vector3.forward, forward);
++                let firstRotation = Quaternion.buildQuaternionAxisRadian(fixForwardAxis, fixForwardAngle);
++
++                let upAfterFirstRotation = firstRotation.rotateVector(Vector3.up).normalize();
++                let correctUp = up.projectVectorToPlane(forward).normalize();
++
++                if (Math.abs(Vector3.dot(upAfterFirstRotation, correctUp)) < 0.999999) {
++                    let fixUpAngle = Vector3.getRadianBetweenWithAxis(upAfterFirstRotation, correctUp, forward);
++                    let secondRotation = Quaternion.buildQuaternionAxisRadian(forward, fixUpAngle);
++                    return Quaternion.multiply(secondRotation, firstRotation);
++                } else {
++                    return firstRotation;
++                }
++            }
+         }
+ 
+         class Triangle {
+@@ -532,6 +582,17 @@
+                 let up = this.rotation.rotateVector(Vector3.up);
+                 return Mat4x4.View(right, up, forward, this.pos);
+             }
++
++            updateTransformAndCorrectRoll(newPos, newRot) {
++                this.pos = newPos;
++                this.rotation = newRot;
++
++                let newForward = newRot.rotateVector(Vector3.forward).normalize();
++                if (Math.abs(Vector3.dot(newForward, Vector3.up)) > 0.999)
++                    return;
++
++                this.rotation = Quaternion.lookRotation(newForward, Vector3.up);
++            }
+         }
+ 
+         class Mesh {
+@@ -1272,13 +1333,11 @@
+ 
+             let cameraTeleportedTransform = portal1.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
+             if (cameraTeleportedTransform != null) {
+-                camera.pos = cameraTeleportedTransform[0];
+-                camera.rotation = cameraTeleportedTransform[1];
++                camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
+             } else {
+                 cameraTeleportedTransform = portal2.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
+                 if (cameraTeleportedTransform != null) {
+-                    camera.pos = cameraTeleportedTransform[0];
+-                    camera.rotation = cameraTeleportedTransform[1];
++                    camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
+                 }
+             }
+         }

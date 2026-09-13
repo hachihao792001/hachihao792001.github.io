@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview2.html"
 +++ "b/htmlPreviews\\htmlPreview3.html"
-@@ -534,6 +534,35 @@
+@@ -530,6 +530,35 @@
              }
          }
  
@@ -36,7 +36,7 @@
          class Cube extends Mesh {
              constructor() {
                  super(Cube.generateInitialTriangles());
-@@ -921,13 +950,16 @@
+@@ -917,13 +946,16 @@
  
          const lightDirIntensitySlider = document.getElementById("dirIntensity");
          const lightDirIntensityText = document.getElementById("dirIntensityText");
@@ -54,7 +54,7 @@
  
          let lastTime = performance.now();
          let dt = 0;
-@@ -951,6 +983,8 @@
+@@ -947,6 +979,8 @@
  
              let objectTris = [];
              objectTris.push(...ground.getTransformedTriangles());

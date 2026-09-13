@@ -21,7 +21,7 @@
      <script>
          class Vector2 {
              constructor(u = 0, v = 0, w = 1) {
-@@ -730,111 +716,6 @@
+@@ -726,111 +712,6 @@
              constructor(dir, intensity) {
                  this.dir = dir.normalize();
                  this.intensity = intensity;
@@ -133,7 +133,7 @@
              }
          }
  
-@@ -965,17 +846,7 @@
+@@ -961,17 +842,7 @@
                                      );
                                      pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
  
@@ -152,7 +152,7 @@
  
                                      let texColor = tri.color;
                                      if (tri.texture && tri.texture.pixels) {
-@@ -1050,31 +921,13 @@
+@@ -1046,31 +917,13 @@
  
          const lightDirIntensitySlider = document.getElementById("dirIntensity");
          const lightDirIntensityText = document.getElementById("dirIntensityText");
@@ -184,7 +184,7 @@
  
          let lastTime = performance.now();
          let dt = 0;
-@@ -1096,33 +949,8 @@
+@@ -1092,33 +945,8 @@
              camera.updateMovement(dt, keyStates);
              const viewMat = camera.getViewMatrix();
  
@@ -218,7 +218,7 @@
  
              let visibleTris = [];
              for (let tri of objectTris) {
-@@ -1150,20 +978,6 @@
+@@ -1146,20 +974,6 @@
              lightDirIntensityText.textContent = dirLight.intensity.toFixed(2);
          });
  

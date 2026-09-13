@@ -1187,6 +1187,43 @@ let cameraRotLerpCountDown = 0;</code></pre>
 }</code></pre>
                     Full code:
                     <div class="htmlPreview" id="htmlPreview12"></div>
+
+                    <h3>d. Sửa đôi khi có flash khi đi qua Portal</h3>
+                    Trong khi bạn test việc đi qua Portal, thì chắc không ít lần bạn sẽ thấy nó sẽ chớp 1 cái, lúc xảy ra lúc không. Cái này là do khi bạn đang ở rất gần
+                    Portal nhưng chưa đi qua, near plane clipping chạy và cắt luôn Portal, dẫn tới việc bạn nhìn thấy đằng sau Portal, đó chính là cái chớp. Giải pháp chỉ đơn
+                    giản là teleport bạn sớm hơn 1 tí, đủ trễ để mất cái flash và đủ sớm để ko cảm thấy giật.<br/><br/>
+                    Như vậy là ta cần 1 hàm đo khoảng cách từ 1 điểm (player) tới plane (portal):
+                    <pre><code class="language-javascript">class Plane {
+    ...
+    distanceToPoint(p) {
+        return Vector3.dot(p, this.normal) - this.D;
+    }
+    ...
+}</code></pre>
+                    Bản chất là lấy độ dài hình chiếu của vector điểm p lên pháp tuyến của plane, trừ đi khoảng cách từ plane tới gốc tọa độ (i hope you can imagine it in your mind).<br/><br/>
+
+                    Và ở hàm tính vị trí teleport, thay vì xem "ở đằng trước Portal" thật sự là ở đằng trước Portal, thì xem nó là "cách Portal ít hơn 1 khoảng nào đó":
+                    <pre><code class="language-javascript">getPlayerTeleportedTransformIfGoThroughPortal(playerCameraPos, playerCameraRotation) {
+    let plane = this.getPlane();
+    let distanceToPlane = plane.distanceToPoint(playerCameraPos);
+    let isPlayerInFrontOfPortal = distanceToPlane >= portalCrossMargin;     // <----------------------
+
+    if (this.lastFramePlayerInFrontOfPortal && !isPlayerInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(playerCameraPos)) {
+        this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
+        let [newPlayerPos, newPlayerRotation] = this.calculateTransformToOtherPortalTransform(playerCameraPos, playerCameraRotation);
+        return [newPlayerPos, newPlayerRotation];
+    } else {
+        this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
+        return null;
+    }
+}
+
+...
+
+let portalCrossMargin = znear * 2;  // 2 lần znear cho an toàn</code></pre>
+
+                    That's it, that's all we need to do, full code:
+                    <div class="htmlPreview" id="htmlPreview13"></div>
                 </div>
             </div>
         </div>

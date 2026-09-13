@@ -8,7 +8,7 @@
      <script>
          class Vector2 {
              constructor(u = 0, v = 0, w = 1) {
-@@ -250,6 +251,12 @@
+@@ -246,6 +247,12 @@
                      res.c,
                      res.d);
              }
@@ -21,7 +21,7 @@
          }
  
          class Triangle {
-@@ -910,7 +917,10 @@
+@@ -906,7 +913,10 @@
                  }
              }
  
@@ -33,7 +33,7 @@
                  let index = 0;
                  for (let y = 0; y < canvas.height; y++) {
                      for (let x = 0; x < canvas.width; x++) {
-@@ -922,15 +932,83 @@
+@@ -918,15 +928,83 @@
                      }
                  }
  
@@ -118,7 +118,7 @@
          const rasterizer = new Rasterizer();
          const fov = 60;
          let znear = 0.01, zfar = 1000;
-@@ -955,11 +1033,12 @@
+@@ -951,11 +1029,12 @@
  
          let brickTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg");
  
@@ -134,7 +134,7 @@
  
          let lastTime = performance.now();
          let dt = 0;
-@@ -979,12 +1058,19 @@
+@@ -975,12 +1054,19 @@
              rasterizer.clearScreen();
  
              camera.updateMovement(dt, keyStates);
@@ -156,7 +156,7 @@
  
              let visibleTris = [];
              for (let tri of objectTris) {
-@@ -999,6 +1085,8 @@
+@@ -995,6 +1081,8 @@
                  tri.perspectiveDivide();
              }
  

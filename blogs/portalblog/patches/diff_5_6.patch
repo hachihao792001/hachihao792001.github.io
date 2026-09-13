@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview5.html"
 +++ "b/htmlPreviews\\htmlPreview6.html"
-@@ -260,7 +260,7 @@
+@@ -256,7 +256,7 @@
          }
  
          class Triangle {
@@ -9,7 +9,7 @@
                  if (vertices.length == 0) {
                      this.vertices = [];
                      for (let i = 0; i < 3; i++) {
-@@ -274,6 +274,7 @@
+@@ -270,6 +270,7 @@
                  this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
                  this.color = color;
                  this.texture = null;
@@ -17,7 +17,7 @@
              }
  
              clone() {
-@@ -285,6 +286,7 @@
+@@ -281,6 +282,7 @@
                  }
                  tri.color = this.color;
                  tri.texture = this.texture;
@@ -25,7 +25,7 @@
                  return tri;
              }
  
-@@ -379,6 +381,7 @@
+@@ -375,6 +377,7 @@
                      outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
                      outTri.color = this.color;
                      outTri.texture = this.texture;
@@ -33,7 +33,7 @@
                      outTris.push(outTri);
                  } else if (frontPoints.length == 2 && behindPoints.length == 1) {
                      let outTri1 = new Triangle(), outTri2 = new Triangle();
-@@ -406,6 +409,7 @@
+@@ -402,6 +405,7 @@
                      outTri1.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
                      outTri1.color = this.color;
                      outTri1.texture = this.texture;
@@ -41,7 +41,7 @@
                      outTris.push(outTri1);
  
                      outTri2.vertices[0] = f1.clone();
-@@ -419,6 +423,7 @@
+@@ -415,6 +419,7 @@
                      outTri2.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
                      outTri2.color = this.color;
                      outTri2.texture = this.texture;
@@ -49,7 +49,7 @@
                      outTris.push(outTri2);
                  }
  
-@@ -542,11 +547,11 @@
+@@ -538,11 +543,11 @@
          }
  
          class Quad extends Mesh {
@@ -64,7 +64,7 @@
                  let tris = [];
                  let color = new Color(255, 255, 255);
  
-@@ -554,7 +559,7 @@
+@@ -550,7 +555,7 @@
                      new Triangle(
                          [new Vector3(0.5, -0.5, 0), new Vector3(0.5, 0.5, 0), new Vector3(-0.5, 0.5, 0)],
                          [new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
@@ -73,7 +73,7 @@
                      ),
                  );
  
-@@ -562,7 +567,7 @@
+@@ -558,7 +563,7 @@
                      new Triangle(
                          [new Vector3(0.5, -0.5, 0), new Vector3(-0.5, 0.5, 0), new Vector3(-0.5, -0.5, 0)],
                          [new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
@@ -82,7 +82,7 @@
                      ),
                  );
  
-@@ -774,7 +779,7 @@
+@@ -770,7 +775,7 @@
                  this.pixels = null;
                  this.width = 0;
                  this.height = 0;
@@ -91,7 +91,7 @@
              }
  
              async load(url) {
-@@ -886,17 +891,24 @@
+@@ -882,17 +887,24 @@
  
                                      let texColor = tri.color;
                                      if (tri.texture && tri.texture.pixels) {
@@ -127,7 +127,7 @@
                                      }
  
                                      this.screenBuffer[y][x].updateColor(
-@@ -946,7 +958,12 @@
+@@ -942,7 +954,12 @@
                  this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
                  this.scale = scale;
  
@@ -141,7 +141,7 @@
                  this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
                  this.rasterizer = new Rasterizer();
                  this.camera = new Camera(pos, eulerAngles, 8, 0.2);
-@@ -982,6 +999,21 @@
+@@ -978,6 +995,21 @@
                  this.rasterizer.processClipSpaceTriangles(visibleTris);
              }
  
@@ -163,7 +163,7 @@
              calculateTransformToOtherPortalTransform(position, rotation) {
                  let otherPortalUp = this.otherPortal.rotation.rotateVector(Vector3.up).normalize();
                  let rotate180 = Quaternion.buildQuaternionAxisAngle(otherPortalUp, 180);
-@@ -1062,13 +1094,15 @@
+@@ -1058,13 +1090,15 @@
              objectTris.push(...playerCube.getTransformedTriangles());
              objectTris.push(...portal1.quad.getTransformedTriangles());
              objectTris.push(...portal2.quad.getTransformedTriangles());

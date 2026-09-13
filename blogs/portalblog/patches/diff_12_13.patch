@@ -1,0 +1,30 @@
+--- "a/htmlPreviews\\htmlPreview12.html"
++++ "b/htmlPreviews\\htmlPreview13.html"
+@@ -546,6 +546,9 @@
+                 let vectorAM = Vector3.mul(vectorAB, t);
+                 return [t, Vector3.add(A, vectorAM)];
+             }
++            distanceToPoint(p) {
++                return Vector3.dot(p, this.normal) - this.D;
++            }
+         }
+ 
+         class Camera {
+@@ -1236,7 +1239,8 @@
+ 
+             getPlayerTeleportedTransformIfGoThroughPortal(playerCameraPos, playerCameraRotation) {
+                 let plane = this.getPlane();
+-                let isPlayerInFrontOfPortal = plane.isPointInFrontOfPlane(playerCameraPos);
++                let distanceToPlane = plane.distanceToPoint(playerCameraPos);
++                let isPlayerInFrontOfPortal = distanceToPlane >= portalCrossMargin;
+ 
+                 if (this.lastFramePlayerInFrontOfPortal && !isPlayerInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(playerCameraPos)) {
+                     this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
+@@ -1256,6 +1260,7 @@
+         const rasterizer = new Rasterizer();
+         const fov = 60;
+         let znear = 0.01, zfar = 1000;
++        let portalCrossMargin = znear * 2;
+         let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
+         let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 6, 0.2);
+         let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
