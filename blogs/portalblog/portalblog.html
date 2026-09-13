@@ -1059,6 +1059,16 @@ let controllingRotateSpeed = 60;</code></pre>
         return firstRotation;
     }
 }</code></pre>
+                    Ta chỉ có hàm Quaternion.buildQuaternionAxisAngle (độ) mà chưa có Quaternion.buildQuaternionAxisRadian nên ta thêm:
+                    <pre><code class="language-javascript">class Quaternion {
+    ...
+    static buildQuaternionAxisRadian(axis, angle) {
+        const half = angle / 2.0;
+        const s = -Math.sin(half);
+        return new Quaternion(Math.cos(half), axis.x * s, axis.y * s, axis.z * s);
+    }
+    ...  
+}</code></pre>      
 
                     Có được hàm lookRotation mà ta muốn rồi, bây giờ ta quay lại chủ đề chính: correct lại roll của player sau khi teleport. Sau khi teleport,
                     ta có forward mới, ta dùng hàm lookRotation để tìm rotation đúng là xong. Tuy nhiên phải check trường hợp là player nhìn thẳng
@@ -1082,7 +1092,7 @@ let controllingRotateSpeed = 60;</code></pre>
 }</code></pre>
 
                     Sửa lại đoạn code teleport:
-                    <pre><code>function updateGameObjectTransforms() {
+                    <pre><code class="language-javascript">function updateGameObjectTransforms() {
     ...
 
     let cameraTeleportedTransform = portal1.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
@@ -1095,8 +1105,88 @@ let controllingRotateSpeed = 60;</code></pre>
         }
     }
 }</code></pre>
-                    Full code:
+                    Full code, xoay portal quay trục Z thế giới bằng phím M và đi qua thử:
                     <div class="htmlPreview" id="htmlPreview11"></div>
+
+                    Oke nó đã hoạt động tốt, tuy nhiên hiện tại ta correct roll ngay lập tức sau khi teleport nên nó snap thẳng về rotation đúng. Lý tưởng thì ta muốn nó
+                    xoay từ từ đến rotation đó, nghĩa là ta phải thêm khả năng lerp cho Quaternion.<br/><br/>
+                    Hàm lerp của Quaternion không phải gì cao siêu, hàm lerp của số, Vector2, Vector3 như thế nào thì Quaternion sẽ như thế đấy, là \(p + (q-p)*t\) 😳 Tuy nhiên ta
+                    phải có bước check tích vô hướng của 2 Quaternion, nếu tích vô hướng âm (2 cái không "cùng chiều") thì ta phải đổi dấu 1 trong 2 cái để nó xoay theo 
+                    đường ngắn nhất. Tích vô hướng của 2 Quaternion mình có giải thích ở blog <a href="../graphics3D/graphics3D6-quaternion.html">Quaternion</a> rồi, còn cái lerp đổi dấu này nghe thoáng qua thì có vẻ hợp lí nhưng
+                    bản chất bên trong (toán 4 chiều 🥶) thì mình cũng chưa tìm hiểu.<br/><br/>
+                    Như vậy hàm dot và lerp chỉ đơn giản là:
+                    <pre><code class="language-javascript">class Quaternion {
+    ...
+    static dot(p, q) {
+        return p.a * q.a + p.b * q.b + p.c * q.c + p.d * q.d;
+    }
+
+    static lerp(from, to, t) {
+        let toA = to.a, toB = to.b, toC = to.c, toD = to.d;
+
+        let dot = Quaternion.dot(from, to);
+        if (dot < 0) {
+            toA = -toA;
+            toB = -toB;
+            toC = -toC;
+            toD = -toD;
+        }
+
+        return new Quaternion(
+            from.a + (toA - from.a) * t,
+            from.b + (toB - from.b) * t,
+            from.c + (toC - from.c) * t,
+            from.d + (toD - from.d) * t
+        )
+    }
+    ...
+}</code></pre>
+                    Có được hàm lerp rồi thì ta triển thôi, khi đã tính được rotation đúng, đặt rotation sau khi teleport là "điểm bắt đầu", đặt rotation đúng roll là "đích đến",
+                    cho trước lerp duration rồi đếm delta time lerp từ từ thôi.<br/><br/>
+                    Các biến global cần thiết:
+                    <pre><code class="language-javascript">let cameraRotLerpStart = camera.rotation;
+let cameraRotLerpEnd = camera.rotation;
+let cameraRotLerpDuration = 0.2;
+let cameraRotLerpCountDown = 0;</code></pre>
+
+                    Đoạn code lerp rotation camera trong lúc update, giảm cameraRotLerpCountDown theo frame và lerp rotation theo:
+                    <pre><code class="language-javascript">function updateGameObjectTransforms() {
+    ...
+    if (cameraRotLerpCountDown > 0) {
+        camera.rotation = Quaternion.lerp(
+            cameraRotLerpStart,
+            cameraRotLerpEnd,
+            (cameraRotLerpDuration - cameraRotLerpCountDown) / cameraRotLerpDuration,
+        );
+        cameraRotLerpCountDown -= dt;
+        if (cameraRotLerpCountDown <= 0) {
+            camera.rotation = cameraRotLerpEnd;
+        }
+    }
+    ...
+}</code></pre>
+                    Đoạn tính rotation đúng roll. Thay vì set luôn this.rotation là cái đúng, thì setup lerp cho hàm update chạy (chỉ khi nó chưa đúng):
+                    <pre><code class="language-javascript">class Camera {
+    ...
+    updateTransformAndCorrectRoll(newPos, newRot) {
+        this.pos = newPos;
+        this.rotation = newRot;
+
+        let newForward = newRot.rotateVector(Vector3.forward).normalize();
+        if (Math.abs(Vector3.dot(newForward, Vector3.up)) > 0.999)
+            return;
+
+        let correctRotation = Quaternion.lookRotation(newForward, Vector3.up);
+        if (Math.abs(Quaternion.dot(newRot, correctRotation)) < 0.999) {
+            cameraRotLerpStart = newRot;
+            cameraRotLerpEnd = correctRotation;
+            cameraRotLerpCountDown = cameraRotLerpDuration;
+        }
+    }
+    ...
+}</code></pre>
+                    Full code:
+                    <div class="htmlPreview" id="htmlPreview12"></div>
                 </div>
             </div>
         </div>
