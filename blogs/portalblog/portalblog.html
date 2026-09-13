@@ -961,7 +961,142 @@ let controllingRotateSpeed = 60;</code></pre>
                     Như vậy, sau khi teleport, ta phải có một cơ chế nào đó correct roll của người chơi về lại vị trí thẳng đứng, như game Portal.
 
                     <h3>c. Correct roll của người chơi sau khi teleport</h3>
+
+                    Trước tiên, bạn cần biết là sau khi teleport thì player có vector forward mới. Thì khi bạn correct lại rotation, bạn vẫn phải giữ
+                    nguyên vector forward đó, nghĩa là chỉ được phép xoay theo trục vector forward chứ không được xoay theo trục khác.<br/><br/>
+
+                    Oke vector forward cố định rồi, thì ta cần biết khi nào roll mới là "thẳng đứng"? Mình nói luôn, roll của người chơi sẽ thẳng đứng khi
+                    vector right song song với mặt đất, hoặc vuông góc với mặt phẳng mà chứa cả forward và Vector3.up thế giới.<br/><br/>
                     
+                    Để tìm được rotation thẳng đứng đó, thì trong Unity có hàm 
+                    <a href="https://docs.unity3d.com/6000.5/Documentation/ScriptReference/Quaternion.LookRotation.html">Quaternion.LookRotation</a>.<br/>
+                    Hàm này nhận vào forward và upwards, và trả về một rotation hướng về phía forward, còn upwards được dùng để xác định roll. Cụ thể là nó đảm
+                    bảo up của rotation trả về sẽ nằm trên cùng 1 mặt phẳng với forward và upwards, và \(\vec{up} \cdot \vec{upwards} > 0 \)  (nhìn chung chung 1 hướng).
+                    Để cho rotation được thẳng đứng thì mình chỉ việc truyền Vector3.up vào trong tham số upwards (đỉnh đầu hướng chung chung lên trời) (hope that make sense).<br/><br/>
+
+                    Ý tưởng sẽ như sau:
+                    <ol>
+                        <li>Ta có rotation \(p\), ban đầu nó mặc định forward = Vector3.forward, up = Vector3.up</li>
+                        <li>Tìm phép xoay để xoay từ Vector3.forward sang forward (phải xác định trục)</li>
+                        <li>Áp dụng phép xoay đó vào \(p\), ra \(p'\)</li>
+                        <li>\(p'\) có forward' đã đúng, còn up' có thể đã đúng hoặc không, nếu chưa đúng thì đi tiếp.</li>
+                        <li>Tìm up đúng từ forward và upwards</li>
+                        <li>Tìm phép xoay để xoay từ up' sang up đúng (theo trục forward)</li>
+                        <li>Áp dụng phép xoay đó vào \(p\) và trả kết quả</li>
+                    </ol>
+
+                    Ý tưởng thì thì là như vậy, nhưng có 3 vấn đề ta cần giải quyết:
+                    <ul>
+                        <li>Tìm phép xoay giữa 2 vector bất kỳ (2)</li>
+                        <li>Tìm phép xoay giữa 2 vector bất kỳ quanh 1 trục cho trước (6)</li>
+                        <li>Tìm up đúng từ forward và upwards? (5)</li>
+                    </ul>
+
+                    Phép xoay giữa 2 vector thật ra khá dễ, chỉ cần tìm tích có hướng của 2 vector sẽ ra trục xoay, và dùng tích vô hướng (arcos) sẽ ra góc giữa 2 vector.
+                    Tuy nhiên ta nên xét 2 trường hợp đặc biệt là 2 vector cùng phương cùng chiều và cùng phương ngược chiều, lúc đó trục nào cũng xoay được, còn góc thì luôn là
+                    0 hoặc 180 độ.
+                    <pre><code class="language-javascript">class Vector3 {
+    static getAxisAndRadianBetween(vec1, vec2) {
+        let dot = Vector3.dot(vec1, vec2);
+        let almostOne = 0.9999;     // floating point error
+        if (dot >= almostOne) return [Vector3.up, 0];
+        if (dot <= -almostOne) return [Vector3.up, Math.PI];
+
+        let axis = Vector3.cross(vec1, vec2);
+        axis.normalize();       // tích có hướng của 2 vector đơn vị có kết quả không phải là vector đơn vị
+
+        let angle = -Math.acos(dot);       // đổi dấu vì engine là hệ tọa độ tay trái
+
+        return [axis, angle];
+    }   
+}</code></pre>
+                    <i>Mình đã nói tới vấn đề đổi dấu góc của engine này từ <a href="../graphics3D/graphics3D4-model.html">blog 4</a> của
+                    <a href="../graphics3D/graphics3D-intro.html">Series về engine</a>.</i><br/><br/>
+
+                    Còn đối với trường hợp có vector trục cho trước, ta chiếu 2 vector lên mặt phẳng có pháp tuyến là vector trục, dùng lại arccos tích vô hướng
+                    sẽ ra góc giữa 2 vector đó. Tuy nhiên ta check xem tích có hướng của 2 vector (trục xoay real) có "nhìn chung chung 1 hướng" với vector trục truyền
+                    vào không, và dựa vào đó để kết luận dấu của góc.
+
+                    <pre><code class="language-javascript">class Vector3 {
+    static getRadianBetweenWithAxis(vec1, vec2, axis) {
+        let projectedV1 = vec1.projectVectorToPlane(axis);
+        let projectedV2 = vec2.projectVectorToPlane(axis);
+        projectedV1.normalize();
+        projectedV2.normalize();
+
+        let dot = Vector3.dot(projectedV1, projectedV2);
+        let angle = Math.acos(dot);
+
+        let cross = Vector3.cross(projectedV1, projectedV2);
+        return Vector3.dot(cross, axis) > 0 ? -angle : angle;       // nhìn chung 1 hướng thì đổi dấu (hệ tọa độ tay trái)
+    }
+}</code></pre>
+                    Hàm projectVectorToPlane thật ra chưa có, ta thêm vào:
+                    <pre><code class="language-javascript">projectVectorToPlane(planeNormal) {
+    let dot = Vector3.dot(this, planeNormal);
+    return Vector3.sub(this, Vector3.mul(planeNormal, dot));
+}</code></pre>
+                    Bản chất là lấy vector \(\vec{v}\) trừ đi vector đi từ đỉnh của \(\vec{v}\) xuống plane (tính bằng tích vô hướng với pháp tuyến plane), nghĩa 
+                    là dùng vector đó kéo đầu \(\vec{v}\) xuống.<br/><br/>
+
+                    Sau cùng, là vấn đề "Tìm up đúng từ forward và upwards". Thật ra thì cũng đơn giản, ta biết là forward, up đúng và upwards nằm cùng 1 mặt phẳng,
+                    và forward vuông góc với up đúng. Thay vì tìm phép xoay upwards thành up đúng, thì ta chiếu thẳng upwards lên mặt phẳng có forward là pháp tuyến,
+                    sau đó normalize, là có luôn up đúng 😳 Và vì chiếu thẳng lên như vậy nên mặc định upwards và up đúng sẽ "nhìn chung chung 1 hướng" với nhau.<br/><br/>
+
+                    Như vậy hàm lookRotation sẽ như sau:
+                    <pre><code class="language-javascript">static lookRotation(forward, up) {
+    let [fixForwardAxis, fixForwardAngle] = Vector3.getAxisAndRadianBetween(Vector3.forward, forward);
+    let firstRotation = Quaternion.buildQuaternionAxisRadian(fixForwardAxis, fixForwardAngle);      // phép xoay để xoay từ Vector3.forward sang forward
+
+    let upAfterFirstRotation = firstRotation.rotateVector(Vector3.up).normalize();      // up'
+    let correctUp = up.projectVectorToPlane(forward).normalize();       // up đúng
+
+    if (Math.abs(Vector3.dot(upAfterFirstRotation, correctUp)) < 0.999999) {            // up' chưa đúng
+        let fixUpAngle = Vector3.getRadianBetweenWithAxis(upAfterFirstRotation, correctUp, forward);
+        let secondRotation = Quaternion.buildQuaternionAxisRadian(forward, fixUpAngle);     // phép xoay để xoay từ up' sang up đúng (theo trục forward)
+        return Quaternion.multiply(secondRotation, firstRotation);
+    } else {
+        return firstRotation;
+    }
+}</code></pre>
+
+                    Có được hàm lookRotation mà ta muốn rồi, bây giờ ta quay lại chủ đề chính: correct lại roll của player sau khi teleport. Sau khi teleport,
+                    ta có forward mới, ta dùng hàm lookRotation để tìm rotation đúng là xong. Tuy nhiên phải check trường hợp là player nhìn thẳng
+                    lên trời thì lúc đó forward cũng là Vector3.up, toán các thứ sẽ khá bủh nên trường hợp này ta skip (thật ra game nào cũng cản bạn nhìn thẳng
+                    băng lên trời cả).<br/><br/>
+
+                    Hàm này ta sẽ để trong class Camera (tự correct chính nó):
+                    <pre><code class="language-javascript">class Camera {
+    ...
+    updateTransformAndCorrectRoll(newPos, newRot) {
+        this.pos = newPos;
+        this.rotation = newRot;
+
+        let newForward = newRot.rotateVector(Vector3.forward).normalize();
+        if (Math.abs(Vector3.dot(newForward, Vector3.up)) > 0.999)
+            return;
+
+        this.rotation = Quaternion.lookRotation(newForward, Vector3.up);
+    }
+    ...
+}</code></pre>
+
+                    Sửa lại đoạn code teleport:
+                    <pre><code>function updateGameObjectTransforms() {
+    ...
+
+    let cameraTeleportedTransform = portal1.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
+    if (cameraTeleportedTransform != null) {
+        camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
+    } else {
+        cameraTeleportedTransform = portal2.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
+        if (cameraTeleportedTransform != null) {
+            camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
+        }
+    }
+}</code></pre>
+                    Full code:
+                    <div class="htmlPreview" id="htmlPreview11"></div>
                 </div>
             </div>
         </div>

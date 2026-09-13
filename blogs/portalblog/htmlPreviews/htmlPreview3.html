@@ -203,11 +203,7 @@
                 let radian = angle / 180.0 * Math.PI;
                 const half = radian / 2;
                 const s = -Math.sin(half);
-                return new Quaternion(
-                    Math.cos(half),
-                    axis.x * s,
-                    axis.y * s,
-                    axis.z * s);
+                return new Quaternion(Math.cos(half), axis.x * s, axis.y * s, axis.z * s);
             }
 
             static buildQuaternionEuler(eulerAngles) {
