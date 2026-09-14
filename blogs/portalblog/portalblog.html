@@ -1224,6 +1224,120 @@ let portalCrossMargin = znear * 2;  // 2 lần znear cho an toàn</code></pre>
 
                     That's it, that's all we need to do, full code:
                     <div class="htmlPreview" id="htmlPreview13"></div>
+
+                    <h2>3. Hiệu ứng đường hầm vô tận</h2>
+                    This is what you've been waiting for, the famous infinite portal effect 😳
+                    <div align="center">
+                        <img style="max-height: 400px; max-width: 100vw; display: block;" src="https://gamerdame.wordpress.com/wp-content/uploads/2012/03/portal_mirror-2.jpg"/>
+                        <i>Nguồn ảnh: <a href="https://gamerdame.wordpress.com/2012/03/22/game-review-portal/">gamerdame</a>, Game: Portal (Valve).</i>
+                    </div>
+
+                    Hiệu ứng này xảy ra khi 2 Portal "nhìn thấy" được nhau, điển hình nhất là khi 2 portal đối diện nhau. Khi player nhìn vào portal cam, nó hiện
+                    những gì mà camera cam thấy qua portal xanh, nhưng portal xanh lại đang "nhìn" vào portal cam, lại phải hiện nó tiếp, ... nên thành ra vòng lặp vô tận.<br/><br/>
+                    
+                    Engine của chúng ta hiện tại chưa hiện được hiệu ứng này, ta xem lại luồng xử lí:
+                    <ol>
+                        <li>Portal cam muốn render (muốn cập nhật Texture của Quad của nó)</li>
+                        <li>Chạy render pipeline với camera cam</li>
+                        <li>Camera cam thấy lại Portal cam (vì Portal xanh đang nhìn Portal cam)</li>
+                        <li>Portal cam chưa có texture vì nó vẫn còn đang đi tìm</li>
+                        <li>Camera cam vẫn phải render, nó dùng Texture Quad từ frame trước -> Hiệu ứng buffer như bạn thấy</li>
+                    </ol>
+                    
+                    Cái này sẽ rất là satisfying nếu bạn tự nghĩ ra được giải pháp cho nó, bạn nên suy nghĩ 1 hồi lâu trước rồi mới đọc tiếp 😳 Hint: đừng bị chữ "nhìn thấy"
+                    lừa, 2 portal không phải 2 cái gương.<br/><br/>
+
+                    Got it? Bây giờ tới giải pháp của mình. Bạn hãy imagine scenario dưới đây:
+                    <div align="center">
+                        <img style="max-height: 300px; display: block;" src="images/portalinf1.png"/>
+                    </div>
+                    2 Portal đối diện nhau nhưng Portal xanh xiên xiên tí (có lí do), player đang nhìn vào portal cam.<br/><br/>
+                    Giờ quay lại câu hỏi ở phần 1: Portal cam sẽ hiển thị gì?<br/>
+                    Như cũ thì ta tạo ra 1 camera cam ở đằng sau portal xanh, có transform (position + rotation) dựa vào portal xanh theo cách transform 
+                    của player dựa vào portal cam (như trên giải thích).
+                    <div align="center">
+                        <img style="max-height: 300px; display: block;" src="images/portalinf2.png"/>
+                    </div>
+                    Nhưng giờ camera cam lại nhìn thấy Portal cam, nhưng nó sẽ xa hơn so với góc nhìn từ player. Gọi portal cam xa hơn đó là portal cam 2 (P2). 
+                    Giờ ta lại hỏi lại: P2 sẽ hiển thị gì?<br/>
+                    Ta lại tạo 1 camera cam 2 (C2), transform của C2 sẽ dựa vào C1 theo cách C1 dựa vào player.
+                    <div align="center">
+                        <img style="max-height: 300px; display: block;" src="images/portalinf3.png"/>
+                    </div>
+                    C2 lại nhìn thấy P2, nhưng nó xa hơn so với góc nhìn từ C1, gọi P2 xa hơn đó là P3, ...<br/><br/>
+
+                    Quá trình trên sẽ lặp lại cho tới vô tận, hoặc tới 1 con số nào đó mình định sẵn 😳 Lí do mình để portal xanh xiên xiên vậy để nó càng ngày càng xiên về sau,
+                    nhấn mạnh việc transform của camera sau dựa vào camera trước.<br/><br/>
+                    Ngoài ra bạn có thể xem gif này được lấy từ <a href="https://www.youtube.com/watch?v=cWpFZbjtSQg">video của Sebastian Lague</a> cho sinh động:
+                    <div align="center">
+                        <img style="max-height: 300px; display: block;" src="images/sebastian.gif"/>
+                    </div>
+
+                    Cách mình viết như trên hơi lộn xộn, mục đích là để giới thiệu từ từ từng bước. Giờ ta phải viết cho nó có hệ thống lại để viết code cho dễ:
+                    <ul>
+                        <li>P1 cần render, tạo C1 từ player. P1 hỏi C1 thấy gì, C1 thấy P1 (nhưng nhỏ hơn), gọi là P2</li>
+                        <li>P2 cần render, tạo C2 từ C1. P2 hỏi C2 thấy gì, C2 thấy P2 (nhưng nhỏ hơn), gọi là P3</li>
+                        <li>P3 cần render, tạo C3 từ C2. P3 hỏi C3 thấy gì, C3 thấy P3 (nhưng nhỏ hơn), gọi là P4</li>
+                        <li>...</li>
+                        <li>Pn cần render, n là limit, render 1 màu</li>
+                    </ul>
+                    Có số rõ ràng như vậy rồi, thì mình có thể code luôn quy hoạch động, chứ không cần phải code đệ quy làm gì.<br/><br/>
+                    
+                    Tuy nhiên bạn phải để ý là camera thì build từ dưới lên, còn portal thì render từ trên xuống. Xem gif dưới đây để hình dung dễ hơn (cũng lấy từ video Sebastian Lague):
+                    <div align="center">
+                        <img style="max-height: 300px; display: block;" src="images/sebastian2.gif"/>
+                    </div>
+
+                    Trước khi viết phần code xử lí effect vô tận, thì trong hàm runRenderPipeline ta phải thêm 1 biến xác nhận là "đừng render texture gì hết cho các tam giác
+                    thuộc portal", để dành cho lần render đầu tiên (sâu nhất). Không làm vậy thì sẽ không bị gì, nhưng portal sâu nhất vẫn bị lại vụ buffer, nhìn khá xấu.
+                    <pre><code class="language-javascript">runRenderPipeline(objectTris, disablePortalTexture = false) {
+    let tris = [];
+    for (let tri of objectTris) {
+        let cloneTri = tri.clone();
+        if (cloneTri.portal && disablePortalTexture)
+            cloneTri.texture = null;        // bỏ luôn texture cho các triangle thuộc portal
+        tris.push(cloneTri);
+    }
+    ...
+}</code></pre>
+
+                    Như vậy là ta có thể viết được hàm "xử lí effect vô tận" như sau:
+                    <pre><code class="language-javascript">recursivePortalOperation(playerCamera, objectTris) {
+    let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
+
+    // dựng transform các camera từ dưới lên
+    for (let i = 1; i <= portalLimit; i++) {
+        cameraTransforms.push(this.calculateTransformToOtherPortalTransform(cameraTransforms[i - 1][0], cameraTransforms[i - 1][1]));
+    }
+
+    // set camera ở transform cuối cùng (sâu nhất) rồi render (bỏ texture portal)
+    this.camera.pos = cameraTransforms[portalLimit][0];
+    this.camera.rotation = cameraTransforms[portalLimit][1];
+    let clipSpaceTris = this.runRenderPipeline(objectTris, true);
+    this.updateTextureForQuad();
+
+    // từ portal sâu nhất lên lại đầu, render theo camera transform tương ứng từng bước
+    for (let i = portalLimit; i >= 1; i--) {
+        this.camera.pos = cameraTransforms[i][0];
+        this.camera.rotation = cameraTransforms[i][1];
+        clipSpaceTris = this.runRenderPipeline(objectTris);
+        this.updateTextureForQuad(clipSpaceTris);
+    }
+}</code></pre>
+                    Phần code về portal vô tận chỉ có như thế thôi 😳 Nhưng thật sự hiểu được bản chất mới là quan trọng.<br/><br/>
+                    Set portal limit thấp thấp chút:
+                    <pre><code class="language-javascript">let portalLimit = 4;</code></pre>
+                    Ở hàm portalRenderOperations, thay vì gọi runRenderPipeline và updateTextureForQuad cho từng portal, thì chỉ cần gọi hàm
+                    recursivePortalOperation ở trên:
+                    <pre><code class="language-javascript"> function portalRenderOperations(objectTris) {
+    portal1.recursivePortalOperation(camera, objectTris);
+    portal2.recursivePortalOperation(camera, objectTris);
+}</code></pre>
+                    Xoay 2 portal với nhau thay vì đều xoay về phía player:
+                    <pre><code class="language-javascript">let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, -90, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
+let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 90, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));</code></pre>
+                    Full code:
+                    <div class="htmlPreview" id="htmlPreview14"></div>
                 </div>
             </div>
         </div>

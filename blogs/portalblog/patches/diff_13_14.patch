@@ -1,0 +1,71 @@
+--- "a/htmlPreviews\\htmlPreview13.html"
++++ "b/htmlPreviews\\htmlPreview14.html"
+@@ -1162,10 +1162,12 @@
+                 return new Plane(forward, Vector3.sub(this.pos, Vector3.mul(forward, 0.01)));
+             }
+ 
+-            runRenderPipeline(objectTris) {
++            runRenderPipeline(objectTris, disablePortalTexture = false) {
+                 let tris = [];
+                 for (let tri of objectTris) {
+                     let cloneTri = tri.clone();
++                    if (cloneTri.portal && disablePortalTexture)
++                        cloneTri.texture = null;
+                     tris.push(cloneTri);
+                 }
+ 
+@@ -1251,6 +1253,25 @@
+                     return null;
+                 }
+             }
++
++            recursivePortalOperation(playerCamera, objectTris) {
++                let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
++
++                for (let i = 1; i <= portalLimit; i++) {
++                    cameraTransforms.push(this.calculateTransformToOtherPortalTransform(cameraTransforms[i - 1][0], cameraTransforms[i - 1][1]));
++                }
++
++                this.camera.pos = cameraTransforms[portalLimit][0];
++                this.camera.rotation = cameraTransforms[portalLimit][1];
++                let clipSpaceTris = this.runRenderPipeline(objectTris, true);
++                this.updateTextureForQuad();
++                for (let i = portalLimit; i >= 1; i--) {
++                    this.camera.pos = cameraTransforms[i][0];
++                    this.camera.rotation = cameraTransforms[i][1];
++                    clipSpaceTris = this.runRenderPipeline(objectTris);
++                    this.updateTextureForQuad(clipSpaceTris);
++                }
++            }
+         }
+ 
+         const canvas = document.getElementById("gameCanvas");
+@@ -1296,10 +1317,13 @@
+             new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), playerCubeTexture);
+         let portal1Pos = new Vector3(-3, 3, -3);
+         let portal2Pos = new Vector3(3, 3, -3);
+-        let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
+-        let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));
++        let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, -90, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
++        let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 90, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));
+         portal1.setOtherPortal(portal2);
+         portal2.setOtherPortal(portal1);
++
++        let portalLimit = 4;
++
+         let controllingObject = 0;
+         let controllingMoveSpeed = 6;
+         let controllingRotateSpeed = 60;
+@@ -1403,10 +1427,8 @@
+         }
+ 
+         function portalRenderOperations(objectTris) {
+-            portal1.runRenderPipeline(objectTris);
+-            portal1.updateTextureForQuad();
+-            portal2.runRenderPipeline(objectTris);
+-            portal2.updateTextureForQuad();
++            portal1.recursivePortalOperation(camera, objectTris);
++            portal2.recursivePortalOperation(camera, objectTris);
+         }
+ 
+         function objectSpaceToViewSpace(objectTris) {
