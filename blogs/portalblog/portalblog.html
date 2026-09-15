@@ -393,7 +393,7 @@ let portal2 = new Portal("Portal 2", new Vector3(3, 3, -3), new Vector3(0, 180, 
     portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
 }
 
-function gameObjectToObjectSpaceTriangles() {
+function gameObjectToWorldSpaceTriangles() {
     let objectTris = [];
     objectTris.push(...ground.getTransformedTriangles());
     objectTris.push(...playerCube.getTransformedTriangles());
@@ -408,7 +408,7 @@ function portalRenderOperations(objectTris) {
     portal2.runRenderPipeline(objectTris);
 }
 
-function objectSpaceToViewSpace(objectTris) {
+function worldSpaceToViewSpace(objectTris) {
     const viewMat = camera.getViewMatrix();
     let visibleTris = [];
     for (let tri of objectTris) {
@@ -451,9 +451,9 @@ function rasterize(visibleTris) {
         }
 
         updateGameObjectTransforms();
-        let objectTris = gameObjectToObjectSpaceTriangles();
+        let objectTris = gameObjectToWorldSpaceTriangles();
         portalRenderOperations(objectTris);
-        let visibleTris = objectSpaceToViewSpace(objectTris);
+        let visibleTris = worldSpaceToViewSpace(objectTris);
         viewSpaceToClipSpace(visibleTris);
         rasterize(visibleTris);
 
@@ -689,7 +689,7 @@ function rasterize(visibleTris) {
 
     ...
 
-    function gameObjectToObjectSpaceTriangles() {
+    function gameObjectToWorldSpaceTriangles() {
         let objectTris = [];
         objectTris.push(...ground.getTransformedTriangles());
         objectTris.push(...playerCube.getTransformedTriangles());
@@ -1338,11 +1338,208 @@ let portalCrossMargin = znear * 2;  // 2 lần znear cho an toàn</code></pre>
 let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 90, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));</code></pre>
                     Full code:
                     <div class="htmlPreview" id="htmlPreview14"></div>
-                </div>
-            </div>
-        </div>
-    </main>
 
+                    <h2>4. Đưa vật thể đi qua Portal</h2>
+                    Trong lúc bạn test ở trên, bạn sẽ thấy mỗi lần player đi qua Portal thì player cube sẽ chớp 1 cái.<br/><br/>
+                    Cái này vì mình chỉ đang xử lí teleport camera player (1 điểm) qua portal kia, chứ chưa xử lí trường hợp 1 GameObject có mesh đi qua. 
+                    Portal suy cho cùng vẫn chỉ là 1 cái quad bình thường, 1 mesh đi qua
+                    tới khi chính giữa của mesh đó thì nó mới teleport, chứ trạng thái mà chỉ có 1 phần của mesh đi qua thì giống như mesh đó đang đi vào 1 bức tường.<br/><br/>
+                    <div align="center">
+                        <img style="max-height: 300px; display: block;" src="images/object1.png"/>
+                    </div>
+                    Cách giải quyết vấn đề này là clone thêm 1 phiên bản của GameObject ở Portal bên kia (tính transform y hệt các tính transform của camera và player).<br/>
+                    Sau đó cắt 2 phiên bản bằng plane của Portal mà nó đang giao nhau:
+                    <div align="center">
+                        <img style="max-height: 300px; display: block;" src="images/object2.png"/>
+                    </div>
+
+                    Để cho dễ test, ta tạo thêm 1 cục cube có thể di chuyển xung quanh. Cho cục cube có texture là cục Companion cube trong game Portal cho hợp theme, nhớ thêm
+                    ở controllingObject các thứ <i>(blog này đang trở nên quá dài nên mình ko giải thích thêm vụ này, bạn có thể bấm nút diff để xem)</i>:
+                    <div class="htmlPreview" id="htmlPreview15"></div>
+                    
+                    Trước khi làm vụ clone và cắt ở trên, mình phải implement được teleport cho GameObject cái đã. Ý tưởng thì y hệt teleport player, thậm chí ko cần bước correct
+                    roll (obviously).<br/>
+                    Tuy nhiên bạn nhớ là teleport player phải cần 1 biến lưu lại trạng thái "có nằm trước portal ở frame trước hay không" để detect xem player có đi qua
+                    Portal ở frame hiện tại hay không. GameObject cũng tương tự, ta phải lưu lại hết trạng thái "nằm trước Portal ở frame trước" của mọi GameObject mà có 
+                    thể tương tác với Portal. Vì vậy ta cần thêm 1 biến id cho GameObject để định danh (should've done this long ago):
+                    <pre><code class="language-javascript"> class GameObject {
+    static incrementingID = 0;
+
+    constructor(pos, eulerAngles, scale, color, mesh, texture = null) {
+        this.id = GameObject.incrementingID++;
+        this.pos = pos;
+        ...
+    }
+    ...
+}</code></pre>
+                    Giờ tới vụ lưu trạng thái của các GameObject, vì Javascript không có Dictionary hay HashMap nên ta dùng tạm array of array 😬
+                    2 hàm set và is mình không giải thích gì thêm, còn hàm getGameObjectTeleportedTransformIfGoThroughPortal thì y hệt hàm của player,
+                    ko cần phải check portalCrossMargin luôn vì GameObject không cần phải lo nó nhìn thấy gì 😁
+                    <pre style="max-height: 400px;"><code class="language-javascript">class Portal {
+    constructor(){
+        ...
+        this.lastFrameGameObjectInFrontOfPortal = [];
+    }
+
+    ...
+
+    setGameObjectLastFrameInFrontOfPortal(gameObjectId, value) {
+        for (let i of this.lastFrameGameObjectInFrontOfPortal) {
+            if (i[0] == gameObjectId) {
+                i[1] = value;
+                return;
+            }
+        }
+        this.lastFrameGameObjectInFrontOfPortal.push([gameObjectId, value]);
+    }
+
+    isGameObjectLastFrameInFrontOfPortal(gameObjectId) {
+        for (let i of this.lastFrameGameObjectInFrontOfPortal) {
+            if (i[0] == gameObjectId) return i[1];
+        }
+        return false;
+    }
+
+    getGameObjectTeleportedTransformIfGoThroughPortal(gameObject) {
+        let isGameObjectInFrontOfPortal = this.getPlane().isPointInFrontOfPlane(gameObject.pos);
+
+        if (this.isGameObjectLastFrameInFrontOfPortal(gameObject.id) && !isGameObjectInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos)) {
+            this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
+            let [newPos, newRot] = this.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
+            return [newPos, newRot];
+        } else {
+            this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
+            return null;
+        }
+    }
+}</code></pre>
+
+                    Có được hàm teleport GameObject rồi, ta xuống updateGameObjectTransforms để thêm phần code teleport:
+                    <pre><code class="language-javascript">function updateGameObjectTransforms() {
+    ...
+    for (let gameObject of canInteractWithPortalGameObjects) {
+        let gameObjectTeleportedTransform = portal1.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
+        if (gameObjectTeleportedTransform != null) {
+            gameObject.pos = gameObjectTeleportedTransform[0];
+            gameObject.rotation = gameObjectTeleportedTransform[1];
+        } else {
+            gameObjectTeleportedTransform = portal2.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
+            if (gameObjectTeleportedTransform != null) {
+                gameObject.pos = gameObjectTeleportedTransform[0];
+                gameObject.rotation = gameObjectTeleportedTransform[1];
+            }
+        }
+    }  
+}</code></pre>
+                    Ta định nghĩa những GameObject có thể tương tác với Portal, là chỉ gồm player cube và testCube:
+                    <pre><code class="language-javascript">let canInteractWithPortalGameObjects = [playerCube, testCube];</code></pre>
+
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview16"></div>
+
+                    Oke, bây giờ mới tới phần "clone và cắt" mà ta cần làm.<br/><br/>
+                    Trước hết, ta cần phải xác định được khi nào là vào trạng thái "chỉ có 1 phần của mesh đi qua", engine của chúng ta chưa có collision system 🥵<br/><br/>
+                    Thật ra cũng chỉ thêm 1 tí toán thôi, trước hết, ta cần mesh "nằm đằng trước hoặc sau Portal" (đã có hàm).<br/>
+                    Khi đã thỏa được điều kiện trên, thì ta xét xem mesh có giao nhau với plane của Portal hay không.<br/>
+                    Một mesh sẽ giao với 1 plane nếu có ít nhất 1 triangle giao với plane đó.<br/>
+                    Một triangle sẽ giao với 1 plane nếu có ít nhất 1 cạnh giao với plane đó.<br/>
+                    Một đoạn thẳng giao nhau với 1 plane thì ta đã có hàm Plane.intersectWithLine 😳<br/><br/>
+                    Đi lại từ dưới lên, hàm check nếu 1 triangle giao với 1 plane:
+                    <pre><code class="language-javascript">class Triangle {
+    ...
+    isIntersectingPlane(plane) {
+        //hàm intersectWithLine trả về [t, điểm giao nhau], khi t trong đoạn [0; 1] thì chúng giao nhau
+        let intersection = plane.intersectWithLine(this.vertices[0], this.vertices[1]);
+        if (intersection[0] >= 0 && intersection[0] <= 1)
+            return true;
+
+        intersection = plane.intersectWithLine(this.vertices[1], this.vertices[2]);
+        if (intersection[0] >= 0 && intersection[0] <= 1)
+            return true;
+
+        intersection = plane.intersectWithLine(this.vertices[2], this.vertices[0]);
+        if (intersection[0] >= 0 && intersection[0] <= 1)
+            return true;
+
+        return false;
+    }
+}</code></pre>
+                    Hàm check xem 1 plane có giao với bất kỳ triangle nào trong mảng tris không:
+                    <pre><code class="language-javascript">class Plane {
+    ...
+    isIntersectingWithTris(tris) {
+        for (let tri of tris) {
+            if (tri.isIntersectingPlane(this))
+                return true;
+        }
+        return false;
+    }
+}</code></pre>
+                    Dùng hàm này với các triangle trong mesh của GameObject là giải quyết được vụ detect.<br/><br/>
+                    Bây giờ tới vụ clone, cho bớt code lặp thì ta tạo 1 hàm tạo GameObject clone sang Portal kia trong class Portal:
+                    <pre><code class="language-javascript">class Portal {
+    ...
+    createCloneObjectOnOtherPortal(gameObject) {
+        let cloneObjectTransform = this.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
+        let cloneObject = new GameObject(
+            cloneObjectTransform[0],
+            Vector3.forward,        // eulerAngles tạm
+            gameObject.scale.clone(),
+            gameObject.color,
+            gameObject.mesh,
+            gameObject.texture,
+        );
+        cloneObject.rotation = cloneObjectTransform[1]; // rotation thật
+        return cloneObject;
+    }
+}</code></pre>
+                    Cuối cùng là vụ "cắt", ta viết thêm hàm dùng plane để cắt nhiều triangles cùng lúc:
+                    <pre><code class="language-javascript">class Plane {
+    ...
+    clipWithTris(tris) {
+        let clippedTris = [];
+        for (let tri of tris) {
+            clippedTris.push(...tri.clipAgainstPlane(this));
+        }
+        return clippedTris;
+    }
+    ...
+}</code></pre>
+
+                    Cuối cùng ta gộp tất cả lại trong hàm gameObjectToWorldSpaceTriangles:
+                    <pre><code class="language-javascript">function gameObjectToWorldSpaceTriangles() {
+    let objectTris = [];
+    objectTris.push(...ground.getTransformedTriangles());
+    objectTris.push(...portal1.getAllTransformedTriangles());
+    objectTris.push(...portal2.getAllTransformedTriangles());
+    // bỏ playerCube và testCube ra vì nó được xử lí ở dưới
+
+    let portal1Plane = portal1.getPlane();
+    let portal2Plane = portal2.getPlane();
+
+    for (let gameObject of canInteractWithPortalGameObjects) {
+        let gameObjectTransformedTris = gameObject.getTransformedTriangles();
+
+        if (portal1.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && portal1Plane.isIntersectingWithTris(gameObjectTransformedTris)) {   // detect "1 phần mesh đi qua"
+            let clonedGameObject = portal1.createCloneObjectOnOtherPortal(gameObject);  // clone gameObject ra Portal bên kia
+            // clip gameObject với portal này, clip clonedGameObject với portal kia
+            objectTris.push(...portal1Plane.clipWithTris(gameObjectTransformedTris));   
+            objectTris.push(...portal2Plane.clipWithTris(clonedGameObject.getTransformedTriangles()));
+        } else {
+            if (portal2.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && portal2Plane.isIntersectingWithTris(gameObjectTransformedTris)) {
+                let clonedGameObject = portal2.createCloneObjectOnOtherPortal(gameObject);
+                objectTris.push(...portal2Plane.clipWithTris(gameObjectTransformedTris));
+                objectTris.push(...portal1Plane.clipWithTris(clonedGameObject.getTransformedTriangles()));
+            } else {
+                objectTris.push(...gameObjectTransformedTris);     // gameObject này không đi qua portal nào, push bình thường
+            }
+        }
+    }
+
+    return objectTris;
+}</code></pre>
+                    Kết quả cuối:
+                    <div class="htmlPreview" id="htmlPreview17"></div>
                 </div>
             </div>
         </div>

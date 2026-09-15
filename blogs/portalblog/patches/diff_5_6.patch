@@ -179,4 +179,4 @@
 +            portal2.updateTextureForQuad();
          }
  
-         function objectSpaceToViewSpace(objectTris) {
+         function worldSpaceToViewSpace(objectTris) {

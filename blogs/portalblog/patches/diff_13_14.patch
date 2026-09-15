@@ -68,4 +68,4 @@
 +            portal2.recursivePortalOperation(camera, objectTris);
          }
  
-         function objectSpaceToViewSpace(objectTris) {
+         function worldSpaceToViewSpace(objectTris) {

@@ -1,0 +1,87 @@
+--- "a/htmlPreviews\\htmlPreview15.html"
++++ "b/htmlPreviews\\htmlPreview16.html"
+@@ -820,7 +820,10 @@
+         }
+ 
+         class GameObject {
++            static incrementingID = 0;
++
+             constructor(pos, eulerAngles, scale, color, mesh, texture = null) {
++                this.id = GameObject.incrementingID++;
+                 this.pos = pos;
+                 this.scale = scale;
+                 this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
+@@ -1073,6 +1076,7 @@
+                 let portalRight = this.rotation.rotateVector(Vector3.right);
+ 
+                 this.lastFramePlayerInFrontOfPortal = false;
++                this.lastFrameGameObjectInFrontOfPortal = [];
+ 
+                 this.topCube = new GameObject(
+                     Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, this.scale.y / 2 + portalEdgeThickness / 2), backOffset)),
+@@ -1254,6 +1258,36 @@
+                 }
+             }
+ 
++            setGameObjectLastFrameInFrontOfPortal(gameObjectId, value) {
++                for (let i of this.lastFrameGameObjectInFrontOfPortal) {
++                    if (i[0] == gameObjectId) {
++                        i[1] = value;
++                        return;
++                    }
++                }
++                this.lastFrameGameObjectInFrontOfPortal.push([gameObjectId, value]);
++            }
++
++            isGameObjectLastFrameInFrontOfPortal(gameObjectId) {
++                for (let i of this.lastFrameGameObjectInFrontOfPortal) {
++                    if (i[0] == gameObjectId) return i[1];
++                }
++                return false;
++            }
++
++            getGameObjectTeleportedTransformIfGoThroughPortal(gameObject) {
++                let isGameObjectInFrontOfPortal = this.getPlane().isPointInFrontOfPlane(gameObject.pos);
++
++                if (this.isGameObjectLastFrameInFrontOfPortal(gameObject.id) && !isGameObjectInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos)) {
++                    this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
++                    let [newPos, newRot] = this.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
++                    return [newPos, newRot];
++                } else {
++                    this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
++                    return null;
++                }
++            }
++
+             recursivePortalOperation(playerCamera, objectTris) {
+                 let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
+ 
+@@ -1337,6 +1371,7 @@
+         let controllingObject = 0;
+         let controllingMoveSpeed = 6;
+         let controllingRotateSpeed = 60;
++        let canInteractWithPortalGameObjects = [playerCube, testCube];
+ 
+         let lastTime = performance.now();
+         let dt = 0;
+@@ -1442,6 +1477,20 @@
+                     camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
+                 }
+             }
++
++            for (let gameObject of canInteractWithPortalGameObjects) {
++                let gameObjectTeleportedTransform = portal1.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
++                if (gameObjectTeleportedTransform != null) {
++                    gameObject.pos = gameObjectTeleportedTransform[0];
++                    gameObject.rotation = gameObjectTeleportedTransform[1];
++                } else {
++                    gameObjectTeleportedTransform = portal2.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
++                    if (gameObjectTeleportedTransform != null) {
++                        gameObject.pos = gameObjectTeleportedTransform[0];
++                        gameObject.rotation = gameObjectTeleportedTransform[1];
++                    }
++                }
++            }
+         }
+ 
+         function gameObjectToWorldSpaceTriangles() {

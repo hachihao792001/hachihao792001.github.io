@@ -1,0 +1,78 @@
+--- "a/htmlPreviews\\htmlPreview14.html"
++++ "b/htmlPreviews\\htmlPreview15.html"
+@@ -1309,12 +1309,22 @@
+         let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
+ 
+         let playerCubeTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/wheatly.png");
++        let companionCubeTexure = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/companion_cube.png");
+         let brickTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg");
+ 
+         let cubeMesh = new Cube();
+         let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
+         let playerCube = new GameObject(camera.pos, camera.rotation, new Vector3(0.5, 0.5, 0.5), new Color(255, 255, 255),
+             new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), playerCubeTexture);
++        let testCube = new GameObject(
++            new Vector3(0, 1, -3),
++            Vector3.zero,
++            new Vector3(1, 1, 1),
++            new Color(0, 255, 0),
++            cubeMesh,
++            companionCubeTexure,
++        );
++
+         let portal1Pos = new Vector3(-3, 3, -3);
+         let portal2Pos = new Vector3(3, 3, -3);
+         let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, -90, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
+@@ -1335,7 +1345,22 @@
+             playerCube.pos = camera.pos;
+             playerCube.rotation = camera.rotation;
+ 
+-            let controllingPos = controllingObject == 0 ? portal1Pos : portal2Pos;
++            let controllingPos = portal1Pos;
++            switch (controllingObject) {
++                case 0:
++                    controllingPos = portal1Pos;
++                    controllingObjectText.innerText = "Orange portal";
++                    break;
++                case 1:
++                    controllingPos = portal2Pos;
++                    controllingObjectText.innerText = "Blue portal";
++                    break;
++                case 2:
++                    controllingPos = testCube.pos;
++                    controllingObjectText.innerText = "Companion cube";
++                    break;
++            }
++
+             let posDelta = Vector3.zero;
+             if (keyStates["i"]) {
+                 posDelta = Vector3.add(posDelta, Vector3.forward);
+@@ -1383,6 +1408,9 @@
+                     case 1:
+                         portal2.rotate(rotateEuler.x, rotateEuler.y, rotateEuler.z);
+                         break;
++                    case 2:
++                        testCube.rotate(rotateEuler.x, rotateEuler.y, rotateEuler.z);
++                        break;
+                 }
+             }
+ 
+@@ -1420,6 +1448,7 @@
+             let objectTris = [];
+             objectTris.push(...ground.getTransformedTriangles());
+             objectTris.push(...playerCube.getTransformedTriangles());
++            objectTris.push(...testCube.getTransformedTriangles());
+             objectTris.push(...portal1.getAllTransformedTriangles());
+             objectTris.push(...portal2.getAllTransformedTriangles());
+ 
+@@ -1508,7 +1537,9 @@
+         });
+         window.addEventListener("keypress", (e) => {
+             if (e.key == "p") {
+-                controllingObject = 1 - controllingObject;
++                controllingObject++;
++                if (controllingObject > 2)
++                    controllingObject = 0;
+                 controllingObjectText.innerText = controllingObject == 0 ? "Orange portal" : "Blue Portal";
+             }
+         });

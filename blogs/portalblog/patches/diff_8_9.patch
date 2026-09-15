@@ -64,4 +64,4 @@
 +            }
          }
  
-         function gameObjectToObjectSpaceTriangles() {
+         function gameObjectToWorldSpaceTriangles() {

@@ -1342,7 +1342,7 @@
             }
         }
 
-        function gameObjectToObjectSpaceTriangles() {
+        function gameObjectToWorldSpaceTriangles() {
             let objectTris = [];
             objectTris.push(...ground.getTransformedTriangles());
             objectTris.push(...playerCube.getTransformedTriangles());
@@ -1359,7 +1359,7 @@
             portal2.updateTextureForQuad();
         }
 
-        function objectSpaceToViewSpace(objectTris) {
+        function worldSpaceToViewSpace(objectTris) {
             const viewMat = camera.getViewMatrix();
             let visibleTris = [];
             for (let tri of objectTris) {
@@ -1400,9 +1400,9 @@
             }
 
             updateGameObjectTransforms();
-            let objectTris = gameObjectToObjectSpaceTriangles();
+            let objectTris = gameObjectToWorldSpaceTriangles();
             portalRenderOperations(objectTris);
-            let visibleTris = objectSpaceToViewSpace(objectTris);
+            let visibleTris = worldSpaceToViewSpace(objectTris);
             viewSpaceToClipSpace(visibleTris);
             rasterize(visibleTris);
 

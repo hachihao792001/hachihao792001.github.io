@@ -1,0 +1,102 @@
+--- "a/htmlPreviews\\htmlPreview16.html"
++++ "b/htmlPreviews\\htmlPreview17.html"
+@@ -417,6 +417,22 @@
+                 }
+             }
+ 
++            isIntersectingPlane(plane) {
++                let intersection = plane.intersectWithLine(this.vertices[0], this.vertices[1]);
++                if (intersection[0] >= 0 && intersection[0] <= 1)
++                    return true;
++
++                intersection = plane.intersectWithLine(this.vertices[1], this.vertices[2]);
++                if (intersection[0] >= 0 && intersection[0] <= 1)
++                    return true;
++
++                intersection = plane.intersectWithLine(this.vertices[2], this.vertices[0]);
++                if (intersection[0] >= 0 && intersection[0] <= 1)
++                    return true;
++
++                return false;
++            }
++
+             clipAgainstPlane(plane) {
+                 let outTris = [];
+ 
+@@ -549,6 +565,22 @@
+             distanceToPoint(p) {
+                 return Vector3.dot(p, this.normal) - this.D;
+             }
++
++            isIntersectingWithTris(tris) {
++                for (let tri of tris) {
++                    if (tri.isIntersectingPlane(this))
++                        return true;
++                }
++                return false;
++            }
++
++            clipWithTris(tris) {
++                let clippedTris = [];
++                for (let tri of tris) {
++                    clippedTris.push(...tri.clipAgainstPlane(this));
++                }
++                return clippedTris;
++            }
+         }
+ 
+         class Camera {
+@@ -1288,6 +1320,20 @@
+                 }
+             }
+ 
++            createCloneObjectOnOtherPortal(gameObject) {
++                let cloneObjectTransform = this.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
++                let cloneObject = new GameObject(
++                    cloneObjectTransform[0],
++                    Vector3.forward,
++                    gameObject.scale.clone(),
++                    gameObject.color,
++                    gameObject.mesh,
++                    gameObject.texture,
++                );
++                cloneObject.rotation = cloneObjectTransform[1];
++                return cloneObject;
++            }
++
+             recursivePortalOperation(playerCamera, objectTris) {
+                 let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
+ 
+@@ -1496,11 +1542,30 @@
+         function gameObjectToWorldSpaceTriangles() {
+             let objectTris = [];
+             objectTris.push(...ground.getTransformedTriangles());
+-            objectTris.push(...playerCube.getTransformedTriangles());
+-            objectTris.push(...testCube.getTransformedTriangles());
+             objectTris.push(...portal1.getAllTransformedTriangles());
+             objectTris.push(...portal2.getAllTransformedTriangles());
+ 
++            let portal1Plane = portal1.getPlane();
++            let portal2Plane = portal2.getPlane();
++
++            for (let gameObject of canInteractWithPortalGameObjects) {
++                let gameObjectTransformedTris = gameObject.getTransformedTriangles();
++
++                if (portal1.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && portal1Plane.isIntersectingWithTris(gameObjectTransformedTris)) {
++                    let clonedGameObject = portal1.createCloneObjectOnOtherPortal(gameObject);
++                    objectTris.push(...portal1Plane.clipWithTris(gameObjectTransformedTris));
++                    objectTris.push(...portal2Plane.clipWithTris(clonedGameObject.getTransformedTriangles()));
++                } else {
++                    if (portal2.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && portal2Plane.isIntersectingWithTris(gameObjectTransformedTris)) {
++                        let clonedGameObject = portal2.createCloneObjectOnOtherPortal(gameObject);
++                        objectTris.push(...portal2Plane.clipWithTris(gameObjectTransformedTris));
++                        objectTris.push(...portal1Plane.clipWithTris(clonedGameObject.getTransformedTriangles()));
++                    } else {
++                        objectTris.push(...gameObjectTransformedTris);
++                    }
++                }
++            }
++
+             return objectTris;
+         }
+ 

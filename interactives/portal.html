@@ -598,23 +598,20 @@
                 }
             }
 
-            getIntersectionsWithPlane(plane) {
-                let line1Intersection = plane.intersectWithLine(this.vertices[0], this.vertices[1]);
-                let line2Intersection = plane.intersectWithLine(this.vertices[1], this.vertices[2]);
-                let line3Intersection = plane.intersectWithLine(this.vertices[2], this.vertices[0]);
+            isIntersectingPlane(plane) {
+                let intersection = plane.intersectWithLine(this.vertices[0], this.vertices[1]);
+                if (intersection[0] >= 0 && intersection[0] <= 1)
+                    return true;
 
-                let intersections = [];
-                if (line1Intersection[0] >= 0 && line1Intersection[0] <= 1) {
-                    intersections.push(line1Intersection[1]);
-                }
-                if (line2Intersection[0] >= 0 && line2Intersection[0] <= 1) {
-                    intersections.push(line2Intersection[1]);
-                }
-                if (line3Intersection[0] >= 0 && line3Intersection[0] <= 1) {
-                    intersections.push(line3Intersection[1]);
-                }
+                intersection = plane.intersectWithLine(this.vertices[1], this.vertices[2]);
+                if (intersection[0] >= 0 && intersection[0] <= 1)
+                    return true;
 
-                return intersections;
+                intersection = plane.intersectWithLine(this.vertices[2], this.vertices[0]);
+                if (intersection[0] >= 0 && intersection[0] <= 1)
+                    return true;
+
+                return false;
             }
 
             clipAgainstPlane(plane) {
@@ -711,17 +708,6 @@
 
             getPlane() {
                 return new Plane(this.getNormal(), this.vertices[0]);
-            }
-
-            isIntersectingWithOtherTriangle(otherTri) {
-                let otherTriPlane = otherTri.getPlane();
-                let intersections = this.getIntersectionsWithPlane(otherTriPlane);
-                for (let intersection of intersections) {
-                    if (otherTri.isPointInTriangle(intersection)) {
-                        return true;
-                    }
-                }
-                return false;
             }
 
             boundingBox(maxWidth = canvas.width, maxHeight = canvas.height) {
@@ -1143,7 +1129,8 @@
 
             isIntersectingWithPlane(plane) {
                 for (let tri of this.currentTransformedTris) {
-                    if (tri.getIntersectionsWithPlane(plane).length > 0) return true;
+                    if (tri.isIntersectingPlane(plane))
+                        return true;
                 }
                 return false;
             }
