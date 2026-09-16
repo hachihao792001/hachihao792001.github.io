@@ -5,7 +5,7 @@
              }
  
 -            processTriangles(tris) {
-+            processClipSpaceTriangles(tris) {
++            rasterizeClipSpaceTriangles(tris) {
                  for (let tri of tris) {
                      let vertices = tri.vertices;
                      for (let i = 0; i < vertices.length; i++) {
@@ -14,7 +14,7 @@
                  }
  
 -                this.rasterizer.processTriangles(visibleTris);
-+                this.rasterizer.processClipSpaceTriangles(visibleTris);
++                this.rasterizer.rasterizeClipSpaceTriangles(visibleTris);
              }
  
              calculateTransformToOtherPortalTransform(position, rotation) {
@@ -103,7 +103,7 @@
  
 -            rasterizer.processTriangles(visibleTris);
 +            rasterizer.clearScreen();
-+            rasterizer.processClipSpaceTriangles(visibleTris);
++            rasterizer.rasterizeClipSpaceTriangles(visibleTris);
              rasterizer.drawCall();
 +        }
 +

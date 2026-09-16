@@ -142,7 +142,7 @@
                  this.rasterizer = new Rasterizer();
                  this.camera = new Camera(pos, eulerAngles, 8, 0.2);
 @@ -978,6 +995,21 @@
-                 this.rasterizer.processClipSpaceTriangles(visibleTris);
+                 this.rasterizer.rasterizeClipSpaceTriangles(visibleTris);
              }
  
 +            updateTextureForQuad() {

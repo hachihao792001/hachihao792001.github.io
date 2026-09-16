@@ -926,7 +926,7 @@
                 }
             }
 
-            processClipSpaceTriangles(tris) {
+            rasterizeClipSpaceTriangles(tris) {
                 for (let tri of tris) {
                     let vertices = tri.vertices;
                     for (let i = 0; i < vertices.length; i++) {
@@ -1192,7 +1192,7 @@
                     tri.perspectiveDivide();
                 }
 
-                this.rasterizer.processClipSpaceTriangles(visibleTris);
+                this.rasterizer.rasterizeClipSpaceTriangles(visibleTris);
             }
 
             updateTextureForQuad() {
@@ -1484,7 +1484,7 @@
             portal1.rasterizer.drawCall(portal1Ctx);
 
             rasterizer.clearScreen();
-            rasterizer.processClipSpaceTriangles(visibleTris);
+            rasterizer.rasterizeClipSpaceTriangles(visibleTris);
             rasterizer.drawCall();
         }
 

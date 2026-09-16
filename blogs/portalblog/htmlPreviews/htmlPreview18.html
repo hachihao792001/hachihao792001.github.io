@@ -208,6 +208,13 @@
                 return matrix;
             }
 
+            static ViewFromPosRot(pos, rotation) {
+                let forward = rotation.rotateVector(Vector3.forward);
+                let right = rotation.rotateVector(Vector3.right);
+                let up = rotation.rotateVector(Vector3.up);
+                return Mat4x4.View(right, up, forward, pos);
+            }
+
             static Translation(x, y, z) {
                 let matrix = new Mat4x4();
                 matrix.m[0][0] = 1;
@@ -417,6 +424,22 @@
                 }
             }
 
+            isIntersectingPlane(plane) {
+                let intersection = plane.intersectWithLine(this.vertices[0], this.vertices[1]);
+                if (intersection[0] >= 0 && intersection[0] <= 1)
+                    return true;
+
+                intersection = plane.intersectWithLine(this.vertices[1], this.vertices[2]);
+                if (intersection[0] >= 0 && intersection[0] <= 1)
+                    return true;
+
+                intersection = plane.intersectWithLine(this.vertices[2], this.vertices[0]);
+                if (intersection[0] >= 0 && intersection[0] <= 1)
+                    return true;
+
+                return false;
+            }
+
             clipAgainstPlane(plane) {
                 let outTris = [];
 
@@ -519,11 +542,45 @@
                 minY = Math.max(0, parseInt(minY));
                 maxY = Math.min(maxHeight - 1, parseInt(maxY));
 
-                return [minX, maxX, minY, maxY];
+                return new BoundingBox(minX, maxX, minY, maxY);
             }
 
             calculateSignedDoubleArea() {
                 this.signedDoubleArea = edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
+            }
+        }
+
+        class BoundingBox {
+            constructor(minX, maxX, minY, maxY) {
+                this.minX = minX;
+                this.maxX = maxX;
+                this.minY = minY;
+                this.maxY = maxY;
+            }
+
+            isValid() {
+                return this.minX <= this.maxX && this.minY <= this.maxY;
+            }
+
+            static union(bbox1, bbox2) {
+                return new BoundingBox(
+                    Math.min(bbox1.minX, bbox2.minX),
+                    Math.max(bbox1.maxX, bbox2.maxX),
+                    Math.min(bbox1.minY, bbox2.minY),
+                    Math.max(bbox1.maxY, bbox2.maxY)
+                );
+            }
+            static intersect(bbox1, bbox2) {
+                return new BoundingBox(
+                    Math.max(bbox1.minX, bbox2.minX),
+                    Math.min(bbox1.maxX, bbox2.maxX),
+                    Math.max(bbox1.minY, bbox2.minY),
+                    Math.min(bbox1.maxY, bbox2.maxY)
+                );
+            }
+            static isOverlap(bbox1, bbox2) {
+                return ((bbox1.minX < bbox2.maxX && bbox1.maxX > bbox2.minX) || (bbox2.minX < bbox1.maxX && bbox2.maxX > bbox1.minX)) &&
+                    ((bbox1.minY < bbox2.maxY && bbox1.maxY > bbox2.minY) || (bbox2.minY < bbox1.maxY && bbox2.maxY > bbox1.minY));
             }
         }
 
@@ -548,6 +605,22 @@
             }
             distanceToPoint(p) {
                 return Vector3.dot(p, this.normal) - this.D;
+            }
+
+            isIntersectingWithTris(tris) {
+                for (let tri of tris) {
+                    if (tri.isIntersectingPlane(this))
+                        return true;
+                }
+                return false;
+            }
+
+            clipWithTris(tris) {
+                let clippedTris = [];
+                for (let tri of tris) {
+                    clippedTris.push(...tri.clipAgainstPlane(this));
+                }
+                return clippedTris;
             }
         }
 
@@ -820,7 +893,10 @@
         }
 
         class GameObject {
+            static incrementingID = 0;
+
             constructor(pos, eulerAngles, scale, color, mesh, texture = null) {
+                this.id = GameObject.incrementingID++;
                 this.pos = pos;
                 this.scale = scale;
                 this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
@@ -917,16 +993,20 @@
                 }
             }
 
-            clearScreen() {
-                for (let i = 0; i < this.screenBuffer.length; i++) {
-                    for (let j = 0; j < this.screenBuffer[i].length; j++) {
+            clearScreen(bbox = null) {
+                if (bbox == null) {
+                    bbox = new BoundingBox(0, canvas.width - 1, 0, canvas.height - 1);
+                }
+
+                for (let i = bbox.minY; i <= bbox.maxY; i++) {
+                    for (let j = bbox.minX; j <= bbox.maxX; j++) {
                         this.screenBuffer[i][j].updateColor(240, 240, 240);
                         this.depthBuffer[i][j] = Infinity;
                     }
                 }
             }
 
-            rasterizeClipSpaceTriangles(tris) {
+            rasterizeClipSpaceTriangles(tris, renderBBox = null) {
                 for (let tri of tris) {
                     let vertices = tri.vertices;
                     for (let i = 0; i < vertices.length; i++) {
@@ -940,20 +1020,26 @@
 
                     let triWorldNormal = tri.getWorldNormal();
                     let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
-                    const bbox = tri.boundingBox();
+
+                    let triBBox = tri.boundingBox();
+                    if (renderBBox != null) {
+                        triBBox = BoundingBox.intersect(renderBBox, triBBox);
+                        if (!triBBox.isValid())
+                            continue;
+                    }
 
                     let edgeFunctionRow01 = edgeFunction(
                         tri.vertices[0],
                         tri.vertices[1],
-                        new Vector3(bbox[0], bbox[2], 0));
+                        new Vector3(triBBox.minX, triBBox.minY, 0));
                     let edgeFunctionRow12 = edgeFunction(
                         tri.vertices[1],
                         tri.vertices[2],
-                        new Vector3(bbox[0], bbox[2], 0));
+                        new Vector3(triBBox.minX, triBBox.minY, 0));
                     let edgeFunctionRow20 = edgeFunction(
                         tri.vertices[2],
                         tri.vertices[0],
-                        new Vector3(bbox[0], bbox[2], 0));
+                        new Vector3(triBBox.minX, triBBox.minY, 0));
 
                     let perspectiveWorldVertices = [
                         Vector3.mul(tri.worldVertices[0], tri.uv[0].w),
@@ -961,11 +1047,11 @@
                         Vector3.mul(tri.worldVertices[2], tri.uv[2].w)
                     ];
 
-                    for (let y = bbox[2]; y <= bbox[3]; y++) {
+                    for (let y = triBBox.minY; y <= triBBox.maxY; y++) {
                         let edgeFunction01 = edgeFunctionRow01;
                         let edgeFunction12 = edgeFunctionRow12;
                         let edgeFunction20 = edgeFunctionRow20;
-                        for (let x = bbox[0]; x <= bbox[1]; x++) {
+                        for (let x = triBBox.minX; x <= triBBox.maxX; x++) {
                             if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
                                 const baryCoord0 = edgeFunction12 / tri.signedDoubleArea;
                                 const baryCoord1 = edgeFunction20 / tri.signedDoubleArea;
@@ -1073,6 +1159,7 @@
                 let portalRight = this.rotation.rotateVector(Vector3.right);
 
                 this.lastFramePlayerInFrontOfPortal = false;
+                this.lastFrameGameObjectInFrontOfPortal = [];
 
                 this.topCube = new GameObject(
                     Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, this.scale.y / 2 + portalEdgeThickness / 2), backOffset)),
@@ -1162,21 +1249,23 @@
                 return new Plane(forward, Vector3.sub(this.pos, Vector3.mul(forward, 0.01)));
             }
 
-            runRenderPipeline(objectTris) {
+            runRenderPipeline(objectTris, textureForPortal, renderBBox = null) {
                 let tris = [];
                 for (let tri of objectTris) {
                     let cloneTri = tri.clone();
+                    if (cloneTri.portal)
+                        cloneTri.texture = textureForPortal;
                     tris.push(cloneTri);
                 }
 
-                this.rasterizer.clearScreen();
+                this.rasterizer.clearScreen(renderBBox);
 
                 let viewMatPortal = this.camera.getViewMatrix();
                 let otherPortalPlane = this.otherPortal.getPlane();
 
                 let visibleTris = [];
                 for (let tri of tris) {
-                    if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), this.camera.pos)) < 0) {
+                    if (tri.portal == this.otherPortal || Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), this.camera.pos)) < 0) {
                         let clippedWithPortalTris = tri.clipAgainstPlane(otherPortalPlane);
                         for (let clippedTri of clippedWithPortalTris) {
                             clippedTri.mulMat4x4(viewMatPortal);
@@ -1190,24 +1279,35 @@
                     tri.perspectiveDivide();
                 }
 
-                this.rasterizer.rasterizeClipSpaceTriangles(visibleTris);
+                this.rasterizer.rasterizeClipSpaceTriangles(visibleTris, renderBBox);
+
+                return visibleTris;
             }
 
-            updateTextureForQuad() {
-                let index = 0;
-                for (let y = 0; y < canvas.height; y++) {
-                    for (let x = 0; x < canvas.width; x++) {
-                        const c = this.rasterizer.screenBuffer[y][x];
-                        this.renderTexture.pixels[index++] = c.r;
-                        this.renderTexture.pixels[index++] = c.g;
-                        this.renderTexture.pixels[index++] = c.b;
-                        this.renderTexture.pixels[index++] = 255;
+            updateTextureForQuad(clipSpaceTris, renderBBox = null) {
+                for (let tri of clipSpaceTris) {
+                    if (tri.portal == this.otherPortal) {
+                        let bbox = tri.boundingBox();
+
+                        if (renderBBox != null) {
+                            bbox = BoundingBox.intersect(renderBBox, bbox);
+                            if (!bbox.isValid()) continue;
+                        }
+
+                        for (let y = bbox.minY; y <= bbox.maxY; y++) {
+                            let pixelIndex = y * canvas.width + bbox.minX;
+                            for (let x = bbox.minX; x <= bbox.maxX; x++) {
+                                this.renderTexture.pixels[pixelIndex * 4] = this.rasterizer.screenBuffer[y][x].r;
+                                this.renderTexture.pixels[pixelIndex * 4 + 1] = this.rasterizer.screenBuffer[y][x].g;
+                                this.renderTexture.pixels[pixelIndex * 4 + 2] = this.rasterizer.screenBuffer[y][x].b;
+                                pixelIndex++;
+                            }
+                        }
                     }
                 }
 
                 this.quad.texture = this.renderTexture;
             }
-
             calculateTransformToOtherPortalTransform(position, rotation) {
                 let otherPortalUp = this.otherPortal.rotation.rotateVector(Vector3.up).normalize();
                 let rotate180 = Quaternion.buildQuaternionAxisAngle(otherPortalUp, 180);
@@ -1251,6 +1351,118 @@
                     return null;
                 }
             }
+
+            setGameObjectLastFrameInFrontOfPortal(gameObjectId, value) {
+                for (let i of this.lastFrameGameObjectInFrontOfPortal) {
+                    if (i[0] == gameObjectId) {
+                        i[1] = value;
+                        return;
+                    }
+                }
+                this.lastFrameGameObjectInFrontOfPortal.push([gameObjectId, value]);
+            }
+
+            isGameObjectLastFrameInFrontOfPortal(gameObjectId) {
+                for (let i of this.lastFrameGameObjectInFrontOfPortal) {
+                    if (i[0] == gameObjectId) return i[1];
+                }
+                return false;
+            }
+
+            getGameObjectTeleportedTransformIfGoThroughPortal(gameObject) {
+                let isGameObjectInFrontOfPortal = this.getPlane().isPointInFrontOfPlane(gameObject.pos);
+
+                if (this.isGameObjectLastFrameInFrontOfPortal(gameObject.id) && !isGameObjectInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos)) {
+                    this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
+                    let [newPos, newRot] = this.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
+                    return [newPos, newRot];
+                } else {
+                    this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
+                    return null;
+                }
+            }
+
+            createCloneObjectOnOtherPortal(gameObject) {
+                let cloneObjectTransform = this.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
+                let cloneObject = new GameObject(
+                    cloneObjectTransform[0],
+                    Vector3.forward,
+                    gameObject.scale.clone(),
+                    gameObject.color,
+                    gameObject.mesh,
+                    gameObject.texture,
+                );
+                cloneObject.rotation = cloneObjectTransform[1];
+                return cloneObject;
+            }
+
+            getQuadBoundingBox(cameraPos, cameraRot) {
+                let viewMatPortal = Mat4x4.ViewFromPosRot(cameraPos, cameraRot);
+                let quadTris = [];
+                quadTris.push(...this.quad.getTransformedTriangles());
+
+                let visibleTris = [];
+                for (let tri of quadTris) {
+                    if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), cameraPos)) < 0) {
+                        tri.mulMat4x4(viewMatPortal);
+                        visibleTris.push(...tri.clipAgainstPlane(nearPlane));
+                    }
+                }
+
+                let totalBBox = null;
+                for (let tri of visibleTris) {
+                    tri.mulMat4x4(projectionMatrix);
+                    tri.perspectiveDivide();
+
+                    let vertices = tri.vertices;
+                    for (let i = 0; i < vertices.length; i++) {
+                        vertices[i] = new Vector3(
+                            vertices[i].x * (canvas.width / 2) + canvas.width / 2,
+                            -vertices[i].y * (canvas.height / 2) + canvas.height / 2,
+                            vertices[i].z,
+                        );
+                    }
+
+                    const triBBox = tri.boundingBox();
+                    if (triBBox.isValid()) {
+                        if (totalBBox == null)
+                            totalBBox = triBBox;
+                        else
+                            totalBBox = BoundingBox.union(totalBBox, triBBox);
+                    }
+                }
+
+                return totalBBox;
+            }
+
+            recursivePortalOperation(playerCamera, objectTris) {
+                let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
+                let quadBoundingBoxes = [this.getQuadBoundingBox(playerCamera.pos, playerCamera.rotation)];
+                if (quadBoundingBoxes[0] == null)
+                    return;
+
+                let deepest = 0;
+                for (let i = 1; i <= portalLimit; i++) {
+                    cameraTransforms.push(this.calculateTransformToOtherPortalTransform(cameraTransforms[i - 1][0], cameraTransforms[i - 1][1]));
+                    deepest = i;
+
+                    let newQuadBoundingBox = this.getQuadBoundingBox(cameraTransforms[i][0], cameraTransforms[i][1]);
+                    if (newQuadBoundingBox == null || !BoundingBox.isOverlap(quadBoundingBoxes[i - 1], newQuadBoundingBox))
+                        break;
+                    quadBoundingBoxes.push(BoundingBox.intersect(quadBoundingBoxes[i - 1], newQuadBoundingBox));
+                }
+
+                this.camera.pos = cameraTransforms[deepest][0];
+                this.camera.rotation = cameraTransforms[deepest][1];
+                let clipSpaceTris = this.runRenderPipeline(objectTris, null, quadBoundingBoxes[deepest - 1]);
+                this.updateTextureForQuad(clipSpaceTris, quadBoundingBoxes[deepest - 1]);
+                for (let i = deepest - 1; i >= 1; i--) {
+                    this.camera.pos = cameraTransforms[i][0];
+                    this.camera.rotation = cameraTransforms[i][1];
+                    clipSpaceTris = this.runRenderPipeline(objectTris, this.renderTexture, quadBoundingBoxes[i - 1]);
+                    this.updateTextureForQuad(clipSpaceTris, quadBoundingBoxes[i - 1]);
+                }
+            }
         }
 
         const canvas = document.getElementById("gameCanvas");
@@ -1288,21 +1500,35 @@
         let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
 
         let playerCubeTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/wheatly.png");
+        let companionCubeTexure = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/companion_cube.png");
         let brickTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg");
 
         let cubeMesh = new Cube();
         let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
         let playerCube = new GameObject(camera.pos, camera.rotation, new Vector3(0.5, 0.5, 0.5), new Color(255, 255, 255),
             new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), playerCubeTexture);
+        let testCube = new GameObject(
+            new Vector3(0, 1, -3),
+            Vector3.zero,
+            new Vector3(1, 1, 1),
+            new Color(0, 255, 0),
+            cubeMesh,
+            companionCubeTexure,
+        );
+
         let portal1Pos = new Vector3(-3, 3, -3);
         let portal2Pos = new Vector3(3, 3, -3);
-        let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
-        let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));
+        let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, -90, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
+        let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 90, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));
         portal1.setOtherPortal(portal2);
         portal2.setOtherPortal(portal1);
+
+        let portalLimit = 4;
+
         let controllingObject = 0;
         let controllingMoveSpeed = 6;
         let controllingRotateSpeed = 60;
+        let canInteractWithPortalGameObjects = [playerCube, testCube];
 
         let lastTime = performance.now();
         let dt = 0;
@@ -1311,7 +1537,22 @@
             playerCube.pos = camera.pos;
             playerCube.rotation = camera.rotation;
 
-            let controllingPos = controllingObject == 0 ? portal1Pos : portal2Pos;
+            let controllingPos = portal1Pos;
+            switch (controllingObject) {
+                case 0:
+                    controllingPos = portal1Pos;
+                    controllingObjectText.innerText = "Orange portal";
+                    break;
+                case 1:
+                    controllingPos = portal2Pos;
+                    controllingObjectText.innerText = "Blue portal";
+                    break;
+                case 2:
+                    controllingPos = testCube.pos;
+                    controllingObjectText.innerText = "Companion cube";
+                    break;
+            }
+
             let posDelta = Vector3.zero;
             if (keyStates["i"]) {
                 posDelta = Vector3.add(posDelta, Vector3.forward);
@@ -1359,6 +1600,9 @@
                     case 1:
                         portal2.rotate(rotateEuler.x, rotateEuler.y, rotateEuler.z);
                         break;
+                    case 2:
+                        testCube.rotate(rotateEuler.x, rotateEuler.y, rotateEuler.z);
+                        break;
                 }
             }
 
@@ -1390,23 +1634,55 @@
                     camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
                 }
             }
+
+            for (let gameObject of canInteractWithPortalGameObjects) {
+                let gameObjectTeleportedTransform = portal1.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
+                if (gameObjectTeleportedTransform != null) {
+                    gameObject.pos = gameObjectTeleportedTransform[0];
+                    gameObject.rotation = gameObjectTeleportedTransform[1];
+                } else {
+                    gameObjectTeleportedTransform = portal2.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
+                    if (gameObjectTeleportedTransform != null) {
+                        gameObject.pos = gameObjectTeleportedTransform[0];
+                        gameObject.rotation = gameObjectTeleportedTransform[1];
+                    }
+                }
+            }
         }
 
         function gameObjectToWorldSpaceTriangles() {
             let objectTris = [];
             objectTris.push(...ground.getTransformedTriangles());
-            objectTris.push(...playerCube.getTransformedTriangles());
             objectTris.push(...portal1.getAllTransformedTriangles());
             objectTris.push(...portal2.getAllTransformedTriangles());
+
+            let portal1Plane = portal1.getPlane();
+            let portal2Plane = portal2.getPlane();
+
+            for (let gameObject of canInteractWithPortalGameObjects) {
+                let gameObjectTransformedTris = gameObject.getTransformedTriangles();
+
+                if (portal1.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && portal1Plane.isIntersectingWithTris(gameObjectTransformedTris)) {
+                    let clonedGameObject = portal1.createCloneObjectOnOtherPortal(gameObject);
+                    objectTris.push(...portal1Plane.clipWithTris(gameObjectTransformedTris));
+                    objectTris.push(...portal2Plane.clipWithTris(clonedGameObject.getTransformedTriangles()));
+                } else {
+                    if (portal2.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && portal2Plane.isIntersectingWithTris(gameObjectTransformedTris)) {
+                        let clonedGameObject = portal2.createCloneObjectOnOtherPortal(gameObject);
+                        objectTris.push(...portal2Plane.clipWithTris(gameObjectTransformedTris));
+                        objectTris.push(...portal1Plane.clipWithTris(clonedGameObject.getTransformedTriangles()));
+                    } else {
+                        objectTris.push(...gameObjectTransformedTris);
+                    }
+                }
+            }
 
             return objectTris;
         }
 
         function portalRenderOperations(objectTris) {
-            portal1.runRenderPipeline(objectTris);
-            portal1.updateTextureForQuad();
-            portal2.runRenderPipeline(objectTris);
-            portal2.updateTextureForQuad();
+            portal1.recursivePortalOperation(camera, objectTris);
+            portal2.recursivePortalOperation(camera, objectTris);
         }
 
         function worldSpaceToViewSpace(objectTris) {
@@ -1486,7 +1762,9 @@
         });
         window.addEventListener("keypress", (e) => {
             if (e.key == "p") {
-                controllingObject = 1 - controllingObject;
+                controllingObject++;
+                if (controllingObject > 2)
+                    controllingObject = 0;
                 controllingObjectText.innerText = controllingObject == 0 ? "Orange portal" : "Blue Portal";
             }
         });

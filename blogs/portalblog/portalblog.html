@@ -432,10 +432,10 @@ function rasterize(visibleTris) {
     portal1.rasterizer.drawCall(portal1Ctx);
 
     rasterizer.clearScreen();
-    rasterizer.processClipSpaceTriangles(visibleTris);  // đổi tên processTriangles thành processClipSpaceTriangles
+    rasterizer.rasterizeClipSpaceTriangles(visibleTris);  // đổi tên processTriangles thành rasterizeClipSpaceTriangles
     rasterizer.drawCall();
 }</code></pre>
-                    Mình có đổi tên hàm processTriangles thành processClipSpaceTriangles để cho rõ đối tượng và mục đích của hàm.<br/><br/>
+                    Mình có đổi tên hàm processTriangles thành rasterizeClipSpaceTriangles để cho rõ đối tượng và mục đích của hàm.<br/><br/>
 
                     Như vậy hàm update sẽ thành:
                     <pre><code class="language-javascript">function update(time = performance.now()) {
@@ -601,7 +601,7 @@ function portalRenderOperations(objectTris) {
     }</code></pre>
 
                     Xong phần reference tới Portal, bây giờ tới phần ta nói cho Rasterizer biết là cần sample texture khác đi cho các triangle thuộc Portal:
-                    <pre><code class="language-javascript">processClipSpaceTriangles(tris) {
+                    <pre><code class="language-javascript">rasterizeClipSpaceTriangles(tris) {
         ...
         if (tri.texture && tri.texture.pixels) {
             if (tri.portal) {
@@ -1543,6 +1543,104 @@ let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 90, 0), new Vect
 }</code></pre>
                     Kết quả cuối:
                     <div class="htmlPreview" id="htmlPreview17"></div>
+
+                    <h2>5. Optimization</h2>
+                    Cơ chế Portal coi như đã xong. Việc bây giờ chúng ta cần làm là tìm cách optimize nó, vì bây giờ nó đang cỡ khoảng 30 fps (ở máy mình) dù
+                    đã bỏ đi point light và shadow.<br/><br/>
+
+                    Đa số vấn đề performance rơi vào effect Portal vô tận. Mỗi lần đệ quy ta lại chạy lại 1 render pipeline, vẽ lại full kích thước canvas, mà thật ra cái ta cần
+                    chỉ nằm vỏn vẹn trong quad Portal. Hơn nữa, khi ta đứng nhìn từ 1 bên, ví dụ chỉ thấy 2 lần đệ quy, nhưng nó luôn chạy full 4 lần.<br/><br/>
+                    Ta có thể giải quyết vấn đề này bằng cách giới hạn vùng mà thật sự cần render trong hàm <code>rasterizeClipSpaceTriangle</code> và cả trong hàm <code>clearScreen</code>.
+                    Cho đơn giản thì vùng chỉ là một hình chữ nhật - một bounding box, class Triangle có hàm boundingBox() trả về 4 giá trị trong 1 mảng. Tuy nhiên vì lúc sau ta
+                    sẽ làm cả tá operation với bounding box, nên tốt nhất ta nên tạo 1 class BoundingBox riêng.<br/><br/>
+                    
+                    Class BoundingBox sẽ có thêm các hàm trợ giúp hợp 2 bbox với nhau, giao 2 bbox với nhau, check overlap. Ngoài ra có hàm isValid check xem BoundingBox có hợp
+                    lệ hay không, nhìn thì khá là dư thừa. Nhưng thật ra hữu dụng khi được dùng với hàm boundingBox của Triangle: nếu isValid là false thì tam giác nằm ngoài màn
+                    hình (bạn xem lại vụ min max trong hàm boundingBox trong Triangle sẽ rõ):
+                    <pre><code class="language-javascript">class BoundingBox {
+    constructor(minX, maxX, minY, maxY) {
+        this.minX = minX;
+        this.maxX = maxX;
+        this.minY = minY;
+        this.maxY = maxY;
+    }
+
+    isValid() {
+        return this.minX <= this.maxX && this.minY <= this.maxY;
+    }
+
+    static union(bbox1, bbox2) {
+        return new BoundingBox(
+            Math.min(bbox1.minX, bbox2.minX),
+            Math.max(bbox1.maxX, bbox2.maxX),
+            Math.min(bbox1.minY, bbox2.minY),
+            Math.max(bbox1.maxY, bbox2.maxY)
+        );
+    }
+    static intersect(bbox1, bbox2) {
+        return new BoundingBox(
+            Math.max(bbox1.minX, bbox2.minX),
+            Math.min(bbox1.maxX, bbox2.maxX),
+            Math.max(bbox1.minY, bbox2.minY),
+            Math.min(bbox1.maxY, bbox2.maxY)
+        );
+    }
+    static isOverlap(bbox1, bbox2) {
+        return ((bbox1.minX < bbox2.maxX && bbox1.maxX > bbox2.minX) || (bbox2.minX < bbox1.maxX && bbox2.maxX > bbox1.minX)) &&
+            ((bbox1.minY < bbox2.maxY && bbox1.maxY > bbox2.minY) || (bbox2.minY < bbox1.maxY && bbox2.maxY > bbox1.minY));
+    }
+}</code></pre>
+                    Như vậy hàm clearScreen sẽ được viết lại như sau:
+                    <pre><code class="language-javascript">clearScreen(bbox = null) {
+    if (bbox == null) {
+        bbox = new BoundingBox(0, canvas.width - 1, 0, canvas.height - 1);  // mặc định là full màn hình
+    }
+
+    for (let i = bbox.minY; i <= bbox.maxY; i++) {
+        for (let j = bbox.minX; j <= bbox.maxX; j++) {
+            this.screenBuffer[i][j].updateColor(240, 240, 240);
+            this.depthBuffer[i][j] = Infinity;
+        }
+    }
+}</code></pre>
+                    Hàm rasterizeClipSpaceTriangles:
+                    <pre><code class="language-javascript">rasterizeClipSpaceTriangles(tris, renderBBox = null) {
+    for (let tri of tris) {
+        ...
+
+        let triBBox = tri.boundingBox();    // đổi tên bbox thành triBBox cho dễ phân biệt
+        if (renderBBox != null) {
+            triBBox = BoundingBox.intersect(renderBBox, triBBox);   // giao với renderBBox
+            if (!triBBox.isValid())             // giao xong không ra gì thì bỏ luôn tam giác
+                continue;
+        }
+
+        let edgeFunctionRow01 = edgeFunction(
+            tri.vertices[0],
+            tri.vertices[1],
+            new Vector3(triBBox.minX, triBBox.minY, 0));    // đổi [0], [2] thành minX, minY
+        let edgeFunctionRow12 = edgeFunction(
+            tri.vertices[1],
+            tri.vertices[2],
+            new Vector3(triBBox.minX, triBBox.minY, 0));    // đổi [0], [2] thành minX, minY
+        let edgeFunctionRow20 = edgeFunction(
+            tri.vertices[2],
+            tri.vertices[0],
+            new Vector3(triBBox.minX, triBBox.minY, 0));    // đổi [0], [2] thành minX, minY
+
+        ...
+
+        for (let y = triBBox.minY; y <= triBBox.maxY; y++) {    // đổi [2], [3] thành minY, maxY
+            let edgeFunction01 = edgeFunctionRow01;
+            let edgeFunction12 = edgeFunctionRow12;
+            let edgeFunction20 = edgeFunctionRow20;
+            for (let x = triBBox.minX; x <= triBBox.maxX; x++) {    // đổi [0], [1] thành minX, maxX
+                ...
+            }
+            ...
+        }
+    }
+}</code></pre>
                 </div>
             </div>
         </div>
