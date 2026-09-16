@@ -251,6 +251,24 @@ a:hover {
     color: #ffffff;
 }
 
+/* Prism marks up every tag in an HTML code sample as <span class="token tag">,
+   so the component above was styling them: the inline-flex gap pushed the
+   pieces of a tag apart ("< h2  id  ="fps"  >"), on top of the pill's padding,
+   background and smaller type. `tag` is a name a syntax highlighter also owns,
+   so the component has to stand down inside a highlighted block. Colour is not
+   listed because prism's own .token.tag rule already outranks .tag on it. */
+.token.tag {
+    display: inline;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    letter-spacing: normal;
+    white-space: inherit;
+}
+
 .tag-dot {
     width: 0.45em;
     height: 0.45em;
