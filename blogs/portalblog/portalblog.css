@@ -286,3 +286,26 @@
 .diff-modal-body .d2h-sticky-header {
     position: static;
 }
+
+.h2CollapseBtn {
+    display: block;
+    padding: 5px;
+    font-size: clamp(1.35rem, 1.15rem + 0.8vw, 1.6rem);
+    font-weight: 600;
+    font-style: italic;
+    color: var(--brand-ink);
+    margin: var(--space-7) 0 var(--space-3);
+    border-color: black;
+    background: white;
+}
+
+.h3CollapseBtn {
+    display: block;
+    padding: 5px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: var(--space-5) 0 var(--space-2);
+    color: orange;
+    border-color: black;
+    background: white;
+}
