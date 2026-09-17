@@ -1641,6 +1641,163 @@ let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 90, 0), new Vect
         }
     }
 }</code></pre>
+                    Ta cũng áp dụng việc giới hạn tương tự với 2 hàm runRenderPipeline và updateTextureForQuad của Portal:
+                    <pre><code class="language-javascript">class Portal {
+    ...
+    runRenderPipeline(objectTris, disablePortalTexture, renderBBox = null) {
+        ...
+
+        this.rasterizer.clearScreen(renderBBox);
+
+        ...
+
+        this.rasterizer.rasterizeClipSpaceTriangles(visibleTris, renderBBox);
+    }
+
+    updateTextureForQuad(renderBBox = null) {
+        if (renderBBox == null) {
+            renderBBox = new BoundingBox(0, canvas.width - 1, 0, canvas.height - 1);
+        }
+
+        let index = 0;
+        for (let y = renderBBox.minY; y <= renderBBox.maxY; y++) {
+            let pixelIndex = y * canvas.width + renderBBox.minX;
+            for (let x = renderBBox.minX; x <= renderBBox.maxX; x++) {
+                const c = this.rasterizer.screenBuffer[y][x];
+                this.renderTexture.pixels[pixelIndex * 4] = c.r;
+                this.renderTexture.pixels[pixelIndex * 4 + 1] = c.g;
+                this.renderTexture.pixels[pixelIndex * 4 + 2] = c.b;
+                this.renderTexture.pixels[pixelIndex * 4 + 3] = 255;
+                pixelIndex++;
+            }
+        }
+
+        this.quad.texture = this.renderTexture;
+    }
+    ...
+}</code></pre>
+
+                    Có được khả năng giới hạn vùng cần render rồi, bây giờ ta cần biết là nên giới hạn thế nào?<br/><br/>
+                    Ta xét trường hợp dưới đây:
+                    <div align="center">
+                        <img style="max-height: 250px; max-width: 100vw; display: block;" src="images/optimize1.png"/>
+                    </div>
+                    Đây là những gì mà P4 hiện tại phải render - full góc nhìn của C3:
+                    <div align="center">
+                        <img style="max-height: 250px; max-width: 100vw; display: block;" src="images/optimize2.png"/>
+                    </div>
+                    Trong khi chỗ nó thật sự cần render là:
+                    <div align="center">
+                        <img style="max-height: 250px; max-width: 100vw; display: block;" src="images/optimize3.png"/>
+                    </div>
+                    Tương tự với P3, P2, chúng chỉ nên render vùng (bounding box) mà nó giao nhau với P1.<br/><br/>
+                    Như vậy là trước tiên, ta nên viết hàm tìm BoundingBox của Portal. BoundingBox thì phải ở screen space mới có ý nghĩa,
+                    nên ta cần chạy lại render pipeline trong hàm. Ngoài ra hàm này phải nhận vào camera mà mình muốn nó chạy render pipeline với (vì các Portal trên
+                    là cùng 1 Portal nhưng ở góc nhìn khác nhau, remember that).<br/><br/>
+                    Camera khác nhau thì view matrix khác nhau, thay vì phải new Camera mỗi lần thì ta tách việc tính toán khỏi hàm <code>Camera.getViewMatrix()</code> và để vào <code>Mat4x4</code>:
+                    <pre><code class="language-javascript">class Mat4x4 {
+    ...
+    static ViewFromPosRot(pos, rotation) {
+        let forward = rotation.rotateVector(Vector3.forward);
+        let right = rotation.rotateVector(Vector3.right);
+        let up = rotation.rotateVector(Vector3.up);
+        return Mat4x4.View(right, up, forward, pos);
+    }
+    ...
+}
+
+...
+
+class Camera {
+    ...
+    getViewMatrix() {
+        return Mat4x4.ViewFromPosRot(this.pos, this. rotation);
+    }
+    ...
+}</code></pre> 
+                    Như vậy hàm tìm quad của Portal như sau. Chạy lại render pipeline, khúc cuối sau khi nhân ra screen space, thì hợp (union) bounding box của triangle
+                    hiện tại với kết quả hợp từ đầu tới giờ:
+                    <pre><code class="language-javascript">class Portal {
+    ...
+    getQuadBoundingBox(cameraPos, cameraRot) {
+        let viewMatPortal = Mat4x4.ViewFromPosRot(cameraPos, cameraRot);
+        let quadTris = [];
+        quadTris.push(...this.quad.getTransformedTriangles());
+
+        let visibleTris = [];
+        for (let tri of quadTris) {
+            if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), cameraPos)) < 0) {
+                tri.mulMat4x4(viewMatPortal);
+                visibleTris.push(...tri.clipAgainstPlane(nearPlane));
+            }
+        }
+
+        let totalBBox = null;
+        for (let tri of visibleTris) {
+            tri.mulMat4x4(projectionMatrix);
+            tri.perspectiveDivide();
+
+            let vertices = tri.vertices;
+            for (let i = 0; i < vertices.length; i++) {
+                vertices[i] = new Vector3(
+                    vertices[i].x * (canvas.width / 2) + canvas.width / 2,
+                    -vertices[i].y * (canvas.height / 2) + canvas.height / 2,
+                    vertices[i].z,
+                );
+            }
+
+            const triBBox = tri.boundingBox();
+            if (triBBox.isValid()) {
+                if (totalBBox == null)
+                    totalBBox = triBBox;
+                else
+                    totalBBox = BoundingBox.union(totalBBox, triBBox);
+            }
+        }
+
+        return totalBBox;
+    }
+}</code></pre>
+                    <i>Dù quad chỉ có 2 triangles nhưng bạn nhớ là sau khi clip với near plane nó có thể ra nhiều hơn.</i><br/><br/>
+
+                    Như vậy mọi công tác chuẩn bị đã xong, đã tới lúc ta áp dụng full kỹ thuật optimize trong hàm <code>recursivePortalOperation</code>.<br/>
+                    Ý tưởng cơ bản là ta build mảng bounding box song song với mảng cameraTransforms. Trong lúc build thì nếu bounding box hiện tại không giao nhau với bounding
+                    box P1, thì dừng luôn ngay tại đó, và bắt đầu render ngược lại từ chỗ đó.<br/>
+                    Ngoài ra ta cũng có thể dừng ngay từ đầu luôn nếu bounding box của Portal đầu tiên (Portal gốc) không valid, nghĩa là Portal đó nằm ngoài màn hình 😳
+                    <pre><code class="language-javascript">recursivePortalOperation(playerCamera, objectTris) {
+    let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
+    let quadBoundingBoxes = [this.getQuadBoundingBox(playerCamera.pos, playerCamera.rotation)];
+    if (quadBoundingBoxes[0] == null || !quadBoundingBoxes[0].isValid())    // portal này không nằm trong màn hình
+        return;
+
+    let deepest = 0;
+    for (let i = 1; i <= portalLimit; i++) {
+        cameraTransforms.push(this.calculateTransformToOtherPortalTransform(cameraTransforms[i - 1][0], cameraTransforms[i - 1][1]));
+        deepest = i;    // cập nhật độ sâu hiện tại
+
+        let newQuadBoundingBox = this.getQuadBoundingBox(cameraTransforms[i][0], cameraTransforms[i][1]);   // bounding box của portal từ góc nhìn hiện tại
+        if (newQuadBoundingBox == null || !BoundingBox.isOverlap(quadBoundingBoxes[0], newQuadBoundingBox)) // không giao nhau với P1, dừng luôn
+            break;
+        quadBoundingBoxes.push(BoundingBox.intersect(quadBoundingBoxes[0], newQuadBoundingBox));
+    }
+
+    // bắt đầu lại từ độ sâu sâu nhất mà portal vẫn còn thấy được
+    this.camera.pos = cameraTransforms[deepest][0];
+    this.camera.rotation = cameraTransforms[deepest][1];
+    // quadBoundingBoxes[deepest - 1] vì có giao nhau thì mới được push vào quadBoundingBoxes
+    this.runRenderPipeline(objectTris, true, quadBoundingBoxes[deepest - 1]);
+    this.updateTextureForQuad(quadBoundingBoxes[deepest - 1]);
+    for (let i = deepest - 1; i >= 1; i--) {
+        this.camera.pos = cameraTransforms[i][0];
+        this.camera.rotation = cameraTransforms[i][1];
+        this.runRenderPipeline(objectTris, false, quadBoundingBoxes[i - 1]); // quadBoundingBoxes[i - 1] vì có giao nhau thì mới được push vào quadBoundingBoxes
+        this.updateTextureForQuad(quadBoundingBoxes[i - 1]);
+    }
+}</code></pre>
+                    Kết quả cuối cùng (mình tăng portalLimit lên 10):
+                    <div class="htmlPreview" id="htmlPreview18"></div>
+                    60 fps 😳 Thật ra nếu bạn tăng portalLimit lên nữa thì nó cũng không ảnh hưởng là bao, vì càng sâu portal càng nhỏ, chỉ vẽ thêm mấy pixel không hề hấn gì.
+                    10 thì là quá đủ cho illusion.
                 </div>
             </div>
         </div>
