@@ -1,0 +1,92 @@
+--- "a/htmlPreviews\\htmlPreview20.html"
++++ "b/htmlPreviews\\htmlPreview21.html"
+@@ -908,6 +908,8 @@
+                 this.color = color;
+                 this.mesh = mesh;
+                 this.texture = texture;
++                this.velocity = Vector3.zero.clone();
++                this.useGravity = false;
+                 this.isHoldable = false;
+             }
+ 
+@@ -931,6 +933,21 @@
+                 }
+                 return transformedTris;
+             }
++
++            updatePhysics() {
++                if (this.useGravity) {
++                    this.velocity = Vector3.add(this.velocity, Vector3.mul(Vector3.down, 9.8 * dt));
++                    if (this.velocity.magnitude() >= 50) {
++                        this.velocity = Vector3.mul(this.velocity.normalize(), 50);
++                    }
++                }
++                this.pos = Vector3.add(this.pos, Vector3.mul(this.velocity, dt));
++                if (this.pos.y < 1) {
++                    this.pos.y = 1;
++                    this.useGravity = false;
++                    this.velocity = Vector3.zero.clone();
++                }
++            }
+         }
+ 
+         class DirectionalLight {
+@@ -1589,6 +1606,7 @@
+                     controllingObjectText.innerText = "Companion cube";
+                     break;
+             }
++            testCube.updatePhysics();
+ 
+             let posDelta = Vector3.zero;
+             if (keyStates["i"]) {
+@@ -1676,12 +1694,19 @@
+                 let gameObjectTeleportedTransform = portal1.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
+                 if (gameObjectTeleportedTransform != null) {
+                     gameObject.pos = gameObjectTeleportedTransform[0];
++
++                    let localVelocity = gameObject.rotation.inverseRotateVector(gameObject.velocity);
+                     gameObject.rotation = gameObjectTeleportedTransform[1];
++                    gameObject.velocity = gameObject.rotation.rotateVector(localVelocity);
++
+                 } else {
+                     gameObjectTeleportedTransform = portal2.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
+                     if (gameObjectTeleportedTransform != null) {
+                         gameObject.pos = gameObjectTeleportedTransform[0];
++
++                        let localVelocity = gameObject.rotation.inverseRotateVector(gameObject.velocity);
+                         gameObject.rotation = gameObjectTeleportedTransform[1];
++                        gameObject.velocity = gameObject.rotation.rotateVector(localVelocity);
+                     }
+                 }
+             }
+@@ -1838,18 +1863,30 @@
+                 if (controllingObject > 2)
+                     controllingObject = 0;
+                 controllingObjectText.innerText = controllingObject == 0 ? "Orange portal" : "Blue Portal";
++            } else if (e.key == "g") {
++                testCube.useGravity = !testCube.useGravity;
++                if (!testCube.useGravity) {
++                    testCube.velocity = Vector3.zero.clone();
++                }
+             } else if (e.key == "f") {
+                 if (holdingObject != null) {
++                    holdingObject.useGravity = false;
++                    holdingObject.velocity = Vector3.zero.clone();
+                     holdingObject = null;
+                 } else {
++                    testCube.useGravity = false;
++                    testCube.velocity = Vector3.zero.clone();
+                     testCube.pos = new Vector3(0, 1, -3);
+                 }
+             } else if (e.key == "e") {
+                 if (holdingObject != null) {
++                    holdingObject.velocity = Vector3.mul(camera.getForward(), 10);
+                     holdingObject = null;
+                 } else {
+                     if (rasterizer.pointingGameObject != null && rasterizer.pointingGameObject.isHoldable) {
+                         holdingObject = rasterizer.pointingGameObject;
++                        holdingObject.velocity = Vector3.zero.clone();
++                        holdingObject.useGravity = false;
+                     }
+                 }
+             }

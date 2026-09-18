@@ -2006,7 +2006,7 @@ function gameObjectToWorldSpaceTriangles() {
                             b. Cầm cục companion cube
                         </button>
                         <div class="collapse" id="part6b">
-                            Đây là control mà mình sẽ áp dụng với cục companion cube:
+                            Đây là control mà mình sẽ áp dụng với cục companion cube (bao gồm luôn phần sau):
                             <ul>
                                 <li>E: Cầm cục cube (khi đang nhìn vào nó). E lần nữa để ném nó đi.</li>
                                 <li>F: Nếu đang cầm cục cube: thả ra ngay tại chỗ. Ngược lại: reset nó về vị trí ban đầu.</li>
@@ -2126,6 +2126,107 @@ let holdingObject = null;</code></pre>
 }</code></pre>
                             Full code:
                             <div class="htmlPreview" id="htmlPreview20"></div>
+                        </div>
+
+                        <button type="button" data-toggle="collapse" data-target="#part6c" aria-expanded="false" aria-controls="part6c" class="h3CollapseBtn">
+                            c. Vật lý cho cục companion cube
+                        </button>
+                        <div class="collapse" id="part6c">
+                            "Vật lý" ở đây chỉ là thêm vận tốc và trọng lực cho cục cube thôi, không có gì to tát, no collision system needed 🥶<br/><br/>
+                            Thêm biến vận tốc và biến bật tắt trọng lực cho GameObject:
+                            <pre><code class="language-javascript">class GameObject {
+    constructor(){
+        ...
+        this.velocity = Vector3.zero.clone();
+        this.useGravity = false;
+    }
+}</code></pre>
+
+                            Hàm update vật lí cho GameObject. Có code check vận tốc không tăng quá 50, và code check nếu GameObject rơi qua mặt đất (y=1) thì đưa nó lên lại,
+                            tắt trọng lực và set vận tốc = 0:
+                            <pre><code class="language-javascript">updatePhysics() {
+    if (this.useGravity) {
+        this.velocity = Vector3.add(this.velocity, Vector3.mul(Vector3.down, 9.8 * dt));    // vận tốc +vector trọng lực theo thời gian
+        if (this.velocity.magnitude() >= 50) {  // giới hạn vật tốc
+            this.velocity = Vector3.mul(this.velocity.normalize(), 50);
+        }
+    }
+    this.pos = Vector3.add(this.pos, Vector3.mul(this.velocity, dt));   // cập nhật vị trí theo vận tốc
+    if (this.pos.y < 1) {   // check mặt đất
+        this.pos.y = 1;
+        this.useGravity = false;
+        this.velocity = Vector3.zero.clone();
+    }
+}</code></pre>
+                            Gọi updatePhysics cho testCube:
+                            <pre><code class="language-javascript">function updateGameObjectTransforms() {
+    ...
+    testCube.updatePhysics();
+    ...
+}</code></pre>
+                            Thêm phần xử lí vật lí trong keypress:
+                            <pre><code class="language-javascript">window.addEventListener("keypress", (e) => {
+    if (e.key == "p") {
+        ...
+    } else if (e.key == "g") {      // nút g toggle trọng lực như trên mình nói
+        testCube.useGravity = !testCube.useGravity;
+        if (!testCube.useGravity) {     // khi không có trọng lực thì dừng object lại
+            testCube.velocity = Vector3.zero.clone();
+        }
+    } else if (e.key == "f") {
+        if (holdingObject != null) {
+            // thả object ra thì dừng vật lí lại
+            holdingObject.useGravity = false;
+            holdingObject.velocity = Vector3.zero.clone();
+            holdingObject = null;
+        } else {
+            // reset cũng reset vật lí
+            testCube.useGravity = false;
+            testCube.velocity = Vector3.zero.clone();
+            testCube.pos = new Vector3(0, 1, -3);
+        }
+    } else if (e.key == "e") {
+        if (holdingObject != null) {
+            // ném object đi theo hướng nhìn player
+            holdingObject.velocity = Vector3.mul(camera.getForward(), 10);
+            holdingObject = null;
+        } else {
+            if (rasterizer.pointingGameObject != null && rasterizer.pointingGameObject.isHoldable) {
+                holdingObject = rasterizer.pointingGameObject;
+                // cầm object lên thì cũng tắt vật lí
+                holdingObject.velocity = Vector3.zero.clone();
+                holdingObject.useGravity = false;
+            }
+        }
+    }
+});</code></pre>
+                            Một vấn đề cuối cùng, khi teleport qua Portal thì vận tốc cũng phải được transform qua như rotation. Cái này không có gì phức tạp, chỉ
+                            tính velocity local, sau khi teleport thì chuyển thành world velocity lại với rotation mới:
+                            <pre><code class="language-javascript">function updateGameObjectTransforms() {
+    ...
+    for (let gameObject of canInteractWithPortalGameObjects) {
+        let gameObjectTeleportedTransform = portal1.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
+        if (gameObjectTeleportedTransform != null) {
+            gameObject.pos = gameObjectTeleportedTransform[0];
+
+            let localVelocity = gameObject.rotation.inverseRotateVector(gameObject.velocity);   // <-------------------------
+            gameObject.rotation = gameObjectTeleportedTransform[1];
+            gameObject.velocity = gameObject.rotation.rotateVector(localVelocity);              // <-------------------------
+
+        } else {
+            gameObjectTeleportedTransform = portal2.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
+            if (gameObjectTeleportedTransform != null) {
+                gameObject.pos = gameObjectTeleportedTransform[0];
+
+                let localVelocity = gameObject.rotation.inverseRotateVector(gameObject.velocity);   // <-------------------------
+                gameObject.rotation = gameObjectTeleportedTransform[1];
+                gameObject.velocity = gameObject.rotation.rotateVector(localVelocity);              // <-------------------------
+            }
+        }
+    }
+}</code></pre>
+                            Kết quả cuối cùng:
+                            <div class="htmlPreview" id="htmlPreview21"></div>
                         </div>
                     </div>
                 </div>

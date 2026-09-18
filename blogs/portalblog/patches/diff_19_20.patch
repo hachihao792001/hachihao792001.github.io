@@ -1,0 +1,132 @@
+--- "a/htmlPreviews\\htmlPreview19.html"
++++ "b/htmlPreviews\\htmlPreview20.html"
+@@ -344,7 +344,7 @@
+         }
+ 
+         class Triangle {
+-            constructor(vertices = [], uv = [], color = new Color(255, 255, 255), portal = null) {
++            constructor(vertices = [], uv = [], color = new Color(255, 255, 255), portal = null, gameObject = null) {
+                 if (vertices.length == 0) {
+                     this.vertices = [];
+                     for (let i = 0; i < 3; i++) {
+@@ -359,6 +359,7 @@
+                 this.color = color;
+                 this.texture = null;
+                 this.portal = portal;
++                this.gameObject = gameObject;
+             }
+ 
+             clone() {
+@@ -371,6 +372,7 @@
+                 tri.color = this.color;
+                 tri.texture = this.texture;
+                 tri.portal = this.portal;
++                tri.gameObject = this.gameObject;
+                 return tri;
+             }
+ 
+@@ -482,6 +484,7 @@
+                     outTri.color = this.color;
+                     outTri.texture = this.texture;
+                     outTri.portal = this.portal;
++                    outTri.gameObject = this.gameObject;
+                     outTris.push(outTri);
+                 } else if (frontPoints.length == 2 && behindPoints.length == 1) {
+                     let outTri1 = new Triangle(), outTri2 = new Triangle();
+@@ -510,6 +513,7 @@
+                     outTri1.color = this.color;
+                     outTri1.texture = this.texture;
+                     outTri1.portal = this.portal;
++                    outTri1.gameObject = this.gameObject;
+                     outTris.push(outTri1);
+ 
+                     outTri2.vertices[0] = f1.clone();
+@@ -524,6 +528,7 @@
+                     outTri2.color = this.color;
+                     outTri2.texture = this.texture;
+                     outTri2.portal = this.portal;
++                    outTri2.gameObject = this.gameObject;
+                     outTris.push(outTri2);
+                 }
+ 
+@@ -903,6 +908,7 @@
+                 this.color = color;
+                 this.mesh = mesh;
+                 this.texture = texture;
++                this.isHoldable = false;
+             }
+ 
+             rotate(eulerX, eulerY, eulerZ) {
+@@ -920,6 +926,7 @@
+                     transformedTri.updateWorldVertices();
+                     transformedTri.texture = this.texture;
+                     transformedTri.color = this.color;
++                    transformedTri.gameObject = this;
+                     transformedTris.push(transformedTri);
+                 }
+                 return transformedTris;
+@@ -983,6 +990,7 @@
+ 
+                 this.pointingPos = new Vector3(0, 0, 0);
+                 this.pointingPosNormal = new Vector3(0, 0, 0);
++                this.pointingGameObject = null;
+ 
+                 for (let i = 0; i < canvas.height; i++) {
+                     let screenRow = [];
+@@ -1076,6 +1084,7 @@
+ 
+                                         this.pointingPos = pixelWorldPos;
+                                         this.pointingPosNormal = triWorldNormal;
++                                        this.pointingGameObject = tri.gameObject;
+                                     }
+ 
+                                     let lightIntensity = dirLightDiffuse;
+@@ -1536,6 +1545,7 @@
+             cubeMesh,
+             companionCubeTexure,
+         );
++        testCube.isHoldable = true;
+ 
+         let portal1Pos = new Vector3(-3, 3, -3);
+         let portal2Pos = new Vector3(3, 3, -3);
+@@ -1551,6 +1561,8 @@
+         let controllingRotateSpeed = 60;
+         let canInteractWithPortalGameObjects = [playerCube, testCube];
+ 
++        let holdingObject = null;
++
+         let lastTime = performance.now();
+         let dt = 0;
+ 
+@@ -1558,6 +1570,10 @@
+             playerCube.pos = camera.pos;
+             playerCube.rotation = camera.rotation;
+ 
++            if (holdingObject != null) {
++                holdingObject.pos = Vector3.add(camera.pos, Vector3.mul(camera.getForward(), 5));
++            }
++
+             let controllingPos = portal1Pos;
+             switch (controllingObject) {
+                 case 0:
+@@ -1822,6 +1838,20 @@
+                 if (controllingObject > 2)
+                     controllingObject = 0;
+                 controllingObjectText.innerText = controllingObject == 0 ? "Orange portal" : "Blue Portal";
++            } else if (e.key == "f") {
++                if (holdingObject != null) {
++                    holdingObject = null;
++                } else {
++                    testCube.pos = new Vector3(0, 1, -3);
++                }
++            } else if (e.key == "e") {
++                if (holdingObject != null) {
++                    holdingObject = null;
++                } else {
++                    if (rasterizer.pointingGameObject != null && rasterizer.pointingGameObject.isHoldable) {
++                        holdingObject = rasterizer.pointingGameObject;
++                    }
++                }
+             }
+         });
+     </script>

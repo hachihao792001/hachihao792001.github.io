@@ -8,7 +8,18 @@
      <script>
          class Vector2 {
              constructor(u = 0, v = 0, w = 1) {
-@@ -978,6 +977,9 @@
+@@ -679,6 +678,10 @@
+                 return Mat4x4.ViewFromPosRot(this.pos, this.rotation);
+             }
+ 
++            getForward() {
++                return this.rotation.rotateVector(Vector3.forward);
++            }
++
+             updateTransformAndCorrectRoll(newPos, newRot) {
+                 this.pos = newPos;
+                 this.rotation = newRot;
+@@ -978,6 +981,9 @@
                  this.screenBuffer = [];
                  this.depthBuffer = [];
  
@@ -18,7 +29,7 @@
                  for (let i = 0; i < canvas.height; i++) {
                      let screenRow = [];
                      let depthRow = [];
-@@ -1060,12 +1062,17 @@
+@@ -1060,12 +1066,17 @@
  
                                      let pixelInvZ = tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2;
  
@@ -42,7 +53,7 @@
  
                                      let lightIntensity = dirLightDiffuse;
  
-@@ -1230,6 +1237,17 @@
+@@ -1230,6 +1241,17 @@
                  this.backQuad.pos = Vector3.add(pos, Vector3.mul(portalBack, portalEdgeThickness));
              }
  
@@ -60,7 +71,7 @@
              rotate(eulerX, eulerY, eulerZ) {
                  let q = Quaternion.buildQuaternionEuler(new Vector3(eulerX, eulerY, eulerZ));
                  this.rotation = Quaternion.multiply(q, this.rotation);
-@@ -1457,9 +1475,7 @@
+@@ -1457,9 +1479,7 @@
          }
  
          const canvas = document.getElementById("gameCanvas");
@@ -70,7 +81,7 @@
          const rasterizer = new Rasterizer();
          const fov = 60;
          let znear = 0.01, zfar = 1000;
-@@ -1474,6 +1490,7 @@
+@@ -1474,6 +1494,7 @@
              new Plane(Vector3.left, new Vector3(1, 0, 0))
          ];
          let keyStates = [];
@@ -78,7 +89,7 @@
  
          let cameraRotLerpStart = camera.rotation;
          let cameraRotLerpEnd = camera.rotation;
-@@ -1495,7 +1512,13 @@
+@@ -1495,7 +1516,16 @@
          let brickTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg");
  
          let cubeMesh = new Cube();
@@ -89,11 +100,14 @@
 +            new GameObject(new Vector3(-30, 10, 0), Vector3.zero, new Vector3(1, 20, 60), new Color(0, 255, 0), cubeMesh, brickTexture),
 +            new GameObject(new Vector3(0, 10, 30), Vector3.zero, new Vector3(60, 20, 1), new Color(0, 255, 0), cubeMesh, brickTexture),
 +            new GameObject(new Vector3(0, 10, -30), Vector3.zero, new Vector3(60, 20, 1), new Color(0, 255, 0), cubeMesh, brickTexture),
++            new GameObject(new Vector3(0, 10, -3), Vector3.zero, new Vector3(8, 1, 8), new Color(0, 255, 0), cubeMesh, brickTexture),
++            new GameObject(new Vector3(-9, 5, -3), new Vector3(0, 0, -45), new Vector3(14, 1, 8), new Color(0, 255, 0), cubeMesh, brickTexture),
++            new GameObject(new Vector3(9, 5, -3), new Vector3(0, 0, 45), new Vector3(14, 1, 8), new Color(0, 255, 0), cubeMesh, brickTexture),
 +        ];
          let playerCube = new GameObject(camera.pos, camera.rotation, new Vector3(0.5, 0.5, 0.5), new Color(255, 255, 255),
              new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), playerCubeTexture);
          let testCube = new GameObject(
-@@ -1643,7 +1666,8 @@
+@@ -1643,7 +1673,8 @@
  
          function gameObjectToWorldSpaceTriangles() {
              let objectTris = [];
@@ -103,7 +117,7 @@
              objectTris.push(...portal1.getAllTransformedTriangles());
              objectTris.push(...portal2.getAllTransformedTriangles());
  
-@@ -1697,11 +1721,15 @@
+@@ -1697,11 +1728,15 @@
          }
  
          function rasterize(visibleTris) {
@@ -121,12 +135,12 @@
          }
  
          function update(time = performance.now()) {
-@@ -1728,6 +1756,36 @@
+@@ -1728,6 +1763,36 @@
  
          update();
  
 +        function shootPortal(portal) {
-+            let cameraForward = camera.rotation.rotateVector(Vector3.forward);
++            let cameraForward = camera.getForward();
 +
 +            if (portal == 0) {
 +                portal1Pos = Vector3.add(rasterizer.pointingPos, Vector3.mul(rasterizer.pointingPosNormal, 0.1));

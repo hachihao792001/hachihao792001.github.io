@@ -5,7 +5,7 @@ import os
 output_dir = "patches"
 os.makedirs(output_dir, exist_ok=True)
 
-for i in range(1, 19):
+for i in range(1, 21):
     file_a = f"htmlPreviews\\htmlPreview{i}.html"
     file_b = f"htmlPreviews\\htmlPreview{i+1}.html"
     patch_name = f"diff_{i}_{i+1}.patch"
