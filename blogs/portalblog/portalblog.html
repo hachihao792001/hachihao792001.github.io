@@ -1844,6 +1844,154 @@ function update(time = performance.now()) {
                         60 fps 😳 Thật ra nếu bạn tăng portalLimit lên nữa thì nó cũng không ảnh hưởng là bao, vì càng sâu portal càng nhỏ, chỉ vẽ thêm mấy pixel không hề hấn gì.
                         10 thì là quá đủ cho illusion.
                     </div>
+
+                    <button type="button" data-toggle="collapse" data-target="#part6" aria-expanded="false" aria-controls="part6" class="h2CollapseBtn">
+                        6. Các cơ chế thêm
+                    </button>
+                    <div class="collapse" id="part6">
+                        Blog này đáng lẽ đã xong từ phần 5, mình thêm phần này để thêm các cơ chế ngoài Portal cho nó giống game Portal của Valve hơn, sẽ làm nó
+                        thú vị hơn tí 😳
+                        <button type="button" data-toggle="collapse" data-target="#part6a" aria-expanded="false" aria-controls="part6a" class="h3CollapseBtn">
+                            a. Bắn Portal bằng chuột
+                        </button>
+                        <div class="collapse" id="part6a">
+                            Đối với 1 game engine hoàn chỉnh, thì Raycasting là giải pháp hiển nhiên cho cơ chế này. Tuy nhiên, implement một kỹ thuật mới
+                            vào trong engine của chúng ta chỉ vì 1 cơ chế nhỏ thế này thì hơi quá 😅 (mình sẽ viết blog về Raycasting sau 😳).<br/><br/>
+                            Đối với trường hợp chúng ta thì thật ra có cách khác dễ hơn. Vì project này chúng ta tự viết rasterizer của mình, nên việc truy
+                            cập pixel chính giữa màn hình và lấy thông tin điểm mà ta đang nhìn không có gì khó. Thông tin mà ta cần là vị trí thế giới của điểm ta
+                            đang nhìn (pixelWorldPos), và vector pháp tuyến của tam giác chứa điểm đó (triWorldNormal), pháp tuyến để đảm bảo Portal luôn hướng
+                            ra ngoài bức tường.<br/><br/>
+
+                            Định nghĩa sẵn pixel chính giữa màn hình:
+                            <pre><code class="language-javascript">let screenCenter = new Vector3(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 0);</code></pre>
+
+                            Trong class Rasterizer, ta thêm 2 biến pointingPos và pointingNormal và set nó mỗi frame trong lúc rasterize:
+                            <pre><code class="language-javascript">class Rasterizer {
+    constructor() {
+        ...
+        this.pointingPos = new Vector3(0, 0, 0);
+        this.pointingPosNormal = new Vector3(0, 0, 0);
+        ...
+    }
+    ...
+    rasterizeClipSpaceTriangles(){
+        ...
+
+        if (z < this.depthBuffer[y][x]) {
+            this.depthBuffer[y][x] = z;
+
+            let pixelInvZ = tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2;
+
+            if (x == screenCenter.x && y == screenCenter.y) {
+                // Để phần tính pixelWorldPos vào trong if vì ta chỉ cần tính với pixel giữa màn hình
+                // Đoạn code tính pixelWorldPos này lúc trước dùng cho point light, ở đầu blog mình xóa hết code point light trừ mỗi phần này, để dành tới tận bây giờ 😅
+                let pixelWorldPos = new Vector3(
+                    (perspectiveWorldVertices[0].x * baryCoord0 + perspectiveWorldVertices[1].x * baryCoord1 + perspectiveWorldVertices[2].x * baryCoord2),
+                    (perspectiveWorldVertices[0].y * baryCoord0 + perspectiveWorldVertices[1].y * baryCoord1 + perspectiveWorldVertices[2].y * baryCoord2),
+                    (perspectiveWorldVertices[0].z * baryCoord0 + perspectiveWorldVertices[1].z * baryCoord1 + perspectiveWorldVertices[2].z * baryCoord2)
+                );
+                pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
+
+                this.pointingPos = pixelWorldPos;           // <------------------------
+                this.pointingPosNormal = triWorldNormal;    // <------------------------
+            }
+
+            ...
+        }
+        ...
+    }
+}</code></pre>              
+                            Hàm lấy event nhấp chuột, gọi 1 hàm shootPortal:
+                            <pre><code class="language-javascript">document.addEventListener("mousedown", (e) => {
+    if (document.pointerLockElement === canvas) {
+        if (e.button == 0) {
+            shootPortal(0);
+        } else if (e.button == 2) {
+            shootPortal(1);
+        }
+    }
+});</code></pre>
+                            Hàm shootPortal. Với vị trí thì nhích ra 1 chút khỏi bức tường, với rotation thì xài lại hàm lookRotation để đảm bảo Portal luôn đứng thẳng:
+                            <pre><code class="language-javascript">function shootPortal(portal) {
+    if (portal == 0) {
+        portal1Pos = Vector3.add(rasterizer.pointingPos, Vector3.mul(rasterizer.pointingPosNormal, 0.1));
+        portal1.setRotation(Quaternion.lookRotation(rasterizer.pointingPosNormal, Vector3.up));
+    } else if (portal == 1) {
+        portal2Pos = Vector3.add(rasterizer.pointingPos, Vector3.mul(rasterizer.pointingPosNormal, 0.1));
+        portal2.setRotation(Quaternion.lookRotation(rasterizer.pointingPosNormal, Vector3.up));
+    }
+}</code></pre>
+                            Tuy nhiên, việc "đứng thẳng" chỉ có ý nghĩa khi ta bắn Portal vào tường hoặc 1 mặt phẳng xiêng. Khi ta bắn lên mặt đất, thì Portal
+                            đó phải "dọc theo" hướng nhìn của chúng ta, nghĩa là upwards truyền vào hàm lookRotation phải là forward của player.<br/><br/>
+                            Sửa hàm shootPortal:
+                            <pre><code class="language-javascript">function shootPortal(portal) {
+    let cameraForward = camera.rotation.rotateVector(Vector3.forward);
+
+    if (portal == 0) {
+        portal1Pos = Vector3.add(rasterizer.pointingPos, Vector3.mul(rasterizer.pointingPosNormal, 0.1));
+        if (Math.abs(Vector3.dot(rasterizer.pointingPosNormal, Vector3.up)) >= 0.9) {
+            portal1.setRotation(Quaternion.lookRotation(rasterizer.pointingPosNormal, cameraForward));
+        } else {
+            portal1.setRotation(Quaternion.lookRotation(rasterizer.pointingPosNormal, Vector3.up));
+        }
+    } else if (portal == 1) {
+        portal2Pos = Vector3.add(rasterizer.pointingPos, Vector3.mul(rasterizer.pointingPosNormal, 0.1));
+        if (Math.abs(Vector3.dot(rasterizer.pointingPosNormal, Vector3.up)) >= 0.9) {
+            portal2.setRotation(Quaternion.lookRotation(rasterizer.pointingPosNormal, cameraForward));
+        } else {
+            portal2.setRotation(Quaternion.lookRotation(rasterizer.pointingPosNormal, Vector3.up));
+        }
+    }
+}</code></pre>
+                            Chúng ta chưa có hàm setRotation cho Portal (chỉ có rotate), thêm vào:
+                            <pre><code class="language-javascript">setRotation(newRotation) {
+    this.quad.rotation = newRotation;
+    this.topCube.rotation = newRotation;
+    this.bottomCube.rotation = newRotation;
+    this.leftCube.rotation = newRotation;
+    this.rightCube.rotation = newRotation;
+    let newUp = newRotation.rotateVector(Vector3.up);
+    this.backQuad.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(newUp, 180), newRotation);
+    this.rotation = newRotation;
+}</code></pre>
+                            Ok cơ chế đã xong, tuy nhiên scene hiện tại chỉ có 1 miếng gạch lơ lửng, khá trống trải. Mình sẽ thêm 4 bức tường xung quanh để có chỗ
+                            để bắn, để hết trong 1 mảng sceneObjects (bao gồm cả ground):
+                            <pre><code class="language-javascript">let sceneObjects = [
+    new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(60, 1, 60), new Color(0, 255, 0), cubeMesh, brickTexture),
+    new GameObject(new Vector3(30, 10, 0), Vector3.zero, new Vector3(1, 20, 60), new Color(0, 255, 0), cubeMesh, brickTexture),
+    new GameObject(new Vector3(-30, 10, 0), Vector3.zero, new Vector3(1, 20, 60), new Color(0, 255, 0), cubeMesh, brickTexture),
+    new GameObject(new Vector3(0, 10, 30), Vector3.zero, new Vector3(60, 20, 1), new Color(0, 255, 0), cubeMesh, brickTexture),
+    new GameObject(new Vector3(0, 10, -30), Vector3.zero, new Vector3(60, 20, 1), new Color(0, 255, 0), cubeMesh, brickTexture),
+];
+
+...
+
+function gameObjectToWorldSpaceTriangles() {
+    ...
+    for (let i = 0; i < sceneObjects.length; i++)
+        objectTris.push(...sceneObjects[i].getTransformedTriangles());
+    ...
+}</code></pre>
+
+                            Ngoài ra ta vẽ thêm 1 cursor trên màn hình để biết ta bắn ở đâu:
+                            <pre><code class="language-javascript">function rasterize(visibleTris) {
+    ...
+
+    let x = screenCenter.x, y = screenCenter.y;
+    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    ctx.fillRect(x - 2, y - 2, 5, 5);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(x - 1, y - 1, 3, 3);
+}</code></pre>
+                            Kết quả (mình đã bỏ luôn canvas bên dưới vì không còn mục đích debug nữa):
+                            <div class="htmlPreview" id="htmlPreview19"></div>
+                        </div>
+
+                        <button type="button" data-toggle="collapse" data-target="#part6b" aria-expanded="false" aria-controls="part6b" class="h3CollapseBtn">
+                            b. Cầm, ném, thêm trọng lực cho cục companion cube
+                        </button>
+                        <div class="collapse" id="part6b"></div>
+                    </div>
                 </div>
             </div>
         </div>

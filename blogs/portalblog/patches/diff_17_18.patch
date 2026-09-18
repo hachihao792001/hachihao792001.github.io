@@ -72,7 +72,7 @@
 -                let right = this.rotation.rotateVector(Vector3.right);
 -                let up = this.rotation.rotateVector(Vector3.up);
 -                return Mat4x4.View(right, up, forward, this.pos);
-+                return Mat4x4.ViewFromPosRot(this.pos, this. rotation);
++                return Mat4x4.ViewFromPosRot(this.pos, this.rotation);
              }
  
              updateTransformAndCorrectRoll(newPos, newRot) {
