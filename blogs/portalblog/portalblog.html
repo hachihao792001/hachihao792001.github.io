@@ -207,45 +207,45 @@ function update(time = performance.now()) {
                             ngoài set các thứ truyền vào thì mình còn phải tạo một camera khác của riêng portal đó (như những gì chúng ta đã bàn), và có camera thì cũng cần có thêm một Rasterizer
                             đi kèm. Như vậy thì constructor của class Portal sẽ như sau:
                             <pre><code class="language-javascript">class Portal {
-            constructor(name, pos, eulerAngles, scale, color) {
-                this.name = name;
-                this.pos = pos;
-                this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
-                this.scale = scale;
+    constructor(name, pos, eulerAngles, scale, color) {
+        this.name = name;
+        this.pos = pos;
+        this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
+        this.scale = scale;
 
-                let portalQuadMesh = new Quad();
-                this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
-                this.rasterizer = new Rasterizer();
-                this.camera = new Camera(pos, eulerAngles, 8, 0.2);
-            }
-        }</code></pre>
+        let portalQuadMesh = new Quad();
+        this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
+        this.rasterizer = new Rasterizer();
+        this.camera = new Camera(pos, eulerAngles, 8, 0.2);
+    }
+}</code></pre>
                             Có camera, có rasterizer, nghĩa là Portal sẽ phải tự chạy 1 render pipeline của riêng mình (như Shadow mapping), nhưng từ góc nhìn của camera của portal:
                             <pre><code class="language-javascript">runRenderPipeline(objectTris) {
-            let tris = [];
-            for (let tri of objectTris) {
-                let cloneTri = tri.clone();     // clone ra cho an toàn
-                tris.push(cloneTri);
-            }
+    let tris = [];
+    for (let tri of objectTris) {
+        let cloneTri = tri.clone();     // clone ra cho an toàn
+        tris.push(cloneTri);
+    }
 
-            this.rasterizer.clearScreen();
+    this.rasterizer.clearScreen();
 
-            let viewMatPortal = this.camera.getViewMatrix();    // camera của portal này
+    let viewMatPortal = this.camera.getViewMatrix();    // camera của portal này
 
-            let visibleTris = [];
-            for (let tri of tris) {
-                if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), this.camera.pos)) < 0) {
-                    tri.mulMat4x4(viewMatPortal);
-                    visibleTris.push(...tri.clipAgainstPlane(nearPlane));
-                }
-            }
+    let visibleTris = [];
+    for (let tri of tris) {
+        if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), this.camera.pos)) < 0) {
+            tri.mulMat4x4(viewMatPortal);
+            visibleTris.push(...tri.clipAgainstPlane(nearPlane));
+        }
+    }
 
-            for (let tri of visibleTris) {
-                tri.mulMat4x4(projectionMatrix);
-                tri.perspectiveDivide();
-            }
+    for (let tri of visibleTris) {
+        tri.mulMat4x4(projectionMatrix);
+        tri.perspectiveDivide();
+    }
 
-            this.rasterizer.processTriangles(visibleTris);
-        }</code></pre>
+    this.rasterizer.processTriangles(visibleTris);
+}</code></pre>
                             Nhìn lại ý tưởng ở trên, ta cần phải xử lí thêm những thứ sau trong class Portal:
                             <ol>
                                 <li>Set reference tới portal kia</li>
@@ -254,8 +254,8 @@ function update(time = performance.now()) {
                             </ol>
                             Về reference tới portal kia, ta thêm 1 hàm để set:
                             <pre><code class="language-javascript">setOtherPortal(otherPortal) {
-            this.otherPortal = otherPortal;
-        }</code></pre>
+    this.otherPortal = otherPortal;
+}</code></pre>
                             Nguyên nhân mình không để vụ set otherPortal ở constructor là vì definition 2 portal sẽ đệ quy lẫn nhau =)))<br/><br/>
 
                             Về việc chuyển vector, ở Unity thì có hàm <a href="https://docs.unity3d.com/6000.5/Documentation/ScriptReference/Transform.TransformDirection.html">TransformDirection</a>
@@ -265,14 +265,14 @@ function update(time = performance.now()) {
                             Thế là local sang world đã xong, bây giờ world sang local ta cần 1 hàm "inverseRotateVector" nào đó. Và bạn sẽ ngạc nhiên bởi sự đơn giản của nó, rotateVector là
                             \(pvp^*\), thì inverseRotateVector chỉ là \(p^*vp\) 😳 (tbh I don't even know how it works intuitively, let's just use it):
                             <pre><code class="language-javascript">class Quaternion {
-            ...
-            inverseRotateVector(v) {
-                const qVec = new Quaternion(0, v.x, v.y, v.z);
-                const res = Quaternion.multiply(Quaternion.multiply(this.conjugate(), qVec), this);
-                return new Vector3(res.b, res.c, res.d);
-            }
-            ...
-        }</code></pre><br/>
+    ...
+    inverseRotateVector(v) {
+        const qVec = new Quaternion(0, v.x, v.y, v.z);
+        const res = Quaternion.multiply(Quaternion.multiply(this.conjugate(), qVec), this);
+        return new Vector3(res.b, res.c, res.d);
+    }
+    ...
+}</code></pre><br/>
                             Sau cùng là "chuyển rotation từ world về local" và ngược lại, thì ta chỉ cần dùng phép nhân Quaternion:<br/>
                             - Local ra world thì lấy rotation của Portal nhân với rotation player, simple as that.<br/>
                             - World về local thì ta dùng nghịch đảo của rotation của
@@ -281,29 +281,29 @@ function update(time = performance.now()) {
 
                             Có hết những công cụ đó rồi, thì hàm của chúng ta sẽ như sau (xem lại ý tưởng ở trên và so sánh):
                             <pre><code class="language-javascript">calculateTransformToOtherPortalTransform(position, rotation) {
-            // Lấy trục y local của portal kia để làm phép xoay 180 độ quanh nó
-            let otherPortalUp = this.otherPortal.rotation.rotateVector(Vector3.up).normalize();
-            let rotate180 = Quaternion.buildQuaternionAxisAngle(otherPortalUp, 180);
+    // Lấy trục y local của portal kia để làm phép xoay 180 độ quanh nó
+    let otherPortalUp = this.otherPortal.rotation.rotateVector(Vector3.up).normalize();
+    let rotate180 = Quaternion.buildQuaternionAxisAngle(otherPortalUp, 180);
 
-            // 4 dòng này chính là 5 dòng ý tưởng ở trên, dòng cuối mình gộp 2 ý lại
-            let worldPositionRelativeToThisPortal = Vector3.sub(position, this.pos);
-            let localPositionRelativeToThisPortal = this.rotation.inverseRotateVector(worldPositionRelativeToThisPortal);
-            let worldPositionRelativeToOtherPortal = this.otherPortal.rotation.rotateVector(localPositionRelativeToThisPortal);
-            let newPos = Vector3.add(this.otherPortal.pos, rotate180.rotateVector(worldPositionRelativeToOtherPortal));
+    // 4 dòng này chính là 5 dòng ý tưởng ở trên, dòng cuối mình gộp 2 ý lại
+    let worldPositionRelativeToThisPortal = Vector3.sub(position, this.pos);
+    let localPositionRelativeToThisPortal = this.rotation.inverseRotateVector(worldPositionRelativeToThisPortal);
+    let worldPositionRelativeToOtherPortal = this.otherPortal.rotation.rotateVector(localPositionRelativeToThisPortal);
+    let newPos = Vector3.add(this.otherPortal.pos, rotate180.rotateVector(worldPositionRelativeToOtherPortal));
 
-            // 3 dòng này chính là 3 dòng ý tưởng ở trên
-            let localRotationRelativeToThisPortal = Quaternion.multiply(this.rotation.conjugate(), rotation);
-            let worldRotationRelativeToOtherPortal = Quaternion.multiply(this.otherPortal.rotation, localRotationRelativeToThisPortal);
-            let newRotation = Quaternion.multiply(rotate180, worldRotationRelativeToOtherPortal);
+    // 3 dòng này chính là 3 dòng ý tưởng ở trên
+    let localRotationRelativeToThisPortal = Quaternion.multiply(this.rotation.conjugate(), rotation);
+    let worldRotationRelativeToOtherPortal = Quaternion.multiply(this.otherPortal.rotation, localRotationRelativeToThisPortal);
+    let newRotation = Quaternion.multiply(rotate180, worldRotationRelativeToOtherPortal);
 
-            return [newPos, newRotation];
-        }
+    return [newPos, newRotation];
+}
 
-        updatePortalCameraBaseOnPlayer(playerCameraPos, playerCameraRotation) {
-            let [cameraPos, cameraRotation] = this.calculateTransformToOtherPortalTransform(playerCameraPos, playerCameraRotation);
-            this.camera.pos = cameraPos;
-            this.camera.rotation = cameraRotation;
-        }</code></pre>
+updatePortalCameraBaseOnPlayer(playerCameraPos, playerCameraRotation) {
+    let [cameraPos, cameraRotation] = this.calculateTransformToOtherPortalTransform(playerCameraPos, playerCameraRotation);
+    this.camera.pos = cameraPos;
+    this.camera.rotation = cameraRotation;
+}</code></pre>
                             Mình tách hàm tính toán và hàm áp dụng lên camera ra riêng, vì lúc sau còn dùng hàm tính toán cho vài cái khác 😳<br/><br/>
 
                             Như thế thì nó đã hoạt động đúng rồi, tuy nhiên Portal có camera và rasterizer nhưng không biết nên hiện nó chỗ nào, nên chúng ta tạo tạm 1 canvas
@@ -311,74 +311,74 @@ function update(time = performance.now()) {
                             <pre><code class="language-html">&lt;canvas id="portal1Canvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"&gt;&lt;/canvas&gt;</code></pre>
                             Ở hàm Rasterizer.drawCall, ta cho truyền vào context của canvas mà ta muốn vẽ lên thay vì mặc định là ctx của canvas chính:
                             <pre><code class="language-javascript">drawCall(canvasCtx = null) {
-            if (canvasCtx == null)
-                canvasCtx = ctx;
+    if (canvasCtx == null)
+        canvasCtx = ctx;
 
-            ...
+    ...
 
-            canvasCtx.putImageData(this.imageData, 0, 0);
-        }</code></pre>
+    canvasCtx.putImageData(this.imageData, 0, 0);
+}</code></pre>
                             Lấy reference tới portal1Canvas và context của nó:
                             <pre><code class="language-javascript">const portal1Canvas = document.getElementById("portal1Canvas");
-        const portal1Ctx = portal1Canvas.getContext("2d");</code></pre>
+const portal1Ctx = portal1Canvas.getContext("2d");</code></pre>
 
                             Với lại bây giờ Portal đã có class riêng chứ không phải GameObject nữa (nhớ set otherPortal sau khi tạo 2 cái):
                             <pre><code class="language-javascript">let portal1 = new Portal("Portal 1", new Vector3(-3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
-        let portal2 = new Portal("Portal 2", new Vector3(3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));
-        portal1.setOtherPortal(portal2);
-        portal2.setOtherPortal(portal1);</code></pre>
+let portal2 = new Portal("Portal 2", new Vector3(3, 3, 0), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));
+portal1.setOtherPortal(portal2);
+portal2.setOtherPortal(portal1);</code></pre>
 
                             Hàm update mới:
                             <pre><code class="language-javascript">function update(time = performance.now()) {
-            ...
+    ...
 
-            camera.updateMovement(dt, keyStates);
-            // update vị trí camera player trước mới update camera của 2 portal
-            portal1.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
-            portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+    camera.updateMovement(dt, keyStates);
+    // update vị trí camera player trước mới update camera của 2 portal
+    portal1.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+    portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
 
-            const viewMat = camera.getViewMatrix();
+    const viewMat = camera.getViewMatrix();
 
-            let objectTris = [];
-            objectTris.push(...ground.getTransformedTriangles());
-            objectTris.push(...portal1.quad.getTransformedTriangles());     // <-------- thêm .quad
-            objectTris.push(...portal2.quad.getTransformedTriangles());     // <-------- thêm .quad 
+    let objectTris = [];
+    objectTris.push(...ground.getTransformedTriangles());
+    objectTris.push(...portal1.quad.getTransformedTriangles());     // <-------- thêm .quad
+    objectTris.push(...portal2.quad.getTransformedTriangles());     // <-------- thêm .quad 
 
-            portal1.runRenderPipeline(objectTris);
-            portal2.runRenderPipeline(objectTris);
+    portal1.runRenderPipeline(objectTris);
+    portal2.runRenderPipeline(objectTris);
 
-            ...
+    ...
 
-            portal1.rasterizer.drawCall(portal1Ctx);        // <---------- portal1 drawCall lên portal1Ctx
+    portal1.rasterizer.drawCall(portal1Ctx);        // <---------- portal1 drawCall lên portal1Ctx
 
-            rasterizer.processTriangles(visibleTris);
-            rasterizer.drawCall();
+    rasterizer.processTriangles(visibleTris);
+    rasterizer.drawCall();
 
-            requestAnimationFrame(update);
-        }</code></pre>
+    requestAnimationFrame(update);
+}</code></pre>
                             Full code:
                             <div class="htmlPreview" id="htmlPreview4"></div>
                             Hmmmmm, canvas dưới nhìn y hệt canvas trên chỉ là không có 2 portal. Thật ra là nó hiện đúng rồi, chỉ là vị trí 2 portal đối xứng nhau và ở chính giữa
                             cục ground nên khi nhìn ngược lại nó y hệt. Để cải thiện vụ này cũng như có cái để reference dễ debug thì mình tạo thêm một cube đại diện cho player, luôn đi
                             theo camera player (dùng texture của con Wheatly trong Portal 2, funny British robot):
                             <pre><code class="language-javascript">let playerCubeTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/wheatly.png");
-        ...
-        let playerCube = new GameObject(camera.pos, camera.rotation, new Vector3(0.5, 0.5, 0.5), new Color(255, 255, 255),
-                    new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), playerCubeTexture);
-        ...
-        function update(time = performance.now()) {
-            
-            ...
+...
+let playerCube = new GameObject(camera.pos, camera.rotation, new Vector3(0.5, 0.5, 0.5), new Color(255, 255, 255),
+            new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), playerCubeTexture);
+...
+function update(time = performance.now()) {
+    
+    ...
 
-            playerCube.pos = camera.pos;
-            playerCube.rotation = camera.rotation;
+    playerCube.pos = camera.pos;
+    playerCube.rotation = camera.rotation;
 
-            ...
+    ...
 
-        }</code></pre>
+}</code></pre>
                             Lùi 2 portal lại 1 chút:
                             <pre><code class="language-javascript">let portal1 = new Portal("Portal 1", new Vector3(-3, 3, -3), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
-        let portal2 = new Portal("Portal 2", new Vector3(3, 3, -3), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));</code></pre>
+let portal2 = new Portal("Portal 2", new Vector3(3, 3, -3), new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));</code></pre>
 
                             Nhân cơ hội này, mình nghĩ đã tới lúc refactor lại hàm update, cụ thể là tách ra từng phần của hàm update vì nó sẽ nở ra khá là nhanh về sau.<br/>
                             Hiện tại trong hàm update ta có làm những thứ sau:
@@ -394,81 +394,81 @@ function update(time = performance.now()) {
                             
                             Ngoại trừ phần đầu, bóc những phần đó ra thành các hàm riêng:
                             <pre style="height: 400px;"><code class="language-javascript">function updateGameObjectTransforms() {
-            playerCube.pos = camera.pos;
-            playerCube.rotation = camera.rotation;
+    playerCube.pos = camera.pos;
+    playerCube.rotation = camera.rotation;
 
-            camera.updateMovement(dt, keyStates);
+    camera.updateMovement(dt, keyStates);
 
-            portal1.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
-            portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+    portal1.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+    portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+}
+
+function gameObjectToWorldSpaceTriangles() {
+    let objectTris = [];
+    objectTris.push(...ground.getTransformedTriangles());
+    objectTris.push(...playerCube.getTransformedTriangles());
+    objectTris.push(...portal1.quad.getTransformedTriangles());
+    objectTris.push(...portal2.quad.getTransformedTriangles());
+    
+    return objectTris;
+}
+
+function portalRenderOperations(objectTris) {
+    portal1.runRenderPipeline(objectTris);
+    portal2.runRenderPipeline(objectTris);
+}
+
+function worldSpaceToViewSpace(objectTris) {
+    const viewMat = camera.getViewMatrix();
+    let visibleTris = [];
+    for (let tri of objectTris) {
+        if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
+            tri.mulMat4x4(viewMat);
+            visibleTris.push(...tri.clipAgainstPlane(nearPlane));
         }
+    }
 
-        function gameObjectToWorldSpaceTriangles() {
-            let objectTris = [];
-            objectTris.push(...ground.getTransformedTriangles());
-            objectTris.push(...playerCube.getTransformedTriangles());
-            objectTris.push(...portal1.quad.getTransformedTriangles());
-            objectTris.push(...portal2.quad.getTransformedTriangles());
-            
-            return objectTris;
-        }
+    return visibleTris;
+}
 
-        function portalRenderOperations(objectTris) {
-            portal1.runRenderPipeline(objectTris);
-            portal2.runRenderPipeline(objectTris);
-        }
+function viewSpaceToClipSpace(visibleTris) {
+    for (let tri of visibleTris) {
+        tri.mulMat4x4(projectionMatrix);
+        tri.perspectiveDivide();
+    }
+}
 
-        function worldSpaceToViewSpace(objectTris) {
-            const viewMat = camera.getViewMatrix();
-            let visibleTris = [];
-            for (let tri of objectTris) {
-                if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
-                    tri.mulMat4x4(viewMat);
-                    visibleTris.push(...tri.clipAgainstPlane(nearPlane));
-                }
-            }
+function rasterize(visibleTris) {
+    portal1.rasterizer.drawCall(portal1Ctx);
 
-            return visibleTris;
-        }
-
-        function viewSpaceToClipSpace(visibleTris) {
-            for (let tri of visibleTris) {
-                tri.mulMat4x4(projectionMatrix);
-                tri.perspectiveDivide();
-            }
-        }
-
-        function rasterize(visibleTris) {
-            portal1.rasterizer.drawCall(portal1Ctx);
-
-            rasterizer.clearScreen();
-            rasterizer.rasterizeClipSpaceTriangles(visibleTris);  // đổi tên processTriangles thành rasterizeClipSpaceTriangles
-            rasterizer.drawCall();
-        }</code></pre>
+    rasterizer.clearScreen();
+    rasterizer.rasterizeClipSpaceTriangles(visibleTris);  // đổi tên processTriangles thành rasterizeClipSpaceTriangles
+    rasterizer.drawCall();
+}</code></pre>
                             Mình có đổi tên hàm processTriangles thành rasterizeClipSpaceTriangles để cho rõ đối tượng và mục đích của hàm.<br/><br/>
 
                             Như vậy hàm update sẽ thành:
                             <pre><code class="language-javascript">function update(time = performance.now()) {
-            dt = (time - lastTime) / 1000;
-            lastTime = time;
+    dt = (time - lastTime) / 1000;
+    lastTime = time;
 
-            fpsTimeCounter += dt;
-            frames++;
-            if (fpsTimeCounter >= 1) {
-                fpsInfo.textContent = `FPS: ${frames}`;
-                frames = 0;
-                fpsTimeCounter = 0;
-            }
+    fpsTimeCounter += dt;
+    frames++;
+    if (fpsTimeCounter >= 1) {
+        fpsInfo.textContent = `FPS: ${frames}`;
+        frames = 0;
+        fpsTimeCounter = 0;
+    }
 
-            updateGameObjectTransforms();
-            let objectTris = gameObjectToWorldSpaceTriangles();
-            portalRenderOperations(objectTris);
-            let visibleTris = worldSpaceToViewSpace(objectTris);
-            viewSpaceToClipSpace(visibleTris);
-            rasterize(visibleTris);
+    updateGameObjectTransforms();
+    let objectTris = gameObjectToWorldSpaceTriangles();
+    portalRenderOperations(objectTris);
+    let visibleTris = worldSpaceToViewSpace(objectTris);
+    viewSpaceToClipSpace(visibleTris);
+    rasterize(visibleTris);
 
-            requestAnimationFrame(update);
-        }</code></pre>
+    requestAnimationFrame(update);
+}</code></pre>
                             Khá gọn hề hề.<br/><br/>
                             Full code, nhìn lên tí bạn sẽ thấy chính bạn ở canvas của portal 1.
                             <div class="htmlPreview" id="htmlPreview5"></div>
@@ -488,146 +488,146 @@ function update(time = performance.now()) {
                             <a href="https://developer.mozilla.org/en-US/docs/Web/API/ImageData/data">ImageData.data</a> là 
                             <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray">Uint8ClampedArray</a>:
                             <pre><code class="language-javascript">class Portal {
-            constructor(name, pos, eulerAngles, scale, color) {
-                ...
-                this.renderTexture = new Texture();
-                this.renderTexture.width = canvas.width;
-                this.renderTexture.height = canvas.height;
-                this.renderTexture.pixels = new Uint8ClampedArray(canvas.width * canvas.height * 4);
-                ...
-            }
-        }</code></pre>
+    constructor(name, pos, eulerAngles, scale, color) {
+        ...
+        this.renderTexture = new Texture();
+        this.renderTexture.width = canvas.width;
+        this.renderTexture.height = canvas.height;
+        this.renderTexture.pixels = new Uint8ClampedArray(canvas.width * canvas.height * 4);
+        ...
+    }
+}</code></pre>
                             Tuy nhiên bạn nhìn lên lại class Texture thì constructor của nó luôn assume là URL không null, nếu truyền URL là null thì nó sẽ load với URL null đó gây lỗi,
                             thêm dòng if check:
                             <pre><code class="language-javascript">class Texture {
-            constructor(url) {
-                this.pixels = null;
-                this.width = 0;
-                this.height = 0;
-                if (url) this.load(url);    // <--------------
-            }
-        }</code></pre>
+    constructor(url) {
+        this.pixels = null;
+        this.width = 0;
+        this.height = 0;
+        if (url) this.load(url);    // <--------------
+    }
+}</code></pre>
                             Sau đó tạo một hàm để copy screenBuffer của rasterizer vào renderTexture. Gọi hàm này sau khi đã chạy runRenderPipeline:
                             <pre><code class="language-javascript">class Portal {
-            ...
-            updateTextureForQuad() {
-                let index = 0;
-                for (let y = 0; y < canvas.height; y++) {
-                    for (let x = 0; x < canvas.width; x++) {
-                        const c = this.rasterizer.screenBuffer[y][x];
-                        this.renderTexture.pixels[index++] = c.r;
-                        this.renderTexture.pixels[index++] = c.g;
-                        this.renderTexture.pixels[index++] = c.b;
-                        this.renderTexture.pixels[index++] = 255;
-                    }
-                }
-
-                this.quad.texture = this.renderTexture;
+    ...
+    updateTextureForQuad() {
+        let index = 0;
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+                const c = this.rasterizer.screenBuffer[y][x];
+                this.renderTexture.pixels[index++] = c.r;
+                this.renderTexture.pixels[index++] = c.g;
+                this.renderTexture.pixels[index++] = c.b;
+                this.renderTexture.pixels[index++] = 255;
             }
-            ...
         }
-        ...
 
-        function portalRenderOperations(objectTris) {
-            portal1.runRenderPipeline(objectTris);
-            portal1.updateTextureForQuad();
-            portal2.runRenderPipeline(objectTris);
-            portal2.updateTextureForQuad();
-        }</code></pre>
+        this.quad.texture = this.renderTexture;
+    }
+    ...
+}
+...
+
+function portalRenderOperations(objectTris) {
+    portal1.runRenderPipeline(objectTris);
+    portal1.updateTextureForQuad();
+    portal2.runRenderPipeline(objectTris);
+    portal2.updateTextureForQuad();
+}</code></pre>
                             Ở trên mình có nói là xử lí texture Portal sẽ khác với xử lí texture bình thường, nghĩa là ta phải có cách nào đó nói với Rasterizer là "tam giác hiện tại là
                             thuộc quad của portal, sample texture cho cái này khác đi".<br/>
                             Nghĩa là, ta phải thêm reference tới Portal ngay từ constructor của tam giác, và các hàm có clone tam giác:
                             <pre><code class="language-javascript">class Triangle {
-            constructor(vertices = [], uv = [], color = new Color(255, 255, 255), portal = null) {
-                ...
-                this.portal = portal;
-            }
+    constructor(vertices = [], uv = [], color = new Color(255, 255, 255), portal = null) {
+        ...
+        this.portal = portal;
+    }
 
-            clone() {
-                ...
-                tri.portal = this.portal;
-                return tri;
-            }
+    clone() {
+        ...
+        tri.portal = this.portal;
+        return tri;
+    }
+
+    ...
+
+    clipAgainstPlane(plane) {
+        ...
+
+        if (frontPoints.length == 3) {
+            outTris.push(this.clone());
+        } else if (frontPoints.length == 1 && behindPoints.length == 2) {
+            ...
+            outTri.portal = this.portal;
+            outTris.push(outTri);
+        } else if (frontPoints.length == 2 && behindPoints.length == 1) {
+            ...
+            outTri1.portal = this.portal;
+            outTris.push(outTri1);
 
             ...
+            outTri2.portal = this.portal;
+            outTris.push(outTri2);
+        }
 
-            clipAgainstPlane(plane) {
-                ...
-
-                if (frontPoints.length == 3) {
-                    outTris.push(this.clone());
-                } else if (frontPoints.length == 1 && behindPoints.length == 2) {
-                    ...
-                    outTri.portal = this.portal;
-                    outTris.push(outTri);
-                } else if (frontPoints.length == 2 && behindPoints.length == 1) {
-                    ...
-                    outTri1.portal = this.portal;
-                    outTris.push(outTri1);
-
-                    ...
-                    outTri2.portal = this.portal;
-                    outTris.push(outTri2);
-                }
-
-                return outTris;
-            }
-        }</code></pre>
+        return outTris;
+    }
+}</code></pre>
 
                             Xong cho tam giác rồi, tới mesh. Vì mesh sẽ hiển thị texture Portal chỉ có thể là Quad nên ta chỉ cần thêm reference vào class Quad:
                             <pre><code class="language-javascript">class Quad extends Mesh {
-            constructor(portal = null) {
-                super(Quad.generateInitialTriangles(portal));   // <-------------------
-            }
+    constructor(portal = null) {
+        super(Quad.generateInitialTriangles(portal));   // <-------------------
+    }
 
-            static generateInitialTriangles(portal) {
-                let tris = [];
-                let color = new Color(255, 255, 255);
+    static generateInitialTriangles(portal) {
+        let tris = [];
+        let color = new Color(255, 255, 255);
 
-                tris.push(
-                    new Triangle(
-                        [new Vector3(0.5, -0.5, 0), new Vector3(0.5, 0.5, 0), new Vector3(-0.5, 0.5, 0)],
-                        [new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
-                        color, portal   // <-------------------
-                    ),
-                );
+        tris.push(
+            new Triangle(
+                [new Vector3(0.5, -0.5, 0), new Vector3(0.5, 0.5, 0), new Vector3(-0.5, 0.5, 0)],
+                [new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
+                color, portal   // <-------------------
+            ),
+        );
 
-                tris.push(
-                    new Triangle(
-                        [new Vector3(0.5, -0.5, 0), new Vector3(-0.5, 0.5, 0), new Vector3(-0.5, -0.5, 0)],
-                        [new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
-                        color, portal   // <-------------------
-                    ),
-                );
+        tris.push(
+            new Triangle(
+                [new Vector3(0.5, -0.5, 0), new Vector3(-0.5, 0.5, 0), new Vector3(-0.5, -0.5, 0)],
+                [new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
+                color, portal   // <-------------------
+            ),
+        );
 
-                return tris;
-            }
-        }</code></pre>
+        return tris;
+    }
+}</code></pre>
                             Thế là lúc tạo quadMesh ở Portal ta truyền vào <code>this</code>:
                             <pre><code class="language-javascript">class Portal {
-                constructor(name, pos, eulerAngles, scale, color) {
-                    ...
-                    let portalQuadMesh = new Quad(this);
-                    this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
-                    ...
-                }
-                ...
-            }</code></pre>
+    constructor(name, pos, eulerAngles, scale, color) {
+        ...
+        let portalQuadMesh = new Quad(this);
+        this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
+        ...
+    }
+    ...
+}</code></pre>
 
                             Xong phần reference tới Portal, bây giờ tới phần ta nói cho Rasterizer biết là cần sample texture khác đi cho các triangle thuộc Portal:
                             <pre><code class="language-javascript">rasterizeClipSpaceTriangles(tris) {
-                ...
-                if (tri.texture && tri.texture.pixels) {
-                    if (tri.portal) {
-                        lightIntensity = 1;     // ánh sáng không tác động lên portal
-                        const texIndex = (y * tri.texture.width + x) * 4;
-                        texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
-                    } else {
-                        ... // đoạn code tính theo barycentric coords cũ
-                    }
-                }
-                ...
-            }</code></pre>
+    ...
+    if (tri.texture && tri.texture.pixels) {
+        if (tri.portal) {
+            lightIntensity = 1;     // ánh sáng không tác động lên portal
+            const texIndex = (y * tri.texture.width + x) * 4;
+            texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
+        } else {
+            ... // đoạn code tính theo barycentric coords cũ
+        }
+    }
+    ...
+}</code></pre>
                             Full code:
                             <div class="htmlPreview" id="htmlPreview6"></div>
 
@@ -636,85 +636,85 @@ function update(time = performance.now()) {
                             Cái này mình quy định sớm luôn, có 4 cái cạnh này thì mình đẩy 4 cạnh này về sau sao cho cái quad portal khớp với viền trước, còn quad đằng sau sẽ đẩy ra khớp với viền sau 
                             (hope that make sense):
                             <pre style="max-height: 400px;"><code class="language-javascript">class Portal {
-            constructor(name, pos, eulerAngles, scale, color) {
-                ...
+    constructor(name, pos, eulerAngles, scale, color) {
+        ...
 
-                let portalEdgeThickness = 0.2;
-                let portalBack = this.rotation.rotateVector(Vector3.back).normalize();      // nhớ thêm Vector3.back, trước giờ ko có 😅
-                let backOffset = Vector3.mul(portalBack, portalEdgeThickness / 2);          // offset để đẩy 4 cạnh về sau, 1 nửa thickness
-                let portalUp = this.rotation.rotateVector(Vector3.up);
-                let portalForward = this.rotation.rotateVector(Vector3.forward).normalize();
-                let portalRight = this.rotation.rotateVector(Vector3.right);
+        let portalEdgeThickness = 0.2;
+        let portalBack = this.rotation.rotateVector(Vector3.back).normalize();      // nhớ thêm Vector3.back, trước giờ ko có 😅
+        let backOffset = Vector3.mul(portalBack, portalEdgeThickness / 2);          // offset để đẩy 4 cạnh về sau, 1 nửa thickness
+        let portalUp = this.rotation.rotateVector(Vector3.up);
+        let portalForward = this.rotation.rotateVector(Vector3.forward).normalize();
+        let portalRight = this.rotation.rotateVector(Vector3.right);
 
-                this.topCube = new GameObject(
-                    Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, this.scale.y / 2 + portalEdgeThickness / 2), backOffset)),
-                    eulerAngles,
-                    new Vector3(scale.x, portalEdgeThickness, portalEdgeThickness),
-                    color,
-                    cubeMesh,
-                );
-                this.bottomCube = new GameObject(
-                    Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, -this.scale.y / 2 - portalEdgeThickness / 2), backOffset)),
-                    eulerAngles,
-                    new Vector3(scale.x, portalEdgeThickness, portalEdgeThickness),
-                    color,
-                    cubeMesh,
-                );
-                this.leftCube = new GameObject(
-                    Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, -this.scale.x / 2 - portalEdgeThickness / 2), backOffset)),
-                    eulerAngles,
-                    new Vector3(portalEdgeThickness, scale.y + portalEdgeThickness * 2, portalEdgeThickness),
-                    color,
-                    cubeMesh,
-                );
-                this.rightCube = new GameObject(
-                    Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, this.scale.x / 2 + portalEdgeThickness / 2), backOffset)),
-                    eulerAngles,
-                    new Vector3(portalEdgeThickness, scale.y + portalEdgeThickness * 2, portalEdgeThickness),
-                    color,
-                    cubeMesh,
-                );
-                let normalQuadMesh = new Quad();
-                this.backQuad = new GameObject(
-                    Vector3.add(pos, Vector3.mul(portalBack, portalEdgeThickness)),
-                    eulerAngles,
-                    new Vector3(scale.x, scale.y, 0.05),
-                    color,
-                    normalQuadMesh,
-                );
-                // làm cái quad bình thường rồi xoay ngược lại 180 độ theo chiều y local
-                this.backQuad.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(portalUp, 180), this.backQuad.rotation);
-            }
-            ...
-        }</code></pre>
+        this.topCube = new GameObject(
+            Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, this.scale.y / 2 + portalEdgeThickness / 2), backOffset)),
+            eulerAngles,
+            new Vector3(scale.x, portalEdgeThickness, portalEdgeThickness),
+            color,
+            cubeMesh,
+        );
+        this.bottomCube = new GameObject(
+            Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, -this.scale.y / 2 - portalEdgeThickness / 2), backOffset)),
+            eulerAngles,
+            new Vector3(scale.x, portalEdgeThickness, portalEdgeThickness),
+            color,
+            cubeMesh,
+        );
+        this.leftCube = new GameObject(
+            Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, -this.scale.x / 2 - portalEdgeThickness / 2), backOffset)),
+            eulerAngles,
+            new Vector3(portalEdgeThickness, scale.y + portalEdgeThickness * 2, portalEdgeThickness),
+            color,
+            cubeMesh,
+        );
+        this.rightCube = new GameObject(
+            Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, this.scale.x / 2 + portalEdgeThickness / 2), backOffset)),
+            eulerAngles,
+            new Vector3(portalEdgeThickness, scale.y + portalEdgeThickness * 2, portalEdgeThickness),
+            color,
+            cubeMesh,
+        );
+        let normalQuadMesh = new Quad();
+        this.backQuad = new GameObject(
+            Vector3.add(pos, Vector3.mul(portalBack, portalEdgeThickness)),
+            eulerAngles,
+            new Vector3(scale.x, scale.y, 0.05),
+            color,
+            normalQuadMesh,
+        );
+        // làm cái quad bình thường rồi xoay ngược lại 180 độ theo chiều y local
+        this.backQuad.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(portalUp, 180), this.backQuad.rotation);
+    }
+    ...
+}</code></pre>
 
                             Có thêm nhiều GameObject như vậy thì ta tạo thêm 1 hàm tổng hợp lại:
                             <pre><code class="language-javascript">class Portal {
-                ...
-                getAllTransformedTriangles() {
-                    let allTris = [];
-                    allTris.push(...this.quad.getTransformedTriangles());
-                    allTris.push(...this.topCube.getTransformedTriangles());
-                    allTris.push(...this.bottomCube.getTransformedTriangles());
-                    allTris.push(...this.leftCube.getTransformedTriangles());
-                    allTris.push(...this.rightCube.getTransformedTriangles());
-                    allTris.push(...this.backQuad.getTransformedTriangles());
-                    return allTris;
-                }
-                ...
-            }
+    ...
+    getAllTransformedTriangles() {
+        let allTris = [];
+        allTris.push(...this.quad.getTransformedTriangles());
+        allTris.push(...this.topCube.getTransformedTriangles());
+        allTris.push(...this.bottomCube.getTransformedTriangles());
+        allTris.push(...this.leftCube.getTransformedTriangles());
+        allTris.push(...this.rightCube.getTransformedTriangles());
+        allTris.push(...this.backQuad.getTransformedTriangles());
+        return allTris;
+    }
+    ...
+}
 
-            ...
+...
 
-            function gameObjectToWorldSpaceTriangles() {
-                let objectTris = [];
-                objectTris.push(...ground.getTransformedTriangles());
-                objectTris.push(...playerCube.getTransformedTriangles());
-                objectTris.push(...portal1.getAllTransformedTriangles());
-                objectTris.push(...portal2.getAllTransformedTriangles());
+function gameObjectToWorldSpaceTriangles() {
+    let objectTris = [];
+    objectTris.push(...ground.getTransformedTriangles());
+    objectTris.push(...playerCube.getTransformedTriangles());
+    objectTris.push(...portal1.getAllTransformedTriangles());
+    objectTris.push(...portal2.getAllTransformedTriangles());
 
-                return objectTris;
-            }</code></pre>
+    return objectTris;
+}</code></pre>
                             Kết quả:
                             <div class="htmlPreview" id="htmlPreview7"></div>
                             Oke 4 cạnh đã hiện, và cả luôn cái backQuad, nó che luôn những gì mà camera portal sẽ thấy ở otherPortal, nên thành ra chỉ có 1 màu như vậy 😅.
@@ -724,32 +724,32 @@ function update(time = performance.now()) {
                             Cái này khá đơn giản, chỉ cần thêm 1 lần gọi clipAgainstPlane với plane của portal kia. Ta thêm hàm để tìm plane khớp với Portal, tuy nhiên nên 
                             lùi cái plane lại 1 tí vì nó sẽ clip luôn với cái quad của portal:
                             <pre><code class="language-javascript">class Portal {
-            ...
-            getPlane() {
-                let forward = this.rotation.rotateVector(Vector3.forward);
-                return new Plane(forward, Vector3.sub(this.pos, Vector3.mul(forward, 0.01)));
-            }
+    ...
+    getPlane() {
+        let forward = this.rotation.rotateVector(Vector3.forward);
+        return new Plane(forward, Vector3.sub(this.pos, Vector3.mul(forward, 0.01)));
+    }
 
-            runRenderPipeline(objectTris) {
-                ...
+    runRenderPipeline(objectTris) {
+        ...
 
-                let viewMatPortal = this.camera.getViewMatrix();
-                let otherPortalPlane = this.otherPortal.getPlane();     // <---------------
+        let viewMatPortal = this.camera.getViewMatrix();
+        let otherPortalPlane = this.otherPortal.getPlane();     // <---------------
 
-                let visibleTris = [];
-                for (let tri of tris) {
-                    if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), this.camera.pos)) < 0) {
-                        let clippedWithPortalTris = tri.clipAgainstPlane(otherPortalPlane); // <--------------
-                        for (let clippedTri of clippedWithPortalTris) {
-                            clippedTri.mulMat4x4(viewMatPortal);
-                            visibleTris.push(...clippedTri.clipAgainstPlane(nearPlane));
-                        }
-                    }
+        let visibleTris = [];
+        for (let tri of tris) {
+            if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), this.camera.pos)) < 0) {
+                let clippedWithPortalTris = tri.clipAgainstPlane(otherPortalPlane); // <--------------
+                for (let clippedTri of clippedWithPortalTris) {
+                    clippedTri.mulMat4x4(viewMatPortal);
+                    visibleTris.push(...clippedTri.clipAgainstPlane(nearPlane));
                 }
+            }
+        }
 
-                ...
-            }    
-        }</code></pre>
+        ...
+    }    
+}</code></pre>
                             Kết quả:
                             <div class="htmlPreview" id="htmlPreview8"></div>
                         </div>
@@ -777,53 +777,53 @@ function update(time = performance.now()) {
 
                             Như vậy hàm check ở ngay đằng trước/ngay đằng sau Portal như sau:
                             <pre><code class="language-javascript">isPointDirectlyInFrontOrBackOfPortal(point) {
-            let worldPointRelativeToThisPortal = Vector3.sub(point, this.pos);
-            let localPointRelativeToThisPortal = this.rotation.inverseRotateVector(worldPointRelativeToThisPortal);
+    let worldPointRelativeToThisPortal = Vector3.sub(point, this.pos);
+    let localPointRelativeToThisPortal = this.rotation.inverseRotateVector(worldPointRelativeToThisPortal);
 
-            return Math.abs(localPointRelativeToThisPortal.x) <= this.scale.x / 2 && Math.abs(localPointRelativeToThisPortal.y) <= this.scale.y / 2;
-        }</code></pre>
+    return Math.abs(localPointRelativeToThisPortal.x) <= this.scale.x / 2 && Math.abs(localPointRelativeToThisPortal.y) <= this.scale.y / 2;
+}</code></pre>
                             Về việc "đi qua" thì ta thêm 1 biến lưu lại trạng thái "đằng trước portal" ở frame trước:
                             <pre><code class="language-javascript">class Portal {
-            constructor(name, pos, eulerAngles, scale, color) {
-                ...
+    constructor(name, pos, eulerAngles, scale, color) {
+        ...
 
-                this.lastFramePlayerInFrontOfPortal = false;
+        this.lastFramePlayerInFrontOfPortal = false;
 
-                ...
-            }
-            ...
-        }</code></pre>
+        ...
+    }
+    ...
+}</code></pre>
                             Và hàm tính vị trí và rotation player nếu player có đi qua Portal như sau. Sử dụng lại hàm <code>calculateTransformToOtherPortalTransform</code> khá gọn:
                             <pre><code class="language-javascript">getPlayerTeleportedTransformIfGoThroughPortal(playerCameraPos, playerCameraRotation) {
-            let plane = this.getPlane();
-            let isPlayerInFrontOfPortal = plane.isPointInFrontOfPlane(playerCameraPos);
+    let plane = this.getPlane();
+    let isPlayerInFrontOfPortal = plane.isPointInFrontOfPlane(playerCameraPos);
 
-            if (this.lastFramePlayerInFrontOfPortal && !isPlayerInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(playerCameraPos)) {
-                this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
-                let [newPlayerPos, newPlayerRotation] = this.calculateTransformToOtherPortalTransform(playerCameraPos, playerCameraRotation);
-                return [newPlayerPos, newPlayerRotation];
-            } else {
-                this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
-                return null;
-            }
-        }</code></pre>
+    if (this.lastFramePlayerInFrontOfPortal && !isPlayerInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(playerCameraPos)) {
+        this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
+        let [newPlayerPos, newPlayerRotation] = this.calculateTransformToOtherPortalTransform(playerCameraPos, playerCameraRotation);
+        return [newPlayerPos, newPlayerRotation];
+    } else {
+        this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
+        return null;
+    }
+}</code></pre>
 
                             Ta sẽ gọi hàm trên ở hàm updateGameObjectTransforms. Check portal 1 nếu có teleport thì update transform của player, không thì check portal 2:
                             <pre><code class="language-javascript">function updateGameObjectTransforms() {
-            ...
+    ...
 
-            let cameraTeleportedTransform = portal1.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
-            if (cameraTeleportedTransform != null) {
-                camera.pos = cameraTeleportedTransform[0];
-                camera.rotation = cameraTeleportedTransform[1];
-            } else {
-                cameraTeleportedTransform = portal2.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
-                if (cameraTeleportedTransform != null) {
-                    camera.pos = cameraTeleportedTransform[0];
-                    camera.rotation = cameraTeleportedTransform[1];
-                }
-            }
-        }</code></pre>
+    let cameraTeleportedTransform = portal1.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
+    if (cameraTeleportedTransform != null) {
+        camera.pos = cameraTeleportedTransform[0];
+        camera.rotation = cameraTeleportedTransform[1];
+    } else {
+        cameraTeleportedTransform = portal2.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
+        if (cameraTeleportedTransform != null) {
+            camera.pos = cameraTeleportedTransform[0];
+            camera.rotation = cameraTeleportedTransform[1];
+        }
+    }
+}</code></pre>
                             Kết quả (mình có tăng tốc độ camera lên 6 đi cho lẹ):
                             <div class="htmlPreview" id="htmlPreview9"></div>
 
@@ -849,136 +849,136 @@ function update(time = performance.now()) {
 
                             Trước tiên ta thêm 1 element để hiện bây giờ đang điều khiển gì:
                             <pre><code class="language-html">&lt;div&gt;
-            Controlling object:
-            &lt;span id="controllingObject">Orange portal&lt;/span&gt;
-        &lt;/div&gt;</code></pre>
+    Controlling object:
+    &lt;span id="controllingObject">Orange portal&lt;/span&gt;
+&lt;/div&gt;</code></pre>
                             <pre><code class="language-javascript">const controllingObjectText = document.getElementById("controllingObject");</code></pre>
                             Thêm biến để track vật hiện tại đang điều khiển, và check bấm nút P để đổi nó:
                             <pre><code class="language-javascript">let controllingObject = 0;
-        ...
-        window.addEventListener("keypress", (e) => {
-            if (e.key == "p") {
-                controllingObject = 1 - controllingObject;
-                controllingObjectText.innerText = controllingObject == 0 ? "Orange portal" : "Blue Portal";
-            }
-        });</code></pre>
+...
+window.addEventListener("keypress", (e) => {
+    if (e.key == "p") {
+        controllingObject = 1 - controllingObject;
+        controllingObjectText.innerText = controllingObject == 0 ? "Orange portal" : "Blue Portal";
+    }
+});</code></pre>
 
                             Muốn điều khiển portal thì ta tạo thêm hàm cập nhật vị trí và xoay portal (chủ yếu là để di chuyển hoặc xoay mấy GameObject của Portal đi chung):
                             <pre style="max-height: 400px;"><code class="language-javascript">class Portal {
-            ...
-                            
-            setPos(pos) {
-                this.pos = pos;
-                this.quad.pos = pos;
+    ...
+                    
+    setPos(pos) {
+        this.pos = pos;
+        this.quad.pos = pos;
 
-                let portalEdgeThickness = 0.2;
-                let portalBack = this.rotation.rotateVector(Vector3.back).normalize();
-                let backOffset = Vector3.mul(portalBack, portalEdgeThickness / 2);
+        let portalEdgeThickness = 0.2;
+        let portalBack = this.rotation.rotateVector(Vector3.back).normalize();
+        let backOffset = Vector3.mul(portalBack, portalEdgeThickness / 2);
 
-                let portalUp = this.rotation.rotateVector(Vector3.up);
-                this.topCube.pos = Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, this.scale.y / 2 + portalEdgeThickness / 2), backOffset));
-                this.bottomCube.pos = Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, -this.scale.y / 2 - portalEdgeThickness / 2), backOffset));
+        let portalUp = this.rotation.rotateVector(Vector3.up);
+        this.topCube.pos = Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, this.scale.y / 2 + portalEdgeThickness / 2), backOffset));
+        this.bottomCube.pos = Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, -this.scale.y / 2 - portalEdgeThickness / 2), backOffset));
 
-                let portalRight = this.rotation.rotateVector(Vector3.right);
-                this.leftCube.pos = Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, -this.scale.x / 2 - portalEdgeThickness / 2), backOffset));
-                this.rightCube.pos = Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, this.scale.x / 2 + portalEdgeThickness / 2), backOffset));
+        let portalRight = this.rotation.rotateVector(Vector3.right);
+        this.leftCube.pos = Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, -this.scale.x / 2 - portalEdgeThickness / 2), backOffset));
+        this.rightCube.pos = Vector3.add(pos, Vector3.add(Vector3.mul(portalRight, this.scale.x / 2 + portalEdgeThickness / 2), backOffset));
 
-                this.backQuad.pos = Vector3.add(pos, Vector3.mul(portalBack, portalEdgeThickness));
-            }
+        this.backQuad.pos = Vector3.add(pos, Vector3.mul(portalBack, portalEdgeThickness));
+    }
 
-            rotate(eulerX, eulerY, eulerZ) {
-                let q = Quaternion.buildQuaternionEuler(new Vector3(eulerX, eulerY, eulerZ));
-                this.rotation = Quaternion.multiply(q, this.rotation);
-                this.quad.rotate(eulerX, eulerY, eulerZ);
-                this.topCube.rotate(eulerX, eulerY, eulerZ);
-                this.bottomCube.rotate(eulerX, eulerY, eulerZ);
-                this.leftCube.rotate(eulerX, eulerY, eulerZ);
-                this.rightCube.rotate(eulerX, eulerY, eulerZ);
-                this.backQuad.rotate(eulerX, eulerY, eulerZ);
-            }
+    rotate(eulerX, eulerY, eulerZ) {
+        let q = Quaternion.buildQuaternionEuler(new Vector3(eulerX, eulerY, eulerZ));
+        this.rotation = Quaternion.multiply(q, this.rotation);
+        this.quad.rotate(eulerX, eulerY, eulerZ);
+        this.topCube.rotate(eulerX, eulerY, eulerZ);
+        this.bottomCube.rotate(eulerX, eulerY, eulerZ);
+        this.leftCube.rotate(eulerX, eulerY, eulerZ);
+        this.rightCube.rotate(eulerX, eulerY, eulerZ);
+        this.backQuad.rotate(eulerX, eulerY, eulerZ);
+    }
 
-            ...
-        }</code></pre>
+    ...
+}</code></pre>
                             Cuối cùng ở phần chính, ta tạo thêm 2 biến vị trí Portal để 2 portal liên tục cập nhật theo nó:
                             <pre><code class="language-javascript">let portal1Pos = new Vector3(-3, 3, -3);
-        let portal2Pos = new Vector3(3, 3, -3);
-        let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
-        let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));</code></pre>
+let portal2Pos = new Vector3(3, 3, -3);
+let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
+let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 180, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));</code></pre>
                             2 biến tốc độ (I feel compelled to write all the changes out like this even though I know they are trivial):
                             <pre><code class="language-javascript">let controllingMoveSpeed = 6;
-        let controllingRotateSpeed = 60;</code></pre>
+let controllingRotateSpeed = 60;</code></pre>
                             Và finally trong hàm updateGameObjectTransforms, ta thêm các đoạn code để điều khiển:
                             <pre style="max-height: 400px;"><code class="language-javascript">function updateGameObjectTransforms() {
-        ...
+    ...
 
-            let controllingPos = controllingObject == 0 ? portal1Pos : portal2Pos;
-            let posDelta = Vector3.zero;
-            if (keyStates["i"]) {
-                posDelta = Vector3.add(posDelta, Vector3.forward);
-            }
-            if (keyStates["k"]) {
-                posDelta = Vector3.add(posDelta, Vector3.back);
-            }
-            if (keyStates["j"]) {
-                posDelta = Vector3.add(posDelta, Vector3.left);
-            }
-            if (keyStates["l"]) {
-                posDelta = Vector3.add(posDelta, Vector3.right);
-            }
-            if (keyStates["u"]) {
-                posDelta = Vector3.add(posDelta, Vector3.up);
-            }
-            if (keyStates["o"]) {
-                posDelta = Vector3.add(posDelta, Vector3.down);
-            }
-            if (!posDelta.equal(Vector3.zero)) {
-                posDelta.normalize();
-                posDelta = Vector3.mul(posDelta, dt * controllingMoveSpeed);
+    let controllingPos = controllingObject == 0 ? portal1Pos : portal2Pos;
+    let posDelta = Vector3.zero;
+    if (keyStates["i"]) {
+        posDelta = Vector3.add(posDelta, Vector3.forward);
+    }
+    if (keyStates["k"]) {
+        posDelta = Vector3.add(posDelta, Vector3.back);
+    }
+    if (keyStates["j"]) {
+        posDelta = Vector3.add(posDelta, Vector3.left);
+    }
+    if (keyStates["l"]) {
+        posDelta = Vector3.add(posDelta, Vector3.right);
+    }
+    if (keyStates["u"]) {
+        posDelta = Vector3.add(posDelta, Vector3.up);
+    }
+    if (keyStates["o"]) {
+        posDelta = Vector3.add(posDelta, Vector3.down);
+    }
+    if (!posDelta.equal(Vector3.zero)) {
+        posDelta.normalize();
+        posDelta = Vector3.mul(posDelta, dt * controllingMoveSpeed);
 
-                let newPos = Vector3.add(controllingPos, posDelta);
-                controllingPos.x = newPos.x;
-                controllingPos.y = newPos.y;
-                controllingPos.z = newPos.z;
-            }
+        let newPos = Vector3.add(controllingPos, posDelta);
+        controllingPos.x = newPos.x;
+        controllingPos.y = newPos.y;
+        controllingPos.z = newPos.z;
+    }
 
-            let rotateEuler = Vector3.zero.clone();
-            if (keyStates["b"]) {
-                rotateEuler.x = dt * controllingRotateSpeed;
-            }
-            if (keyStates["n"]) {
-                rotateEuler.y = dt * controllingRotateSpeed;
-            }
-            if (keyStates["m"]) {
-                rotateEuler.z = dt * controllingRotateSpeed;
-            }
-            if (!rotateEuler.equal(Vector3.zero)) {
-                switch (controllingObject) {
-                    case 0:
-                        portal1.rotate(rotateEuler.x, rotateEuler.y, rotateEuler.z);
-                        break;
-                    case 1:
-                        portal2.rotate(rotateEuler.x, rotateEuler.y, rotateEuler.z);
-                        break;
-                }
-            }
+    let rotateEuler = Vector3.zero.clone();
+    if (keyStates["b"]) {
+        rotateEuler.x = dt * controllingRotateSpeed;
+    }
+    if (keyStates["n"]) {
+        rotateEuler.y = dt * controllingRotateSpeed;
+    }
+    if (keyStates["m"]) {
+        rotateEuler.z = dt * controllingRotateSpeed;
+    }
+    if (!rotateEuler.equal(Vector3.zero)) {
+        switch (controllingObject) {
+            case 0:
+                portal1.rotate(rotateEuler.x, rotateEuler.y, rotateEuler.z);
+                break;
+            case 1:
+                portal2.rotate(rotateEuler.x, rotateEuler.y, rotateEuler.z);
+                break;
+        }
+    }
 
-            camera.updateMovement(dt, keyStates);
+    camera.updateMovement(dt, keyStates);
 
-            portal1.setPos(portal1Pos);
-            portal1.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
-            portal2.setPos(portal2Pos);
-            portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+    portal1.setPos(portal1Pos);
+    portal1.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
+    portal2.setPos(portal2Pos);
+    portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
 
-            ...
-        }</code></pre>
+    ...
+}</code></pre>
                             Ở trên mình không xài == Vector3.zero mà xài hàm equal dưới đây vì javascript không so sánh được kiểu == với class:
                             <pre><code class="language-javascript">class Vector3 {
-            ...
-            equal(vec) {
-                return this.x == vec.x && this.y == vec.y && this.z == vec.z;
-            }
-            ...
-        }</code></pre>
+    ...
+    equal(vec) {
+        return this.x == vec.x && this.y == vec.y && this.z == vec.z;
+    }
+    ...
+}</code></pre>
                             Kết quả:
                             <div class="htmlPreview" id="htmlPreview10"></div>
                             Khi bạn xoay theo trục y (bấm N) và đi qua Portal thì nó vẫn oke. Vấn đề chỉ xảy ra khi bạn xoay theo trục X và Z, lúc bạn đi qua Portal thì rotation so
@@ -1027,20 +1027,20 @@ function update(time = performance.now()) {
                             Tuy nhiên ta nên xét 2 trường hợp đặc biệt là 2 vector cùng phương cùng chiều và cùng phương ngược chiều, lúc đó trục nào cũng xoay được, còn góc thì luôn là
                             0 hoặc 180 độ.
                             <pre><code class="language-javascript">class Vector3 {
-            static getAxisAndRadianBetween(vec1, vec2) {
-                let dot = Vector3.dot(vec1, vec2);
-                let almostOne = 0.9999;     // floating point error
-                if (dot >= almostOne) return [Vector3.up, 0];
-                if (dot <= -almostOne) return [Vector3.up, Math.PI];
+    static getAxisAndRadianBetween(vec1, vec2) {
+        let dot = Vector3.dot(vec1, vec2);
+        let almostOne = 0.9999;     // floating point error
+        if (dot >= almostOne) return [Vector3.up, 0];
+        if (dot <= -almostOne) return [Vector3.up, Math.PI];
 
-                let axis = Vector3.cross(vec1, vec2);
-                axis.normalize();       // tích có hướng của 2 vector đơn vị có kết quả không phải là vector đơn vị
+        let axis = Vector3.cross(vec1, vec2);
+        axis.normalize();       // tích có hướng của 2 vector đơn vị có kết quả không phải là vector đơn vị
 
-                let angle = -Math.acos(dot);       // đổi dấu vì engine là hệ tọa độ tay trái
+        let angle = -Math.acos(dot);       // đổi dấu vì engine là hệ tọa độ tay trái
 
-                return [axis, angle];
-            }   
-        }</code></pre>
+        return [axis, angle];
+    }   
+}</code></pre>
                             <i>Mình đã nói tới vấn đề đổi dấu góc của engine này từ <a href="../graphics3D/graphics3D4-model.html">blog 4</a> của
                             <a href="../graphics3D/graphics3D-intro.html">Series về engine</a>.</i><br/><br/>
 
@@ -1049,24 +1049,24 @@ function update(time = performance.now()) {
                             vào không, và dựa vào đó để kết luận dấu của góc.
 
                             <pre><code class="language-javascript">class Vector3 {
-            static getRadianBetweenWithAxis(vec1, vec2, axis) {
-                let projectedV1 = vec1.projectVectorToPlane(axis);
-                let projectedV2 = vec2.projectVectorToPlane(axis);
-                projectedV1.normalize();
-                projectedV2.normalize();
+    static getRadianBetweenWithAxis(vec1, vec2, axis) {
+        let projectedV1 = vec1.projectVectorToPlane(axis);
+        let projectedV2 = vec2.projectVectorToPlane(axis);
+        projectedV1.normalize();
+        projectedV2.normalize();
 
-                let dot = Vector3.dot(projectedV1, projectedV2);
-                let angle = Math.acos(dot);
+        let dot = Vector3.dot(projectedV1, projectedV2);
+        let angle = Math.acos(dot);
 
-                let cross = Vector3.cross(projectedV1, projectedV2);
-                return Vector3.dot(cross, axis) > 0 ? -angle : angle;       // nhìn chung 1 hướng thì đổi dấu (hệ tọa độ tay trái)
-            }
-        }</code></pre>
+        let cross = Vector3.cross(projectedV1, projectedV2);
+        return Vector3.dot(cross, axis) > 0 ? -angle : angle;       // nhìn chung 1 hướng thì đổi dấu (hệ tọa độ tay trái)
+    }
+}</code></pre>
                             Hàm projectVectorToPlane thật ra chưa có, ta thêm vào:
                             <pre><code class="language-javascript">projectVectorToPlane(planeNormal) {
-            let dot = Vector3.dot(this, planeNormal);
-            return Vector3.sub(this, Vector3.mul(planeNormal, dot));
-        }</code></pre>
+    let dot = Vector3.dot(this, planeNormal);
+    return Vector3.sub(this, Vector3.mul(planeNormal, dot));
+}</code></pre>
                             Bản chất là lấy vector \(\vec{v}\) trừ đi vector đi từ đỉnh của \(\vec{v}\) xuống plane (tính bằng tích vô hướng với pháp tuyến plane), nghĩa 
                             là dùng vector đó kéo đầu \(\vec{v}\) xuống.<br/><br/>
 
@@ -1076,30 +1076,30 @@ function update(time = performance.now()) {
 
                             Như vậy hàm lookRotation sẽ như sau:
                             <pre><code class="language-javascript">static lookRotation(forward, up) {
-            let [fixForwardAxis, fixForwardAngle] = Vector3.getAxisAndRadianBetween(Vector3.forward, forward);
-            let firstRotation = Quaternion.buildQuaternionAxisRadian(fixForwardAxis, fixForwardAngle);      // phép xoay để xoay từ Vector3.forward sang forward
+    let [fixForwardAxis, fixForwardAngle] = Vector3.getAxisAndRadianBetween(Vector3.forward, forward);
+    let firstRotation = Quaternion.buildQuaternionAxisRadian(fixForwardAxis, fixForwardAngle);      // phép xoay để xoay từ Vector3.forward sang forward
 
-            let upAfterFirstRotation = firstRotation.rotateVector(Vector3.up).normalize();      // up'
-            let correctUp = up.projectVectorToPlane(forward).normalize();       // up đúng
+    let upAfterFirstRotation = firstRotation.rotateVector(Vector3.up).normalize();      // up'
+    let correctUp = up.projectVectorToPlane(forward).normalize();       // up đúng
 
-            if (Math.abs(Vector3.dot(upAfterFirstRotation, correctUp)) < 0.999999) {            // up' chưa đúng
-                let fixUpAngle = Vector3.getRadianBetweenWithAxis(upAfterFirstRotation, correctUp, forward);
-                let secondRotation = Quaternion.buildQuaternionAxisRadian(forward, fixUpAngle);     // phép xoay để xoay từ up' sang up đúng (theo trục forward)
-                return Quaternion.multiply(secondRotation, firstRotation);
-            } else {
-                return firstRotation;
-            }
-        }</code></pre>
+    if (Math.abs(Vector3.dot(upAfterFirstRotation, correctUp)) < 0.999999) {            // up' chưa đúng
+        let fixUpAngle = Vector3.getRadianBetweenWithAxis(upAfterFirstRotation, correctUp, forward);
+        let secondRotation = Quaternion.buildQuaternionAxisRadian(forward, fixUpAngle);     // phép xoay để xoay từ up' sang up đúng (theo trục forward)
+        return Quaternion.multiply(secondRotation, firstRotation);
+    } else {
+        return firstRotation;
+    }
+}</code></pre>
                             Ta chỉ có hàm Quaternion.buildQuaternionAxisAngle (độ) mà chưa có Quaternion.buildQuaternionAxisRadian nên ta thêm:
                             <pre><code class="language-javascript">class Quaternion {
-            ...
-            static buildQuaternionAxisRadian(axis, angle) {
-                const half = angle / 2.0;
-                const s = -Math.sin(half);
-                return new Quaternion(Math.cos(half), axis.x * s, axis.y * s, axis.z * s);
-            }
-            ...  
-        }</code></pre>      
+    ...
+    static buildQuaternionAxisRadian(axis, angle) {
+        const half = angle / 2.0;
+        const s = -Math.sin(half);
+        return new Quaternion(Math.cos(half), axis.x * s, axis.y * s, axis.z * s);
+    }
+    ...  
+}</code></pre>      
 
                             Có được hàm lookRotation mà ta muốn rồi, bây giờ ta quay lại chủ đề chính: correct lại roll của player sau khi teleport. Sau khi teleport,
                             ta có forward mới, ta dùng hàm lookRotation để tìm rotation đúng là xong. Tuy nhiên phải check trường hợp là player nhìn thẳng
@@ -1108,34 +1108,34 @@ function update(time = performance.now()) {
 
                             Hàm này ta sẽ để trong class Camera (tự correct chính nó):
                             <pre><code class="language-javascript">class Camera {
-            ...
-            updateTransformAndCorrectRoll(newPos, newRot) {
-                this.pos = newPos;
-                this.rotation = newRot;
+    ...
+    updateTransformAndCorrectRoll(newPos, newRot) {
+        this.pos = newPos;
+        this.rotation = newRot;
 
-                let newForward = newRot.rotateVector(Vector3.forward).normalize();
-                if (Math.abs(Vector3.dot(newForward, Vector3.up)) > 0.999)
-                    return;
+        let newForward = newRot.rotateVector(Vector3.forward).normalize();
+        if (Math.abs(Vector3.dot(newForward, Vector3.up)) > 0.999)
+            return;
 
-                this.rotation = Quaternion.lookRotation(newForward, Vector3.up);
-            }
-            ...
-        }</code></pre>
+        this.rotation = Quaternion.lookRotation(newForward, Vector3.up);
+    }
+    ...
+}</code></pre>
 
                             Sửa lại đoạn code teleport:
                             <pre><code class="language-javascript">function updateGameObjectTransforms() {
-            ...
+    ...
 
-            let cameraTeleportedTransform = portal1.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
-            if (cameraTeleportedTransform != null) {
-                camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
-            } else {
-                cameraTeleportedTransform = portal2.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
-                if (cameraTeleportedTransform != null) {
-                    camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
-                }
-            }
-        }</code></pre>
+    let cameraTeleportedTransform = portal1.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
+    if (cameraTeleportedTransform != null) {
+        camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
+    } else {
+        cameraTeleportedTransform = portal2.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
+        if (cameraTeleportedTransform != null) {
+            camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
+        }
+    }
+}</code></pre>
                             Full code, xoay portal quay trục Z thế giới bằng phím M và đi qua thử:
                             <div class="htmlPreview" id="htmlPreview11"></div>
 
@@ -1147,75 +1147,75 @@ function update(time = performance.now()) {
                             bản chất bên trong (toán 4 chiều 🥶) thì mình cũng chưa tìm hiểu.<br/><br/>
                             Như vậy hàm dot và lerp chỉ đơn giản là:
                             <pre><code class="language-javascript">class Quaternion {
-            ...
-            static dot(p, q) {
-                return p.a * q.a + p.b * q.b + p.c * q.c + p.d * q.d;
-            }
+    ...
+    static dot(p, q) {
+        return p.a * q.a + p.b * q.b + p.c * q.c + p.d * q.d;
+    }
 
-            static lerp(from, to, t) {
-                let toA = to.a, toB = to.b, toC = to.c, toD = to.d;
+    static lerp(from, to, t) {
+        let toA = to.a, toB = to.b, toC = to.c, toD = to.d;
 
-                let dot = Quaternion.dot(from, to);
-                if (dot < 0) {
-                    toA = -toA;
-                    toB = -toB;
-                    toC = -toC;
-                    toD = -toD;
-                }
+        let dot = Quaternion.dot(from, to);
+        if (dot < 0) {
+            toA = -toA;
+            toB = -toB;
+            toC = -toC;
+            toD = -toD;
+        }
 
-                return new Quaternion(
-                    from.a + (toA - from.a) * t,
-                    from.b + (toB - from.b) * t,
-                    from.c + (toC - from.c) * t,
-                    from.d + (toD - from.d) * t
-                )
-            }
-            ...
-        }</code></pre>
+        return new Quaternion(
+            from.a + (toA - from.a) * t,
+            from.b + (toB - from.b) * t,
+            from.c + (toC - from.c) * t,
+            from.d + (toD - from.d) * t
+        )
+    }
+    ...
+}</code></pre>
                             Có được hàm lerp rồi thì ta triển thôi, khi đã tính được rotation đúng, đặt rotation sau khi teleport là "điểm bắt đầu", đặt rotation đúng roll là "đích đến",
                             cho trước lerp duration rồi đếm delta time lerp từ từ thôi.<br/><br/>
                             Các biến global cần thiết:
                             <pre><code class="language-javascript">let cameraRotLerpStart = camera.rotation;
-        let cameraRotLerpEnd = camera.rotation;
-        let cameraRotLerpDuration = 0.2;
-        let cameraRotLerpCountDown = 0;</code></pre>
+let cameraRotLerpEnd = camera.rotation;
+let cameraRotLerpDuration = 0.2;
+let cameraRotLerpCountDown = 0;</code></pre>
 
                             Đoạn code lerp rotation camera trong lúc update, giảm cameraRotLerpCountDown theo frame và lerp rotation theo:
                             <pre><code class="language-javascript">function updateGameObjectTransforms() {
-            ...
-            if (cameraRotLerpCountDown > 0) {
-                camera.rotation = Quaternion.lerp(
-                    cameraRotLerpStart,
-                    cameraRotLerpEnd,
-                    (cameraRotLerpDuration - cameraRotLerpCountDown) / cameraRotLerpDuration,
-                );
-                cameraRotLerpCountDown -= dt;
-                if (cameraRotLerpCountDown <= 0) {
-                    camera.rotation = cameraRotLerpEnd;
-                }
-            }
-            ...
-        }</code></pre>
+    ...
+    if (cameraRotLerpCountDown > 0) {
+        camera.rotation = Quaternion.lerp(
+            cameraRotLerpStart,
+            cameraRotLerpEnd,
+            (cameraRotLerpDuration - cameraRotLerpCountDown) / cameraRotLerpDuration,
+        );
+        cameraRotLerpCountDown -= dt;
+        if (cameraRotLerpCountDown <= 0) {
+            camera.rotation = cameraRotLerpEnd;
+        }
+    }
+    ...
+}</code></pre>
                             Đoạn tính rotation đúng roll. Thay vì set luôn this.rotation là cái đúng, thì setup lerp cho hàm update chạy (chỉ khi nó chưa đúng):
                             <pre><code class="language-javascript">class Camera {
-            ...
-            updateTransformAndCorrectRoll(newPos, newRot) {
-                this.pos = newPos;
-                this.rotation = newRot;
+    ...
+    updateTransformAndCorrectRoll(newPos, newRot) {
+        this.pos = newPos;
+        this.rotation = newRot;
 
-                let newForward = newRot.rotateVector(Vector3.forward).normalize();
-                if (Math.abs(Vector3.dot(newForward, Vector3.up)) > 0.999)
-                    return;
+        let newForward = newRot.rotateVector(Vector3.forward).normalize();
+        if (Math.abs(Vector3.dot(newForward, Vector3.up)) > 0.999)
+            return;
 
-                let correctRotation = Quaternion.lookRotation(newForward, Vector3.up);
-                if (Math.abs(Quaternion.dot(newRot, correctRotation)) < 0.999) {
-                    cameraRotLerpStart = newRot;
-                    cameraRotLerpEnd = correctRotation;
-                    cameraRotLerpCountDown = cameraRotLerpDuration;
-                }
-            }
-            ...
-        }</code></pre>
+        let correctRotation = Quaternion.lookRotation(newForward, Vector3.up);
+        if (Math.abs(Quaternion.dot(newRot, correctRotation)) < 0.999) {
+            cameraRotLerpStart = newRot;
+            cameraRotLerpEnd = correctRotation;
+            cameraRotLerpCountDown = cameraRotLerpDuration;
+        }
+    }
+    ...
+}</code></pre>
                             Full code:
                             <div class="htmlPreview" id="htmlPreview12"></div>
                         </div>
@@ -1229,33 +1229,33 @@ function update(time = performance.now()) {
                             giản là teleport bạn sớm hơn 1 tí, đủ trễ để mất cái flash và đủ sớm để ko cảm thấy giật.<br/><br/>
                             Như vậy là ta cần 1 hàm đo khoảng cách từ 1 điểm (player) tới plane (portal):
                             <pre><code class="language-javascript">class Plane {
-            ...
-            distanceToPoint(p) {
-                return Vector3.dot(p, this.normal) - this.D;
-            }
-            ...
-        }</code></pre>
+    ...
+    distanceToPoint(p) {
+        return Vector3.dot(p, this.normal) - this.D;
+    }
+    ...
+}</code></pre>
                             Bản chất là lấy độ dài hình chiếu của vector điểm p lên pháp tuyến của plane, trừ đi khoảng cách từ plane tới gốc tọa độ (i hope you can imagine it in your mind).<br/><br/>
 
                             Và ở hàm tính vị trí teleport, thay vì xem "ở đằng trước Portal" thật sự là ở đằng trước Portal, thì xem nó là "cách Portal ít hơn 1 khoảng nào đó":
                             <pre><code class="language-javascript">getPlayerTeleportedTransformIfGoThroughPortal(playerCameraPos, playerCameraRotation) {
-            let plane = this.getPlane();
-            let distanceToPlane = plane.distanceToPoint(playerCameraPos);
-            let isPlayerInFrontOfPortal = distanceToPlane >= portalCrossMargin;     // <----------------------
+    let plane = this.getPlane();
+    let distanceToPlane = plane.distanceToPoint(playerCameraPos);
+    let isPlayerInFrontOfPortal = distanceToPlane >= portalCrossMargin;     // <----------------------
 
-            if (this.lastFramePlayerInFrontOfPortal && !isPlayerInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(playerCameraPos)) {
-                this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
-                let [newPlayerPos, newPlayerRotation] = this.calculateTransformToOtherPortalTransform(playerCameraPos, playerCameraRotation);
-                return [newPlayerPos, newPlayerRotation];
-            } else {
-                this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
-                return null;
-            }
-        }
+    if (this.lastFramePlayerInFrontOfPortal && !isPlayerInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(playerCameraPos)) {
+        this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
+        let [newPlayerPos, newPlayerRotation] = this.calculateTransformToOtherPortalTransform(playerCameraPos, playerCameraRotation);
+        return [newPlayerPos, newPlayerRotation];
+    } else {
+        this.lastFramePlayerInFrontOfPortal = isPlayerInFrontOfPortal;
+        return null;
+    }
+}
 
-        ...
+...
 
-        let portalCrossMargin = znear * 2;  // 2 lần znear cho an toàn</code></pre>
+let portalCrossMargin = znear * 2;  // 2 lần znear cho an toàn</code></pre>
 
                             That's it, that's all we need to do, full code:
                             <div class="htmlPreview" id="htmlPreview13"></div>
@@ -1331,51 +1331,51 @@ function update(time = performance.now()) {
                         Trước khi viết phần code xử lí effect vô tận, thì trong hàm runRenderPipeline ta phải thêm 1 biến xác nhận là "đừng render texture gì hết cho các tam giác
                         thuộc portal", để dành cho lần render đầu tiên (sâu nhất). Không làm vậy thì sẽ không bị gì, nhưng portal sâu nhất vẫn bị lại vụ buffer, nhìn khá xấu.
                         <pre><code class="language-javascript">runRenderPipeline(objectTris, disablePortalTexture = false) {
-        let tris = [];
-        for (let tri of objectTris) {
-            let cloneTri = tri.clone();
-            if (cloneTri.portal && disablePortalTexture)
-                cloneTri.texture = null;        // bỏ luôn texture cho các triangle thuộc portal
-            tris.push(cloneTri);
-        }
-        ...
-    }</code></pre>
+    let tris = [];
+    for (let tri of objectTris) {
+        let cloneTri = tri.clone();
+        if (cloneTri.portal && disablePortalTexture)
+            cloneTri.texture = null;        // bỏ luôn texture cho các triangle thuộc portal
+        tris.push(cloneTri);
+    }
+    ...
+}</code></pre>
 
                         Như vậy là ta có thể viết được hàm "xử lí effect vô tận" như sau:
                         <pre><code class="language-javascript">recursivePortalOperation(playerCamera, objectTris) {
-        let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
+    let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
 
-        // dựng transform các camera từ dưới lên
-        for (let i = 1; i <= portalLimit; i++) {
-            cameraTransforms.push(this.calculateTransformToOtherPortalTransform(cameraTransforms[i - 1][0], cameraTransforms[i - 1][1]));
-        }
+    // dựng transform các camera từ dưới lên
+    for (let i = 1; i <= portalLimit; i++) {
+        cameraTransforms.push(this.calculateTransformToOtherPortalTransform(cameraTransforms[i - 1][0], cameraTransforms[i - 1][1]));
+    }
 
-        // set camera ở transform cuối cùng (sâu nhất) rồi render (bỏ texture portal)
-        this.camera.pos = cameraTransforms[portalLimit][0];
-        this.camera.rotation = cameraTransforms[portalLimit][1];
-        let clipSpaceTris = this.runRenderPipeline(objectTris, true);
-        this.updateTextureForQuad();
+    // set camera ở transform cuối cùng (sâu nhất) rồi render (bỏ texture portal)
+    this.camera.pos = cameraTransforms[portalLimit][0];
+    this.camera.rotation = cameraTransforms[portalLimit][1];
+    let clipSpaceTris = this.runRenderPipeline(objectTris, true);
+    this.updateTextureForQuad();
 
-        // từ portal sâu nhất lên lại đầu, render theo camera transform tương ứng từng bước
-        for (let i = portalLimit; i >= 1; i--) {
-            this.camera.pos = cameraTransforms[i][0];
-            this.camera.rotation = cameraTransforms[i][1];
-            clipSpaceTris = this.runRenderPipeline(objectTris);
-            this.updateTextureForQuad(clipSpaceTris);
-        }
-    }</code></pre>
+    // từ portal sâu nhất lên lại đầu, render theo camera transform tương ứng từng bước
+    for (let i = portalLimit; i >= 1; i--) {
+        this.camera.pos = cameraTransforms[i][0];
+        this.camera.rotation = cameraTransforms[i][1];
+        clipSpaceTris = this.runRenderPipeline(objectTris);
+        this.updateTextureForQuad(clipSpaceTris);
+    }
+}</code></pre>
                         Phần code về portal vô tận chỉ có như thế thôi 😳 Nhưng thật sự hiểu được bản chất mới là quan trọng.<br/><br/>
                         Set portal limit thấp thấp chút:
                         <pre><code class="language-javascript">let portalLimit = 4;</code></pre>
                         Ở hàm portalRenderOperations, thay vì gọi runRenderPipeline và updateTextureForQuad cho từng portal, thì chỉ cần gọi hàm
                         recursivePortalOperation ở trên:
                         <pre><code class="language-javascript"> function portalRenderOperations(objectTris) {
-        portal1.recursivePortalOperation(camera, objectTris);
-        portal2.recursivePortalOperation(camera, objectTris);
-    }</code></pre>
+    portal1.recursivePortalOperation(camera, objectTris);
+    portal2.recursivePortalOperation(camera, objectTris);
+}</code></pre>
                         Xoay 2 portal với nhau thay vì đều xoay về phía player:
                         <pre><code class="language-javascript">let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, -90, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
-    let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 90, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));</code></pre>
+let portal2 = new Portal("Portal 2", portal2Pos, new Vector3(0, 90, 0), new Vector3(3, 6, 3), new Color(17, 155, 255));</code></pre>
                         Full code:
                         <div class="htmlPreview" id="htmlPreview14"></div>
                     </div>
@@ -1407,74 +1407,74 @@ function update(time = performance.now()) {
                         Portal ở frame hiện tại hay không. GameObject cũng tương tự, ta phải lưu lại hết trạng thái "nằm trước Portal ở frame trước" của mọi GameObject mà có 
                         thể tương tác với Portal. Vì vậy ta cần thêm 1 biến id cho GameObject để định danh (should've done this long ago):
                         <pre><code class="language-javascript"> class GameObject {
-        static incrementingID = 0;
+    static incrementingID = 0;
 
-        constructor(pos, eulerAngles, scale, color, mesh, texture = null) {
-            this.id = GameObject.incrementingID++;
-            this.pos = pos;
-            ...
-        }
+    constructor(pos, eulerAngles, scale, color, mesh, texture = null) {
+        this.id = GameObject.incrementingID++;
+        this.pos = pos;
         ...
-    }</code></pre>
+    }
+    ...
+}</code></pre>
                         Giờ tới vụ lưu trạng thái của các GameObject, vì Javascript không có Dictionary hay HashMap nên ta dùng tạm array of array 😬
                         2 hàm set và is mình không giải thích gì thêm, còn hàm getGameObjectTeleportedTransformIfGoThroughPortal thì y hệt hàm của player,
                         ko cần phải check portalCrossMargin luôn vì GameObject không cần phải lo nó nhìn thấy gì 😁
                         <pre style="max-height: 400px;"><code class="language-javascript">class Portal {
-        constructor(){
-            ...
-            this.lastFrameGameObjectInFrontOfPortal = [];
-        }
-
+    constructor(){
         ...
+        this.lastFrameGameObjectInFrontOfPortal = [];
+    }
 
-        setGameObjectLastFrameInFrontOfPortal(gameObjectId, value) {
-            for (let i of this.lastFrameGameObjectInFrontOfPortal) {
-                if (i[0] == gameObjectId) {
-                    i[1] = value;
-                    return;
-                }
-            }
-            this.lastFrameGameObjectInFrontOfPortal.push([gameObjectId, value]);
-        }
+    ...
 
-        isGameObjectLastFrameInFrontOfPortal(gameObjectId) {
-            for (let i of this.lastFrameGameObjectInFrontOfPortal) {
-                if (i[0] == gameObjectId) return i[1];
-            }
-            return false;
-        }
-
-        getGameObjectTeleportedTransformIfGoThroughPortal(gameObject) {
-            let isGameObjectInFrontOfPortal = this.getPlane().isPointInFrontOfPlane(gameObject.pos);
-
-            if (this.isGameObjectLastFrameInFrontOfPortal(gameObject.id) && !isGameObjectInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos)) {
-                this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
-                let [newPos, newRot] = this.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
-                return [newPos, newRot];
-            } else {
-                this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
-                return null;
+    setGameObjectLastFrameInFrontOfPortal(gameObjectId, value) {
+        for (let i of this.lastFrameGameObjectInFrontOfPortal) {
+            if (i[0] == gameObjectId) {
+                i[1] = value;
+                return;
             }
         }
-    }</code></pre>
+        this.lastFrameGameObjectInFrontOfPortal.push([gameObjectId, value]);
+    }
+
+    isGameObjectLastFrameInFrontOfPortal(gameObjectId) {
+        for (let i of this.lastFrameGameObjectInFrontOfPortal) {
+            if (i[0] == gameObjectId) return i[1];
+        }
+        return false;
+    }
+
+    getGameObjectTeleportedTransformIfGoThroughPortal(gameObject) {
+        let isGameObjectInFrontOfPortal = this.getPlane().isPointInFrontOfPlane(gameObject.pos);
+
+        if (this.isGameObjectLastFrameInFrontOfPortal(gameObject.id) && !isGameObjectInFrontOfPortal && this.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos)) {
+            this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
+            let [newPos, newRot] = this.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
+            return [newPos, newRot];
+        } else {
+            this.setGameObjectLastFrameInFrontOfPortal(gameObject.id, isGameObjectInFrontOfPortal);
+            return null;
+        }
+    }
+}</code></pre>
 
                         Có được hàm teleport GameObject rồi, ta xuống updateGameObjectTransforms để thêm phần code teleport:
                         <pre><code class="language-javascript">function updateGameObjectTransforms() {
-        ...
-        for (let gameObject of canInteractWithPortalGameObjects) {
-            let gameObjectTeleportedTransform = portal1.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
+    ...
+    for (let gameObject of canInteractWithPortalGameObjects) {
+        let gameObjectTeleportedTransform = portal1.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
+        if (gameObjectTeleportedTransform != null) {
+            gameObject.pos = gameObjectTeleportedTransform[0];
+            gameObject.rotation = gameObjectTeleportedTransform[1];
+        } else {
+            gameObjectTeleportedTransform = portal2.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
             if (gameObjectTeleportedTransform != null) {
                 gameObject.pos = gameObjectTeleportedTransform[0];
                 gameObject.rotation = gameObjectTeleportedTransform[1];
-            } else {
-                gameObjectTeleportedTransform = portal2.getGameObjectTeleportedTransformIfGoThroughPortal(gameObject);
-                if (gameObjectTeleportedTransform != null) {
-                    gameObject.pos = gameObjectTeleportedTransform[0];
-                    gameObject.rotation = gameObjectTeleportedTransform[1];
-                }
             }
-        }  
-    }</code></pre>
+        }
+    }  
+}</code></pre>
                         Ta định nghĩa những GameObject có thể tương tác với Portal, là chỉ gồm player cube và testCube:
                         <pre><code class="language-javascript">let canInteractWithPortalGameObjects = [playerCube, testCube];</code></pre>
 
@@ -1490,98 +1490,98 @@ function update(time = performance.now()) {
                         Một đoạn thẳng giao nhau với 1 plane thì ta đã có hàm Plane.intersectWithLine 😳<br/><br/>
                         Đi lại từ dưới lên, hàm check nếu 1 triangle giao với 1 plane:
                         <pre><code class="language-javascript">class Triangle {
-        ...
-        isIntersectingPlane(plane) {
-            //hàm intersectWithLine trả về [t, điểm giao nhau], khi t trong đoạn [0; 1] thì chúng giao nhau
-            let intersection = plane.intersectWithLine(this.vertices[0], this.vertices[1]);
-            if (intersection[0] >= 0 && intersection[0] <= 1)
-                return true;
+    ...
+    isIntersectingPlane(plane) {
+        //hàm intersectWithLine trả về [t, điểm giao nhau], khi t trong đoạn [0; 1] thì chúng giao nhau
+        let intersection = plane.intersectWithLine(this.vertices[0], this.vertices[1]);
+        if (intersection[0] >= 0 && intersection[0] <= 1)
+            return true;
 
-            intersection = plane.intersectWithLine(this.vertices[1], this.vertices[2]);
-            if (intersection[0] >= 0 && intersection[0] <= 1)
-                return true;
+        intersection = plane.intersectWithLine(this.vertices[1], this.vertices[2]);
+        if (intersection[0] >= 0 && intersection[0] <= 1)
+            return true;
 
-            intersection = plane.intersectWithLine(this.vertices[2], this.vertices[0]);
-            if (intersection[0] >= 0 && intersection[0] <= 1)
-                return true;
+        intersection = plane.intersectWithLine(this.vertices[2], this.vertices[0]);
+        if (intersection[0] >= 0 && intersection[0] <= 1)
+            return true;
 
-            return false;
-        }
-    }</code></pre>
+        return false;
+    }
+}</code></pre>
                         Hàm check xem 1 plane có giao với bất kỳ triangle nào trong mảng tris không:
                         <pre><code class="language-javascript">class Plane {
-        ...
-        isIntersectingWithTris(tris) {
-            for (let tri of tris) {
-                if (tri.isIntersectingPlane(this))
-                    return true;
-            }
-            return false;
+    ...
+    isIntersectingWithTris(tris) {
+        for (let tri of tris) {
+            if (tri.isIntersectingPlane(this))
+                return true;
         }
-    }</code></pre>
+        return false;
+    }
+}</code></pre>
                         Dùng hàm này với các triangle trong mesh của GameObject là giải quyết được vụ detect.<br/><br/>
                         Bây giờ tới vụ clone, cho bớt code lặp thì ta tạo 1 hàm tạo GameObject clone sang Portal kia trong class Portal:
                         <pre><code class="language-javascript">class Portal {
-        ...
-        createCloneObjectOnOtherPortal(gameObject) {
-            let cloneObjectTransform = this.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
-            let cloneObject = new GameObject(
-                cloneObjectTransform[0],
-                Vector3.forward,        // eulerAngles tạm
-                gameObject.scale.clone(),
-                gameObject.color,
-                gameObject.mesh,
-                gameObject.texture,
-            );
-            cloneObject.rotation = cloneObjectTransform[1]; // rotation thật
-            return cloneObject;
-        }
-    }</code></pre>
+    ...
+    createCloneObjectOnOtherPortal(gameObject) {
+        let cloneObjectTransform = this.calculateTransformToOtherPortalTransform(gameObject.pos, gameObject.rotation);
+        let cloneObject = new GameObject(
+            cloneObjectTransform[0],
+            Vector3.forward,        // eulerAngles tạm
+            gameObject.scale.clone(),
+            gameObject.color,
+            gameObject.mesh,
+            gameObject.texture,
+        );
+        cloneObject.rotation = cloneObjectTransform[1]; // rotation thật
+        return cloneObject;
+    }
+}</code></pre>
                         Cuối cùng là vụ "cắt", ta viết thêm hàm dùng plane để cắt nhiều triangles cùng lúc:
                         <pre><code class="language-javascript">class Plane {
-        ...
-        clipWithTris(tris) {
-            let clippedTris = [];
-            for (let tri of tris) {
-                clippedTris.push(...tri.clipAgainstPlane(this));
-            }
-            return clippedTris;
+    ...
+    clipWithTris(tris) {
+        let clippedTris = [];
+        for (let tri of tris) {
+            clippedTris.push(...tri.clipAgainstPlane(this));
         }
-        ...
-    }</code></pre>
+        return clippedTris;
+    }
+    ...
+}</code></pre>
 
                         Cuối cùng ta gộp tất cả lại trong hàm gameObjectToWorldSpaceTriangles:
                         <pre><code class="language-javascript">function gameObjectToWorldSpaceTriangles() {
-        let objectTris = [];
-        objectTris.push(...ground.getTransformedTriangles());
-        objectTris.push(...portal1.getAllTransformedTriangles());
-        objectTris.push(...portal2.getAllTransformedTriangles());
-        // bỏ playerCube và testCube ra vì nó được xử lí ở dưới
+    let objectTris = [];
+    objectTris.push(...ground.getTransformedTriangles());
+    objectTris.push(...portal1.getAllTransformedTriangles());
+    objectTris.push(...portal2.getAllTransformedTriangles());
+    // bỏ playerCube và testCube ra vì nó được xử lí ở dưới
 
-        let portal1Plane = portal1.getPlane();
-        let portal2Plane = portal2.getPlane();
+    let portal1Plane = portal1.getPlane();
+    let portal2Plane = portal2.getPlane();
 
-        for (let gameObject of canInteractWithPortalGameObjects) {
-            let gameObjectTransformedTris = gameObject.getTransformedTriangles();
+    for (let gameObject of canInteractWithPortalGameObjects) {
+        let gameObjectTransformedTris = gameObject.getTransformedTriangles();
 
-            if (portal1.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && portal1Plane.isIntersectingWithTris(gameObjectTransformedTris)) {   // detect "1 phần mesh đi qua"
-                let clonedGameObject = portal1.createCloneObjectOnOtherPortal(gameObject);  // clone gameObject ra Portal bên kia
-                // clip gameObject với portal này, clip clonedGameObject với portal kia
-                objectTris.push(...portal1Plane.clipWithTris(gameObjectTransformedTris));   
-                objectTris.push(...portal2Plane.clipWithTris(clonedGameObject.getTransformedTriangles()));
+        if (portal1.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && portal1Plane.isIntersectingWithTris(gameObjectTransformedTris)) {   // detect "1 phần mesh đi qua"
+            let clonedGameObject = portal1.createCloneObjectOnOtherPortal(gameObject);  // clone gameObject ra Portal bên kia
+            // clip gameObject với portal này, clip clonedGameObject với portal kia
+            objectTris.push(...portal1Plane.clipWithTris(gameObjectTransformedTris));   
+            objectTris.push(...portal2Plane.clipWithTris(clonedGameObject.getTransformedTriangles()));
+        } else {
+            if (portal2.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && portal2Plane.isIntersectingWithTris(gameObjectTransformedTris)) {
+                let clonedGameObject = portal2.createCloneObjectOnOtherPortal(gameObject);
+                objectTris.push(...portal2Plane.clipWithTris(gameObjectTransformedTris));
+                objectTris.push(...portal1Plane.clipWithTris(clonedGameObject.getTransformedTriangles()));
             } else {
-                if (portal2.isPointDirectlyInFrontOrBackOfPortal(gameObject.pos) && portal2Plane.isIntersectingWithTris(gameObjectTransformedTris)) {
-                    let clonedGameObject = portal2.createCloneObjectOnOtherPortal(gameObject);
-                    objectTris.push(...portal2Plane.clipWithTris(gameObjectTransformedTris));
-                    objectTris.push(...portal1Plane.clipWithTris(clonedGameObject.getTransformedTriangles()));
-                } else {
-                    objectTris.push(...gameObjectTransformedTris);     // gameObject này không đi qua portal nào, push bình thường
-                }
+                objectTris.push(...gameObjectTransformedTris);     // gameObject này không đi qua portal nào, push bình thường
             }
         }
+    }
 
-        return objectTris;
-    }</code></pre>
+    return objectTris;
+}</code></pre>
                         Kết quả cuối:
                         <div class="htmlPreview" id="htmlPreview17"></div>
                     </div>
@@ -1603,124 +1603,124 @@ function update(time = performance.now()) {
                         lệ hay không, nhìn thì khá là dư thừa. Nhưng thật ra hữu dụng khi được dùng với hàm boundingBox của Triangle: nếu isValid là false thì tam giác nằm ngoài màn
                         hình (bạn xem lại vụ min max trong hàm boundingBox trong Triangle sẽ rõ):
                         <pre><code class="language-javascript">class BoundingBox {
-        constructor(minX, maxX, minY, maxY) {
-            this.minX = minX;
-            this.maxX = maxX;
-            this.minY = minY;
-            this.maxY = maxY;
-        }
+    constructor(minX, maxX, minY, maxY) {
+        this.minX = minX;
+        this.maxX = maxX;
+        this.minY = minY;
+        this.maxY = maxY;
+    }
 
-        isValid() {
-            return this.minX <= this.maxX && this.minY <= this.maxY;
-        }
+    isValid() {
+        return this.minX <= this.maxX && this.minY <= this.maxY;
+    }
 
-        static union(bbox1, bbox2) {
-            return new BoundingBox(
-                Math.min(bbox1.minX, bbox2.minX),
-                Math.max(bbox1.maxX, bbox2.maxX),
-                Math.min(bbox1.minY, bbox2.minY),
-                Math.max(bbox1.maxY, bbox2.maxY)
-            );
-        }
-        static intersect(bbox1, bbox2) {
-            return new BoundingBox(
-                Math.max(bbox1.minX, bbox2.minX),
-                Math.min(bbox1.maxX, bbox2.maxX),
-                Math.max(bbox1.minY, bbox2.minY),
-                Math.min(bbox1.maxY, bbox2.maxY)
-            );
-        }
-        static isOverlap(bbox1, bbox2) {
-            return ((bbox1.minX < bbox2.maxX && bbox1.maxX > bbox2.minX) || (bbox2.minX < bbox1.maxX && bbox2.maxX > bbox1.minX)) &&
-                ((bbox1.minY < bbox2.maxY && bbox1.maxY > bbox2.minY) || (bbox2.minY < bbox1.maxY && bbox2.maxY > bbox1.minY));
-        }
-    }</code></pre>
+    static union(bbox1, bbox2) {
+        return new BoundingBox(
+            Math.min(bbox1.minX, bbox2.minX),
+            Math.max(bbox1.maxX, bbox2.maxX),
+            Math.min(bbox1.minY, bbox2.minY),
+            Math.max(bbox1.maxY, bbox2.maxY)
+        );
+    }
+    static intersect(bbox1, bbox2) {
+        return new BoundingBox(
+            Math.max(bbox1.minX, bbox2.minX),
+            Math.min(bbox1.maxX, bbox2.maxX),
+            Math.max(bbox1.minY, bbox2.minY),
+            Math.min(bbox1.maxY, bbox2.maxY)
+        );
+    }
+    static isOverlap(bbox1, bbox2) {
+        return ((bbox1.minX < bbox2.maxX && bbox1.maxX > bbox2.minX) || (bbox2.minX < bbox1.maxX && bbox2.maxX > bbox1.minX)) &&
+            ((bbox1.minY < bbox2.maxY && bbox1.maxY > bbox2.minY) || (bbox2.minY < bbox1.maxY && bbox2.maxY > bbox1.minY));
+    }
+}</code></pre>
                         Như vậy hàm clearScreen sẽ được viết lại như sau:
                         <pre><code class="language-javascript">clearScreen(bbox = null) {
-        if (bbox == null) {
-            bbox = new BoundingBox(0, canvas.width - 1, 0, canvas.height - 1);  // mặc định là full màn hình
-        }
+    if (bbox == null) {
+        bbox = new BoundingBox(0, canvas.width - 1, 0, canvas.height - 1);  // mặc định là full màn hình
+    }
 
-        for (let i = bbox.minY; i <= bbox.maxY; i++) {
-            for (let j = bbox.minX; j <= bbox.maxX; j++) {
-                this.screenBuffer[i][j].updateColor(240, 240, 240);
-                this.depthBuffer[i][j] = Infinity;
-            }
+    for (let i = bbox.minY; i <= bbox.maxY; i++) {
+        for (let j = bbox.minX; j <= bbox.maxX; j++) {
+            this.screenBuffer[i][j].updateColor(240, 240, 240);
+            this.depthBuffer[i][j] = Infinity;
         }
-    }</code></pre>
+    }
+}</code></pre>
                         Hàm rasterizeClipSpaceTriangles:
                         <pre><code class="language-javascript">rasterizeClipSpaceTriangles(tris, renderBBox = null) {
-        for (let tri of tris) {
-            ...
+    for (let tri of tris) {
+        ...
 
-            let triBBox = tri.boundingBox();    // đổi tên bbox thành triBBox cho dễ phân biệt
-            if (renderBBox != null) {
-                triBBox = BoundingBox.intersect(renderBBox, triBBox);   // giao với renderBBox
-                if (!triBBox.isValid())             // giao xong không ra gì thì bỏ luôn tam giác
-                    continue;
-            }
+        let triBBox = tri.boundingBox();    // đổi tên bbox thành triBBox cho dễ phân biệt
+        if (renderBBox != null) {
+            triBBox = BoundingBox.intersect(renderBBox, triBBox);   // giao với renderBBox
+            if (!triBBox.isValid())             // giao xong không ra gì thì bỏ luôn tam giác
+                continue;
+        }
 
-            let edgeFunctionRow01 = edgeFunction(
-                tri.vertices[0],
-                tri.vertices[1],
-                new Vector3(triBBox.minX, triBBox.minY, 0));    // đổi [0], [2] thành minX, minY
-            let edgeFunctionRow12 = edgeFunction(
-                tri.vertices[1],
-                tri.vertices[2],
-                new Vector3(triBBox.minX, triBBox.minY, 0));    // đổi [0], [2] thành minX, minY
-            let edgeFunctionRow20 = edgeFunction(
-                tri.vertices[2],
-                tri.vertices[0],
-                new Vector3(triBBox.minX, triBBox.minY, 0));    // đổi [0], [2] thành minX, minY
+        let edgeFunctionRow01 = edgeFunction(
+            tri.vertices[0],
+            tri.vertices[1],
+            new Vector3(triBBox.minX, triBBox.minY, 0));    // đổi [0], [2] thành minX, minY
+        let edgeFunctionRow12 = edgeFunction(
+            tri.vertices[1],
+            tri.vertices[2],
+            new Vector3(triBBox.minX, triBBox.minY, 0));    // đổi [0], [2] thành minX, minY
+        let edgeFunctionRow20 = edgeFunction(
+            tri.vertices[2],
+            tri.vertices[0],
+            new Vector3(triBBox.minX, triBBox.minY, 0));    // đổi [0], [2] thành minX, minY
 
-            ...
+        ...
 
-            for (let y = triBBox.minY; y <= triBBox.maxY; y++) {    // đổi [2], [3] thành minY, maxY
-                let edgeFunction01 = edgeFunctionRow01;
-                let edgeFunction12 = edgeFunctionRow12;
-                let edgeFunction20 = edgeFunctionRow20;
-                for (let x = triBBox.minX; x <= triBBox.maxX; x++) {    // đổi [0], [1] thành minX, maxX
-                    ...
-                }
+        for (let y = triBBox.minY; y <= triBBox.maxY; y++) {    // đổi [2], [3] thành minY, maxY
+            let edgeFunction01 = edgeFunctionRow01;
+            let edgeFunction12 = edgeFunctionRow12;
+            let edgeFunction20 = edgeFunctionRow20;
+            for (let x = triBBox.minX; x <= triBBox.maxX; x++) {    // đổi [0], [1] thành minX, maxX
                 ...
             }
+            ...
         }
-    }</code></pre>
+    }
+}</code></pre>
                         Ta cũng áp dụng việc giới hạn tương tự với 2 hàm runRenderPipeline và updateTextureForQuad của Portal:
                         <pre><code class="language-javascript">class Portal {
+    ...
+    runRenderPipeline(objectTris, disablePortalTexture, renderBBox = null) {
         ...
-        runRenderPipeline(objectTris, disablePortalTexture, renderBBox = null) {
-            ...
 
-            this.rasterizer.clearScreen(renderBBox);
+        this.rasterizer.clearScreen(renderBBox);
 
-            ...
+        ...
 
-            this.rasterizer.rasterizeClipSpaceTriangles(visibleTris, renderBBox);
+        this.rasterizer.rasterizeClipSpaceTriangles(visibleTris, renderBBox);
+    }
+
+    updateTextureForQuad(renderBBox = null) {
+        if (renderBBox == null) {
+            renderBBox = new BoundingBox(0, canvas.width - 1, 0, canvas.height - 1);
         }
 
-        updateTextureForQuad(renderBBox = null) {
-            if (renderBBox == null) {
-                renderBBox = new BoundingBox(0, canvas.width - 1, 0, canvas.height - 1);
+        let index = 0;
+        for (let y = renderBBox.minY; y <= renderBBox.maxY; y++) {
+            let pixelIndex = y * canvas.width + renderBBox.minX;
+            for (let x = renderBBox.minX; x <= renderBBox.maxX; x++) {
+                const c = this.rasterizer.screenBuffer[y][x];
+                this.renderTexture.pixels[pixelIndex * 4] = c.r;
+                this.renderTexture.pixels[pixelIndex * 4 + 1] = c.g;
+                this.renderTexture.pixels[pixelIndex * 4 + 2] = c.b;
+                this.renderTexture.pixels[pixelIndex * 4 + 3] = 255;
+                pixelIndex++;
             }
-
-            let index = 0;
-            for (let y = renderBBox.minY; y <= renderBBox.maxY; y++) {
-                let pixelIndex = y * canvas.width + renderBBox.minX;
-                for (let x = renderBBox.minX; x <= renderBBox.maxX; x++) {
-                    const c = this.rasterizer.screenBuffer[y][x];
-                    this.renderTexture.pixels[pixelIndex * 4] = c.r;
-                    this.renderTexture.pixels[pixelIndex * 4 + 1] = c.g;
-                    this.renderTexture.pixels[pixelIndex * 4 + 2] = c.b;
-                    this.renderTexture.pixels[pixelIndex * 4 + 3] = 255;
-                    pixelIndex++;
-                }
-            }
-
-            this.quad.texture = this.renderTexture;
         }
-        ...
-    }</code></pre>
+
+        this.quad.texture = this.renderTexture;
+    }
+    ...
+}</code></pre>
 
                         Có được khả năng giới hạn vùng cần render rồi, bây giờ ta cần biết là nên giới hạn thế nào?<br/><br/>
                         Ta xét trường hợp dưới đây:
@@ -1741,68 +1741,68 @@ function update(time = performance.now()) {
                         là cùng 1 Portal nhưng ở góc nhìn khác nhau, remember that).<br/><br/>
                         Camera khác nhau thì view matrix khác nhau, thay vì phải new Camera mỗi lần thì ta tách việc tính toán khỏi hàm <code>Camera.getViewMatrix()</code> và để vào <code>Mat4x4</code>:
                         <pre><code class="language-javascript">class Mat4x4 {
-        ...
-        static ViewFromPosRot(pos, rotation) {
-            let forward = rotation.rotateVector(Vector3.forward);
-            let right = rotation.rotateVector(Vector3.right);
-            let up = rotation.rotateVector(Vector3.up);
-            return Mat4x4.View(right, up, forward, pos);
-        }
-        ...
-    }
-
     ...
+    static ViewFromPosRot(pos, rotation) {
+        let forward = rotation.rotateVector(Vector3.forward);
+        let right = rotation.rotateVector(Vector3.right);
+        let up = rotation.rotateVector(Vector3.up);
+        return Mat4x4.View(right, up, forward, pos);
+    }
+    ...
+}
 
-    class Camera {
-        ...
-        getViewMatrix() {
-            return Mat4x4.ViewFromPosRot(this.pos, this. rotation);
-        }
-        ...
-    }</code></pre> 
+...
+
+class Camera {
+    ...
+    getViewMatrix() {
+        return Mat4x4.ViewFromPosRot(this.pos, this. rotation);
+    }
+    ...
+}</code></pre> 
                         Như vậy hàm tìm quad của Portal như sau. Chạy lại render pipeline, khúc cuối sau khi nhân ra screen space, thì hợp (union) bounding box của triangle
                         hiện tại với kết quả hợp từ đầu tới giờ:
                         <pre><code class="language-javascript">class Portal {
-        ...
-        getQuadBoundingBox(cameraPos, cameraRot) {
-            let viewMatPortal = Mat4x4.ViewFromPosRot(cameraPos, cameraRot);
-            let quadTris = [];
-            quadTris.push(...this.quad.getTransformedTriangles());
+    ...
+    getQuadBoundingBox(cameraPos, cameraRot) {
+        let viewMatPortal = Mat4x4.ViewFromPosRot(cameraPos, cameraRot);
+        let quadTris = [];
+        quadTris.push(...this.quad.getTransformedTriangles());
 
-            let visibleTris = [];
-            for (let tri of quadTris) {
-                if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), cameraPos)) < 0) {
-                    tri.mulMat4x4(viewMatPortal);
-                    visibleTris.push(...tri.clipAgainstPlane(nearPlane));
-                }
+        let visibleTris = [];
+        for (let tri of quadTris) {
+            if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), cameraPos)) < 0) {
+                tri.mulMat4x4(viewMatPortal);
+                visibleTris.push(...tri.clipAgainstPlane(nearPlane));
             }
-
-            let totalBBox = null;
-            for (let tri of visibleTris) {
-                tri.mulMat4x4(projectionMatrix);
-                tri.perspectiveDivide();
-
-                let vertices = tri.vertices;
-                for (let i = 0; i < vertices.length; i++) {
-                    vertices[i] = new Vector3(
-                        vertices[i].x * (canvas.width / 2) + canvas.width / 2,
-                        -vertices[i].y * (canvas.height / 2) + canvas.height / 2,
-                        vertices[i].z,
-                    );
-                }
-
-                const triBBox = tri.boundingBox();
-                if (triBBox.isValid()) {
-                    if (totalBBox == null)
-                        totalBBox = triBBox;
-                    else
-                        totalBBox = BoundingBox.union(totalBBox, triBBox);
-                }
-            }
-
-            return totalBBox;
         }
-    }</code></pre>
+
+        let totalBBox = null;
+        for (let tri of visibleTris) {
+            tri.mulMat4x4(projectionMatrix);
+            tri.perspectiveDivide();
+
+            let vertices = tri.vertices;
+            for (let i = 0; i < vertices.length; i++) {
+                vertices[i] = new Vector3(
+                    vertices[i].x * (canvas.width / 2) + canvas.width / 2,
+                    -vertices[i].y * (canvas.height / 2) + canvas.height / 2,
+                    vertices[i].z,
+                );
+            }
+
+            const triBBox = tri.boundingBox();
+            if (triBBox.isValid()) {
+                if (totalBBox == null)
+                    totalBBox = triBBox;
+                else
+                    totalBBox = BoundingBox.union(totalBBox, triBBox);
+            }
+        }
+
+        return totalBBox;
+    }
+}</code></pre>
                         <i>Dù quad chỉ có 2 triangles nhưng bạn nhớ là sau khi clip với near plane nó có thể ra nhiều hơn.</i><br/><br/>
 
                         Như vậy mọi công tác chuẩn bị đã xong, đã tới lúc ta áp dụng full kỹ thuật optimize trong hàm <code>recursivePortalOperation</code>.<br/>
@@ -1810,35 +1810,35 @@ function update(time = performance.now()) {
                         box P1, thì dừng luôn ngay tại đó, và bắt đầu render ngược lại từ chỗ đó.<br/>
                         Ngoài ra ta cũng có thể dừng ngay từ đầu luôn nếu bounding box của Portal đầu tiên (Portal gốc) không valid, nghĩa là Portal đó nằm ngoài màn hình 😳
                         <pre><code class="language-javascript">recursivePortalOperation(playerCamera, objectTris) {
-        let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
-        let quadBoundingBoxes = [this.getQuadBoundingBox(playerCamera.pos, playerCamera.rotation)];
-        if (quadBoundingBoxes[0] == null || !quadBoundingBoxes[0].isValid())    // portal này không nằm trong màn hình
-            return;
+    let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
+    let quadBoundingBoxes = [this.getQuadBoundingBox(playerCamera.pos, playerCamera.rotation)];
+    if (quadBoundingBoxes[0] == null || !quadBoundingBoxes[0].isValid())    // portal này không nằm trong màn hình
+        return;
 
-        let deepest = 0;
-        for (let i = 1; i <= portalLimit; i++) {
-            cameraTransforms.push(this.calculateTransformToOtherPortalTransform(cameraTransforms[i - 1][0], cameraTransforms[i - 1][1]));
-            deepest = i;    // cập nhật độ sâu hiện tại
+    let deepest = 0;
+    for (let i = 1; i <= portalLimit; i++) {
+        cameraTransforms.push(this.calculateTransformToOtherPortalTransform(cameraTransforms[i - 1][0], cameraTransforms[i - 1][1]));
+        deepest = i;    // cập nhật độ sâu hiện tại
 
-            let newQuadBoundingBox = this.getQuadBoundingBox(cameraTransforms[i][0], cameraTransforms[i][1]);   // bounding box của portal từ góc nhìn hiện tại
-            if (newQuadBoundingBox == null || !BoundingBox.isOverlap(quadBoundingBoxes[0], newQuadBoundingBox)) // không giao nhau với P1, dừng luôn
-                break;
-            quadBoundingBoxes.push(BoundingBox.intersect(quadBoundingBoxes[0], newQuadBoundingBox));
-        }
+        let newQuadBoundingBox = this.getQuadBoundingBox(cameraTransforms[i][0], cameraTransforms[i][1]);   // bounding box của portal từ góc nhìn hiện tại
+        if (newQuadBoundingBox == null || !BoundingBox.isOverlap(quadBoundingBoxes[0], newQuadBoundingBox)) // không giao nhau với P1, dừng luôn
+            break;
+        quadBoundingBoxes.push(BoundingBox.intersect(quadBoundingBoxes[0], newQuadBoundingBox));
+    }
 
-        // bắt đầu lại từ độ sâu sâu nhất mà portal vẫn còn thấy được
-        this.camera.pos = cameraTransforms[deepest][0];
-        this.camera.rotation = cameraTransforms[deepest][1];
-        // quadBoundingBoxes[deepest - 1] vì có giao nhau thì mới được push vào quadBoundingBoxes
-        this.runRenderPipeline(objectTris, true, quadBoundingBoxes[deepest - 1]);
-        this.updateTextureForQuad(quadBoundingBoxes[deepest - 1]);
-        for (let i = deepest - 1; i >= 1; i--) {
-            this.camera.pos = cameraTransforms[i][0];
-            this.camera.rotation = cameraTransforms[i][1];
-            this.runRenderPipeline(objectTris, false, quadBoundingBoxes[i - 1]); // quadBoundingBoxes[i - 1] vì có giao nhau thì mới được push vào quadBoundingBoxes
-            this.updateTextureForQuad(quadBoundingBoxes[i - 1]);
-        }
-    }</code></pre>
+    // bắt đầu lại từ độ sâu sâu nhất mà portal vẫn còn thấy được
+    this.camera.pos = cameraTransforms[deepest][0];
+    this.camera.rotation = cameraTransforms[deepest][1];
+    // quadBoundingBoxes[deepest - 1] vì có giao nhau thì mới được push vào quadBoundingBoxes
+    this.runRenderPipeline(objectTris, true, quadBoundingBoxes[deepest - 1]);
+    this.updateTextureForQuad(quadBoundingBoxes[deepest - 1]);
+    for (let i = deepest - 1; i >= 1; i--) {
+        this.camera.pos = cameraTransforms[i][0];
+        this.camera.rotation = cameraTransforms[i][1];
+        this.runRenderPipeline(objectTris, false, quadBoundingBoxes[i - 1]); // quadBoundingBoxes[i - 1] vì có giao nhau thì mới được push vào quadBoundingBoxes
+        this.updateTextureForQuad(quadBoundingBoxes[i - 1]);
+    }
+}</code></pre>
                         Kết quả cuối cùng (mình tăng portalLimit lên 10):
                         <div class="htmlPreview" id="htmlPreview18"></div>
                         60 fps 😳 Thật ra nếu bạn tăng portalLimit lên nữa thì nó cũng không ảnh hưởng là bao, vì càng sâu portal càng nhỏ, chỉ vẽ thêm mấy pixel không hề hấn gì.
