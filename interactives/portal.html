@@ -1197,6 +1197,8 @@
             }
 
             rasterizeClipSpaceTriangle(tris, renderBBox = null) {
+                const screenBuffer = this.screenBuffer, depthBuffer = this.depthBuffer;
+
                 for (let tri of tris) {
                     let vertices = tri.vertices;
                     for (let i = 0; i < vertices.length; i++) {
@@ -1208,6 +1210,7 @@
                     }
 
                     tri.calculateSignedDoubleArea();
+                    const signedDoubleArea = tri.signedDoubleArea;
 
                     let triBBox = tri.boundingBox();
                     if (renderBBox != null) {
@@ -1217,6 +1220,7 @@
                     }
 
                     let triWorldNormal = tri.getWorldNormal();
+                    const worldNormalX = triWorldNormal.x, worldNormalY = triWorldNormal.y, worldNormalZ = triWorldNormal.z;
                     let dirLightDiffuse = ((Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
                     let activeLightCount = pointLightIntensity > 0 ? getPointLightsThatCanAffectTri(tri, triWorldNormal) : 0;
 
@@ -1252,13 +1256,13 @@
                         let pixelIndex = y * canvas.width + triBBox.minX;
                         for (let x = triBBox.minX; x <= triBBox.maxX; x++) {
                             if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
-                                const baryCoord0 = edgeFunction12 / tri.signedDoubleArea;
-                                const baryCoord1 = edgeFunction20 / tri.signedDoubleArea;
-                                const baryCoord2 = edgeFunction01 / tri.signedDoubleArea;
+                                const baryCoord0 = edgeFunction12 / signedDoubleArea;
+                                const baryCoord1 = edgeFunction20 / signedDoubleArea;
+                                const baryCoord2 = edgeFunction01 / signedDoubleArea;
                                 const z = tri.vertices[0].z * baryCoord0 + tri.vertices[1].z * baryCoord1 + tri.vertices[2].z * baryCoord2;
 
-                                if (z < this.depthBuffer[pixelIndex]) {
-                                    this.depthBuffer[pixelIndex] = z;
+                                if (z < depthBuffer[pixelIndex]) {
+                                    depthBuffer[pixelIndex] = z;
 
                                     let pixelInvZ = tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2;
 
@@ -1284,7 +1288,7 @@
                                                 continue;
 
                                             const distance = Math.sqrt(distanceFromPixelToPointLight2);
-                                            const dot = (triWorldNormal.x * pointLightVecX + triWorldNormal.y * pointLightVecY + triWorldNormal.z * pointLightVecZ) / distance;
+                                            const dot = (worldNormalX * pointLightVecX + worldNormalY * pointLightVecY + worldNormalZ * pointLightVecZ) / distance;
                                             const falloff = 1 - distanceFromPixelToPointLight2 / pointLightRange2;
                                             const attenuation = falloff * falloff / (1 + 0.02 * distanceFromPixelToPointLight2);
                                             pointLightDiffuse += (1 - (dot + 1) / 2) * attenuation;
@@ -1314,9 +1318,9 @@
                                     }
 
                                     const colorIndex = pixelIndex * 4;
-                                    this.screenBuffer[colorIndex] = Math.min(255, texR * lightIntensity);
-                                    this.screenBuffer[colorIndex + 1] = Math.min(255, texG * lightIntensity);
-                                    this.screenBuffer[colorIndex + 2] = Math.min(255, texB * lightIntensity);
+                                    screenBuffer[colorIndex] = Math.min(255, texR * lightIntensity);
+                                    screenBuffer[colorIndex + 1] = Math.min(255, texG * lightIntensity);
+                                    screenBuffer[colorIndex + 2] = Math.min(255, texB * lightIntensity);
                                 }
                             }
                             edgeFunction01 += edgeSlopeX01;
