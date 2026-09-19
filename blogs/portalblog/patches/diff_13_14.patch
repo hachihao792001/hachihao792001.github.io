@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview13.html"
 +++ "b/htmlPreviews\\htmlPreview14.html"
-@@ -1162,10 +1162,12 @@
+@@ -1163,10 +1163,12 @@
                  return new Plane(forward, Vector3.sub(this.pos, Vector3.mul(forward, 0.01)));
              }
  
@@ -14,7 +14,7 @@
                      tris.push(cloneTri);
                  }
  
-@@ -1251,6 +1253,25 @@
+@@ -1252,6 +1254,25 @@
                      return null;
                  }
              }
@@ -40,7 +40,7 @@
          }
  
          const canvas = document.getElementById("gameCanvas");
-@@ -1296,10 +1317,13 @@
+@@ -1297,10 +1318,13 @@
              new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), playerCubeTexture);
          let portal1Pos = new Vector3(-3, 3, -3);
          let portal2Pos = new Vector3(3, 3, -3);
@@ -56,7 +56,7 @@
          let controllingObject = 0;
          let controllingMoveSpeed = 6;
          let controllingRotateSpeed = 60;
-@@ -1403,10 +1427,8 @@
+@@ -1404,10 +1428,8 @@
          }
  
          function portalRenderOperations(objectTris) {

@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview14.html"
 +++ "b/htmlPreviews\\htmlPreview15.html"
-@@ -1309,12 +1309,22 @@
+@@ -1310,12 +1310,22 @@
          let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
  
          let playerCubeTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/wheatly.png");
@@ -23,7 +23,7 @@
          let portal1Pos = new Vector3(-3, 3, -3);
          let portal2Pos = new Vector3(3, 3, -3);
          let portal1 = new Portal("Portal 1", portal1Pos, new Vector3(0, -90, 0), new Vector3(3, 6, 3), new Color(255, 201, 94));
-@@ -1335,7 +1345,22 @@
+@@ -1336,7 +1346,22 @@
              playerCube.pos = camera.pos;
              playerCube.rotation = camera.rotation;
  
@@ -47,7 +47,7 @@
              let posDelta = Vector3.zero;
              if (keyStates["i"]) {
                  posDelta = Vector3.add(posDelta, Vector3.forward);
-@@ -1383,6 +1408,9 @@
+@@ -1384,6 +1409,9 @@
                      case 1:
                          portal2.rotate(rotateEuler.x, rotateEuler.y, rotateEuler.z);
                          break;
@@ -57,7 +57,7 @@
                  }
              }
  
-@@ -1420,6 +1448,7 @@
+@@ -1421,6 +1449,7 @@
              let objectTris = [];
              objectTris.push(...ground.getTransformedTriangles());
              objectTris.push(...playerCube.getTransformedTriangles());
@@ -65,7 +65,7 @@
              objectTris.push(...portal1.getAllTransformedTriangles());
              objectTris.push(...portal2.getAllTransformedTriangles());
  
-@@ -1508,7 +1537,9 @@
+@@ -1509,7 +1538,9 @@
          });
          window.addEventListener("keypress", (e) => {
              if (e.key == "p") {

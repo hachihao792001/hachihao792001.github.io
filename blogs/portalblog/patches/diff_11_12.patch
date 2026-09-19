@@ -44,7 +44,7 @@
              }
          }
  
-@@ -1239,6 +1267,11 @@
+@@ -1240,6 +1268,11 @@
          ];
          let keyStates = [];
  
@@ -56,7 +56,7 @@
          const fpsInfo = document.getElementById("fps");
          let frames = 0, fpsTimeCounter = 0;
  
-@@ -1326,6 +1359,18 @@
+@@ -1327,6 +1360,18 @@
  
              camera.updateMovement(dt, keyStates);
  

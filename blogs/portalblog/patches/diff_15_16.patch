@@ -11,7 +11,7 @@
                  this.pos = pos;
                  this.scale = scale;
                  this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
-@@ -1073,6 +1076,7 @@
+@@ -1074,6 +1077,7 @@
                  let portalRight = this.rotation.rotateVector(Vector3.right);
  
                  this.lastFramePlayerInFrontOfPortal = false;
@@ -19,7 +19,7 @@
  
                  this.topCube = new GameObject(
                      Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, this.scale.y / 2 + portalEdgeThickness / 2), backOffset)),
-@@ -1254,6 +1258,36 @@
+@@ -1255,6 +1259,36 @@
                  }
              }
  
@@ -56,7 +56,7 @@
              recursivePortalOperation(playerCamera, objectTris) {
                  let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
  
-@@ -1337,6 +1371,7 @@
+@@ -1338,6 +1372,7 @@
          let controllingObject = 0;
          let controllingMoveSpeed = 6;
          let controllingRotateSpeed = 60;
@@ -64,7 +64,7 @@
  
          let lastTime = performance.now();
          let dt = 0;
-@@ -1442,6 +1477,20 @@
+@@ -1443,6 +1478,20 @@
                      camera.updateTransformAndCorrectRoll(cameraTeleportedTransform[0], cameraTeleportedTransform[1]);
                  }
              }

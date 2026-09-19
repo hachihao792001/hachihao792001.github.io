@@ -573,7 +573,16 @@ function portalRenderOperations(objectTris) {
         return outTris;
     }
 }</code></pre>
-
+                            Ngoài ra trong hàm getTransformedTriangles của GameObject:
+                            <pre><code class="language-javascript">getTransformedTriangles() {
+    let transformedTris = [];
+    for (let tri of this.mesh.tris) {
+        ...
+        transformedTri.portal = this.portal;
+        transformedTris.push(transformedTri);
+    }
+    return transformedTris;
+}</code></pre>
                             Xong cho tam giác rồi, tới mesh. Vì mesh sẽ hiển thị texture Portal chỉ có thể là Quad nên ta chỉ cần thêm reference vào class Quad:
                             <pre><code class="language-javascript">class Quad extends Mesh {
     constructor(portal = null) {
@@ -2227,8 +2236,11 @@ let holdingObject = null;</code></pre>
 }</code></pre>
                             Kết quả cuối cùng:
                             <div class="htmlPreview" id="htmlPreview21"></div>
+                            Như vậy là đã xong, chúng ta đã hoàn thành việc implement Portal mechanic vào trong engine của chúng ta 😳 Everything is just MATH and ALGORIRTHM.<br/><br/>
                         </div>
                     </div>
+                    <i>Toàn bộ quá trình viết blog này đã được mình stream và record lại, tổng cộng 22 tiếng trải dài 12 stream 🥶 
+                            Bạn có thể xem ở <a href="https://www.youtube.com/playlist?list=PLHHujqqHC0Qg">đây</a></i>
                 </div>
             </div>
         </div>

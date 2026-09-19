@@ -82,7 +82,15 @@
                      ),
                  );
  
-@@ -770,7 +775,7 @@
+@@ -738,6 +743,7 @@
+                     transformedTri.updateWorldVertices();
+                     transformedTri.texture = this.texture;
+                     transformedTri.color = this.color;
++                    transformedTri.portal = this.portal;
+                     transformedTris.push(transformedTri);
+                 }
+                 return transformedTris;
+@@ -770,7 +776,7 @@
                  this.pixels = null;
                  this.width = 0;
                  this.height = 0;
@@ -91,7 +99,7 @@
              }
  
              async load(url) {
-@@ -882,17 +887,24 @@
+@@ -882,17 +888,24 @@
  
                                      let texColor = tri.color;
                                      if (tri.texture && tri.texture.pixels) {
@@ -127,7 +135,7 @@
                                      }
  
                                      this.screenBuffer[y][x].updateColor(
-@@ -942,7 +954,12 @@
+@@ -942,7 +955,12 @@
                  this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
                  this.scale = scale;
  
@@ -141,7 +149,7 @@
                  this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
                  this.rasterizer = new Rasterizer();
                  this.camera = new Camera(pos, eulerAngles, 8, 0.2);
-@@ -978,6 +995,21 @@
+@@ -978,6 +996,21 @@
                  this.rasterizer.rasterizeClipSpaceTriangles(visibleTris);
              }
  
@@ -163,7 +171,7 @@
              calculateTransformToOtherPortalTransform(position, rotation) {
                  let otherPortalUp = this.otherPortal.rotation.rotateVector(Vector3.up).normalize();
                  let rotate180 = Quaternion.buildQuaternionAxisAngle(otherPortalUp, 180);
-@@ -1058,13 +1090,15 @@
+@@ -1058,13 +1091,15 @@
              objectTris.push(...playerCube.getTransformedTriangles());
              objectTris.push(...portal1.quad.getTransformedTriangles());
              objectTris.push(...portal2.quad.getTransformedTriangles());

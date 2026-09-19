@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview8.html"
 +++ "b/htmlPreviews\\htmlPreview9.html"
-@@ -973,6 +973,8 @@
+@@ -974,6 +974,8 @@
                  let portalForward = this.rotation.rotateVector(Vector3.forward).normalize();
                  let portalRight = this.rotation.rotateVector(Vector3.right);
  
@@ -9,7 +9,7 @@
                  this.topCube = new GameObject(
                      Vector3.add(pos, Vector3.add(Vector3.mul(portalUp, this.scale.y / 2 + portalEdgeThickness / 2), backOffset)),
                      eulerAngles,
-@@ -1098,6 +1100,27 @@
+@@ -1099,6 +1101,27 @@
                  this.camera.pos = cameraPos;
                  this.camera.rotation = cameraRotation;
              }
@@ -37,7 +37,7 @@
          }
  
          const canvas = document.getElementById("gameCanvas");
-@@ -1108,7 +1131,7 @@
+@@ -1109,7 +1132,7 @@
          const fov = 60;
          let znear = 0.01, zfar = 1000;
          let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
@@ -46,7 +46,7 @@
          let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
          let edgePlanes = [
              new Plane(Vector3.down, new Vector3(0, 1, 0)),
-@@ -1149,6 +1172,18 @@
+@@ -1150,6 +1173,18 @@
  
              portal1.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);
              portal2.updatePortalCameraBaseOnPlayer(camera.pos, camera.rotation);

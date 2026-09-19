@@ -16,7 +16,7 @@
  
          class Mat4x4 {
              constructor() {
-@@ -963,11 +965,67 @@
+@@ -964,11 +966,67 @@
                  this.quad = new GameObject(pos, eulerAngles, scale, color, portalQuadMesh, null);
                  this.rasterizer = new Rasterizer();
                  this.camera = new Camera(pos, eulerAngles, 8, 0.2);
@@ -84,7 +84,7 @@
              runRenderPipeline(objectTris) {
                  let tris = [];
                  for (let tri of objectTris) {
-@@ -1088,8 +1146,8 @@
+@@ -1089,8 +1147,8 @@
              let objectTris = [];
              objectTris.push(...ground.getTransformedTriangles());
              objectTris.push(...playerCube.getTransformedTriangles());

@@ -19,7 +19,7 @@
              updateTransformAndCorrectRoll(newPos, newRot) {
                  this.pos = newPos;
                  this.rotation = newRot;
-@@ -978,6 +981,9 @@
+@@ -979,6 +982,9 @@
                  this.screenBuffer = [];
                  this.depthBuffer = [];
  
@@ -29,7 +29,7 @@
                  for (let i = 0; i < canvas.height; i++) {
                      let screenRow = [];
                      let depthRow = [];
-@@ -1060,12 +1066,17 @@
+@@ -1061,12 +1067,17 @@
  
                                      let pixelInvZ = tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2;
  
@@ -53,7 +53,7 @@
  
                                      let lightIntensity = dirLightDiffuse;
  
-@@ -1230,6 +1241,17 @@
+@@ -1231,6 +1242,17 @@
                  this.backQuad.pos = Vector3.add(pos, Vector3.mul(portalBack, portalEdgeThickness));
              }
  
@@ -71,7 +71,7 @@
              rotate(eulerX, eulerY, eulerZ) {
                  let q = Quaternion.buildQuaternionEuler(new Vector3(eulerX, eulerY, eulerZ));
                  this.rotation = Quaternion.multiply(q, this.rotation);
-@@ -1457,9 +1479,7 @@
+@@ -1458,9 +1480,7 @@
          }
  
          const canvas = document.getElementById("gameCanvas");
@@ -81,7 +81,7 @@
          const rasterizer = new Rasterizer();
          const fov = 60;
          let znear = 0.01, zfar = 1000;
-@@ -1474,6 +1494,7 @@
+@@ -1475,6 +1495,7 @@
              new Plane(Vector3.left, new Vector3(1, 0, 0))
          ];
          let keyStates = [];
@@ -89,7 +89,7 @@
  
          let cameraRotLerpStart = camera.rotation;
          let cameraRotLerpEnd = camera.rotation;
-@@ -1495,7 +1516,16 @@
+@@ -1496,7 +1517,16 @@
          let brickTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg");
  
          let cubeMesh = new Cube();
@@ -107,7 +107,7 @@
          let playerCube = new GameObject(camera.pos, camera.rotation, new Vector3(0.5, 0.5, 0.5), new Color(255, 255, 255),
              new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"), playerCubeTexture);
          let testCube = new GameObject(
-@@ -1643,7 +1673,8 @@
+@@ -1644,7 +1674,8 @@
  
          function gameObjectToWorldSpaceTriangles() {
              let objectTris = [];
@@ -117,7 +117,7 @@
              objectTris.push(...portal1.getAllTransformedTriangles());
              objectTris.push(...portal2.getAllTransformedTriangles());
  
-@@ -1697,11 +1728,15 @@
+@@ -1698,11 +1729,15 @@
          }
  
          function rasterize(visibleTris) {
@@ -135,7 +135,7 @@
          }
  
          function update(time = performance.now()) {
-@@ -1728,6 +1763,36 @@
+@@ -1729,6 +1764,36 @@
  
          update();
  

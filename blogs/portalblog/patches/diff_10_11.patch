@@ -89,7 +89,7 @@
          }
  
          class Mesh {
-@@ -1272,13 +1333,11 @@
+@@ -1273,13 +1334,11 @@
  
              let cameraTeleportedTransform = portal1.getPlayerTeleportedTransformIfGoThroughPortal(camera.pos, camera.rotation);
              if (cameraTeleportedTransform != null) {

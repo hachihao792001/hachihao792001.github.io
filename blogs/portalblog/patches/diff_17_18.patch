@@ -76,7 +76,7 @@
              }
  
              updateTransformAndCorrectRoll(newPos, newRot) {
-@@ -952,16 +990,20 @@
+@@ -953,16 +991,20 @@
                  }
              }
  
@@ -101,7 +101,7 @@
                  for (let tri of tris) {
                      let vertices = tri.vertices;
                      for (let i = 0; i < vertices.length; i++) {
-@@ -975,20 +1017,26 @@
+@@ -976,20 +1018,26 @@
  
                      let triWorldNormal = tri.getWorldNormal();
                      let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
@@ -132,7 +132,7 @@
  
                      let perspectiveWorldVertices = [
                          Vector3.mul(tri.worldVertices[0], tri.uv[0].w),
-@@ -996,11 +1044,11 @@
+@@ -997,11 +1045,11 @@
                          Vector3.mul(tri.worldVertices[2], tri.uv[2].w)
                      ];
  
@@ -146,7 +146,7 @@
                              if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
                                  const baryCoord0 = edgeFunction12 / tri.signedDoubleArea;
                                  const baryCoord1 = edgeFunction20 / tri.signedDoubleArea;
-@@ -1198,7 +1246,7 @@
+@@ -1199,7 +1247,7 @@
                  return new Plane(forward, Vector3.sub(this.pos, Vector3.mul(forward, 0.01)));
              }
  
@@ -155,7 +155,7 @@
                  let tris = [];
                  for (let tri of objectTris) {
                      let cloneTri = tri.clone();
-@@ -1207,7 +1255,7 @@
+@@ -1208,7 +1256,7 @@
                      tris.push(cloneTri);
                  }
  
@@ -164,7 +164,7 @@
  
                  let viewMatPortal = this.camera.getViewMatrix();
                  let otherPortalPlane = this.otherPortal.getPlane();
-@@ -1228,24 +1276,29 @@
+@@ -1229,24 +1277,29 @@
                      tri.perspectiveDivide();
                  }
  
@@ -203,7 +203,7 @@
              calculateTransformToOtherPortalTransform(position, rotation) {
                  let otherPortalUp = this.otherPortal.rotation.rotateVector(Vector3.up).normalize();
                  let rotate180 = Quaternion.buildQuaternionAxisAngle(otherPortalUp, 180);
-@@ -1334,22 +1387,71 @@
+@@ -1335,22 +1388,71 @@
                  return cloneObject;
              }
  
@@ -282,7 +282,7 @@
                  }
              }
          }
-@@ -1412,7 +1514,7 @@
+@@ -1413,7 +1515,7 @@
          portal1.setOtherPortal(portal2);
          portal2.setOtherPortal(portal1);
  

@@ -46,7 +46,7 @@
          }
  
          class Camera {
-@@ -1288,6 +1320,20 @@
+@@ -1289,6 +1321,20 @@
                  }
              }
  
@@ -67,7 +67,7 @@
              recursivePortalOperation(playerCamera, objectTris) {
                  let cameraTransforms = [[playerCamera.pos, playerCamera.rotation]];
  
-@@ -1496,11 +1542,30 @@
+@@ -1497,11 +1543,30 @@
          function gameObjectToWorldSpaceTriangles() {
              let objectTris = [];
              objectTris.push(...ground.getTransformedTriangles());
