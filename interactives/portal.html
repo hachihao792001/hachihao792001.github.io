@@ -2211,6 +2211,13 @@
             return visibleTris;
         }
 
+        function sortNearestFirst(visibleTris) {
+            for (let tri of visibleTris) {
+                tri.sortDepth = (tri.vertices[0].z + tri.vertices[1].z + tri.vertices[2].z) / 3;
+            }
+            visibleTris.sort((a, b) => a.sortDepth - b.sortDepth);
+        }
+
         function viewSpaceToClipSpace(visibleTris) {
             for (let tri of visibleTris) {
                 tri.mulMat4x4(projectionMatrix);
@@ -2247,6 +2254,7 @@
             let objectTris = gameObjectToWorldSpaceTriangles();
             portalRenderOperations(objectTris);
             let visibleTris = worldSpaceToViewSpace(objectTris);
+            sortNearestFirst(visibleTris);
             viewSpaceToClipSpace(visibleTris);
             rasterize(visibleTris);
 
