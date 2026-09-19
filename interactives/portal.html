@@ -1208,17 +1208,17 @@
                     }
 
                     tri.calculateSignedDoubleArea();
-
-                    let triWorldNormal = tri.getWorldNormal();
-                    let dirLightDiffuse = ((Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
-                    let activeLightCount = pointLightIntensity > 0 ? getPointLightsThatCanAffectTri(tri, triWorldNormal) : 0;
-
+                    
                     let triBBox = tri.boundingBox();
                     if (renderBBox != null) {
                         triBBox = BoundingBox.intersect(renderBBox, triBBox);
                         if (!triBBox.isValid())
                             continue;
                     }
+
+                    let triWorldNormal = tri.getWorldNormal();
+                    let dirLightDiffuse = ((Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
+                    let activeLightCount = pointLightIntensity > 0 ? getPointLightsThatCanAffectTri(tri, triWorldNormal) : 0;
 
                     let edgeFunctionRow01 = edgeFunction(
                         tri.vertices[0],
