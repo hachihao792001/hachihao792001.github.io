@@ -1292,30 +1292,31 @@
                                         pointLightDiffuse *= pointLightIntensity;
                                     }
 
-                                    let texColor = tri.color;
+                                    let texR = tri.color.r, texG = tri.color.g, texB = tri.color.b;
                                     let lightIntensity = Math.max(0.2, dirLightDiffuse + pointLightDiffuse);
 
                                     if (tri.texture && tri.texture.pixels) {
+                                        let texIndex;
                                         if (tri.portal) {
                                             lightIntensity = 1;
-
-                                            const texIndex = (y * tri.texture.width + x) * 4;
-                                            texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
+                                            texIndex = (y * tri.texture.width + x) * 4;
                                         } else {
                                             let texX = ((tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2) / pixelInvZ);
                                             let texY = ((tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2) / pixelInvZ);
                                             texX = Math.floor(texX * (tri.texture.width - 1));
                                             texY = Math.floor(texY * (tri.texture.height - 1));
 
-                                            const texIndex = (texY * tri.texture.width + texX) * 4;
-                                            texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
+                                            texIndex = (texY * tri.texture.width + texX) * 4;
                                         }
+                                        texR = tri.texture.pixels[texIndex];
+                                        texG = tri.texture.pixels[texIndex + 1];
+                                        texB = tri.texture.pixels[texIndex + 2];
                                     }
 
                                     const colorIndex = pixelIndex * 4;
-                                    this.screenBuffer[colorIndex] = Math.min(255, texColor.r * lightIntensity);
-                                    this.screenBuffer[colorIndex + 1] = Math.min(255, texColor.g * lightIntensity);
-                                    this.screenBuffer[colorIndex + 2] = Math.min(255, texColor.b * lightIntensity);
+                                    this.screenBuffer[colorIndex] = Math.min(255, texR * lightIntensity);
+                                    this.screenBuffer[colorIndex + 1] = Math.min(255, texG * lightIntensity);
+                                    this.screenBuffer[colorIndex + 2] = Math.min(255, texB * lightIntensity);
                                 }
                             }
                             edgeFunction01 += edgeSlopeX01;
