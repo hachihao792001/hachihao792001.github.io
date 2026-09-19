@@ -1233,11 +1233,10 @@
                         tri.vertices[0],
                         new Vector3(triBBox.minX, triBBox.minY, 0));
 
-                    let perspectiveWorldVertices = [
-                        Vector3.mul(tri.worldVertices[0], tri.uv[0].w),
-                        Vector3.mul(tri.worldVertices[1], tri.uv[1].w),
-                        Vector3.mul(tri.worldVertices[2], tri.uv[2].w)
-                    ];
+                    const world0 = tri.worldVertices[0], world1 = tri.worldVertices[1], world2 = tri.worldVertices[2];
+                    const perspectiveWorld0X = world0.x * tri.uv[0].w, perspectiveWorld0Y = world0.y * tri.uv[0].w, perspectiveWorld0Z = world0.z * tri.uv[0].w;
+                    const perspectiveWorld1X = world1.x * tri.uv[1].w, perspectiveWorld1Y = world1.y * tri.uv[1].w, perspectiveWorld1Z = world1.z * tri.uv[1].w;
+                    const perspectiveWorld2X = world2.x * tri.uv[2].w, perspectiveWorld2Y = world2.y * tri.uv[2].w, perspectiveWorld2Z = world2.z * tri.uv[2].w;
 
                     const edgeSlopeX01 = tri.vertices[0].y - tri.vertices[1].y;
                     const edgeSlopeX12 = tri.vertices[1].y - tri.vertices[2].y;
@@ -1263,15 +1262,12 @@
 
                                     let pixelInvZ = tri.uv[0].w * baryCoord0 + tri.uv[1].w * baryCoord1 + tri.uv[2].w * baryCoord2;
 
-                                    let pixelWorldPos = new Vector3(
-                                        (perspectiveWorldVertices[0].x * baryCoord0 + perspectiveWorldVertices[1].x * baryCoord1 + perspectiveWorldVertices[2].x * baryCoord2),
-                                        (perspectiveWorldVertices[0].y * baryCoord0 + perspectiveWorldVertices[1].y * baryCoord1 + perspectiveWorldVertices[2].y * baryCoord2),
-                                        (perspectiveWorldVertices[0].z * baryCoord0 + perspectiveWorldVertices[1].z * baryCoord1 + perspectiveWorldVertices[2].z * baryCoord2)
-                                    );
-                                    pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
+                                    const pixelWorldX = (perspectiveWorld0X * baryCoord0 + perspectiveWorld1X * baryCoord1 + perspectiveWorld2X * baryCoord2) / pixelInvZ;
+                                    const pixelWorldY = (perspectiveWorld0Y * baryCoord0 + perspectiveWorld1Y * baryCoord1 + perspectiveWorld2Y * baryCoord2) / pixelInvZ;
+                                    const pixelWorldZ = (perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
 
                                     if (x == screenCenter.x && y == screenCenter.y) {
-                                        this.pointingPos = pixelWorldPos;
+                                        this.pointingPos = new Vector3(pixelWorldX, pixelWorldY, pixelWorldZ);
                                         this.pointingPosNormal = triWorldNormal;
                                         this.pointingTri = tri;
                                     }
@@ -1280,9 +1276,9 @@
                                     if (pointLightIntensity > 0) {
                                         for (let i = 0; i < activeLightCount; i++) {
                                             const lightPos = activeLights[i];
-                                            const pointLightVecX = pixelWorldPos.x - lightPos.x;
-                                            const pointLightVecY = pixelWorldPos.y - lightPos.y;
-                                            const pointLightVecZ = pixelWorldPos.z - lightPos.z;
+                                            const pointLightVecX = pixelWorldX - lightPos.x;
+                                            const pointLightVecY = pixelWorldY - lightPos.y;
+                                            const pointLightVecZ = pixelWorldZ - lightPos.z;
                                             const distanceFromPixelToPointLight2 = pointLightVecX * pointLightVecX + pointLightVecY * pointLightVecY + pointLightVecZ * pointLightVecZ;
                                             if (distanceFromPixelToPointLight2 >= pointLightRange2)
                                                 continue;
