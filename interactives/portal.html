@@ -1302,15 +1302,11 @@
                                             const texIndex = (y * tri.texture.width + x) * 4;
                                             texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
                                         } else {
-                                            let pixelUV = new Vector2(
-                                                tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,
-                                                tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2,
-                                                pixelInvZ,
-                                            );
-                                            pixelUV = Vector2.div(pixelUV, pixelUV.w);
+                                            let texX = ((tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2) / pixelInvZ);
+                                            let texY = ((tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2) / pixelInvZ);
+                                            texX = Math.floor(texX * (tri.texture.width - 1));
+                                            texY = Math.floor(texY * (tri.texture.height - 1));
 
-                                            const texX = Math.floor(pixelUV.u * (tri.texture.width - 1));
-                                            const texY = Math.floor(pixelUV.v * (tri.texture.height - 1));
                                             const texIndex = (texY * tri.texture.width + texX) * 4;
                                             texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
                                         }
