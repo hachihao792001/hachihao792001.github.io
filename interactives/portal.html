@@ -1646,26 +1646,24 @@
             }
 
             runRenderPipeline(objectTris, textureForPortal, renderBBox = null) {
-                let tris = [];
-                for (let tri of objectTris) {
-                    let cloneTri = tri.clone();
-                    if (cloneTri.portal) cloneTri.texture = textureForPortal;
-                    tris.push(cloneTri);
-                }
-
                 this.rasterizer.clearScreen(renderBBox);
 
-                let viewMatPortal = this.camera.getViewMatrix();
-                let otherPortalPlane = this.otherPortal.getPlane();
+                const viewMatPortal = this.camera.getViewMatrix();
+                const otherPortalPlane = this.otherPortal.getPlane();
+                const cameraPos = this.camera.pos;
 
                 let visibleTris = [];
-                for (let tri of tris) {
-                    if (tri.portal || Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), this.camera.pos)) < 0) {
-                        let clippedWithPortalTris = tri.clipAgainstPlane(otherPortalPlane);
-                        for (let clippedTri of clippedWithPortalTris) {
-                            clippedTri.mulMat4x4(viewMatPortal);
-                            visibleTris.push(...clippedTri.clipAgainstPlane(nearPlane));
-                        }
+                for (let tri of objectTris) {
+                    if (!tri.portal && Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), cameraPos)) >= 0)
+                        continue;
+
+                    let workTri = tri.clone();
+                    if (workTri.portal) workTri.texture = textureForPortal;
+
+                    let clippedWithPortalTris = workTri.clipAgainstPlane(otherPortalPlane);
+                    for (let clippedTri of clippedWithPortalTris) {
+                        clippedTri.mulMat4x4(viewMatPortal);
+                        visibleTris.push(...clippedTri.clipAgainstPlane(nearPlane));
                     }
                 }
 
