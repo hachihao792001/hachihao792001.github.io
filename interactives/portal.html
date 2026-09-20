@@ -33,6 +33,48 @@
             height: auto;
         }
 
+        .slider-value {
+            display: inline-block;
+            min-width: 3em;
+            text-align: left;
+            font-variant-numeric: tabular-nums;
+        }
+
+        input[type="range"] {
+            vertical-align: middle;
+        }
+
+        #controls {
+            display: grid;
+            grid-template-columns: max-content max-content;
+            justify-content: center;
+            justify-items: start;
+            align-items: center;
+            column-gap: 8px;
+            row-gap: 2px;
+        }
+
+        #controls .controlRow {
+            display: contents;
+        }
+
+        #controls .controlLabel {
+            justify-self: end;
+        }
+
+        @media (max-width: 480px) {
+            #controls {
+                grid-template-columns: max-content;
+                justify-items: center;
+                row-gap: 0;
+            }
+
+            #controls .controlLabel {
+                justify-self: center;
+                margin-top: 4px;
+            }
+        }
+
         #mobileControls .row {
             display: flex;
             flex-wrap: wrap;
@@ -96,44 +138,56 @@
             </div>
         </div>
     </div>
-    <div>
-        ASCII:
-        <input type="checkbox" id="useASCII" />
-    </div>
-    <div id="canvasResRow">
-        Canvas resolution:
-        <input id="canvasResWidth" value="800" size="4" />
-        x
-        <input id="canvasResHeight" value="600" size="4" />
-    </div>
-    <div id="asciiResRow" style="display: none">
-        ASCII resolution:
-        <input id="asciiResWidth" value="260" size="4" />
-        x
-        <input id="asciiResHeight" value="195" size="4" />
-    </div>
-    <div>
-        Directional light intensity:
-        <input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="0.5" />
-        <span id="dirIntensityText" class="slider-value">0.5</span>
-    </div>
-    <div>
-        Point light intensity:
-        <input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
-        <span id="pointIntensityText" class="slider-value">1.0</span>
-    </div>
-    <div>
-        Point light range:
-        <input type="range" id="pointRange" min="0" max="60" step="1" value="20" />
-        <span id="pointRangeText" class="slider-value">20</span>
-    </div>
-    <div>
-        Portal recursion limit:
-        <input id="portalLimit" value="10" />
-    </div>
-    <div>
-        Controlling object:
-        <span id="controllingObject">Orange portal</span>
+    <div id="controls">
+        <div class="controlRow">
+            <label class="controlLabel" for="useASCII">ASCII:</label>
+            <span><input type="checkbox" id="useASCII" /></span>
+        </div>
+        <div class="controlRow" id="canvasResRow">
+            <label class="controlLabel" for="canvasResWidth">Canvas resolution:</label>
+            <span>
+                <input id="canvasResWidth" value="800" size="4" />
+                x
+                <input id="canvasResHeight" value="600" size="4" />
+            </span>
+        </div>
+        <div class="controlRow" id="asciiResRow" style="display: none">
+            <label class="controlLabel" for="asciiResWidth">ASCII resolution:</label>
+            <span>
+                <input id="asciiResWidth" value="260" size="4" />
+                x
+                <input id="asciiResHeight" value="195" size="4" />
+            </span>
+        </div>
+        <div class="controlRow">
+            <label class="controlLabel" for="dirIntensity">Directional light intensity:</label>
+            <span>
+                <input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="0.5" />
+                <span id="dirIntensityText" class="slider-value">0.5</span>
+            </span>
+        </div>
+        <div class="controlRow">
+            <label class="controlLabel" for="pointIntensity">Point light intensity:</label>
+            <span>
+                <input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
+                <span id="pointIntensityText" class="slider-value">1.0</span>
+            </span>
+        </div>
+        <div class="controlRow">
+            <label class="controlLabel" for="pointRange">Point light range:</label>
+            <span>
+                <input type="range" id="pointRange" min="0" max="60" step="1" value="20" />
+                <span id="pointRangeText" class="slider-value">20</span>
+            </span>
+        </div>
+        <div class="controlRow">
+            <label class="controlLabel" for="portalLimit">Portal recursion limit:</label>
+            <span><input id="portalLimit" value="10" /></span>
+        </div>
+        <div class="controlRow">
+            <span class="controlLabel">Controlling object:</span>
+            <span id="controllingObject">Orange portal</span>
+        </div>
     </div>
     <div id="helpPopup"
         style="display: none; position: fixed; top: 80px; left: 50%;transform: translate(-50%, 0); text-align: left; background: #fff; border: 1px solid #aaa; padding: 10px; width: 400px">
