@@ -123,6 +123,11 @@
         <span id="pointIntensityText" class="slider-value">1.0</span>
     </div>
     <div>
+        Point light range:
+        <input type="range" id="pointRange" min="0" max="60" step="1" value="20" />
+        <span id="pointRangeText" class="slider-value">20</span>
+    </div>
+    <div>
         Portal recursion limit:
         <input id="portalLimit" value="10" />
     </div>
@@ -1290,28 +1295,31 @@
                                         this.pointingTri = tri;
                                     }
 
-                                    let pointLightDiffuse = 0;
+                                    let totalPointLigthDiffuse = 0;
                                     if (pointLightIntensity > 0) {
                                         for (let i = 0; i < activeLightCount; i++) {
                                             const lightPos = activeLights[i];
-                                            const pointLightVecX = pixelWorldX - lightPos.x;
-                                            const pointLightVecY = pixelWorldY - lightPos.y;
-                                            const pointLightVecZ = pixelWorldZ - lightPos.z;
+                                            const pointLightVecX = lightPos.x - pixelWorldX;
+                                            const pointLightVecY = lightPos.y - pixelWorldY;
+                                            const pointLightVecZ = lightPos.z - pixelWorldZ;
                                             const distanceFromPixelToPointLight2 = pointLightVecX * pointLightVecX + pointLightVecY * pointLightVecY + pointLightVecZ * pointLightVecZ;
                                             if (distanceFromPixelToPointLight2 >= pointLightRange2)
                                                 continue;
 
                                             const distance = Math.sqrt(distanceFromPixelToPointLight2);
                                             const dot = (worldNormalX * pointLightVecX + worldNormalY * pointLightVecY + worldNormalZ * pointLightVecZ) / distance;
-                                            const falloff = 1 - distanceFromPixelToPointLight2 / pointLightRange2;
-                                            const attenuation = falloff * falloff / (1 + 0.02 * distanceFromPixelToPointLight2);
-                                            pointLightDiffuse += (1 - (dot + 1) / 2) * attenuation;
+                                            const currentPointLightDiffuse = (1 + dot) / 2;
+                                            const pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRange2;
+                                            const inverseSquareDistance = 1 / (1 + 0.02 * distanceFromPixelToPointLight2);
+                                            const attenuation = (1 - pointLightDistanceRatio) * inverseSquareDistance;
+                                            totalPointLigthDiffuse += currentPointLightDiffuse * attenuation;
                                         }
-                                        pointLightDiffuse *= pointLightIntensity;
+
+                                        totalPointLigthDiffuse *= pointLightIntensity;
                                     }
 
                                     let texR = triColor.r, texG = triColor.g, texB = triColor.b;
-                                    let lightIntensity = Math.max(0.2, dirLightDiffuse + pointLightDiffuse);
+                                    let lightIntensity = Math.max(0.2, dirLightDiffuse + totalPointLigthDiffuse);
 
                                     if (texturePixels) {
                                         let texIndex;
@@ -1830,7 +1838,10 @@
         const pointLightIntensitySlider = document.getElementById("pointIntensity");
         const pointLightIntensityText = document.getElementById("pointIntensityText");
         let pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
-        let pointLightRange = 20;
+
+        const pointLightRangeSlider = document.getElementById("pointRange");
+        const pointLightRangeText = document.getElementById("pointRangeText");
+        let pointLightRange = parseFloat(pointLightRangeSlider.value);
         let pointLightRange2 = pointLightRange * pointLightRange;
 
         const maxActiveLights = 24;
@@ -2294,6 +2305,12 @@
         pointLightIntensitySlider.addEventListener("input", () => {
             pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
             pointLightIntensityText.textContent = pointLightIntensity.toFixed(2);
+        });
+
+        pointLightRangeSlider.addEventListener("input", () => {
+            pointLightRange = parseFloat(pointLightRangeSlider.value);
+            pointLightRange2 = pointLightRange * pointLightRange;
+            pointLightRangeText.textContent = pointLightRange.toFixed(0);
         });
 
         portalLimitInput.addEventListener("input", () => {
