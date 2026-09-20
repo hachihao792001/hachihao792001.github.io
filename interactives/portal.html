@@ -62,6 +62,31 @@
             justify-self: end;
         }
 
+        #helpPopup {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translate(-50%, 0);
+            box-sizing: border-box;
+            width: min(400px, calc(100vw - 24px));
+            max-height: calc(100vh - 96px);
+            max-height: calc(100dvh - 96px);
+            overflow-y: auto;
+            text-align: left;
+            background: #fff;
+            border: 1px solid #aaa;
+            padding: 10px;
+        }
+
+        #helpPopup .helpPopupBar {
+            position: sticky;
+            top: -10px;
+            margin: -10px -10px 0;
+            padding: 10px 10px 4px;
+            text-align: right;
+            background: #fff;
+        }
+
         @media (max-width: 480px) {
             #controls {
                 grid-template-columns: max-content;
@@ -72,6 +97,15 @@
             #controls .controlLabel {
                 justify-self: center;
                 margin-top: 4px;
+            }
+        }
+
+        @media (max-width: 480px),
+        (max-height: 600px) {
+            #helpPopup {
+                top: 12px;
+                max-height: calc(100vh - 24px);
+                max-height: calc(100dvh - 24px);
             }
         }
 
@@ -189,9 +223,8 @@
             <span id="controllingObject">Orange portal</span>
         </div>
     </div>
-    <div id="helpPopup"
-        style="display: none; position: fixed; top: 80px; left: 50%;transform: translate(-50%, 0); text-align: left; background: #fff; border: 1px solid #aaa; padding: 10px; width: 400px">
-        <div style="text-align: right">
+    <div id="helpPopup" style="display: none">
+        <div class="helpPopupBar">
             <button id="helpCloseButton"
                 style="font-family: inherit; font-size: 15px; height: 30px; padding: 0 16px">Close</button>
         </div>
@@ -1349,7 +1382,7 @@
                                         this.pointingTri = tri;
                                     }
 
-                                    let totalPointLigthDiffuse = 0;
+                                    let totalPointLightDiffuse = 0;
                                     if (pointLightIntensity > 0) {
                                         for (let i = 0; i < activeLightCount; i++) {
                                             const lightPos = activeLights[i];
@@ -1366,14 +1399,14 @@
                                             const pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRange2;
                                             const inverseSquareDistance = 1 / (1 + 0.02 * distanceFromPixelToPointLight2);
                                             const attenuation = (1 - pointLightDistanceRatio) * inverseSquareDistance;
-                                            totalPointLigthDiffuse += currentPointLightDiffuse * attenuation;
+                                            totalPointLightDiffuse += currentPointLightDiffuse * attenuation;
                                         }
 
-                                        totalPointLigthDiffuse *= pointLightIntensity;
+                                        totalPointLightDiffuse *= pointLightIntensity;
                                     }
 
                                     let texR = triColor.r, texG = triColor.g, texB = triColor.b;
-                                    let lightIntensity = Math.max(0.2, dirLightDiffuse + totalPointLigthDiffuse);
+                                    let lightIntensity = Math.max(0.2, dirLightDiffuse + totalPointLightDiffuse);
 
                                     if (texturePixels) {
                                         let texIndex;
