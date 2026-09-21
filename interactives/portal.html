@@ -2140,9 +2140,6 @@
         let dt = 0;
 
         function updateGameObjectTransforms() {
-            playerCube.pos = camera.pos;
-            playerCube.rotation = camera.rotation;
-
             if (holdingObject != null) {
                 holdingObject.pos = Vector3.add(camera.pos, Vector3.mul(camera.getForward(), 5));
             }
@@ -2218,6 +2215,9 @@
             }
 
             camera.updateMovement(dt, keyStates);
+            
+            playerCube.pos = camera.pos;
+            playerCube.rotation = camera.rotation;
 
             if ((lookInput.x != 0 || lookInput.y != 0) && cameraRotLerpCount <= 0) {
                 camera.updateRotation(lookInput.x * dt * lookSpeed, lookInput.y * dt * lookSpeed);
