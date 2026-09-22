@@ -1,17 +1,17 @@
 [
     {
-        "title": "3D Rendering Engine with Point light and Shadows",
-        "route": "/blogs/graphics3D/htmlPreviews/htmlPreview35.html",
-        "description": "A 3D rendering engine simulation with point lighting and shadow effects. This is the result of my 12 blogs about 3D rendering engine development, which you can find in the blogs section."
+        "title": "Hanvas Engine",
+        "route": "/interactives/hanvas.html",
+        "description": "A Software Rasterizer with texture, point light and shadow. This is the result of my 12 blogs about 3D rendering engine development, which you can find in the blogs section."
     },
     {
-        "title": "Portal mechanic in 3D Rendering Engine",
+        "title": "Portal mechanic in Hanvas Engine",
         "route": "/interactives/portal.html",
-        "description": "The 3D rendering engine above with fully working portal mechanic."
+        "description": "Hanvas Engine with fully working portal mechanic."
     },
     {
         "title": "3D Physics Engine",
         "route": "/interactives/physicsEngine3D.html",
-        "description": "A simple 3D physics engine simulation using nothing but maths and algorithms."
+        "description": "A simple 3D physics engine. This is built before Hanvas Engine so it isn't very performant."
     }
 ]
