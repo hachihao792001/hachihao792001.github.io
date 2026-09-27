@@ -20,6 +20,11 @@
 		<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
 		<span id="pointIntensityText" class="slider-value">1.0</span>
 	</div>
+	<div>
+		Point light range:
+		<input type="range" id="pointRange" min="0" max="60" step="1" value="14" />
+		<span id="pointRangeText" class="slider-value">14</span>
+	</div>
 	<script>
 		class Vector2 {
 			constructor(u = 0, v = 0, w = 1) {
@@ -143,16 +148,6 @@
 				matrix.m[2][2] = zFar / (zFar - zNear);
 				matrix.m[2][3] = (-zNear * zFar) / (zFar - zNear);
 				matrix.m[3][2] = 1.0;
-				return matrix;
-			}
-
-			static Orthographic(size, zNear, zFar) {
-				let matrix = new Mat4x4();
-				matrix.m[0][0] = 2.0 / size;
-				matrix.m[1][1] = 2.0 / size;
-				matrix.m[2][2] = 1.0 / (zFar - zNear);
-				matrix.m[2][3] = -zNear / (zFar - zNear);
-				matrix.m[3][3] = 1.0;
 				return matrix;
 			}
 
@@ -418,16 +413,16 @@
 				return outTris;
 			}
 
-			boundingBox(maxWidth = canvas.width, maxHeight = canvas.height) {
+			boundingBox() {
 				let minX = Math.min(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
 				let maxX = Math.max(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
 				let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
 				let maxY = Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
 
 				minX = Math.max(0, parseInt(minX));
-				maxX = Math.min(maxWidth - 1, parseInt(maxX));
+				maxX = Math.min(canvas.width - 1, parseInt(maxX));
 				minY = Math.max(0, parseInt(minY));
-				maxY = Math.min(maxHeight - 1, parseInt(maxY));
+				maxY = Math.min(canvas.height - 1, parseInt(maxY));
 
 				return [minX, maxX, minY, maxY];
 			}
@@ -616,111 +611,6 @@
 			}
 		}
 
-		class DirectionalLight {
-			constructor(dir, intensity) {
-				this.dir = dir.normalize();
-				this.intensity = intensity;
-				this.shadowMap = [];
-				for (let i = 0; i < shadowMapSize; i++) {
-					let row = [];
-					for (let j = 0; j < shadowMapSize; j++) {
-						row.push(Infinity);
-					}
-					this.shadowMap.push(row);
-				}
-
-				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
-				let right = Vector3.cross(up, this.dir).normalize();
-				up = Vector3.cross(this.dir, right).normalize();
-				let lightPos = Vector3.mul(this.dir, -shadowMapDistance);
-				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
-				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
-			}
-
-			buildShadowMap(tris) {
-
-				for (let i = 0; i < shadowMapSize; i++) {
-					for (let j = 0; j < shadowMapSize; j++) {
-						this.shadowMap[i][j] = Infinity;
-					}
-				}
-
-				for (let tri of tris) {
-					let shadowTri = tri.clone();
-
-					if (Vector3.dot(tri.getWorldNormal(), this.dir) >= 0) continue;
-
-					shadowTri.mulMat4x4(this.viewMatrix);
-					shadowTri.mulMat4x4(this.projectionMatrix);
-					shadowTri.perspectiveDivide();
-
-					for (let i = 0; i < shadowTri.vertices.length; i++) {
-						shadowTri.vertices[i].x = (shadowTri.vertices[i].x + 1) * shadowMapSize / 2;
-						shadowTri.vertices[i].y = (-shadowTri.vertices[i].y + 1) * shadowMapSize / 2;
-					}
-
-					const bbox = shadowTri.boundingBox(shadowMapSize, shadowMapSize);
-
-					shadowTri.calculateSignedDoubleArea();
-
-					let edgeFunctionRow01 = edgeFunction(
-						shadowTri.vertices[0],
-						shadowTri.vertices[1],
-						new Vector3(bbox[0], bbox[2], 0));
-					let edgeFunctionRow12 = edgeFunction(
-						shadowTri.vertices[1],
-						shadowTri.vertices[2],
-						new Vector3(bbox[0], bbox[2], 0));
-					let edgeFunctionRow20 = edgeFunction(
-						shadowTri.vertices[2],
-						shadowTri.vertices[0],
-						new Vector3(bbox[0], bbox[2], 0));
-
-					for (let y = bbox[2]; y <= bbox[3]; y++) {
-						let edgeFunction01 = edgeFunctionRow01;
-						let edgeFunction12 = edgeFunctionRow12;
-						let edgeFunction20 = edgeFunctionRow20;
-						for (let x = bbox[0]; x <= bbox[1]; x++) {
-							if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
-								const baryCoord0 = edgeFunction12 / shadowTri.signedDoubleArea;
-								const baryCoord1 = edgeFunction20 / shadowTri.signedDoubleArea;
-								const baryCoord2 = edgeFunction01 / shadowTri.signedDoubleArea;
-								const z = shadowTri.vertices[0].z * baryCoord0 + shadowTri.vertices[1].z * baryCoord1 + shadowTri.vertices[2].z * baryCoord2;
-								if (z < this.shadowMap[y][x]) {
-									this.shadowMap[y][x] = z;
-								}
-							}
-							edgeFunction01 += (shadowTri.vertices[0].y - shadowTri.vertices[1].y);
-							edgeFunction12 += (shadowTri.vertices[1].y - shadowTri.vertices[2].y);
-							edgeFunction20 += (shadowTri.vertices[2].y - shadowTri.vertices[0].y);
-						}
-						edgeFunctionRow01 += (shadowTri.vertices[1].x - shadowTri.vertices[0].x);
-						edgeFunctionRow12 += (shadowTri.vertices[2].x - shadowTri.vertices[1].x);
-						edgeFunctionRow20 += (shadowTri.vertices[0].x - shadowTri.vertices[2].x);
-					}
-				}
-			}
-
-			isInShadow(pixelWorldPos, triWorldNormal) {
-				let lightSpacePos = pixelWorldPos.clone();
-
-				if (Vector3.dot(triWorldNormal, this.dir) >= 0) return false;
-
-				lightSpacePos.mulMat4x4(this.viewMatrix);
-				lightSpacePos.mulMat4x4(this.projectionMatrix);
-
-				lightSpacePos = Vector3.div(lightSpacePos, lightSpacePos.w);
-
-				const x = Math.floor((lightSpacePos.x + 1) * shadowMapSize / 2);
-				const y = Math.floor((-lightSpacePos.y + 1) * shadowMapSize / 2);
-
-				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize) 
-					return false;
-
-				return lightSpacePos.z > this.shadowMap[y][x];
-			}
-		}
-
 		class Color {
 			constructor(r, g, b) {
 				this.r = r;
@@ -775,7 +665,7 @@
 					tri.calculateSignedDoubleArea();
 
 					let triWorldNormal = tri.getWorldNormal();
-					let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
+					let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, lightDir) + 1) / 2) * dirLightIntensity;
 					const bbox = tri.boundingBox();
 
 					let edgeFunctionRow01 = edgeFunction(
@@ -820,17 +710,22 @@
 									);
 									pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
 
-									let inShadow = dirLight.isInShadow(pixelWorldPos, triWorldNormal);
-									let shadowFactor = inShadow ? 0.5 : 1.0;
+									let totalPointLightDiffuse = 0;
+									const pointLightRangeSquare = pointLightRange * pointLightRange;
+									for (let light of pointLights) {
+										let pointLightVec = Vector3.sub(light.pos, pixelWorldPos);      // vector từ pixel tới đèn
+										let distanceSquare = Vector3.dot(pointLightVec, pointLightVec);
+										if (distanceSquare >= pointLightRangeSquare) continue;          // ngoài tầm chiếu, bỏ qua
 
-									let pointLightVec = Vector3.sub(pixelWorldPos, lightCube.pos);
-									let distance = pointLightVec.magnitude();
-									pointLightVec.normalize();
-									let pointLightDiffuse = 1 - (Vector3.dot(triWorldNormal, pointLightVec) + 1) / 2;
-									let attenuation = 1 / (1 + 0.1 * distance * distance);
-									pointLightDiffuse *= attenuation * pointLightIntensity;
+										pointLightVec.normalize();
+										let pointLightDiffuse = (Vector3.dot(triWorldNormal, pointLightVec) + 1) / 2;
+										let distanceRatio = distanceSquare / pointLightRangeSquare;
+										let attenuation = (1 - distanceRatio) / (1 + 0.02 * distanceSquare);
+										totalPointLightDiffuse += pointLightDiffuse * attenuation;
+									}
+									totalPointLightDiffuse *= pointLightIntensity;
 
-									let lightIntensity = (dirLightDiffuse + pointLightDiffuse) * shadowFactor;
+									let lightIntensity = Math.max(ambientLight, dirLightDiffuse + totalPointLightDiffuse);
 
 									let texColor = tri.color;
 									if (imgPixels != null) {
@@ -884,6 +779,8 @@
 			return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
 		}
 
+		let ambientLight = 0.2;
+
 		const canvas = document.getElementById("gameCanvas");
 		const ctx = canvas.getContext("2d");
 		const rasterizer = new Rasterizer();
@@ -905,17 +802,22 @@
 
 		const lightDirIntensitySlider = document.getElementById("dirIntensity");
 		const lightDirIntensityText = document.getElementById("dirIntensityText");
-		let shadowMapSize = 512;
-		let shadowMapDistance = 20;
-		let dirLight = new DirectionalLight(new Vector3(-1, -1, -1), parseFloat(lightDirIntensitySlider.value));
+		let lightDir = new Vector3(-1, -1, -1).normalize();
+		let dirLightIntensity = parseFloat(lightDirIntensitySlider.value);
 
 		const pointLightIntensitySlider = document.getElementById("pointIntensity");
 		const pointLightIntensityText = document.getElementById("pointIntensityText");
 		let pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
+		const pointLightRangeSlider = document.getElementById("pointRange");
+		const pointLightRangeText = document.getElementById("pointRangeText");
+		let pointLightRange = parseFloat(pointLightRangeSlider.value);
 
 		let cube1 = new Cube(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0));
 		let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0));
-		let lightCube = new Cube(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255));
+		let pointLights = [
+			new Cube(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255)),
+			new Cube(new Vector3(1.6, 1, 4.2), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255))
+		];
 
 		const img = new Image();
 		img.crossOrigin = "anonymous";
@@ -951,26 +853,27 @@
 			const viewMat = camera.getViewMatrix();
 
 			cube1.rotate(0, 50 * dt, 0);
+			let controllingLight = pointLights[0];
 			if (keyStates['i']) {
-				lightCube.pos.z += dt * 2;
+				controllingLight.pos.z += dt * 2;
 			} else if (keyStates['k']) {
-				lightCube.pos.z -= dt * 2;
+				controllingLight.pos.z -= dt * 2;
 			} else if (keyStates['j']) {
-				lightCube.pos.x -= dt * 2;
+				controllingLight.pos.x -= dt * 2;
 			} else if (keyStates['l']) {
-				lightCube.pos.x += dt * 2;
+				controllingLight.pos.x += dt * 2;
 			} else if (keyStates['u']) {
-				lightCube.pos.y += dt * 2;
+				controllingLight.pos.y += dt * 2;
 			} else if (keyStates['o']) {
-				lightCube.pos.y -= dt * 2;
+				controllingLight.pos.y -= dt * 2;
 			}
 
 			let objectTris = [];
 			objectTris.push(...cube1.getTransformedTriangles());
 			objectTris.push(...cube2.getTransformedTriangles());
-			objectTris.push(...lightCube.getTransformedTriangles());
-
-			dirLight.buildShadowMap(objectTris);
+			for (let light of pointLights) {
+				objectTris.push(...light.getTransformedTriangles());
+			}
 
 			let visibleTris = [];
 			for (let tri of objectTris) {
@@ -994,13 +897,18 @@
 		update();
 
 		lightDirIntensitySlider.addEventListener("input", () => {
-			dirLight.intensity = parseFloat(lightDirIntensitySlider.value);
-			lightDirIntensityText.textContent = dirLight.intensity.toFixed(2);
+			dirLightIntensity = parseFloat(lightDirIntensitySlider.value);
+			lightDirIntensityText.textContent = dirLightIntensity.toFixed(2);
 		});
 
 		pointLightIntensitySlider.addEventListener("input", () => {
 			pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
 			pointLightIntensityText.textContent = pointLightIntensity.toFixed(2);
+		});
+
+		pointLightRangeSlider.addEventListener("input", () => {
+			pointLightRange = parseFloat(pointLightRangeSlider.value);
+			pointLightRangeText.textContent = pointLightRange.toFixed(0);
 		});
 
 		canvas.addEventListener("click", async () => {

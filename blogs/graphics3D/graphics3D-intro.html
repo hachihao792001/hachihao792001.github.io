@@ -22,7 +22,10 @@
     <link rel="stylesheet" href="/css/theme.css">
     <link rel="stylesheet" href="/css/index.css">
     <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
     <link rel="stylesheet" href="graphics3D.css">
+
+    <script src="/js/prism.js"></script>
 
     <title>Graphics Engine 3D</title>
 </head>
@@ -52,7 +55,9 @@
                     Series này mình sẽ làm mọi thứ chạy được trong 1 file HTML duy nhất, một là để bạn tiện copy và chạy
                     luôn (chỉ cần double click vào file HTML), hai là để tăng độ "thuần khiết" và magic, rằng ta chỉ cần 
                     gõ gõ trong một file HTML là có thể vẽ được đồ họa 3D.<br/><br/>
-                    Cuối series này chúng ta sẽ có một Demo cực kỳ noice như <a href="htmlPreviews/htmlPreview35.html">này</a> 😳. Bạn có thể ctrl + s file HTML đó về, và nhấp đúp nó để mở lên bằng trình duyệt
+                    Cuối series này chúng ta sẽ có một Demo cực kỳ noice như này 😳:
+                    <div class="htmlPreview" id="htmlPreview36"></div>
+                    Hoặc xem full ở <a href="htmlPreviews/htmlPreview36.html">đây</a>. Bạn có thể <code>ctrl + s</code> file HTML đó về, và nhấp đúp nó để mở lên bằng trình duyệt
                     mặc định, nó sẽ chạy mà không gặp vấn đề gì. Tất nhiên là không phải tất cả đều nằm ở trong file HTML đó, texture và model
                     vẫn cần phải load từ URLs, nếu bạn tắt mạng đi và mở nó lên thì nó vẫn chạy oke nhưng sẽ không có tòa tháp gỗ và mặt đất
                     sẽ là một màu trắng. Nhưng bạn vẫn có thể di chuyển xung quanh khi nhấp vào canvas.<br/><br/>
@@ -123,6 +128,7 @@
         </div>
     </main>
 
+    <script src="graphics3D.js"></script>
     <script src="/js/ui.js"></script>
     <script src="/js/loadsidebar.js"></script>
 </body>

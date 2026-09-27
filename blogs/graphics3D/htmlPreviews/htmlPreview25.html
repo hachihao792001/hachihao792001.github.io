@@ -651,10 +651,10 @@
 										tri.worldVertices[0].z * baryCoord0 + tri.worldVertices[1].z * baryCoord1 + tri.worldVertices[2].z * baryCoord2
 									);
 
-									let pointLightVec = Vector3.sub(pixelWorldPos, lightCube.pos);
+									let pointLightVec = Vector3.sub(lightCube.pos, pixelWorldPos);
 									let distance = pointLightVec.magnitude();
 									pointLightVec.normalize();
-									let pointLightDiffuse = 1 - (Vector3.dot(triWorldNormal, pointLightVec) + 1) / 2;
+									let pointLightDiffuse = (Vector3.dot(triWorldNormal, pointLightVec) + 1) / 2;
 									let attenuation = 1 / (1 + 0.1 * distance * distance);
 									pointLightDiffuse *= attenuation * pointLightIntensity;
 

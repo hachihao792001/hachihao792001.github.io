@@ -328,7 +328,7 @@ let imgPixels = null;</code></pre>
     }
 }</code></pre>
                     Tất cả đã ổn thỏa, giờ ta chạy thử thôi 😳
-                    <div class="htmlPreview" id="htmlPreview26"></div>
+                    <div class="htmlPreview" id="htmlPreview27"></div>
                     Hmmmmmmmmmmm, nếu bạn nhìn từ xa thì sẽ thấy nó bình thường, tuy nhiên nếu bạn lại gần, hoặc là khi các cube gần cạnh màn hình, thì texture sẽ bắt đầu bị
                     méo mó, thật ra với mỗi tam giác, bạn vẫn thấy texture vẫn bắt đầu và kết thúc đúng chỗ, tuy nhiên trong lúc nó đi từ cạnh này sang cạnh kia nó bị sao sao đó.
                     Cụ thể là càng gần tâm màn hình thì nó càng chuẩn, càng gần cạnh màn hình thì nó càng méo. Hiện tượng này cũng xảy ra với các game PS1 hồi xưa, người ta gọi nó
@@ -394,7 +394,7 @@ let imgPixels = null;</code></pre>
     texColor = new Color(imgPixels[texIndex], imgPixels[texIndex + 1], imgPixels[texIndex + 2]);
 }</code></pre>
                     Ta chạy lại thử:
-                    <div class="htmlPreview" id="htmlPreview27"></div>
+                    <div class="htmlPreview" id="htmlPreview28"></div>
                     Quá đã, nó đã hiển thị đúng rồi, khá là magic khi ta làm được hết những thứ này chỉ bằng toán và sự kiên trì 🥵<br/><br/>
 
                     Nếu bạn quay lại blog trước và xem demo cuối cùng (hoặc demo trên cũng được), bạn sẽ thấy rằng ánh sáng mà point light
@@ -457,7 +457,7 @@ for (let y = bbox[2]; y <= bbox[3]; y++) {
                     không bao giờ vẽ ra ngoài màn hình nữa. Ta sẽ bỏ luôn bước clip với 4 cạnh màn hình, nhưng thật ra nó vẫn có tác dụng nếu ta tiếp tục phát triển
                     engine này về sau, suy cho cùng thì tất cả tam giác nằm gọn trong canvas vẫn sẽ dễ làm việc hơn.<br/><br/>
                     Kết quả cuối cùng:
-                    <div class="htmlPreview" id="htmlPreview28"></div>
+                    <div class="htmlPreview" id="htmlPreview29"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 

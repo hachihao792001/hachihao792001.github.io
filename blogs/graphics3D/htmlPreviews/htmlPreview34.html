@@ -20,6 +20,11 @@
 		<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
 		<span id="pointIntensityText" class="slider-value">1.0</span>
 	</div>
+	<div>
+		Point light range:
+		<input type="range" id="pointRange" min="0" max="60" step="1" value="14" />
+		<span id="pointRangeText" class="slider-value">14</span>
+	</div>
 	<script>
 		class Vector2 {
 			constructor(u = 0, v = 0, w = 1) {
@@ -271,7 +276,6 @@
 				this.uv = uv;
 				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
 				this.color = color;
-				this.texture = null;
 			}
 
 			clone() {
@@ -282,7 +286,6 @@
 					tri.uv[i] = this.uv[i].clone();
 				}
 				tri.color = this.color;
-				tri.texture = this.texture;
 				return tri;
 			}
 
@@ -376,7 +379,6 @@
 					outTri.uv[1] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
 					outTri.color = this.color;
-					outTri.texture = this.texture;
 					outTris.push(outTri);
 				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
 					let outTri1 = new Triangle(), outTri2 = new Triangle();
@@ -403,7 +405,6 @@
 					outTri1.uv[1] = this.uv[frontPoints[1]];
 					outTri1.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri1.color = this.color;
-					outTri1.texture = this.texture;
 					outTris.push(outTri1);
 
 					outTri2.vertices[0] = f1.clone();
@@ -416,7 +417,6 @@
 					outTri2.uv[1] = Vector2.lerp(this.uv[frontPoints[1]], this.uv[behindPoints[0]], t2);
 					outTri2.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
 					outTri2.color = this.color;
-					outTri2.texture = this.texture;
 					outTris.push(outTri2);
 				}
 
@@ -687,13 +687,12 @@
 		}
 
 		class GameObject {
-			constructor(pos, eulerAngles, scale, color, mesh, texture = null) {
+			constructor(pos, eulerAngles, scale, color, mesh) {
 				this.pos = pos;
 				this.scale = scale;
 				this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
 				this.color = color;
 				this.mesh = mesh;
-				this.texture = texture;
 			}
 
 			rotate(eulerX, eulerY, eulerZ) {
@@ -709,7 +708,7 @@
 					transformedTri.rotate(this.rotation);
 					transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
 					transformedTri.updateWorldVertices();
-					transformedTri.texture = this.texture;
+					transformedTri.color = this.color;
 					transformedTris.push(transformedTri);
 				}
 				return transformedTris;
@@ -841,34 +840,6 @@
 			}
 		}
 
-		class Texture {
-			constructor(url) {
-				this.pixels = null;
-				this.width = 0;
-				this.height = 0;
-				this.load(url);
-			}
-
-			async load(url) {
-				const img = new Image();
-				img.crossOrigin = "anonymous";
-				img.src = url;
-				await new Promise((resolve) => {
-					img.onload = () => {
-						resolve();
-					};
-				});
-				const tempCanvas = document.createElement("canvas");
-				tempCanvas.width = img.width;
-				tempCanvas.height = img.height;
-				const tempCtx = tempCanvas.getContext("2d");
-				tempCtx.drawImage(img, 0, 0);
-				this.pixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
-				this.width = img.width;
-				this.height = img.height;
-			}
-		}
-
 		class Rasterizer {
 			constructor() {
 				this.imageData = ctx.createImageData(canvas.width, canvas.height);
@@ -957,17 +928,25 @@
 									let inShadow = dirLight.isInShadow(pixelWorldPos, triWorldNormal);
 									let shadowFactor = inShadow ? 0.5 : 1.0;
 
-									let pointLightVec = Vector3.sub(pixelWorldPos, lightCube.pos);
-									let distance = pointLightVec.magnitude();
-									pointLightVec.normalize();
-									let pointLightDiffuse = 1 - (Vector3.dot(triWorldNormal, pointLightVec) + 1) / 2;
-									let attenuation = 1 / (1 + 0.1 * distance * distance);
-									pointLightDiffuse *= attenuation * pointLightIntensity;
+									let totalPointLightDiffuse = 0;
+									const pointLightRangeSquare = pointLightRange * pointLightRange;
+									for (let light of pointLights) {
+										let pointLightVec = Vector3.sub(light.pos, pixelWorldPos);      // vector từ pixel tới đèn
+										let distanceSquare = Vector3.dot(pointLightVec, pointLightVec);
+										if (distanceSquare >= pointLightRangeSquare) continue;          // ngoài tầm chiếu, bỏ qua
 
-									let lightIntensity = (dirLightDiffuse + pointLightDiffuse) * shadowFactor;
+										pointLightVec.normalize();
+										let pointLightDiffuse = (Vector3.dot(triWorldNormal, pointLightVec) + 1) / 2;
+										let distanceRatio = distanceSquare / pointLightRangeSquare;
+										let attenuation = (1 - distanceRatio) / (1 + 0.02 * distanceSquare);
+										totalPointLightDiffuse += pointLightDiffuse * attenuation;
+									}
+									totalPointLightDiffuse *= pointLightIntensity;
+
+									let lightIntensity = Math.max(ambientLight, (dirLightDiffuse + totalPointLightDiffuse) * shadowFactor);
 
 									let texColor = tri.color;
-									if (tri.texture && tri.texture.pixels) {
+									if (imgPixels != null) {
 										let pixelUV = new Vector2(
 											tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,
 											tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2,
@@ -975,10 +954,10 @@
 										);
 										pixelUV = Vector2.div(pixelUV, pixelUV.w);
 
-										const texX = Math.floor(pixelUV.u * (tri.texture.width - 1));
-										const texY = Math.floor(pixelUV.v * (tri.texture.height - 1));
-										const texIndex = (texY * tri.texture.width + texX) * 4;
-										texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
+										const texX = Math.floor(pixelUV.u * (img.width - 1));
+										const texY = Math.floor(pixelUV.v * (img.height - 1));
+										const texIndex = (texY * img.width + texX) * 4;
+										texColor = new Color(imgPixels[texIndex], imgPixels[texIndex + 1], imgPixels[texIndex + 2]);
 									}
 
 									this.screenBuffer[y][x].updateColor(
@@ -1018,6 +997,8 @@
 			return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
 		}
 
+		let ambientLight = 0.2;
+
 		const canvas = document.getElementById("gameCanvas");
 		const ctx = canvas.getContext("2d");
 		const rasterizer = new Rasterizer();
@@ -1047,18 +1028,32 @@
 		const pointLightIntensitySlider = document.getElementById("pointIntensity");
 		const pointLightIntensityText = document.getElementById("pointIntensityText");
 		let pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
-
-		let brickTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg");
-		let grassTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/grass.jpg");
+		const pointLightRangeSlider = document.getElementById("pointRange");
+		const pointLightRangeText = document.getElementById("pointRangeText");
+		let pointLightRange = parseFloat(pointLightRangeSlider.value);
 
 		let cubeMesh = new Cube();
-		let cube1 = new GameObject(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0), cubeMesh, brickTexture);
-		let cube2 = new GameObject(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0), cubeMesh, brickTexture);
-		let lightCube = new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, brickTexture);
-
+		let cube1 = new GameObject(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0), cubeMesh);
+		let cube2 = new GameObject(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0), cubeMesh);
+		let pointLights = [
+			new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh),
+			new GameObject(new Vector3(1.6, 1, 4.2), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh)
+		];
 		let loadedObj = new GameObject(new Vector3(0, 0, 10), Vector3.zero, Vector3.one, new Color(255, 255, 255),
-			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"),
-			grassTexture);
+			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/grass_block.obj"));
+
+		const img = new Image();
+		img.crossOrigin = "anonymous";
+		img.src = "https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/grass.jpg";
+		img.onload = () => {
+			const tempCanvas = document.createElement("canvas");
+			tempCanvas.width = img.width;
+			tempCanvas.height = img.height;
+			const tempCtx = tempCanvas.getContext("2d");
+			tempCtx.drawImage(img, 0, 0);
+			imgPixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
+		};
+		let imgPixels = null;
 
 		let lastTime = performance.now();
 		let dt = 0;
@@ -1081,24 +1076,27 @@
 			const viewMat = camera.getViewMatrix();
 
 			cube1.rotate(0, 50 * dt, 0);
+			let controllingLight = pointLights[0];
 			if (keyStates['i']) {
-				lightCube.pos.z += dt * 2;
+				controllingLight.pos.z += dt * 2;
 			} else if (keyStates['k']) {
-				lightCube.pos.z -= dt * 2;
+				controllingLight.pos.z -= dt * 2;
 			} else if (keyStates['j']) {
-				lightCube.pos.x -= dt * 2;
+				controllingLight.pos.x -= dt * 2;
 			} else if (keyStates['l']) {
-				lightCube.pos.x += dt * 2;
+				controllingLight.pos.x += dt * 2;
 			} else if (keyStates['u']) {
-				lightCube.pos.y += dt * 2;
+				controllingLight.pos.y += dt * 2;
 			} else if (keyStates['o']) {
-				lightCube.pos.y -= dt * 2;
+				controllingLight.pos.y -= dt * 2;
 			}
 
 			let objectTris = [];
 			objectTris.push(...cube1.getTransformedTriangles());
 			objectTris.push(...cube2.getTransformedTriangles());
-			objectTris.push(...lightCube.getTransformedTriangles());
+			for (let light of pointLights) {
+				objectTris.push(...light.getTransformedTriangles());
+			}
 			objectTris.push(...loadedObj.getTransformedTriangles());
 
 			dirLight.buildViewAndProjectionMatrix();
@@ -1133,6 +1131,11 @@
 		pointLightIntensitySlider.addEventListener("input", () => {
 			pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
 			pointLightIntensityText.textContent = pointLightIntensity.toFixed(2);
+		});
+
+		pointLightRangeSlider.addEventListener("input", () => {
+			pointLightRange = parseFloat(pointLightRangeSlider.value);
+			pointLightRangeText.textContent = pointLightRange.toFixed(0);
 		});
 
 		canvas.addEventListener("click", async () => {
