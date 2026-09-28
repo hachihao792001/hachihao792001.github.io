@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="A post by Hà Chí Hào.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="graphics3D.css">
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Graphics Engine 3D</title>
+</head>
+
+<body data-graphics3D-id="graphics3D13">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Tối ưu performance</h1>
+
+                    <i>Ban đầu thì blog 12 là blog cuối của series này. Tuy nhiên sau đó thì mình có implement cơ chế <a href="../portalblog/portalblog.html">portal</a> lên trên engine này, và sau đó nữa mình có
+                    tách nó thành <a href="https://github.com/hachihao792001/HanvasEngine">Hanvas Engine</a> như trên nói.
+                    Qua 2 quá trình trên mình có thêm thắt sửa khá nhiều thứ. Nên mình viết thêm 2 blog 13 và 14 để cập nhật những gì mà mình đã làm với Hanvas Engine, để có cái base để build
+                    thêm bất cứ thứ gì lên nó cũng được. 😳</i><br/><br/>
+
+                    Demo cuối blog 12 cũng khá là mượt (khoảng 40 fps trên máy mình), tuy nhiên nó đang chạy trên 1 canvas 400x300 nhỏ xíu.
+                    Blog này ta sẽ tập trung optimize đó, nhưng thứ chúng ta đổi chỉ là
+                    <b>cách viết code</b>, cụ thể là cách chúng ta khai báo và xử lí dữ liệu, đặc biệt trong 2 vòng for pixel.
+
+                    <h2>1. Viết 1 script nhỏ để đo thời gian từng bước</h2>
+                    Thay vì cứ dựa vào FPS có sẵn của chúng ta (không thật sự biết chỗ nào chậm chỗ nào nhanh), thì ta sẽ đo từng bước bằng code, cụ
+                    thể là ta sẽ viết 1 script nho nhỏ để dán trong console, cho nó chạy để đo.<br/><br/>
+                    
+                    Script này sẽ làm nhiệm vụ: tắt cái vòng lặp render của trang đi, tự gọi từng giai đoạn của pipeline để đo (lấy thời điểm sau trừ thời điểm trước),
+                    chạy lại như vậy một số lần rồi lấy trung vị (median) của chúng.
+                    Ta lấy trung vị chứ không phải trung bình vì có lúc GC sẽ chạy nặng hơn vì 1 thứ gì đó trong background.<br/><br/>
+
+                    Script sẽ như sau:
+                    <pre><code class="language-javascript">update = function () { };   // chặn vòng lặp requestAnimationFrame của trang lại
+
+function frame() {
+    let objectTris = [];
+    objectTris.push(...ground.getTransformedTriangles());
+    for (let light of pointLights)
+        objectTris.push(...light.getTransformedTriangles());
+    objectTris.push(...woodTower.getTransformedTriangles());
+
+    // ------------------------ Tính thời gian shadow ------------------------
+    const shadowStartTime = performance.now();
+
+    dirLight.buildViewAndProjectionMatrix();
+    dirLight.buildShadowMap(objectTris);
+
+    const shadowTime = performance.now() - shadowStartTime;
+
+    // ------------------------ Tính thời gian geometry ------------------------
+    const geometryStartTime = performance.now();
+
+    const viewMat = camera.getViewMatrix();
+    let visibleTris = [];
+    for (let tri of objectTris) {
+        if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
+            tri.mulMat4x4(viewMat);
+            visibleTris.push(...tri.clipAgainstPlane(nearPlane));
+        }
+    }
+    for (let tri of visibleTris) {
+        tri.mulMat4x4(projectionMatrix);
+        tri.perspectiveDivide();
+    }
+
+    const geometryTime = performance.now() - geometryStartTime;
+
+    // ------------------------ Tính thời gian rasterize ----------------
+    const rasterizeStartTime = performance.now();
+
+    rasterizer.clearScreen();
+    rasterizer.processTriangles(visibleTris);
+    rasterizer.drawCall();
+
+    const rasterizeTime = performance.now() - rasterizeStartTime;
+
+    return {
+        shadowTime,
+        geometryTime,
+        rasterizeTime
+    };
+}
+
+function median(values) {
+    const sortedValues = values.slice().sort((a, b) => a - b);
+    const middleIndex = Math.floor(sortedValues.length / 2);
+
+    return sortedValues[middleIndex];
+}
+
+// Làm nóng JIT (Just-in-time) trước khi đo
+for (let i = 0; i < 5; i++) {
+    frame();
+}
+
+const shadowTimes = [];
+const geometryTimes = [];
+const rasterizeTimes = [];
+
+for (let i = 0; i < 20; i++) {
+    const frameTimes = frame();
+
+    shadowTimes.push(frameTimes.shadowTime);
+    geometryTimes.push(frameTimes.geometryTime);
+    rasterizeTimes.push(frameTimes.rasterizeTime);
+}
+
+const medianShadowTime = median(shadowTimes);
+const medianGeometryTime = median(geometryTimes);
+const medianRasterizeTime = median(rasterizeTimes);
+
+console.log("Thời gian chạy (median của 20 frames):");
+console.log(`  Shadow map : ${medianShadowTime.toFixed(2)} ms`);
+console.log(`  Geometry   : ${medianGeometryTime.toFixed(2)} ms`);
+console.log(`  Rasterizer : ${medianRasterizeTime.toFixed(2)} ms`);
+console.log(
+    `  Total      : ${(medianShadowTime + medianGeometryTime + medianRasterizeTime).toFixed(2)} ms`
+);</code></pre>
+                    
+                    <div id="graphics3D-nav-bottom"></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3D.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

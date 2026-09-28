@@ -5,7 +5,17 @@ import os
 output_dir = "patches"
 os.makedirs(output_dir, exist_ok=True)
 
-for i in range(1, 36):
+# Dynamically determine the number of files
+html_previews_dir = "htmlPreviews"
+file_count = 0
+
+# Count how many htmlPreview*.html files exist
+for filename in os.listdir(html_previews_dir):
+    if filename.startswith("htmlPreview") and filename.endswith(".html"):
+        file_count += 1
+
+# Generate patches between consecutive files
+for i in range(1, file_count):
     file_a = f"htmlPreviews\\htmlPreview{i}.html"
     file_b = f"htmlPreviews\\htmlPreview{i+1}.html"
     patch_name = f"diff_{i}_{i+1}.patch"

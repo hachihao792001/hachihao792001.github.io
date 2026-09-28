@@ -76,5 +76,17 @@
         "webTitle": "Graphics Engine 3D #12: Cách import file Obj và Demo tổng kết",
         "title": "Graphics Engine 3D #12: Cách import file Obj và Demo tổng kết",
         "route": "/blogs/graphics3D/graphics3D12-obj.html"
+    },
+    {
+        "id": "graphics3D13",
+        "webTitle": "Graphics Engine 3D #13: Tối ưu performance",
+        "title": "Graphics Engine 3D #13: Tối ưu performance",
+        "route": "/blogs/graphics3D/graphics3D13-optimize.html"
+    },
+    {
+        "id": "graphics3D14",
+        "webTitle": "Graphics Engine 3D #14: Tái cấu trúc code",
+        "title": "Graphics Engine 3D #14: Tái cấu trúc code",
+        "route": "/blogs/graphics3D/graphics3D14-structure.html"
     }
 ]
