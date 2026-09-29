@@ -147,9 +147,98 @@ console.log(`  Shadow map : ${medianShadowTime.toFixed(2)} ms`);
 console.log(`  Geometry   : ${medianGeometryTime.toFixed(2)} ms`);
 console.log(`  Rasterizer : ${medianRasterizeTime.toFixed(2)} ms`);
 console.log(
-    `  Total      : ${(medianShadowTime + medianGeometryTime + medianRasterizeTime).toFixed(2)} ms`
+    `  Tổng      : ${(medianShadowTime + medianGeometryTime + medianRasterizeTime).toFixed(2)} ms`
 );</code></pre>
-                    
+                    Kết quả mình đo được trên máy mình (Opera, 13th Gen Intel(R) Core(TM) i7-13620H, Laptop chưa cắm sạc):
+                    <pre><code>Thời gian chạy (median của 20 frames):
+Shadow map : 8.90 ms
+Geometry   : 0.70 ms
+Rasterizer : 23.70 ms
+Tổng      : 33.30 ms</code></pre>
+                    Khoảng 2/3 thời gian nằm ở khúc rasterize, tức là ở cái vòng lặp pixel trong <code>processTriangles</code>.
+                    Canvas 400x300 là 120,000 pixel, mỗi pixel có thể được xử lý nhiều lần (mỗi tam giác phủ lên nó một lần),
+                    cộng thêm shadow map 512x512 nữa. Nghĩa là mỗi thứ nhỏ xíu bạn làm bên trong vòng lặp đó sẽ bị nhân lên vài trăm nghìn lần mỗi frame.
+                    Cho nên blog này sẽ dành gần như toàn bộ thời gian cho đúng một hàm này.
+
+                    <h2>Phần 1: Chuyển screen buffer và depth buffer thành mảng 1 chiều</h2>
+                    Đây là cách chúng ta đang chứa màn hình và depth buffer từ <a href="graphics3D8-rasterizer.html">blog 8</a>:
+                    <pre><code class="language-javascript">this.screenBuffer = [];
+this.depthBuffer = [];
+
+for (let i = 0; i < canvas.height; i++) {
+    let screenRow = [];
+    let depthRow = [];
+    for (let j = 0; j < canvas.width; j++) {
+        screenRow.push(new Color(255, 255, 255));
+        depthRow.push(Infinity);
+    }
+    this.screenBuffer.push(screenRow);
+    this.depthBuffer.push(depthRow);
+}</code></pre>
+                    Mảng 2 chiều thì dễ đọc và hiểu, nhưng nó tệ ở mấy điểm:
+                    <ul>
+                        <li><b>120,000 object Color.</b> Mỗi object trong Javascript không chỉ là 3 con số, nó còn có header, pointer tới hidden
+                            class... Và chúng nó nằm rải rác khắp nơi trong bộ nhớ.</li>
+                        <li><b>Mảng của mảng nghĩa là đi 2 lần pointer.</b> <code>screenBuffer[y][x]</code> = đọc mảng ngoài lấy pointer
+                            tới mảng trong, rồi mới đọc phần tử, rồi lại đi tiếp tới object Color. CPU có cache, và cache thích dữ liệu
+                            nằm liền nhau chứ không thích bị dắt đi lòng vòng như vậy.</li>
+                        <li><b>Mảng không có kiểu <code>[]</code></b> thì javascript phải kiểm tra kiểu.</li>
+                        <li><b>Và tệ nhất:</b> cuối mỗi frame chúng ta copy toàn bộ 120,000 cái Color đó qua <code>imageData</code>
+                            bằng tay, tức là thêm một vòng lặp 120,000 lần nữa chỉ để ... copy.</li>
+                    </ul>
+                    Giải pháp: dùng mảng 1 chiều, và dùng typed array. Với màn hình thì thậm chí ta còn không cần mảng riêng, vì
+                    <code><a href="https://developer.mozilla.org/en-US/docs/Web/API/ImageData/data">imageData.data</a></code> 
+                    bản thân nó đã là một <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray">Uint8ClampedArray</a></code> 
+                    phẳng rồi - cứ ghi thẳng vào nó luôn, khỏi copy:
+                    <pre><code class="language-javascript">class Rasterizer {
+    constructor() {
+        this.imageData = ctx.createImageData(canvas.width, canvas.height);
+        this.screenBuffer = this.imageData.data;
+        // cùng một vùng nhớ, nhưng nhìn 4 byte RGBA của một pixel như một số 32 bit
+        this.screenBuffer = new Uint32Array(this.imageData.data.buffer);
+        this.depthBuffer = new Float64Array(canvas.width * canvas.height);
+
+        this.screenBuffer.fill(255);
+        this.depthBuffer.fill(Infinity);
+    }
+
+    clearScreen() {
+        this.screenBuffer.fill(0xfff0f0f0);   // alpha, blue, green, red (little endian) = 255, 240, 240, 240
+        this.depthBuffer.fill(Infinity);
+    }
+
+    ...
+
+    drawCall() {
+        ctx.putImageData(this.imageData, 0, 0);   // hết, không copy gì nữa
+    }
+}</code></pre>
+
+                    Vài thứ cần nói ở đây:
+                    <ul>
+                        <li><code>Float64Array</code> cho depth buffer: engine biết chắc trong đó chỉ có số thực 64 bit, nằm liền nhau
+                            trong một khối bộ nhớ duy nhất. Index bây giờ là <code>y * canvas.width + x</code>.</li>
+                        <li><code>clearScreen</code> và phần khởi tạo giờ chỉ là <code>fill()</code>, một lời gọi native, thay vì
+                            240,000 lần gọi hàm <code>updateColor</code> như trước.</li>
+                        <li>Cái <code>screenBuffer</code> là một trick nho nhỏ nhưng khá vui: Kiểu dữ liệu màu của chúng ta có 4 số nằm trong khoảng
+                            [0; 255], nghĩa là mỗi số chỉ cần 8 bit để lưu trữ. Cho nên với mỗi pixel ta dùng đúng 1 int (32 bit - 4 byte) để lưu màu của nó.
+                            Nghĩa là mảng các màu của các pixel là mảng số nguyên <code>Uint32Array</code>, nhờ vậy xóa màn hình chỉ cần ghi 120,000 số thay vì 480,000 byte.
+                            Khởi tạo mảng <code>Uint32Array</code> với <code>.buffer</code> để nó trỏ thẳng vào
+                            đúng vùng nhớ <code>imageData.data</code>.</li>
+                        <li>Clear screen cho screenBuffer: Vì máy tính đa số là little endian (bit lớn nhất ở cuối), thứ tự các channel sẽ là ABGR, nên ta clear dạng
+                            hex sẽ là <code>0xfff0f0f0</code>. Nghĩa là new Color(240, 240, 240, 255).</li>
+                        <li>Hàm <code>drawCall</code> ta chỉ cần gọi đúng 1 dòng <code>putImageData</code>.</li>
+                    </ul>
+
+                    <h2>Phần 2: Bỏ hết cấp phát động trong vòng lặp pixel</h2>
+                    Đây là phần mà sẽ giúp ta nhiều nhất. Chúng ta soi lại vòng lặp pixel cũ, mỗi một pixel được vẽ nó làm những gì:
+                    <pre><code class="language-javascript">let pixelWorldPos = new Vector3(...);          // cấp phát 1
+pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);   // cấp phát 2
+
+let pixelUV = new Vector2(...);                // cấp phát 3
+pixelUV = Vector2.div(pixelUV, pixelUV.w);     // cấp phát 4
+
+texColor = new Color(...);                     // cấp phát 5</code></pre>
                     <div id="graphics3D-nav-bottom"></div>
             </div>
         </div>
