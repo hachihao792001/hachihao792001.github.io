@@ -465,6 +465,14 @@ Shadow map : todo ms
 Geometry   : todo ms
 Rasterizer : todo ms
 Tổng      : todo ms</code></pre>
+
+					<h2>4. Chặn xét point light mỗi pixel</h2>
+					Ở <a href="graphics3D9-lighting.html">blog 9</a>, với mỗi pixel ta có cái
+					<code>if (distanceSquare >= pointLightRangeSquare) continue;</code> để chặn việc tính toán cho những point light quá xa với điểm/pixel hiện tại.
+					Như thế là cũng khá tốt rồi, tuy nhiên nó còn có thể tốt hơn. Một point light quá xa một điểm, thì khả năng cao nó cũng sẽ quá xa với tam giác
+					mà chứa điểm đó. Như vậy trước 2 vòng lặp pixel, ta có thể lọc ra hết các point light quá xa với tam giác hiện tại, trước khi chạy các point light
+					còn lại qua vòng lặp pixel.
+					
 				<div id="graphics3D-nav-bottom"></div>
             </div>
         </div>
