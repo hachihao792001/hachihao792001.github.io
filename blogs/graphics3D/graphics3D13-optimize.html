@@ -63,7 +63,7 @@
                     Ta lấy trung vị chứ không phải trung bình vì có lúc GC sẽ chạy nặng hơn vì 1 thứ gì đó trong background.<br/><br/>
 
                     Script sẽ như sau:
-                    <pre><code class="language-javascript">update = function () { };   // chặn vòng lặp requestAnimationFrame của trang lại
+                    <pre style="max-height:500px"><code class="language-javascript">update = function () { };   // chặn vòng lặp requestAnimationFrame của trang lại
 
 function frame() {
     let objectTris = [];
@@ -160,7 +160,7 @@ Tổng      : 33.30 ms</code></pre>
                     cộng thêm shadow map 512x512 nữa. Nghĩa là mỗi thứ nhỏ xíu bạn làm bên trong vòng lặp đó sẽ bị nhân lên vài trăm nghìn lần mỗi frame.
                     Cho nên blog này sẽ dành gần như toàn bộ thời gian cho đúng một hàm này.
 
-                    <h2>Phần 1: Chuyển screen buffer và depth buffer thành mảng 1 chiều</h2>
+                    <h2>2. Chuyển screen buffer và depth buffer thành mảng 1 chiều</h2>
                     Đây là cách chúng ta đang chứa màn hình và depth buffer từ <a href="graphics3D8-rasterizer.html">blog 8</a>:
                     <pre><code class="language-javascript">this.screenBuffer = [];
 this.depthBuffer = [];
@@ -186,49 +186,57 @@ for (let i = 0; i < canvas.height; i++) {
                         <li><b>Và tệ nhất:</b> cuối mỗi frame chúng ta copy toàn bộ 120,000 cái Color đó qua <code>imageData</code>
                             bằng tay, tức là thêm một vòng lặp 120,000 lần nữa chỉ để ... copy.</li>
                     </ul>
-                    Giải pháp: dùng mảng 1 chiều, và dùng typed array. Với màn hình thì thậm chí ta còn không cần mảng riêng, vì
-                    <code><a href="https://developer.mozilla.org/en-US/docs/Web/API/ImageData/data">imageData.data</a></code> 
-                    bản thân nó đã là một <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray">Uint8ClampedArray</a></code> 
-                    phẳng rồi - cứ ghi thẳng vào nó luôn, khỏi copy:
+                    Giải pháp: dùng mảng 1 chiều có type. Với depthBuffer thì là 
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array">Float64Array</a>, với screenBuffer thì là
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray">Uint8ClampedArray</a> (cùng kiểu với
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/ImageData/data">imageData.data</a>). Thậm chí, bạn có thể trỏ thẳng <code>screenBuffer</code> tới
+                    <code>imageData.data</code>, chứ không cần copy qua lại làm gì, như vậy hàm drawCall thì chỉ cần 1 dòng <code>putImageData</code> duy nhất.
+                    Lúc <code>clearScreen</code> ta chỉ cần dùng hàm 
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/fill">fill</a> để thay thế hết giá trị trong 2 mảng.<br/><br/>
+
+                    Tuy nhiên, có 1 vấn đề nho nhỏ ở <code>clearScreen</code>. Nếu ở <code>clearScreen</code> bạn gọi <code>this.screenBuffer.fill(240)</code>, 
+                    thì nhìn nó vẫn đúng, tuy nhiên bạn phải biết là bạn cũng set luôn channel alpha là 240 (mỗi phần tử trong <code>screenBuffer</code> là 1 channel màu),
+                    là cái canvas sẽ trong suốt 1 chút.<br/><br/>
+                    Để giải quyết vấn đề này, thay vì ta thêm lại 1 vòng for vào để set lại alpha (trở lại cách cũ).
+                    Thì ta tạo thêm một <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint32Array">Uint32Array</a> screenBuffer32</code>
+                    trỏ vào cùng 1 địa chỉ với <code>imageData.data</code> (dùng <code>.buffer</code>).<br/>
+                    Lí do:
+                    <code>imageData.data</code> có kiểu dữ liệu là <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray">Uint8ClampedArray</a>
+                    . Nghĩa là mỗi channel màu chỉ cần 8 bit/1 byte để lưu trữ, mỗi pixel thì có 4 channel màu, nên 1 pixel fit vừa 4 byte - một int 😳
+                    Nên mỗi phần tử trong <code>screenBuffer32</code> đại diện cho 1 pixel, nhờ vậy <code>clearScreen</code> chỉ cần ghi 120,000 lần thay vì 480,000 lần, và
+                    mình có thể tùy chỉnh alpha bằng cách truyền vào giá trị hex của 4 byte. Tuy nhiên bạn nên chú ý là máy tính đa số là little endian (bit lớn nhất ở cuối), 
+                    thứ tự các channel sẽ là ABGR, nên ta clear dạng hex sẽ là <code>0xfff0f0f0</code>, nghĩa là <code>new Color(240, 240, 240, 255)</code>.
                     <pre><code class="language-javascript">class Rasterizer {
     constructor() {
         this.imageData = ctx.createImageData(canvas.width, canvas.height);
         this.screenBuffer = this.imageData.data;
-        // cùng một vùng nhớ, nhưng nhìn 4 byte RGBA của một pixel như một số 32 bit
-        this.screenBuffer = new Uint32Array(this.imageData.data.buffer);
+
+        this.screenBuffer = this.imageData.data;    // trỏ thẳng tới imageData.data
+		this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);  // cùng một vùng nhớ, nhưng nhìn 4 byte RGBA của một pixel như một số 32 bit
         this.depthBuffer = new Float64Array(canvas.width * canvas.height);
 
-        this.screenBuffer.fill(255);
-        this.depthBuffer.fill(Infinity);
+        this.clearScreen();
     }
 
     clearScreen() {
-        this.screenBuffer.fill(0xfff0f0f0);   // alpha, blue, green, red (little endian) = 255, 240, 240, 240
+        this.screenBuffer32.fill(0xfff0f0f0);   // alpha, blue, green, red (little endian) = 255, 240, 240, 240
         this.depthBuffer.fill(Infinity);
     }
 
     ...
 
     drawCall() {
-        ctx.putImageData(this.imageData, 0, 0);   // hết, không copy gì nữa
+        ctx.putImageData(this.imageData, 0, 0);   // 1 dòng duy nhất, không copy đâu qua đâu hết
     }
 }</code></pre>
-
-                    Vài thứ cần nói ở đây:
-                    <ul>
-                        <li><code>Float64Array</code> cho depth buffer: engine biết chắc trong đó chỉ có số thực 64 bit, nằm liền nhau
-                            trong một khối bộ nhớ duy nhất. Index bây giờ là <code>y * canvas.width + x</code>.</li>
-                        <li><code>clearScreen</code> và phần khởi tạo giờ chỉ là <code>fill()</code>, một lời gọi native, thay vì
-                            240,000 lần gọi hàm <code>updateColor</code> như trước.</li>
-                        <li>Cái <code>screenBuffer</code> là một trick nho nhỏ nhưng khá vui: Kiểu dữ liệu màu của chúng ta có 4 số nằm trong khoảng
-                            [0; 255], nghĩa là mỗi số chỉ cần 8 bit để lưu trữ. Cho nên với mỗi pixel ta dùng đúng 1 int (32 bit - 4 byte) để lưu màu của nó.
-                            Nghĩa là mảng các màu của các pixel là mảng số nguyên <code>Uint32Array</code>, nhờ vậy xóa màn hình chỉ cần ghi 120,000 số thay vì 480,000 byte.
-                            Khởi tạo mảng <code>Uint32Array</code> với <code>.buffer</code> để nó trỏ thẳng vào
-                            đúng vùng nhớ <code>imageData.data</code>.</li>
-                        <li>Clear screen cho screenBuffer: Vì máy tính đa số là little endian (bit lớn nhất ở cuối), thứ tự các channel sẽ là ABGR, nên ta clear dạng
-                            hex sẽ là <code>0xfff0f0f0</code>. Nghĩa là new Color(240, 240, 240, 255).</li>
-                        <li>Hàm <code>drawCall</code> ta chỉ cần gọi đúng 1 dòng <code>putImageData</code>.</li>
-                    </ul>
+					Kết quả:
+                    <div class="htmlPreview" id="htmlPreview37"></div>
+                    Kết quả đo:
+                    <pre><code>Thời gian chạy (median của 20 frames):
+Shadow map : todo ms
+Geometry   : todo ms
+Rasterizer : todo ms
+Tổng      : todo ms</code></pre>
 
                     <h2>Phần 2: Bỏ hết cấp phát động trong vòng lặp pixel</h2>
                     Đây là phần mà sẽ giúp ta nhiều nhất. Chúng ta soi lại vòng lặp pixel cũ, mỗi một pixel được vẽ nó làm những gì:

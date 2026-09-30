@@ -888,17 +888,16 @@
 		class Rasterizer {
 			constructor() {
 				this.imageData = ctx.createImageData(canvas.width, canvas.height);
-				this.screenBuffer = this.imageData.data;
 
-				this.screenBuffer = new Uint32Array(this.imageData.data.buffer);
+				this.screenBuffer = this.imageData.data;
+				this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);
 				this.depthBuffer = new Float64Array(canvas.width * canvas.height);
 
-				this.screenBuffer.fill(255);
-				this.depthBuffer.fill(Infinity);
+				this.clearScreen();
 			}
 
 			clearScreen() {
-				this.screenBuffer.fill(0xfff0f0f0);
+				this.screenBuffer32.fill(0xfff0f0f0);
 				this.depthBuffer.fill(Infinity);
 			}
 

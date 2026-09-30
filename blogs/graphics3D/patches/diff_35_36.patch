@@ -42,17 +42,6 @@
  									let shadowFactor = inShadow ? 0.5 : 1.0;
  
  									let totalPointLightDiffuse = 0;
-@@ -1029,8 +1039,8 @@
- 			}
- 		}
- 		function edgeFunction(v0, v1, p) {
--			return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
--		}
-+            return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
-+        }
- 
- 		let ambientLight = 0.2;
- 
 @@ -1040,7 +1050,7 @@
  		const fov = 60;
  		let znear = 0.01, zfar = 1000;
