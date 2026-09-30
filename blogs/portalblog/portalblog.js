@@ -69,6 +69,14 @@ async function updatePreview() {
         });
         buttonsContainer.appendChild(copyButton);
 
+        const openButton = document.createElement("button");
+        openButton.className = "open-btn btn btn-outline-primary";
+        openButton.textContent = "Open in new tab";
+        openButton.addEventListener("click", () => {
+            window.open("htmlPreviews/" + htmlPreviewId + ".html", "_blank");
+        });
+        buttonsContainer.appendChild(openButton);
+
         codePane.appendChild(buttonsContainer);
 
         const preTag = document.createElement("pre");
