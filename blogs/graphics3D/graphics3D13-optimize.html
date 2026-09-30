@@ -229,6 +229,33 @@ for (let i = 0; i < canvas.height; i++) {
         ctx.putImageData(this.imageData, 0, 0);   // 1 dòng duy nhất, không copy đâu qua đâu hết
     }
 }</code></pre>
+					Đổi kiểu <code>screenBuffer</code> và <code>depthBuffer</code> thì ta phải đổi luôn cách sử dụng. Ở mỗi hàng pixel ta bắt đầu từ xmin của bbox, sau đó ++ lên ở
+					vòng for cột:
+					<pre><code class="language-javascript">processTriangles(tris) {
+	for (let y = bbox[2]; y <= bbox[3]; y++) {
+		...
+		let pixelIndex = y * canvas.width + bbox[0];	// <-----------------------------
+		for (let x = bbox[0]; x <= bbox[1]; x++) {
+			if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+				...
+
+				if (z < this.depthBuffer[pixelIndex]) {		// <-----------------------------
+					this.depthBuffer[pixelIndex] = z;		// <-----------------------------
+
+					...
+
+					const colorIndex = pixelIndex * 4;		// như drawCall cũ
+					this.screenBuffer[colorIndex] = Math.min(255, texColor.r * lightIntensity);
+					this.screenBuffer[colorIndex + 1] = Math.min(255, texColor.g * lightIntensity);
+					this.screenBuffer[colorIndex + 2] = Math.min(255, texColor.b * lightIntensity);
+				}
+			}
+			...
+			pixelIndex++;	// <-----------------------------
+		}
+		...
+	}
+}</code></pre>
 					Kết quả:
                     <div class="htmlPreview" id="htmlPreview37"></div>
                     Kết quả đo:
@@ -238,16 +265,202 @@ Geometry   : todo ms
 Rasterizer : todo ms
 Tổng      : todo ms</code></pre>
 
-                    <h2>Phần 2: Bỏ hết cấp phát động trong vòng lặp pixel</h2>
-                    Đây là phần mà sẽ giúp ta nhiều nhất. Chúng ta soi lại vòng lặp pixel cũ, mỗi một pixel được vẽ nó làm những gì:
-                    <pre><code class="language-javascript">let pixelWorldPos = new Vector3(...);          // cấp phát 1
-pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);   // cấp phát 2
+                    <h2>3. Bỏ hết cấp phát động trong vòng lặp pixel</h2>
+                    Đây là phần mà sẽ giúp ta nhiều nhất. Chúng ta xem lại vòng lặp pixel, xem mỗi pixel nó làm những gì:
+                    <pre><code class="language-javascript">processTriangles(tris) {
+	for (let tri of tris) {
+		...
 
-let pixelUV = new Vector2(...);                // cấp phát 3
-pixelUV = Vector2.div(pixelUV, pixelUV.w);     // cấp phát 4
+		for (let y = bbox[2]; y <= bbox[3]; y++) {
+			...
+			for (let x = bbox[0]; x <= bbox[1]; x++) {
+				...
 
-texColor = new Color(...);                     // cấp phát 5</code></pre>
-                    <div id="graphics3D-nav-bottom"></div>
+				let pixelWorldPos = new Vector3(...);	// cấp phát
+				pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);	// cấp phát
+
+				let inShadow = useShadow ? dirLight.isInShadow(pixelWorldPos, triWorldNormal) : false;	// 3 cấp phát (xem bên dưới)
+
+				...
+				for (let light of pointLights) {
+					let pointLightVec = Vector3.sub(light.pos, pixelWorldPos);	// cấp phát
+					...
+				}
+				...
+				if (tri.texture && tri.texture.pixels) {
+					let pixelUV = new Vector2(...);	// cấp phát
+					pixelUV = Vector2.div(pixelUV, pixelUV.w);	// cấp phát
+
+					...
+					texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);	// cấp phát
+				}
+				...
+			}
+			...
+		}
+	}
+}</code></pre>
+					Trong hàm isInShadow:
+					<pre><code class="language-javascript">isInShadow(pixelWorldPos, triWorldNormal) {
+	...
+
+	let lightSpacePos = Vector3.add(pixelWorldPos, Vector3.mul(triWorldNormal, normalOffset));	// 2 cấp phát 
+	...
+
+	lightSpacePos = Vector3.div(lightSpacePos, lightSpacePos.w);	// cấp phát
+
+	...
+}</code></pre>
+					9 cấp phát động mỗi pixel 😳 mà bạn nên nhớ tam giác sau có trùng pixel thì pixel lại chạy lại lần nữa (nếu qua được depth test),
+					garbage collector sẽ khá vất vả. Nói thật thì như vậy nó khá dễ đọc, nhìn hiểu công thức toán học, nhìn đúng "hướng đối tượng". Tuy nhiên
+					với 1 chỗ mà gọi nhiều như vậy, ta nên hi sinh sự dễ đọc đó để
+					đổi lấy performance, ta sẽ thay mọi chỗ dùng Vector3, Vector2, ... thành dùng số thuần, biến const.<br/><br/>
+
+					Ngoài ra, việc truy cập 1 property trong class cũng sẽ tốn performance tí (nó sẽ build up với mấy trăm nghìn pixel như vậy), điển hình
+					1 vài property: <code>this.screenBuffer</code>, <code>this.depthBuffer</code>, <code>canvas.width</code>, <code>canvas.height</code>,
+					<code>triWorldNormal.x|y|z</code>, <code>tri.vertices[0|1|2].x|y|z</code>, <code>tri.uv[0|1|2].u|v|w</code>, 
+					<code>tri.worldVertices[0|1|2].x|y|z</code>, ...<br/><br/>
+
+					Với lại, chỗ cộng edge function mình để <code>(tri.vertices[0].y - tri.vertices[1].y)</code> trong khi trong 
+					<a href="graphics3D8-rasterizer.html">blog 8</a> mình rõ ràng nói nó là hằng
+					số cho tam giác hiện tại, mình nên bốc nó ra khỏi vòng lặp luôn.<br/><br/>
+
+					Như vậy, trước 2 vòng for pixel sẽ có thêm các biến sau:
+					<pre><code class="language-javascript">const vertex0 = tri.vertices[0], vertex1 = tri.vertices[1], vertex2 = tri.vertices[2];
+const vertex0Z = vertex0.z, vertex1Z = vertex1.z, vertex2Z = vertex2.z;
+
+const edgeSlopeX01 = vertex0.y - vertex1.y;
+const edgeSlopeX12 = vertex1.y - vertex2.y;
+const edgeSlopeX20 = vertex2.y - vertex0.y;
+const edgeSlopeY01 = vertex1.x - vertex0.x;
+const edgeSlopeY12 = vertex2.x - vertex1.x;
+const edgeSlopeY20 = vertex0.x - vertex2.x;
+
+const uv0 = tri.uv[0], uv1 = tri.uv[1], uv2 = tri.uv[2];
+const uv0U = uv0.u, uv1U = uv1.u, uv2U = uv2.u;
+const uv0V = uv0.v, uv1V = uv1.v, uv2V = uv2.v;
+const uv0W = uv0.w, uv1W = uv1.w, uv2W = uv2.w;
+
+const world0 = tri.worldVertices[0], world1 = tri.worldVertices[1], world2 = tri.worldVertices[2];
+const perspectiveWorld0X = world0.x * uv0W, perspectiveWorld0Y = world0.y * uv0W, perspectiveWorld0Z = world0.z * uv0W;
+const perspectiveWorld1X = world1.x * uv1W, perspectiveWorld1Y = world1.y * uv1W, perspectiveWorld1Z = world1.z * uv1W;
+const perspectiveWorld2X = world2.x * uv2W, perspectiveWorld2Y = world2.y * uv2W, perspectiveWorld2Z = world2.z * uv2W;
+
+const triColor = tri.color;
+const texture = tri.texture;
+const texturePixels = texture ? texture.pixels : null;
+const textureWidth = texture ? texture.width : 0, textureHeight = texture ? texture.height : 0;</code></pre>
+
+					Như thế 2 vòng for sẽ trở thành:
+					<pre style="max-height: 500px"><code class="language-javascript">for (let y = bbox[2]; y <= bbox[3]; y++) {
+    let edgeFunction01 = edgeFunctionRow01;
+    let edgeFunction12 = edgeFunctionRow12;
+    let edgeFunction20 = edgeFunctionRow20;
+    let pixelIndex = y * canvasWidth + bbox[0];
+    for (let x = bbox[0]; x <= bbox[1]; x++) {
+        if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+            const baryCoord0 = edgeFunction12 / signedDoubleArea;
+            const baryCoord1 = edgeFunction20 / signedDoubleArea;
+            const baryCoord2 = edgeFunction01 / signedDoubleArea;
+            const z = vertex0Z * baryCoord0 + vertex1Z * baryCoord1 + vertex2Z * baryCoord2;
+
+            if (z < depthBuffer[pixelIndex]) {
+                depthBuffer[pixelIndex] = z;
+
+                const pixelInvZ = uv0W * baryCoord0 + uv1W * baryCoord1 + uv2W * baryCoord2;
+
+                const pixelWorldX = (perspectiveWorld0X * baryCoord0 + perspectiveWorld1X * baryCoord1 + perspectiveWorld2X * baryCoord2) / pixelInvZ;
+                const pixelWorldY = (perspectiveWorld0Y * baryCoord0 + perspectiveWorld1Y * baryCoord1 + perspectiveWorld2Y * baryCoord2) / pixelInvZ;
+                const pixelWorldZ = (perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
+
+                let shadowFactor = 1.0;
+				if (useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
+					shadowFactor = 0.5;
+				}
+
+				let totalPointLightDiffuse = 0;
+				for (let i = 0; i < pointLights.length; i++) {
+					const lightPos = pointLights[i].pos;
+					const pointLightVecX = lightPos.x - pixelWorldX;
+					const pointLightVecY = lightPos.y - pixelWorldY;
+					const pointLightVecZ = lightPos.z - pixelWorldZ;
+					const distanceFromPixelToPointLight2 =
+						pointLightVecX * pointLightVecX + pointLightVecY * pointLightVecY + pointLightVecZ * pointLightVecZ;
+					if (distanceFromPixelToPointLight2 >= pointLightRangeSquare) continue;
+
+					const distance = Math.sqrt(distanceFromPixelToPointLight2);
+					const dot = (worldNormalX * pointLightVecX + worldNormalY * pointLightVecY + worldNormalZ * pointLightVecZ) / distance;
+					const currentPointLightDiffuse = (1 + dot) / 2;
+					const pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRangeSquare;
+					const inverseSquareDistance = 1 / (1 + 0.02 * distanceFromPixelToPointLight2);
+					const attenuation = (1 - pointLightDistanceRatio) * inverseSquareDistance;
+					totalPointLightDiffuse += currentPointLightDiffuse * attenuation;
+				}
+				totalPointLightDiffuse *= pointLightIntensity;
+
+				const lightIntensity = Math.max(ambientLight, (dirLightDiffuse + totalPointLightDiffuse) * shadowFactor);
+
+                let texR = triColor.r, texG = triColor.g, texB = triColor.b;
+                if (texturePixels) {
+                    const pixelU = (uv0U * baryCoord0 + uv1U * baryCoord1 + uv2U * baryCoord2) / pixelInvZ;
+                    const pixelV = (uv0V * baryCoord0 + uv1V * baryCoord1 + uv2V * baryCoord2) / pixelInvZ;
+                    const texX = Math.floor(pixelU * (textureWidth - 1));
+                    const texY = Math.floor(pixelV * (textureHeight - 1));
+                    const texIndex = (texY * textureWidth + texX) * 4;
+                    texR = texturePixels[texIndex];
+                    texG = texturePixels[texIndex + 1];
+                    texB = texturePixels[texIndex + 2];
+                }
+
+                const colorIndex = pixelIndex * 4;
+                screenBuffer[colorIndex] = Math.min(255, texR * lightIntensity);
+                screenBuffer[colorIndex + 1] = Math.min(255, texG * lightIntensity);
+                screenBuffer[colorIndex + 2] = Math.min(255, texB * lightIntensity);
+            }
+        }
+        edgeFunction01 += edgeSlopeX01;
+        edgeFunction12 += edgeSlopeX12;
+        edgeFunction20 += edgeSlopeX20;
+        pixelIndex++;
+    }
+    edgeFunctionRow01 += edgeSlopeY01;
+    edgeFunctionRow12 += edgeSlopeY12;
+    edgeFunctionRow20 += edgeSlopeY20;
+}</code></pre>
+					<code>isInShadow</code> bây giờ nhận vào 6 số thay vì 2 Vector3:
+					<pre><code class="language-javascript">isInShadow(
+	pixelWorldPosX, pixelWorldPosY, pixelWorldPosZ,
+	triWorldNormalX, triWorldNormalY, triWorldNormalZ
+) {
+	let dotProduct = triWorldNormalX * this.dir.x + triWorldNormalY * this.dir.y + triWorldNormalZ * this.dir.z;
+	if (dotProduct >= 0) return false;
+
+	...
+
+	let lightSpacePos = new Vector3(
+		pixelWorldPosX + triWorldNormalX * normalOffset,
+		pixelWorldPosY + triWorldNormalY * normalOffset,
+		pixelWorldPosZ + triWorldNormalZ * normalOffset
+	);	// vẫn phải tạo lại 1 vector3 để nhân với matrix
+
+	lightSpacePos.mulMat4x4(this.viewMatrix);
+	lightSpacePos.mulMat4x4(this.projectionMatrix);
+
+	lightSpacePos.x /= lightSpacePos.w;
+	lightSpacePos.y /= lightSpacePos.w;
+	lightSpacePos.z /= lightSpacePos.w;
+
+	...
+}</code></pre>
+					Kết quả:
+                    <div class="htmlPreview" id="htmlPreview38"></div>
+                    Kết quả đo:
+                    <pre><code>Thời gian chạy (median của 20 frames):
+Shadow map : todo ms
+Geometry   : todo ms
+Rasterizer : todo ms
+Tổng      : todo ms</code></pre>
+				<div id="graphics3D-nav-bottom"></div>
             </div>
         </div>
     </main>
