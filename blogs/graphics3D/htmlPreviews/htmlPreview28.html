@@ -704,9 +704,9 @@
 									let totalPointLightDiffuse = 0;
 									const pointLightRangeSquare = pointLightRange * pointLightRange;
 									for (let light of pointLights) {
-										let pointLightVec = Vector3.sub(light.pos, pixelWorldPos);      // vector từ pixel tới đèn
+										let pointLightVec = Vector3.sub(light.pos, pixelWorldPos);
 										let distanceSquare = Vector3.dot(pointLightVec, pointLightVec);
-										if (distanceSquare >= pointLightRangeSquare) continue;          // ngoài tầm chiếu, bỏ qua
+										if (distanceSquare >= pointLightRangeSquare) continue;
 
 										pointLightVec.normalize();
 										let pointLightDiffuse = (Vector3.dot(triWorldNormal, pointLightVec) + 1) / 2;

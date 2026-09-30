@@ -9,15 +9,6 @@
  	<script>
  		class Vector2 {
  			constructor(u = 0, v = 0, w = 1) {
-@@ -719,7 +721,7 @@
- 				const x = Math.floor((lightSpacePos.x + 1) * shadowMapSize / 2);
- 				const y = Math.floor((-lightSpacePos.y + 1) * shadowMapSize / 2);
- 
--				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize) 
-+				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize)
- 					return false;
- 
- 				return lightSpacePos.z > this.shadowMap[y][x];
 @@ -930,6 +932,22 @@
  		const pointLightRangeSlider = document.getElementById("pointRange");
  		const pointLightRangeText = document.getElementById("pointRangeText");
