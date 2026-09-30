@@ -228,7 +228,7 @@
  					tri.mulMat4x4(viewMat);
  					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
  				}
-@@ -726,6 +804,11 @@
+@@ -732,6 +810,11 @@
  			lightDirIntensityText.textContent = dirLightIntensity.toFixed(2);
  		});
  

@@ -683,6 +683,12 @@
 				}
 			}
 
+			visibleTris.sort((a, b) => {
+				let distA = a.getCenter().magnitude();
+				let distB = b.getCenter().magnitude();
+				return distA - distB;
+			});
+
 			for (let tri of visibleTris) {
 				tri.mulMat4x4(projectionMatrix);
 				tri.perspectiveDivide();

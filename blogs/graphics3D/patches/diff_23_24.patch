@@ -44,7 +44,7 @@
  					tri.mulMat4x4(viewMat);
  					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
  				}
-@@ -705,6 +721,11 @@
+@@ -711,6 +727,11 @@
  
  		update();
  

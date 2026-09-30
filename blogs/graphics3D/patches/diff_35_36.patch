@@ -133,7 +133,7 @@
  
  			let visibleTris = [];
  			for (let tri of objectTris) {
-@@ -1155,6 +1174,11 @@
+@@ -1161,6 +1180,11 @@
  			lightDirIntensityText.textContent = dirLight.intensity.toFixed(2);
  		});
  
@@ -145,7 +145,7 @@
  		pointLightIntensitySlider.addEventListener("input", () => {
  			pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
  			pointLightIntensityText.textContent = pointLightIntensity.toFixed(2);
-@@ -1165,6 +1189,10 @@
+@@ -1171,6 +1195,10 @@
  			pointLightRangeText.textContent = pointLightRange.toFixed(0);
  		});
  

@@ -104,7 +104,7 @@
  
  			let visibleTris = [];
  			for (let tri of objectTris) {
-@@ -809,6 +833,11 @@
+@@ -815,6 +839,11 @@
  			pointLightIntensityText.textContent = pointLightIntensity.toFixed(2);
  		});
  

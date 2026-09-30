@@ -40,7 +40,7 @@
  										);
  										pixelUV = Vector2.div(pixelUV, pixelUV.w);
  
-@@ -879,16 +888,7 @@
+@@ -885,16 +894,7 @@
  				tri.perspectiveDivide();
  			}
  

@@ -198,7 +198,7 @@
  			let visibleTris = [];
  			for (let tri of objectTris) {
  				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
-@@ -897,8 +1018,8 @@
+@@ -903,8 +1024,8 @@
  		update();
  
  		lightDirIntensitySlider.addEventListener("input", () => {

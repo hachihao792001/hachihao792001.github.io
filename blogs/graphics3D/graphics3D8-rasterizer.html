@@ -466,7 +466,19 @@ let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3),
 		}
 	}
 }</code></pre>
-					Cuối cùng là ta sẽ bỏ đi đoạn code mà ta sort tam giác theo khoảng cách tới camera, và được kết quả sau:
+					Cuối cùng là đoạn code sort tam giác theo khoảng cách tới camera. Bây giờ đã có depth buffer lo chuyện che khuất rồi nên ta không cần
+					sort từ xa tới gần nữa, nhưng mà thay vì bỏ nó đi luôn, ta sẽ đảo ngược nó lại thành sort từ gần tới xa 😳:
+					<pre><code class="language-javascript">visibleTris.sort((a, b) => {
+    let distA = a.getCenter().magnitude();
+    let distB = b.getCenter().magnitude();
+    return distA - distB;	// <------------------ đảo lại: gần tới xa
+});</code></pre>
+					Lý do là vì depth buffer chỉ ghi khi pixel mới gần hơn pixel đang có. Nếu ta vẽ từ xa tới gần thì gần như pixel nào cũng pass cái check
+					<code>z &lt; this.depthBuffer[y][x]</code>, nghĩa là mỗi pixel bị ghi đè đi ghi đè lại nhiều lần (ghi cả depthBuffer lẫn screenBuffer) - toàn bộ
+					công sức vẽ mấy tam giác ở xa cuối cùng bị mấy tam giác ở gần đè lên hết. Còn nếu vẽ từ gần tới xa thì mấy tam giác gần được vẽ trước,
+					mấy tam giác ở xa phía sau nó sẽ fail cái check đó ngay và ta bỏ qua luôn phần ghi màu, vật thể che nhau càng nhiều thì càng tiết kiệm được nhiều.
+					Kết quả hiển thị vẫn y chang vì depth buffer mới là thứ quyết định pixel nào thắng, thứ tự sort chỉ ảnh hưởng tới tốc độ thôi.<br/><br/>
+					Và đây là kết quả:
 					<div class="htmlPreview" id="htmlPreview22"></div>
 				
 					Có lẽ bạn sẽ nhớ lại những gì ta làm ở <a href="graphics3D3-projection.html">blog 3</a> và thắc mắc, tại sao ta lại sử dụng z (độ sâu đã normalized ở near 
