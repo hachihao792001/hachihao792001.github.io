@@ -1691,13 +1691,14 @@
                 }
                 const reach = pointLightRange + Math.sqrt(triBoundingCircleRadius2);
 
-                const triPlaneD = Vector3.dot(triWorldNormal, this.worldVertices[0]);
-
                 let count = 0;
                 for (let i = 0; i < pointLights.length; i++) {
                     const lightPos = pointLights[i].transform.position;
 
-                    if (Vector3.dot(triWorldNormal, lightPos) <= triPlaneD) continue;
+                    const toLightX = lightPos.x - triWorldCenterX;
+                    const toLightY = lightPos.y - triWorldCenterY;
+                    const toLightZ = lightPos.z - triWorldCenterZ;
+                    if (triWorldNormal.x * toLightX + triWorldNormal.y * toLightY + triWorldNormal.z * toLightZ <= 0) continue;
 
                     const lightDistance2 = MathExtend.hypotSquare(lightPos.x, lightPos.y, lightPos.z, triWorldCenterX, triWorldCenterY, triWorldCenterZ);
                     if (lightDistance2 > reach * reach) continue;

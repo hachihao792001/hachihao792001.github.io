@@ -456,13 +456,10 @@
 			}
 
 			getPointLightsThatCanAffectTri(pointLightRange, pointLights, outLights) {
-				let triWorldNormal = this.getWorldNormal();
-
 				const triWorldCenterX = (this.worldVertices[0].x + this.worldVertices[1].x + this.worldVertices[2].x) / 3;
 				const triWorldCenterY = (this.worldVertices[0].y + this.worldVertices[1].y + this.worldVertices[2].y) / 3;
 				const triWorldCenterZ = (this.worldVertices[0].z + this.worldVertices[1].z + this.worldVertices[2].z) / 3;
 
-				// bán kính hình cầu bao quanh tam giác
 				let triBoundingCircleRadius2 = 0;
 				for (let i = 0; i < 3; i++) {
 					const currentWorldVertex = this.worldVertices[i];
@@ -471,20 +468,21 @@
 						triWorldCenterX, triWorldCenterY, triWorldCenterZ);
 					if (currentRadius2 > triBoundingCircleRadius2) triBoundingCircleRadius2 = currentRadius2;
 				}
-				const reach = pointLightRange + Math.sqrt(triBoundingCircleRadius2);
+				const totalRange = pointLightRange + Math.sqrt(triBoundingCircleRadius2);
 
-				const triPlaneD = Vector3.dot(triWorldNormal, this.worldVertices[0]);
+				let triWorldNormal = this.getWorldNormal();
 
 				let count = 0;
 				for (let i = 0; i < pointLights.length; i++) {
 					const lightPos = pointLights[i].pos;
 
-					// nguồn sáng nằm sau mặt phẳng của tam giác thì không thể chiếu tới nó
-					if (Vector3.dot(triWorldNormal, lightPos) <= triPlaneD) continue;
+					const toLightX = lightPos.x - triWorldCenterX;
+					const toLightY = lightPos.y - triWorldCenterY;
+					const toLightZ = lightPos.z - triWorldCenterZ;
+					if (triWorldNormal.x * toLightX + triWorldNormal.y * toLightY + triWorldNormal.z * toLightZ <= 0) continue;
 
-					// nguồn sáng ở quá xa tam giác
 					const lightDistance2 = hypotSquare(lightPos.x, lightPos.y, lightPos.z, triWorldCenterX, triWorldCenterY, triWorldCenterZ);
-					if (lightDistance2 > reach * reach) continue;
+					if (lightDistance2 > totalRange * totalRange) continue;
 
 					outLights[count] = lightPos;
 					count++;
@@ -942,8 +940,6 @@
 				this.depthBuffer = new Float64Array(canvas.width * canvas.height);
 
 				this.clearScreen();
-
-				this.activeLights = new Array(maxActiveLights);
 			}
 
 			clearScreen() {
@@ -956,7 +952,7 @@
 				const depthBuffer = this.depthBuffer;
 				const canvasWidth = canvas.width;
 				const canvasHeight = canvas.height;
-				const activeLights = this.activeLights;
+				const activeLights = new Array(maxActiveLights);
 				const pointLightRange2 = pointLightRange * pointLightRange;
 
 				for (let tri of tris) {
@@ -1046,8 +1042,8 @@
 									}
 
 									let totalPointLightDiffuse = 0;
-									for (let i = 0; i < pointLights.length; i++) {
-										const lightPos = pointLights[i].pos;
+									for (let i = 0; i < activeLightCount; i++) {
+										const lightPos = activeLights[i];
 										const pointLightVecX = lightPos.x - pixelWorldX;
 										const pointLightVecY = lightPos.y - pixelWorldY;
 										const pointLightVecZ = lightPos.z - pixelWorldZ;

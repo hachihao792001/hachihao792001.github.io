@@ -469,10 +469,138 @@ Tổng      : todo ms</code></pre>
 					<h2>4. Chặn xét point light mỗi pixel</h2>
 					Ở <a href="graphics3D9-lighting.html">blog 9</a>, với mỗi pixel ta có cái
 					<code>if (distanceSquare >= pointLightRangeSquare) continue;</code> để chặn việc tính toán cho những point light quá xa với điểm/pixel hiện tại.
-					Như thế là cũng khá tốt rồi, tuy nhiên nó còn có thể tốt hơn. Một point light quá xa một điểm, thì khả năng cao nó cũng sẽ quá xa với tam giác
-					mà chứa điểm đó. Như vậy trước 2 vòng lặp pixel, ta có thể lọc ra hết các point light quá xa với tam giác hiện tại, trước khi chạy các point light
-					còn lại qua vòng lặp pixel.
+					Như thế là cũng khá tốt rồi, tuy nhiên nó còn có thể tốt hơn:
 					
+					<ul>
+						<li>Một point light quá xa một điểm, thì khả năng cao nó cũng sẽ quá xa với tam giác mà chứa điểm đó.</li>
+						<li>Một point light nằm đằng sau tam giác (backface) thì không cần chiếu tới những pixel của tam giác đó</li>
+					</ul>
+					Như vậy trước 2 vòng lặp pixel, ta có thể lọc ra hết các point light quá xa hoặc nằm sau tam giác hiện tại, trước khi chạy các point light
+					còn lại qua vòng lặp pixel.<br/><br/>
+
+					Để biết một tam giác có nằm trong vùng sáng của point light hay không, ta tưởng tượng 1 hình cầu bao quanh tam giác, nếu hình cầu đó
+					overlap với hình cầu range của point light thì tam giác đó được chiếu sáng và mới vào vòng lặp pixel.<br/><br/>
+
+					Về hình cầu bao quanh tam giác: ta sẽ dùng tâm hình cầu là trọng tâm 3 đỉnh, bán kính là khoảng cách từ trọng tâm tới đỉnh xa nhất trong 3 đỉnh.
+					Ta không sử dụng tâm hình cầu ngoại tiếp. Vì công thức tính tâm hình cầu ngoại tiếp trong 3D là:
+					$$
+					\mathbf{O}
+					=
+					\mathbf{A}
+					+
+					\frac{
+					\|\overrightarrow{AC}\|^2
+					\left(
+					\overrightarrow{AB}
+					\times
+					(\overrightarrow{AB}\times\overrightarrow{AC})
+					\right)
+					+
+					\|\overrightarrow{AB}\|^2
+					\left(
+					(\overrightarrow{AB}\times\overrightarrow{AC})
+					\times
+					\overrightarrow{AC}
+					\right)
+					}{
+					2\|\overrightarrow{AB}\times\overrightarrow{AC}\|^2
+					}
+					$$
+					<div align="center"><i>Nguồn: <a href="https://gamedev.stackexchange.com/a/60631">gamedevstackexchange</a></i></div>
+
+					Khá nhiều phép toán 😅 Trong khi tính trọng tâm tam giác chỉ cần 2 phép cộng và một phép chia (vector). Với lại dù tâm hình cầu
+					ngoại tiếp chặt hơn nhưng chỉ chặt hơn có xíu, không bù lại được phần thời gian bỏ ra để tính phép tính trên. Hơn nữa,
+					hình cầu ngoại tiếp sẽ khá là bự nếu tam giác là một tam giác siêu dẹt, sẽ gặp khá thường xuyên sau khi các tam giác trải
+					qua hàm <code>clipAgainstPlane</code>. Dùng cách trọng tâm tam giác và bán kính là đỉnh xa nhất sẽ stable hơn nhiều.<br/><br/>.
+
+					Về việc tính khoảng cách, vì mình hạn chế tính căn bậc hai, nên mình sẽ so bằng bình phương khoảng cách, ta viết hàm tính bình
+					phương khoảng cách từ 6 giá trị x, y, z của 2 điểm (để bên ngoài giống <code>edgeFunction</code> vì thuần toán học):
+					<pre><code class="language-javascript">function hypotSquare(ax, ay, az, bx, by, bz) {
+	const dx = ax - bx;
+	const dy = ay - by;
+	const dz = az - bz;
+	return dx * dx + dy * dy + dz * dz;
+}</code></pre>
+
+					Như vậy hàm tìm các point light có ảnh hưởng tới tam giác sẽ như sau (cũng để bên ngoài vì nó liên quan nhiều thứ):
+					<pre><code class="language-javascript">getPointLightsThatCanAffectTri(pointLightRange, pointLights, outLights) {
+	// tính trọng tâm 3 đỉnh tam giác
+	const triWorldCenterX = (this.worldVertices[0].x + this.worldVertices[1].x + this.worldVertices[2].x) / 3;
+	const triWorldCenterY = (this.worldVertices[0].y + this.worldVertices[1].y + this.worldVertices[2].y) / 3;
+	const triWorldCenterZ = (this.worldVertices[0].z + this.worldVertices[1].z + this.worldVertices[2].z) / 3;
+
+	// tìm bán kính hình cầu bao quanh tam giác: loop qua 3 đỉnh tìm đỉnh xa trọng tâm nhất, lấy khoảng cách đó làm bán kính
+	let triBoundingCircleRadius2 = 0;
+	for (let i = 0; i < 3; i++) {
+		const currentWorldVertex = this.worldVertices[i];
+		const currentRadius2 = hypotSquare(
+			currentWorldVertex.x, currentWorldVertex.y, currentWorldVertex.z,
+			triWorldCenterX, triWorldCenterY, triWorldCenterZ);
+		if (currentRadius2 > triBoundingCircleRadius2) triBoundingCircleRadius2 = currentRadius2;
+	}
+
+	// bán kính range + bán kính hình cầu bao quanh tam giác
+	const totalRange = pointLightRange + Math.sqrt(triBoundingCircleRadius2);
+	let triWorldNormal = this.getWorldNormal();
+
+	let count = 0;
+	for (let i = 0; i < pointLights.length; i++) {
+		const lightPos = pointLights[i].pos;
+
+		// nguồn sáng nằm sau mặt phẳng của tam giác thì không thể chiếu tới nó
+		const toLightX = lightPos.x - triWorldCenterX;
+		const toLightY = lightPos.y - triWorldCenterY;
+		const toLightZ = lightPos.z - triWorldCenterZ;
+		if (triWorldNormal.x * toLightX + triWorldNormal.y * toLightY + triWorldNormal.z * toLightZ <= 0) continue;
+
+		const lightDistance2 = hypotSquare(lightPos.x, lightPos.y, lightPos.z, triWorldCenterX, triWorldCenterY, triWorldCenterZ);
+		// nguồn sáng ở quá xa tam giác
+		if (lightDistance2 > totalRange * totalRange) continue;
+
+		outLights[count] = lightPos;
+		count++;
+		if (count == outLights.length) break;
+	}
+	return count;
+}</code></pre>
+					<code>outLights</code> là một mảng được tạo sẵn bên ngoài (tốt nhất là ngoài vòng lặp tam giác), có giới hạn số lượng phần tử.
+					Chứ ta không tạo một mảng mới chỉ để return.<br/><br/>
+
+					Sử dụng <code>getPointLightsThatCanAffectTri</code> trong hàm <code>processTriangles</code>:
+					<pre><code class="language-javascript">processTriangles(tris) {
+	...
+	const activeLights = new Array(maxActiveLights);	// tạo mảng để chứa kết quả lọc mỗi tam giác
+	const pointLightRange2 = pointLightRange * pointLightRange;
+
+	for (let tri of tris) {
+		...
+		// nếu intensity = 0 thì khỏi gọi, đỡ tốn
+		const activeLightCount = pointLightIntensity > 0 ? tri.getPointLightsThatCanAffectTri(pointLightRange, pointLights, activeLights) : 0;
+		...
+		for (let y = bbox[2]; y <= bbox[3]; y++) {
+			...
+			for (let x = bbox[0]; x <= bbox[1]; x++) {
+				...
+				let totalPointLightDiffuse = 0;
+				for (let i = 0; i < activeLightCount; i++) {	// dùng activeLightCount chứ không phải activeLights.length
+					const lightPos = activeLights[i];
+					...
+				}
+				...
+			}
+			...
+		}
+		...
+	}
+}</code></pre>
+					Kết quả:
+                    <div class="htmlPreview" id="htmlPreview39"></div>
+                    Kết quả đo:
+                    <pre><code>Thời gian chạy (median của 20 frames):
+Shadow map : todo ms
+Geometry   : todo ms
+Rasterizer : todo ms
+Tổng      : todo ms</code></pre>
 				<div id="graphics3D-nav-bottom"></div>
             </div>
         </div>

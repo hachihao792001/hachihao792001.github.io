@@ -1,0 +1,88 @@
+--- "a/htmlPreviews\\htmlPreview38.html"
++++ "b/htmlPreviews\\htmlPreview39.html"
+@@ -454,6 +454,42 @@
+ 			calculateSignedDoubleArea() {
+ 				this.signedDoubleArea = edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
+ 			}
++
++			getPointLightsThatCanAffectTri(pointLightRange, pointLights, outLights) {
++				const triWorldCenterX = (this.worldVertices[0].x + this.worldVertices[1].x + this.worldVertices[2].x) / 3;
++				const triWorldCenterY = (this.worldVertices[0].y + this.worldVertices[1].y + this.worldVertices[2].y) / 3;
++				const triWorldCenterZ = (this.worldVertices[0].z + this.worldVertices[1].z + this.worldVertices[2].z) / 3;
++
++				let triBoundingCircleRadius2 = 0;
++				for (let i = 0; i < 3; i++) {
++					const currentWorldVertex = this.worldVertices[i];
++					const currentRadius2 = hypotSquare(
++						currentWorldVertex.x, currentWorldVertex.y, currentWorldVertex.z,
++						triWorldCenterX, triWorldCenterY, triWorldCenterZ);
++					if (currentRadius2 > triBoundingCircleRadius2) triBoundingCircleRadius2 = currentRadius2;
++				}
++				const totalRange = pointLightRange + Math.sqrt(triBoundingCircleRadius2);
++
++				let triWorldNormal = this.getWorldNormal();
++
++				let count = 0;
++				for (let i = 0; i < pointLights.length; i++) {
++					const lightPos = pointLights[i].pos;
++
++					const toLightX = lightPos.x - triWorldCenterX;
++					const toLightY = lightPos.y - triWorldCenterY;
++					const toLightZ = lightPos.z - triWorldCenterZ;
++					if (triWorldNormal.x * toLightX + triWorldNormal.y * toLightY + triWorldNormal.z * toLightZ <= 0) continue;
++
++					const lightDistance2 = hypotSquare(lightPos.x, lightPos.y, lightPos.z, triWorldCenterX, triWorldCenterY, triWorldCenterZ);
++					if (lightDistance2 > totalRange * totalRange) continue;
++
++					outLights[count] = lightPos;
++					count++;
++					if (count == outLights.length) break;
++				}
++				return count;
++			}
+ 		}
+ 
+ 		class Plane {
+@@ -916,6 +952,8 @@
+ 				const depthBuffer = this.depthBuffer;
+ 				const canvasWidth = canvas.width;
+ 				const canvasHeight = canvas.height;
++				const activeLights = new Array(maxActiveLights);
++				const pointLightRange2 = pointLightRange * pointLightRange;
+ 
+ 				for (let tri of tris) {
+ 					let vertices = tri.vertices;
+@@ -970,6 +1008,7 @@
+ 					const perspectiveWorld2X = world2.x * uv2W, perspectiveWorld2Y = world2.y * uv2W, perspectiveWorld2Z = world2.z * uv2W;
+ 
+ 					const pointLightRangeSquare = pointLightRange * pointLightRange;
++					const activeLightCount = pointLightIntensity > 0 ? tri.getPointLightsThatCanAffectTri(pointLightRange, pointLights, activeLights) : 0;
+ 
+ 					const triColor = tri.color;
+ 					const texture = tri.texture;
+@@ -1003,8 +1042,8 @@
+ 									}
+ 
+ 									let totalPointLightDiffuse = 0;
+-									for (let i = 0; i < pointLights.length; i++) {
+-										const lightPos = pointLights[i].pos;
++									for (let i = 0; i < activeLightCount; i++) {
++										const lightPos = activeLights[i];
+ 										const pointLightVecX = lightPos.x - pixelWorldX;
+ 										const pointLightVecY = lightPos.y - pixelWorldY;
+ 										const pointLightVecZ = lightPos.z - pixelWorldZ;
+@@ -1062,6 +1101,14 @@
+ 			return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
+ 		}
+ 
++		function hypotSquare(ax, ay, az, bx, by, bz) {
++			const dx = ax - bx;
++			const dy = ay - by;
++			const dz = az - bz;
++			return dx * dx + dy * dy + dz * dz;
++		}
++
++		let maxActiveLights = 16;
+ 		let ambientLight = 0.2;
+ 
+ 		const canvas = document.getElementById("gameCanvas");
