@@ -536,10 +536,10 @@
                 let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
                 let maxY = Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
 
-                minX = Math.max(0, parseInt(minX));
-                maxX = Math.min(maxWidth - 1, parseInt(maxX));
-                minY = Math.max(0, parseInt(minY));
-                maxY = Math.min(maxHeight - 1, parseInt(maxY));
+                minX = Math.max(0, Math.trunc(minX));
+                maxX = Math.min(maxWidth - 1, Math.trunc(maxX));
+                minY = Math.max(0, Math.trunc(minY));
+                maxY = Math.min(maxHeight - 1, Math.trunc(maxY));
 
                 return new BoundingBox(minX, maxX, minY, maxY);
             }

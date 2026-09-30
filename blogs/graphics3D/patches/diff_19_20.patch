@@ -346,8 +346,8 @@
 +				let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
 +				let maxY = Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
  
- 				minX = Math.max(0, parseInt(minX));
- 				maxX = Math.min(canvas.width - 1, parseInt(maxX));
+ 				minX = Math.max(0, Math.trunc(minX));
+ 				maxX = Math.min(canvas.width - 1, Math.trunc(maxX));
 @@ -48,6 +349,170 @@
  			}
  		}

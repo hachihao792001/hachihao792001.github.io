@@ -193,10 +193,10 @@ for (let y = 0; y < canvas.height; y++) {
     let maxY = Math.max(this.vertices[0][1], this.vertices[1][1], this.vertices[2][1]);
 
     // vì sử dụng cho pixel nên phải đảm bảo kết quả là số nguyên và nằm trong kích thước canvas
-    minX = Math.max(0, parseInt(minX));
-    maxX = Math.min(canvas.width - 1, parseInt(maxX));
-    minY = Math.max(0, parseInt(minY));
-    maxY = Math.min(canvas.height - 1, parseInt(maxY));
+    minX = Math.max(0, Math.trunc(minX));
+    maxX = Math.min(canvas.width - 1, Math.trunc(maxX));
+    minY = Math.max(0, Math.trunc(minY));
+    maxY = Math.min(canvas.height - 1, Math.trunc(maxY));
 
     return [minX, maxX, minY, maxY];
 }</code></pre>
