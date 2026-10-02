@@ -755,7 +755,92 @@ Geometry   : 1.10 ms
 Rasterizer : 5.60 ms
 Tổng      : 8.30 ms</code></pre>
 
-					
+					<h2>6. Tối ưu phần geometry</h2>
+					Phần geometry là thứ duy nhất còn lại mà ta chưa sờ tới trong blog, thật ra cũng không có chỗ nào nghiêm trọng, ngoài
+					chỗ sort tam giác:
+					<pre><code class="language-javascript">visibleTris.sort((a, b) => {
+	let distA = a.getCenter().magnitude();
+	let distB = b.getCenter().magnitude();
+	return distA - distB;
+});</code></pre>
+					Hàm sort này có độ phức tạp <code>nlog(n)</code> - với hơn 1000 tam giác thì
+					khoảng mười mấy nghìn lần một frame. Mà mỗi lần gọi thì hàm so sánh làm những thứ sau:
+					<ul>
+						<li>2 lần gọi <code>getCenter()</code> tạo ra 2 <code>Vector3</code> mới.</li>
+						<li><code>magnitude()</code> có một phép căn bậc hai trong đó.</li>
+						<li>Tuy nhiên cái quan trọng là: một tam giác bị tính đi tính lại nhiều lần.</li>
+					</ul>
+
+					Sửa thì đơn giản: tính trước bình phương khoảng cách của từng tam giác <b>một lần</b>, rồi sort theo con số đó:
+
+					<pre><code class="language-javascript">for (let tri of visibleTris) {
+	const vertices = tri.vertices;
+	const centerX = (vertices[0].x + vertices[1].x + vertices[2].x) / 3;
+	const centerY = (vertices[0].y + vertices[1].y + vertices[2].y) / 3;
+	const centerZ = (vertices[0].z + vertices[1].z + vertices[2].z) / 3;
+	tri.viewDistanceSquared = centerX * centerX + centerY * centerY + centerZ * centerZ;
+}
+visibleTris.sort((a, b) => a.viewDistanceSquared - b.viewDistanceSquared);</code></pre>
+					Thêm <code>viewDistanceSquared</code> trong class <code>Triangle</code>:
+					<pre><code class="language-javascript">class Triangle {
+	constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
+		...
+		this.viewDistanceSquared = 0;
+		...
+	}
+	...
+}</code></pre>
+
+					Ngoài ra còn 1 chỗ nhỏ nhỏ: trong hàm getTransformedTriangles, trong vòng lặp ta tạo lại 2 ma trận scale và
+					translation mỗi lần => bốc nó ra ngoài:
+					<pre><code class="language-javascript">getTransformedTriangles() {
+	let transformedTris = [];
+	let scaleMat = Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z);			// <----------------------------
+	let translationMat = Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z);	// <----------------------------
+	for (let tri of this.mesh.tris) {
+		let transformedTri = tri.clone();
+		transformedTri.mulMat4x4(scaleMat);			// <----------------------------
+		transformedTri.rotate(this.rotation);
+		transformedTri.mulMat4x4(translationMat);	// <----------------------------
+		...
+	}
+	return transformedTris;
+}</code></pre>
+
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview42"></div>
+					Kết quả đo:
+					<pre><code>Thời gian chạy (median của 20 frames):
+Shadow map : 1.60 ms
+Geometry   : 0.70 ms
+Rasterizer : 5.60 ms
+Tổng      : 7.90 ms</code></pre>
+
+					<h2>7. Tổng kết</h2>
+					Cả blog này, từ bản cuối blog 12 tới giờ, đo trong cùng một lần chạy:<br/><br/>
+
+					<table class="table table-bordered">
+					<tr>
+						<th>Bản</th><th>Shadow map</th><th>Geometry</th><th>Rasterizer</th><th>Tổng</th>
+					</tr>
+					<tr><td>Cuối blog 12</td><td>6.30</td><td>1.20</td><td>12.30</td><td>19.80</td></tr>
+					<tr><td>Cuối phần 2</td><td>6.20</td><td>1.20</td><td>11.10</td><td>18.50</td></tr>
+					<tr><td>Cuối phần 3</td><td>6.30</td><td>1.20</td><td>5.90</td><td>13.40</td></tr>
+					<tr><td>Cuối phần 4</td><td>6.30</td><td>1.30</td><td>5.70</td><td>13.30</td></tr>
+					<tr><td>Cuối phần 5</td><td>5.50</td><td>1.10</td><td>5.60</td><td>12.20</td></tr>
+					<tr><td>Cuối phần 6</td><td>1.60</td><td>1.10</td><td>5.60</td><td>8.30</td></tr>
+					</table>
+
+					Ngoài ra, dưới đây là những thứ mà mình đã thử để optimize, nhưng hiệu quả đem lại không cao, và nó làm code khó đọc:
+					<ol>
+						<li>Bỏ luôn <code>new Vector3</code> trong isInShadow: Lí do vẫn còn 1 <code>new Vector3</code> trong <code>isInShadow</code>
+						là vì để ta tiện xài hàm nhân ma trận, nếu ta bỏ luôn nó thì ta phải viết lại các phép tính nhân ma trận
+						trong hàm, nhìn sẽ rất là rối.</li>
+						<li>Chuyển <code>shadowMap</code> thành mảng 1 chiều như <code>screenBuffer</code> và <code>depthBuffer</code>: 
+							Vì shadowMap là mảng 2 chiều số thực (không cần cấp phát động),
+							chứ không phải mảng 2 chiều object (Color), nên dù là mảng 2 chiều hay 1 chiều nó cũng không khác nhau là mấy.
+						</li>
+					</ol>
 				<div id="graphics3D-nav-bottom"></div>
             </div>
         </div>

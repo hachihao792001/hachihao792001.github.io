@@ -1,0 +1,46 @@
+--- "a/htmlPreviews\\htmlPreview41.html"
++++ "b/htmlPreviews\\htmlPreview42.html"
+@@ -283,6 +283,7 @@
+ 				}
+ 
+ 				this.uv = uv;
++				this.viewDistanceSquared = 0;   // khai báo sẵn để hidden class của Triangle không đổi giữa chừng
+ 				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
+ 				this.color = color;
+ 				this.texture = null;
+@@ -753,11 +754,13 @@
+ 
+ 			getTransformedTriangles() {
+ 				let transformedTris = [];
++				let scaleMat = Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z);
++				let translationMat = Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z);
+ 				for (let tri of this.mesh.tris) {
+ 					let transformedTri = tri.clone();
+-					transformedTri.mulMat4x4(Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z));
++					transformedTri.mulMat4x4(scaleMat);
+ 					transformedTri.rotate(this.rotation);
+-					transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
++					transformedTri.mulMat4x4(translationMat);
+ 					transformedTri.updateWorldVertices();
+ 					transformedTri.color = this.color;
+ 					transformedTri.texture = this.texture;
+@@ -1246,11 +1249,14 @@
+ 				}
+ 			}
+ 
+-			visibleTris.sort((a, b) => {
+-				let distA = a.getCenter().magnitude();
+-				let distB = b.getCenter().magnitude();
+-				return distA - distB;
+-			});
++			for (let tri of visibleTris) {
++				const vertices = tri.vertices;
++				const centerX = (vertices[0].x + vertices[1].x + vertices[2].x) / 3;
++				const centerY = (vertices[0].y + vertices[1].y + vertices[2].y) / 3;
++				const centerZ = (vertices[0].z + vertices[1].z + vertices[2].z) / 3;
++				tri.viewDistanceSquared = centerX * centerX + centerY * centerY + centerZ * centerZ;
++			}
++			visibleTris.sort((a, b) => a.viewDistanceSquared - b.viewDistanceSquared);
+ 
+ 			for (let tri of visibleTris) {
+ 				tri.mulMat4x4(projectionMatrix);
