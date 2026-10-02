@@ -112,11 +112,12 @@ update();</code></pre>
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview10"></div>
 
-                    Sẽ hay hơn nếu ta tính luôn fps nhỉ 😳 cũng khá đơn giản, chỉ cần vừa đếm số frame đã qua vừa đếm thời gian (bằng dt), nếu đủ 1s thì cập nhật số frame
-                    trong 1s vừa rồi lên màn hình, xong reset lại số frame đã đếm là oke:
+                    Sẽ hay hơn nếu ta tính luôn fps nhỉ 😳 cũng khá đơn giản, chỉ cần vừa đếm số frame đã qua vừa đếm thời gian (bằng dt), khi thời gian cộng dồn đủ 1s thì cập nhật số frame
+                    đã đếm được lên màn hình, xong reset lại cả hai là oke. Vì lúc reset ta gán thời gian về 0 chứ không trừ đi 1s, mỗi lần đếm sẽ dài hơn 1s một chút,
+                    nên ở màn hình 60Hz con số hiện ra thường là 61 chứ không phải đúng 60 (lần đầu còn đếm luôn frame đầu tiên có dt = 0):
                     <pre><code class="language-html">&lt;h2 id="fps"&gt;FPS: 0&lt;/h2&gt;</code></pre>
                     <pre><code class="language-javascript">const fpsInfo = document.getElementById("fps");
-let fps = 0, frames = 0, fpsTimeCounter = 0;
+let frames = 0, fpsTimeCounter = 0;
     
 function update(time = performance.now()) {
     dt = (time - lastTime) / 1000;

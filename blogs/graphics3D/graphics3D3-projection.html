@@ -78,6 +78,8 @@ vertices[i] = new Vector3(
     v.x * fovMultiplier * (canvas.height/2) + canvas.width / 2,
     -v.y * fovMultiplier * (canvas.height/2) + canvas.height / 2,
     1);</code></pre>
+                    Mình cũng dời cube ra xa thêm một chút, từ \(z = 2\) thành \(z = 3\), vì sau khi nhân fovMultiplier (khoảng 1,73 với FOV 60) cube sẽ to ra, dời ra xa thì nó sẽ lại có kích thước gần giống như trước:
+                    <pre><code class="language-javascript">let cube1 = makeCube(new Vector3(0.7, -0.7, 3), new Vector3(1, 1, 1));</code></pre>
                     Hiển thị như sau (bạn tự copy về thay đổi FOV để xem khác biệt nhé):
                     <div id="htmlPreview7" class="htmlPreview"></div><br/>
 
@@ -102,7 +104,7 @@ vertices[i] = new Vector3(
                     Cái người ta thường làm là lấy tất cả chia cho z ban đầu. Vì sao? Đó là do ta muốn nó có tính chất "càng gần 0 càng thay đổi nhiều",
                     đó là vì \(z'\) là một hàm theo biến \(z\) có dạng là
                     \(f(z) = a + bz\) với \(a = - z_{near}\frac{z_{far}}{z_{far}-z_{near}}\) và \(b = \frac{z_{far}}{z_{far}-z_{near}}\),
-                    chia cho \(z\) sẽ biến nó thành dạng \(f(z) = a + b\frac{1}{z}\), là một hàm 
+                    chia cho \(z\) sẽ biến nó thành dạng \(f(z) = b + a\frac{1}{z}\), là một hàm 
                     <a href="https://vi.wikipedia.org/wiki/Hàm_hyperbol">Hyperbol</a>. Bạn có thể xem rõ hơn khi tính nó ở excel hoặc vẽ đồ thị ra,
                     dưới đây là 2 hình so sánh 3 giá trị: \((z-z_{near})*\frac{z_{far}}{z_{far}-z_{near}}\), sau khi nhân \(z_{far}\) và sau khi chia \(z\):
                     <div align="center" style="gap: 10px;">
