@@ -139,25 +139,25 @@
                     $$
 \left(
 \cos\frac{\gamma}{2}\cos\frac{\beta}{2}\cos\frac{\alpha}{2}
-+
+-
 \sin\frac{\gamma}{2}\sin\frac{\beta}{2}\sin\frac{\alpha}{2}
 \right)
 +
 \left(
 -\cos\frac{\gamma}{2}\cos\frac{\beta}{2}\sin\frac{\alpha}{2}
-+
+-
 \sin\frac{\gamma}{2}\sin\frac{\beta}{2}\cos\frac{\alpha}{2}
 \right)i
 +
 \left(
 -\cos\frac{\gamma}{2}\sin\frac{\beta}{2}\cos\frac{\alpha}{2}
--
++
 \sin\frac{\gamma}{2}\cos\frac{\beta}{2}\sin\frac{\alpha}{2}
 \right)j
 +
 \left(
 -\sin\frac{\gamma}{2}\cos\frac{\beta}{2}\cos\frac{\alpha}{2}
-+
+-
 \cos\frac{\gamma}{2}\sin\frac{\beta}{2}\sin\frac{\alpha}{2}
 \right)k
                     $$
@@ -194,10 +194,10 @@
         const sinC = Math.sin(c);
 
         return new Quaternion(
-            cosC * cosB * cosA + sinC * sinB * sinA,
-            -cosC * cosB * sinA + sinC * sinB * cosA,
-            -cosC * sinB * cosA - sinC * cosB * sinA,
-            -sinC * cosB * cosA + cosC * sinB * sinA
+            cosC * cosB * cosA - sinC * sinB * sinA,
+            -cosC * cosB * sinA - sinC * sinB * cosA,
+            -cosC * sinB * cosA + sinC * cosB * sinA,
+            -sinC * cosB * cosA - cosC * sinB * sinA
         );
     }
 
@@ -303,7 +303,7 @@ Vector3.forward = new Vector3(0, 0, 1);</code></pre>
 
                     Cuối cùng, đối với 2 cube, ta dùng hàm rotate mới:
                     <pre><code class="language-javascript">cube1.rotate(0, 50 * dt, 0);
-cube2.rotate(50 * dt, 0, 50 * dt);</code></pre>
+cube2.rotate(50 * dt, 0, 0);</code></pre>
                     Full code, bạn có thể giữ lại 3 hàm rotation matrix và hàm nhân matrix ở class Mat4x4 nếu muốn, mình thì bỏ đi cho code bớt dài (cũng ko bớt mấy):
                     <div class="htmlPreview" id="htmlPreview13"></div>
                     Như vậy là bạn đã cài đặt được Quaternion vào engine của mình, nếu bạn muốn thì có thể đọc tiếp blog để xem cách chứng minh từ đầu tới cuối sao cho ra
@@ -376,10 +376,10 @@ cube2.rotate(50 * dt, 0, 50 * dt);</code></pre>
                     $$
                         (a+u)\cdot(a-u) = (a^2 - \langle u,-u\rangle) + (au-au+u\times(-u)) = (a^2+\langle u,u \rangle) + 0 = a^2 + |u|^2
                     $$
-                    (Tích vô hướng đổi dấu khi đổi chiều 1 vector, tích có hướng = 0 khi 2 vector cùng phương, tích vô hướng của 2 vector giống nhau ra độ dài của vector đó * 2).<br/>
+                    (Tích vô hướng đổi dấu khi đổi chiều 1 vector, tích có hướng = 0 khi 2 vector cùng phương, tích vô hướng của 2 vector giống nhau ra bình phương độ dài của vector đó).<br/>
                     Nếu bạn viết lại Quaternion kết quả ra dạng số phức mở rộng, bạn sẽ thấy một thứ quen thuộc:
                     $$
-                        a^2 + |u|^2 = a^2 + x^2 + y^2 + z^2
+                        a^2 + |u|^2 = a^2 + b^2 + c^2 + d^2
                     $$
                     Nó chính là công thức chiều dài của vector 4 chiều bình phương, suy ra ta có công thức sau:
                     $$
@@ -396,7 +396,7 @@ cube2.rotate(50 * dt, 0, 50 * dt);</code></pre>
                     $$
                     Ta cũng thử dùng công thức nhân Quaternion với \(|q^*|^2\):
                     $$
-                        |q^*|^2 = a^2 + \langle -u,-u \rangle + 0 = a^2 + (-x)^2 + (-y)^2 + (-z)^2 = a^2+x^2+y^2+z^2 = |q|^2
+                        |q^*|^2 = a^2 + \langle -u,-u \rangle + 0 = a^2 + (-b)^2 + (-c)^2 + (-d)^2 = a^2+b^2+c^2+d^2 = |q|^2
                     $$
                     Từ đó ta suy ra được:
                     $$
@@ -592,7 +592,7 @@ cube2.rotate(50 * dt, 0, 50 * dt);</code></pre>
                     $$
                     Theo (1), suy ra \(p\) có dạng:
                     $$
-                        p = \cos\frac{\theta}{2} - \sin\frac{\theta}{2}k
+                        p = \cos\frac{\theta}{2} - \sin\frac{\theta}{2}j
                     $$
                     Đó chỉ là phép xoay xung quanh \(j\) - xung quanh trục \(Y\), nhưng thật ra ta có thể để bất kỳ Quaternion đơn vị \(n\) nào vào vị trí của \(j\), gọi nó 
                     là trục \(Y\) và tìm 2 trục \(X\) \(Z\) của trục \(Y\) đó là cũng sẽ ra. Như vậy ta có Quaternion được dùng trong phép xoay góc \(\theta\) xung quanh trục cùng chiều với vector \(n\) là:
@@ -617,25 +617,25 @@ cube2.rotate(50 * dt, 0, 50 * dt);</code></pre>
                     $$
 \left(
 \cos\frac{\gamma}{2}\cos\frac{\beta}{2}\cos\frac{\alpha}{2}
-+
+-
 \sin\frac{\gamma}{2}\sin\frac{\beta}{2}\sin\frac{\alpha}{2}
 \right)
 +
 \left(
 -\cos\frac{\gamma}{2}\cos\frac{\beta}{2}\sin\frac{\alpha}{2}
-+
+-
 \sin\frac{\gamma}{2}\sin\frac{\beta}{2}\cos\frac{\alpha}{2}
 \right)i
 +
 \left(
 -\cos\frac{\gamma}{2}\sin\frac{\beta}{2}\cos\frac{\alpha}{2}
--
++
 \sin\frac{\gamma}{2}\cos\frac{\beta}{2}\sin\frac{\alpha}{2}
 \right)j
 +
 \left(
 -\sin\frac{\gamma}{2}\cos\frac{\beta}{2}\cos\frac{\alpha}{2}
-+
+-
 \cos\frac{\gamma}{2}\sin\frac{\beta}{2}\sin\frac{\alpha}{2}
 \right)k
                     $$

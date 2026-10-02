@@ -337,9 +337,9 @@
                     Gán vào ma trận bùi nhùi ở trên, thế là ta có view matrix mà ta muốn:
                     $$
                         \begin{pmatrix}
-                        r'_x & r'_y & r'_z & -r'_x.t_x -r'_y.t_x-r'_z.t_z\\
-                        u'_x & u'_y & u'_z & -u'_x.t_x -u'_y.t_x-u'_z.t_z \\
-                        f'_x & f'_y & f'_z & -f'_x.t_x -f'_y.t_x-f'_z.t_z \\
+                        r'_x & r'_y & r'_z & -r'_x.t_x -r'_y.t_y-r'_z.t_z\\
+                        u'_x & u'_y & u'_z & -u'_x.t_x -u'_y.t_y-u'_z.t_z \\
+                        f'_x & f'_y & f'_z & -f'_x.t_x -f'_y.t_y-f'_z.t_z \\
                         0 & 0 & 0 & 1
                         \end{pmatrix}=
                         \begin{pmatrix}
@@ -355,7 +355,7 @@
                     thì hiểu theo cách đó cũng được 😳 Ngoài ra khi tìm google bạn sẽ thấy nhiều phiên
                     bản khác nhau của View Matrix, đó là vì nó khác nhau về handedness của hệ tọa độ (trái hay phải) và vector ở dạng ma trận là column hay row, với engine mình đang
                     làm thì nó là hệ tọa độ tay trái (left-handed coordinate) và vector là column vector nếu bạn không nhớ.<br/>
-                    Nhìn vào view matrix, bạn cũng phần nào đoán được nó làm gì, khối 3x3 ở góc trái khi nhân với \(v\) nó sẽ ra tích có hướng của \(v\) với \(r, u, f\), đồng nghĩa
+                    Nhìn vào view matrix, bạn cũng phần nào đoán được nó làm gì, khối 3x3 ở góc trái khi nhân với \(v\) nó sẽ ra tích vô hướng của \(v\) với \(r, u, f\), đồng nghĩa
                     "hình chiếu của \(v\) trên 3 trục mới \(r, u, f\)". Và 3 cái tích vô hướng với \(t\) là "cộng vào \(v\) một vector \(t'\) đã được biến đổi theo trục mới".<br/><br/>
 
                     Có được View matrix rồi, ta bắt tay vào code thôi, ta sẽ làm luôn một hệ thống di chuyển camera như FPS, dùng chuột để nhìn qua lại, WASD để di chuyển, ngoài ra Space
@@ -373,9 +373,9 @@
         matrix.m[2][0] = f.x;
         matrix.m[2][1] = f.y;
         matrix.m[2][2] = f.z;
-        matrix.m[0][3] = -Vector3.dot(r,t);
-        matrix.m[1][3] = -Vector3.dot(u,t);
-        matrix.m[2][3] = -Vector3.dot(f,t);
+        matrix.m[0][3] = -Vector3.dot(r, t);
+        matrix.m[1][3] = -Vector3.dot(u, t);
+        matrix.m[2][3] = -Vector3.dot(f, t);
         matrix.m[3][3] = 1;
         return matrix;
     }
@@ -535,8 +535,8 @@ allTris.sort((a, b) => {
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview15"></div>
                     Về vấn đề thứ hai, đó chính là vấn đề mà ta muốn giải quyết ở <a href="graphics3D3-projection.html">blog 3</a> (vấn đề cube quá gần màn hình, và thậm chí là ra sau cả màn hình).
-                    Lí do ta lại nhìn được cube khi cube ở đằng sau ta là vì ta chưa check trường hợp z âm trong việc hiển thị, cho nên nó ở z=5 cũng giống y hệt như
-                    nó ở z=-5. Nếu bạn nhớ thì hồi làm projection matrix ta có xử lí việc này bằng near plane, nhưng thật ra cái đó chỉ là dùng để "chuẩn hóa" z từ khoảng [near plane, far plane]
+                    Lí do ta lại nhìn được cube khi cube ở đằng sau ta là vì ta chưa check trường hợp z âm trong việc hiển thị, cho nên khi nó ở z=-5 (sau lưng) nó vẫn được vẽ ra giống như khi
+                    nó ở z=5 (trước mặt), chỉ khác là bị lật ngược qua tâm canvas (vì x, y bị chia cho một số âm). Nếu bạn nhớ thì hồi làm projection matrix ta có xử lí việc này bằng near plane, nhưng thật ra cái đó chỉ là dùng để "chuẩn hóa" z từ khoảng [near plane, far plane]
                     tới khoảng [0; 1], để cho z < near plane là sẽ không thấy được, nhưng ta chưa thật sự cài đặt việc "không thấy được" đó. Với cách làm thì thoạt nghĩ ta chỉ cần 
                     không render những tam giác có z âm, nhưng giá trị z chỉ đại diện cho một điểm trên tam giác (cụ thể là chính giữa tam giác), nên không loại bỏ được trường hợp tam giác nằm
                     giữa near plane. Cho nên ta cần có một thuật toán để "cắt" những tam giác nào mà đi xuyên qua near plane, đó gọi là kỹ thuật clipping.<br/><br/>
