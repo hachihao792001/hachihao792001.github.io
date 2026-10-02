@@ -1,0 +1,79 @@
+--- "a/htmlPreviews\\htmlPreview40.html"
++++ "b/htmlPreviews\\htmlPreview41.html"
+@@ -831,40 +831,50 @@
+ 
+ 					shadowTri.calculateSignedDoubleArea();
+ 
+-					let edgeFunctionRow01 = edgeFunction(
+-						shadowTri.vertices[0],
+-						shadowTri.vertices[1],
+-						new Vector3(bbox[0], bbox[2], 0));
+-					let edgeFunctionRow12 = edgeFunction(
+-						shadowTri.vertices[1],
+-						shadowTri.vertices[2],
+-						new Vector3(bbox[0], bbox[2], 0));
+-					let edgeFunctionRow20 = edgeFunction(
+-						shadowTri.vertices[2],
+-						shadowTri.vertices[0],
+-						new Vector3(bbox[0], bbox[2], 0));
++					const vertex0 = shadowTri.vertices[0],
++						vertex1 = shadowTri.vertices[1],
++						vertex2 = shadowTri.vertices[2];
++					const vertex0X = vertex0.x, vertex0Y = vertex0.y, vertex0Z = vertex0.z;
++					const vertex1X = vertex1.x, vertex1Y = vertex1.y, vertex1Z = vertex1.z;
++					const vertex2X = vertex2.x, vertex2Y = vertex2.y, vertex2Z = vertex2.z;
++
++					const minX = bbox[0], maxX = bbox[1], minY = bbox[2], maxY = bbox[3];
++
++					const signedDoubleArea = shadowTri.signedDoubleArea;
++
++					const edgeSlopeX01 = vertex0Y - vertex1Y;
++					const edgeSlopeX12 = vertex1Y - vertex2Y;
++					const edgeSlopeX20 = vertex2Y - vertex0Y;
++					const edgeSlopeY01 = vertex1X - vertex0X;
++					const edgeSlopeY12 = vertex2X - vertex1X;
++					const edgeSlopeY20 = vertex0X - vertex2X;
++
++					const shadowMap = this.shadowMap;
++
++					let edgeFunctionRow01 = edgeSlopeX01 * (minX - vertex0X) + edgeSlopeY01 * (minY - vertex0Y);
++					let edgeFunctionRow12 = edgeSlopeX12 * (minX - vertex1X) + edgeSlopeY12 * (minY - vertex1Y);
++					let edgeFunctionRow20 = edgeSlopeX20 * (minX - vertex2X) + edgeSlopeY20 * (minY - vertex2Y);
++
++					for (let y = minY; y <= maxY; y++) {
++						const shadowMapRow = shadowMap[y];
+ 
+-					for (let y = bbox[2]; y <= bbox[3]; y++) {
+ 						let edgeFunction01 = edgeFunctionRow01;
+ 						let edgeFunction12 = edgeFunctionRow12;
+ 						let edgeFunction20 = edgeFunctionRow20;
+-						for (let x = bbox[0]; x <= bbox[1]; x++) {
++						for (let x = minX; x <= maxX; x++) {
+ 							if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+-								const baryCoord0 = edgeFunction12 / shadowTri.signedDoubleArea;
+-								const baryCoord1 = edgeFunction20 / shadowTri.signedDoubleArea;
+-								const baryCoord2 = edgeFunction01 / shadowTri.signedDoubleArea;
+-								const z = shadowTri.vertices[0].z * baryCoord0 + shadowTri.vertices[1].z * baryCoord1 + shadowTri.vertices[2].z * baryCoord2;
+-								if (z < this.shadowMap[y][x]) {
+-									this.shadowMap[y][x] = z;
++								const z = (edgeFunction12 * vertex0Z + edgeFunction20 * vertex1Z + edgeFunction01 * vertex2Z) / signedDoubleArea;
++								if (z < shadowMapRow[x]) {
++									shadowMapRow[x] = z;
+ 								}
+ 							}
+-							edgeFunction01 += (shadowTri.vertices[0].y - shadowTri.vertices[1].y);
+-							edgeFunction12 += (shadowTri.vertices[1].y - shadowTri.vertices[2].y);
+-							edgeFunction20 += (shadowTri.vertices[2].y - shadowTri.vertices[0].y);
++							edgeFunction01 += edgeSlopeX01;
++							edgeFunction12 += edgeSlopeX12;
++							edgeFunction20 += edgeSlopeX20;
+ 						}
+-						edgeFunctionRow01 += (shadowTri.vertices[1].x - shadowTri.vertices[0].x);
+-						edgeFunctionRow12 += (shadowTri.vertices[2].x - shadowTri.vertices[1].x);
+-						edgeFunctionRow20 += (shadowTri.vertices[0].x - shadowTri.vertices[2].x);
++						edgeFunctionRow01 += edgeSlopeY01;
++						edgeFunctionRow12 += edgeSlopeY12;
++						edgeFunctionRow20 += edgeSlopeY20;
+ 					}
+ 				}
+ 			}

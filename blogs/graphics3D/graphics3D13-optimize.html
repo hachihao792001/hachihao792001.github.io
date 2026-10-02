@@ -601,6 +601,161 @@ Shadow map : todo ms
 Geometry   : todo ms
 Rasterizer : todo ms
 Tổng      : todo ms</code></pre>
+					Số liệu đã lật ngược hẳn so với lúc đầu blog 😳 Lớn nhất bây giờ không còn là rasterizer nữa, mà là shadow map, which is thứ mà ta
+					sẽ xử lí ở phần dưới.
+					<h2>5. Shadow map cũng là một rasterizer</h2>
+
+					<code>buildShadowMap</code> thì nó cũng chính là một cái rasterizer thu nhỏ: cũng loop qua từng tam giác,
+					cũng tính bounding box, cũng chạy 2 vòng for pixel, cũng nội suy barycentric để ra độ sâu. Khác mỗi chỗ là nó ghi
+					độ sâu vào <code>shadowMap</code> chứ không ghi màu ra màn hình. Như vậy mọi thứ ta sửa ở phần 2 và 3 đều
+					áp dụng được cho nó. Phần này và phần sau sẽ làm đúng chuyện đó.<br/><br/>
+
+					Bắt đầu từ dòng đầu tiên trong vòng lặp tam giác:<br/><br/>
+
+					<pre><code class="language-javascript">for (let tri of tris) {
+	let shadowTri = tri.clone();
+
+	if (Vector3.dot(tri.getWorldNormal(), this.dir) >= 0) continue;
+	...
+}</code></pre>
+					Có 2 thứ sai sai ở đây:
+					<ul>
+						<li><code>clone()</code> chạy <b>trước</b> cái <code>continue</code>. Tức là tam giác nào quay lưng lại nguồn sáng
+						thì ta vẫn clone nó rồi bỏ đi.</li>
+						<li>Bản thân <code>clone()</code> cũng không rẻ. Mỗi lần gọi là một <code>new Triangle()</code> (trong
+						constructor có 3 cái clone cho <code>worldVertices</code>), tiếp đó là clone 3 <code>Vector3</code> cho
+						<code>vertices</code>, 3 cái nữa cho <code>worldVertices</code> (again), 3 <code>Vector2</code> cho <code>uv</code>.
+						13 object cho một tam giác 🥶.</li>
+					</ul>
+
+					Mà để ý cái <code>shadowTri</code> này: nó chỉ sống đúng một vòng lặp, vòng lặp sau lại tạo cái mới, cho nên ta sẽ tạo 1
+					<code>shadowTri</code> duy nhất ngoài vòng lặp để dùng nó lại liên tục. Tuy nhiên ta có thể đi sâu hơn nữa, tạo 1 <code>shadowTri</code>
+					ngoài vòng lặp frame luôn rồi dùng lại mỗi frame, vì 13 object cũng không ít.<br/><br/>
+
+					Như vậy ta tạo <code>shadowTri</code> ở constructor của <code>DirectionalLight</code>, lúc đầu là tam giác rỗng:
+
+					<pre><code class="language-javascript">class DirectionalLight {
+	constructor(dir, intensity) {
+		...
+
+		this.shadowTri = new Triangle(
+			[new Vector3(0, 0, 0), new Vector3(0, 0, 0), new Vector3(0, 0, 0)],
+			[new Vector2(0, 0), new Vector2(0, 0), new Vector2(0, 0)]);
+		...
+	}
+	...
+}</code></pre>
+
+					Rồi trong <code>buildShadowMap</code>, thay <code>clone()</code> bằng một vòng chép 3 đỉnh. Và vì không còn
+					<code>clone()</code> nữa thì cái <code>continue</code> tự nhiên được đẩy lên trên cùng: tam giác không được chiếu
+					sáng thì không chép gì hết:<br/><br/>
+
+					<pre><code class="language-javascript">const shadowTri = this.shadowTri;
+
+for (let tri of tris) {
+	if (Vector3.dot(tri.getWorldNormal(), this.dir) >= 0) continue;
+
+	// chép từng giá trị vào tam giác, không new Vector3. Chỉ chép vertices vì đó là thứ duy nhất ta cần
+	for (let i = 0; i < 3; i++) {
+		const sourceVertex = tri.vertices[i];
+		const shadowVertex = shadowTri.vertices[i];
+		shadowVertex.x = sourceVertex.x;
+		shadowVertex.y = sourceVertex.y;
+		shadowVertex.z = sourceVertex.z;
+		shadowVertex.w = sourceVertex.w;
+	}
+
+	shadowTri.mulMat4x4(this.viewMatrix);
+	...
+}</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview40"></div>
+					Kết quả đo:
+					<pre><code>Thời gian chạy (median của 20 frames):
+Shadow map : 5.50 ms
+Geometry   : 1.10 ms
+Rasterizer : 5.60 ms
+Tổng      : 12.20 ms</code></pre><br/>
+
+					Tiếp theo tới phần bên trong vòng lặp pixel:
+
+					<pre><code class="language-javascript">for (let x = bbox[0]; x <= bbox[1]; x++) {
+	if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+		const baryCoord0 = edgeFunction12 / shadowTri.signedDoubleArea;
+		const baryCoord1 = edgeFunction20 / shadowTri.signedDoubleArea;
+		const baryCoord2 = edgeFunction01 / shadowTri.signedDoubleArea;
+		const z = shadowTri.vertices[0].z * baryCoord0 + shadowTri.vertices[1].z * baryCoord1 + shadowTri.vertices[2].z * baryCoord2;
+		if (z < this.shadowMap[y][x]) {
+			this.shadowMap[y][x] = z;
+		}
+	}
+	edgeFunction01 += (shadowTri.vertices[0].y - shadowTri.vertices[1].y);
+	edgeFunction12 += (shadowTri.vertices[1].y - shadowTri.vertices[2].y);
+	edgeFunction20 += (shadowTri.vertices[2].y - shadowTri.vertices[0].y);
+}</code></pre>
+					Cũng như phần 3, ta cũng bốc hết các chỗ truy cập property của class ra ngoài vòng lặp:
+					<pre><code class="language-javascript">// mọi thứ mà vòng lặp pixel cần, đọc ra một lần thay vì đọc lại ở mỗi pixel
+const vertex0 = shadowTri.vertices[0],
+	vertex1 = shadowTri.vertices[1],
+	vertex2 = shadowTri.vertices[2];
+const vertex0X = vertex0.x, vertex0Y = vertex0.y, vertex0Z = vertex0.z;
+const vertex1X = vertex1.x, vertex1Y = vertex1.y, vertex1Z = vertex1.z;
+const vertex2X = vertex2.x, vertex2Y = vertex2.y, vertex2Z = vertex2.z;
+
+const minX = bbox[0], maxX = bbox[1], minY = bbox[2], maxY = bbox[3];
+
+const signedDoubleArea = shadowTri.signedDoubleArea;
+
+const edgeSlopeX01 = vertex0Y - vertex1Y;
+const edgeSlopeX12 = vertex1Y - vertex2Y;
+const edgeSlopeX20 = vertex2Y - vertex0Y;
+const edgeSlopeY01 = vertex1X - vertex0X;
+const edgeSlopeY12 = vertex2X - vertex1X;
+const edgeSlopeY20 = vertex0X - vertex2X;
+
+const shadowMap = this.shadowMap;
+
+let edgeFunctionRow01 = edgeSlopeX01 * (minX - vertex0X) + edgeSlopeY01 * (minY - vertex0Y);
+let edgeFunctionRow12 = edgeSlopeX12 * (minX - vertex1X) + edgeSlopeY12 * (minY - vertex1Y);
+let edgeFunctionRow20 = edgeSlopeX20 * (minX - vertex2X) + edgeSlopeY20 * (minY - vertex2Y);
+
+for (let y = minY; y <= maxY; y++) {
+	// lấy luôn cả hàng, để khỏi phải tra bảng 2 chiều ở mỗi pixel
+	const shadowMapRow = shadowMap[y];
+
+	let edgeFunction01 = edgeFunctionRow01;
+	let edgeFunction12 = edgeFunctionRow12;
+	let edgeFunction20 = edgeFunctionRow20;
+	for (let x = minX; x <= maxX; x++) {
+		if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+			const z = (edgeFunction12 * vertex0Z + edgeFunction20 * vertex1Z + edgeFunction01 * vertex2Z) / signedDoubleArea;
+			if (z < shadowMapRow[x]) {
+				shadowMapRow[x] = z;
+			}
+		}
+		edgeFunction01 += edgeSlopeX01;
+		edgeFunction12 += edgeSlopeX12;
+		edgeFunction20 += edgeSlopeX20;
+	}
+	edgeFunctionRow01 += edgeSlopeY01;
+	edgeFunctionRow12 += edgeSlopeY12;
+	edgeFunctionRow20 += edgeSlopeY20;
+}</code></pre>
+
+					So với bản trước: <b>5.50 ms xuống còn 1.60 ms</b>. Một frame đi từ 12.20 ms xuống 8.30 ms, khá là drastic.
+					Vẫn là bài học cũ: cái gì nằm trong vòng lặp pixel thì nó được nhân lên vài
+					trăm nghìn lần, nên một phép truy cập property tưởng như vô hại cũng thành cost.<br/><br/>
+
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview41"></div>
+					Kết quả đo:
+					<pre><code>Thời gian chạy (median của 20 frames):
+Shadow map : 1.60 ms
+Geometry   : 1.10 ms
+Rasterizer : 5.60 ms
+Tổng      : 8.30 ms</code></pre>
+
+					
 				<div id="graphics3D-nav-bottom"></div>
             </div>
         </div>

@@ -1,0 +1,36 @@
+--- "a/htmlPreviews\\htmlPreview39.html"
++++ "b/htmlPreviews\\htmlPreview40.html"
+@@ -771,6 +771,10 @@
+ 			constructor(dir, intensity) {
+ 				this.dir = dir.normalize();
+ 				this.intensity = intensity;
++
++				this.shadowTri = new Triangle(
++					[new Vector3(0, 0, 0), new Vector3(0, 0, 0), new Vector3(0, 0, 0)],
++					[new Vector2(0, 0), new Vector2(0, 0), new Vector2(0, 0)]);
+ 				this.shadowMap = [];
+ 				for (let i = 0; i < shadowMapSize; i++) {
+ 					let row = [];
+@@ -800,11 +804,20 @@
+ 					}
+ 				}
+ 
+-				for (let tri of tris) {
+-					let shadowTri = tri.clone();
++				const shadowTri = this.shadowTri;
+ 
++				for (let tri of tris) {
+ 					if (Vector3.dot(tri.getWorldNormal(), this.dir) >= 0) continue;
+ 
++					for (let i = 0; i < 3; i++) {
++						const sourceVertex = tri.vertices[i];
++						const shadowVertex = shadowTri.vertices[i];
++						shadowVertex.x = sourceVertex.x;
++						shadowVertex.y = sourceVertex.y;
++						shadowVertex.z = sourceVertex.z;
++						shadowVertex.w = sourceVertex.w;
++					}
++
+ 					shadowTri.mulMat4x4(this.viewMatrix);
+ 					shadowTri.mulMat4x4(this.projectionMatrix);
+ 					shadowTri.perspectiveDivide();
