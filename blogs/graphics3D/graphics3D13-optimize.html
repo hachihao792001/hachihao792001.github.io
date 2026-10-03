@@ -46,8 +46,8 @@
                     <h1>Tối ưu performance</h1>
 
                     <i>Ban đầu thì blog 12 là blog cuối của series này. Tuy nhiên sau đó thì mình có implement cơ chế <a href="../portalblog/portalblog.html">portal</a> lên trên engine này, và sau đó nữa mình có
-                    tách nó thành <a href="https://github.com/hachihao792001/HanvasEngine">Hanvas Engine</a> như trên nói.
-                    Qua 2 quá trình trên mình có thêm thắt sửa khá nhiều thứ. Nên mình viết thêm 2 blog 13 và 14 để cập nhật những gì mà mình đã làm với Hanvas Engine, để có cái base để build
+                    tách nó thành <a href="https://github.com/hachihao792001/HanvasEngine">Hanvas Engine</a> như <a href="graphics3D-intro.html">intro</a> nói.
+                    Qua 2 quá trình trên mình có thêm thắt sửa khá nhiều thứ. Nên mình viết thêm 3 blog 13, 14 và 15 để cập nhật những gì mà mình đã làm với Hanvas Engine, để có cái base để build
                     thêm bất cứ thứ gì lên nó cũng được. 😳</i><br/><br/>
 
                     Demo cuối blog 12 cũng khá là mượt (khoảng 40 fps trên máy mình), tuy nhiên nó đang chạy trên 1 canvas 400x300 nhỏ xíu.
@@ -135,7 +135,7 @@ const shadowTimes = [];
 const geometryTimes = [];
 const rasterizeTimes = [];
 
-for (let i = 0; i < 20; i++) {
+for (let i = 0; i < 60; i++) {
     const frameTimes = frame();
 
     shadowTimes.push(frameTimes.shadowTime);
@@ -147,7 +147,7 @@ const medianShadowTime = median(shadowTimes);
 const medianGeometryTime = median(geometryTimes);
 const medianRasterizeTime = median(rasterizeTimes);
 
-console.log("Thời gian chạy (median của 20 frames):");
+console.log("Thời gian chạy (median của 60 frames):");
 console.log(`  Shadow map : ${medianShadowTime.toFixed(2)} ms`);
 console.log(`  Geometry   : ${medianGeometryTime.toFixed(2)} ms`);
 console.log(`  Rasterizer : ${medianRasterizeTime.toFixed(2)} ms`);
@@ -155,15 +155,15 @@ console.log(
     `  Tổng      : ${(medianShadowTime + medianGeometryTime + medianRasterizeTime).toFixed(2)} ms`
 );</code></pre>
                     Kết quả mình đo được trên máy mình (Opera, 13th Gen Intel(R) Core(TM) i7-13620H, Laptop chưa cắm sạc):
-                    <pre><code>Thời gian chạy (median của 20 frames):
-Shadow map : 8.90 ms
-Geometry   : 0.70 ms
-Rasterizer : 23.70 ms
-Tổng      : 33.30 ms</code></pre>
+                    <pre><code>Thời gian chạy (median của 60 frames):
+Shadow map : 10.90 ms
+Geometry   : 1.70 ms
+Rasterizer : 20.40 ms
+Tổng      : 33.00 ms</code></pre>
                     Khoảng 2/3 thời gian nằm ở khúc rasterize, tức là ở cái vòng lặp pixel trong <code>processTriangles</code>.
                     Canvas 400x300 là 120,000 pixel, mỗi pixel có thể được xử lý nhiều lần (mỗi tam giác phủ lên nó một lần),
                     cộng thêm shadow map 512x512 nữa. Nghĩa là mỗi thứ nhỏ xíu bạn làm bên trong vòng lặp đó sẽ bị nhân lên vài trăm nghìn lần mỗi frame.
-                    Cho nên blog này sẽ dành gần như toàn bộ thời gian cho đúng một hàm này.
+                    Cho nên blog này sẽ dành gần như hầu hết thời gian cho đúng một hàm này.
 
                     <h2>2. Chuyển screen buffer và depth buffer thành mảng 1 chiều</h2>
                     Đây là cách chúng ta đang chứa màn hình và depth buffer từ <a href="graphics3D8-rasterizer.html">blog 8</a>:
@@ -264,11 +264,11 @@ for (let i = 0; i < canvas.height; i++) {
 					Kết quả:
                     <div class="htmlPreview" id="htmlPreview37"></div>
                     Kết quả đo:
-                    <pre><code>Thời gian chạy (median của 20 frames):
-Shadow map : todo ms
-Geometry   : todo ms
-Rasterizer : todo ms
-Tổng      : todo ms</code></pre>
+                    <pre><code>Thời gian chạy (median của 60 frames):
+Shadow map : 10.50 ms
+Geometry   : 1.70 ms
+Rasterizer : 18.90 ms
+Tổng      : 31.10 ms</code></pre>
 
                     <h2>3. Bỏ hết cấp phát động trong vòng lặp pixel</h2>
                     Đây là phần mà sẽ giúp ta nhiều nhất. Chúng ta xem lại vòng lặp pixel, xem mỗi pixel nó làm những gì:
@@ -460,11 +460,11 @@ const textureWidth = texture ? texture.width : 0, textureHeight = texture ? text
 					Kết quả:
                     <div class="htmlPreview" id="htmlPreview38"></div>
                     Kết quả đo:
-                    <pre><code>Thời gian chạy (median của 20 frames):
-Shadow map : todo ms
-Geometry   : todo ms
-Rasterizer : todo ms
-Tổng      : todo ms</code></pre>
+                    <pre><code>Thời gian chạy (median của 60 frames):
+Shadow map : 10.40 ms
+Geometry   : 1.60 ms
+Rasterizer : 10.20 ms
+Tổng      : 22.20 ms</code></pre>
 
 					<h2>4. Chặn xét point light mỗi pixel</h2>
 					Ở <a href="graphics3D9-lighting.html">blog 9</a>, với mỗi pixel ta có cái
@@ -596,11 +596,11 @@ Tổng      : todo ms</code></pre>
 					Kết quả:
                     <div class="htmlPreview" id="htmlPreview39"></div>
                     Kết quả đo:
-                    <pre><code>Thời gian chạy (median của 20 frames):
-Shadow map : todo ms
-Geometry   : todo ms
-Rasterizer : todo ms
-Tổng      : todo ms</code></pre>
+                    <pre><code>Thời gian chạy (median của 60 frames):
+Shadow map : 10.80 ms
+Geometry   : 1.60 ms
+Rasterizer : 9.30 ms
+Tổng      : 21.70 ms</code></pre>
 					Số liệu đã lật ngược hẳn so với lúc đầu blog 😳 Lớn nhất bây giờ không còn là rasterizer nữa, mà là shadow map, which is thứ mà ta
 					sẽ xử lí ở phần dưới.
 					<h2>5. Shadow map cũng là một rasterizer</h2>
@@ -671,11 +671,11 @@ for (let tri of tris) {
 					Kết quả:
 					<div class="htmlPreview" id="htmlPreview40"></div>
 					Kết quả đo:
-					<pre><code>Thời gian chạy (median của 20 frames):
-Shadow map : 5.50 ms
-Geometry   : 1.10 ms
-Rasterizer : 5.60 ms
-Tổng      : 12.20 ms</code></pre><br/>
+					<pre><code>Thời gian chạy (median của 60 frames):
+Shadow map : 9.60 ms
+Geometry   : 1.60 ms
+Rasterizer : 9.30 ms
+Tổng      : 20.50 ms</code></pre><br/>
 
 					Tiếp theo tới phần bên trong vòng lặp pixel:
 
@@ -749,11 +749,11 @@ for (let y = minY; y <= maxY; y++) {
 					Kết quả:
 					<div class="htmlPreview" id="htmlPreview41"></div>
 					Kết quả đo:
-					<pre><code>Thời gian chạy (median của 20 frames):
-Shadow map : 1.60 ms
-Geometry   : 1.10 ms
-Rasterizer : 5.60 ms
-Tổng      : 8.30 ms</code></pre>
+					<pre><code>Thời gian chạy (median của 60 frames):
+Shadow map : 3.10 ms
+Geometry   : 1.80 ms
+Rasterizer : 10.10 ms
+Tổng      : 15.00 ms</code></pre>
 
 					<h2>6. Tối ưu phần geometry</h2>
 					Phần geometry là thứ duy nhất còn lại mà ta chưa sờ tới trong blog, thật ra cũng không có chỗ nào nghiêm trọng, ngoài
@@ -810,34 +810,36 @@ visibleTris.sort((a, b) => a.viewDistanceSquared - b.viewDistanceSquared);</code
 					Kết quả:
 					<div class="htmlPreview" id="htmlPreview42"></div>
 					Kết quả đo:
-					<pre><code>Thời gian chạy (median của 20 frames):
-Shadow map : 1.60 ms
-Geometry   : 0.70 ms
-Rasterizer : 5.60 ms
-Tổng      : 7.90 ms</code></pre>
+					<pre><code>Thời gian chạy (median của 60 frames):
+Shadow map : 3.00 ms
+Geometry   : 1.70 ms
+Rasterizer : 9.90 ms
+Tổng      : 14.60 ms</code></pre>
 
 					<h2>7. Tổng kết</h2>
-					Cả blog này, từ bản cuối blog 12 tới giờ, đo trong cùng một lần chạy:<br/><br/>
+					Cả blog này, từ bản cuối blog 12 tới giờ, số đo các lần tối ưu như sau (nói thật đừng tin cái này quá, sai số khá nhiều vì CPU lúc này lúc kia, nhưng thay đổi
+					lớn thì bạn sẽ thấy rất rõ):<br/><br/>
 
 					<table class="table table-bordered">
 					<tr>
-						<th>Bản</th><th>Shadow map</th><th>Geometry</th><th>Rasterizer</th><th>Tổng</th>
+						<th>Bản</th><th>Shadow map</th><th>Geometry</th><th>Rasterizer</th><th>Tổng thời gian 1 frame</th>
 					</tr>
-					<tr><td>Cuối blog 12</td><td>6.30</td><td>1.20</td><td>12.30</td><td>19.80</td></tr>
-					<tr><td>Cuối phần 2</td><td>6.20</td><td>1.20</td><td>11.10</td><td>18.50</td></tr>
-					<tr><td>Cuối phần 3</td><td>6.30</td><td>1.20</td><td>5.90</td><td>13.40</td></tr>
-					<tr><td>Cuối phần 4</td><td>6.30</td><td>1.30</td><td>5.70</td><td>13.30</td></tr>
-					<tr><td>Cuối phần 5</td><td>5.50</td><td>1.10</td><td>5.60</td><td>12.20</td></tr>
-					<tr><td>Cuối phần 6</td><td>1.60</td><td>1.10</td><td>5.60</td><td>8.30</td></tr>
+					<tr><td>Cuối blog 12</td><td>10.90</td><td>1.70</td><td>20.40</td><td>33.00</td></tr>
+					<tr><td>Cuối phần 2 (Chuyển <code>screenBuffer</code>, <code>depthBuffer</code> thành mảng 1 chiều)</td><td>10.50</td><td>1.70</td><td>18.90</td><td>31.10</td></tr>
+					<tr><td>Cuối phần 3 (Bỏ hết cấp phát động trong vòng lặp pixel)</td><td>10.40</td><td>1.60</td><td>10.20</td><td>22.20</td></tr>
+					<tr><td>Cuối phần 4 (Lọc point light cho tam giác trước khi chạy pixel)</td><td>10.80</td><td>1.60</td><td>9.30</td><td>21.70</td></tr>
+					<tr><td>Giữa phần 5 (<code>buildShadowMap</code> chỉ dùng 1 <code>shadowTri</code> xuyên suốt engine)</td><td>9.60</td><td>1.60</td><td>9.30</td><td>20.50</td></tr>
+					<tr><td>Cuối phần 5 (Bỏ hết cấp phát động trong <code>buildShadowMap</code>)</td><td>3.10</td><td>1.80</td><td>10.10</td><td>15.00</td></tr>
+					<tr><td>Cuối phần 6 (Tối ưu phần sort tam giác và <code>getTransformedTriangles</code>)</td><td>3.00</td><td>1.70</td><td>9.90</td><td>14.60</td></tr>
 					</table>
 
 					Ngoài ra, dưới đây là những thứ mà mình đã thử để optimize, nhưng hiệu quả đem lại không cao, và nó làm code khó đọc:
 					<ol>
-						<li>Bỏ luôn <code>new Vector3</code> trong isInShadow: Lí do vẫn còn 1 <code>new Vector3</code> trong <code>isInShadow</code>
+						<li>Bỏ luôn <code>new Vector3</code> trong <code>isInShadow</code>: Lí do vẫn còn 1 <code>new Vector3</code> trong <code>isInShadow</code>
 						là vì để ta tiện xài hàm nhân ma trận, nếu ta bỏ luôn nó thì ta phải viết lại các phép tính nhân ma trận
 						trong hàm, nhìn sẽ rất là rối.</li>
 						<li>Chuyển <code>shadowMap</code> thành mảng 1 chiều như <code>screenBuffer</code> và <code>depthBuffer</code>: 
-							Vì shadowMap là mảng 2 chiều số thực (không cần cấp phát động),
+							Vì <code>shadowMap</code> là mảng 2 chiều số thực (không cần cấp phát động),
 							chứ không phải mảng 2 chiều object (Color), nên dù là mảng 2 chiều hay 1 chiều nó cũng không khác nhau là mấy.
 						</li>
 					</ol>
