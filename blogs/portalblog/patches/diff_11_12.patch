@@ -46,7 +46,7 @@
  
 @@ -1240,6 +1268,11 @@
          ];
-         let keyStates = [];
+         let keyStates = {};
  
 +        let cameraRotLerpStart = camera.rotation;
 +        let cameraRotLerpEnd = camera.rotation;

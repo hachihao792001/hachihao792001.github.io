@@ -99,7 +99,7 @@
  		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
  		let camera = new Camera(Vector3.zero, Vector3.zero, 2, 0.2);
 +		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
- 		let keyStates = [];
+ 		let keyStates = {};
  
  		const fpsInfo = document.getElementById("fps");
 @@ -440,36 +528,43 @@

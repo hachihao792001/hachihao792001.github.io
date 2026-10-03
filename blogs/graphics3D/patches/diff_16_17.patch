@@ -10,7 +10,7 @@
 +			new Plane(Vector3.right, new Vector3(-1, 0, 0)),
 +			new Plane(Vector3.left, new Vector3(1, 0, 0))
 +		];
- 		let keyStates = [];
+ 		let keyStates = {};
  
  		const fpsInfo = document.getElementById("fps");
 @@ -548,7 +554,18 @@

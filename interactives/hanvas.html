@@ -1134,6 +1134,7 @@
 					transformedTri.rotate(rotation);
 					transformedTri.mulMat4x4(translationMat);
 					transformedTri.updateWorldVertices();
+					transformedTri.color = this.color;
 					transformedTri.texture = this.texture;
 					transformedTris.push(transformedTri);
 				}

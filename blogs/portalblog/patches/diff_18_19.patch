@@ -84,7 +84,7 @@
 @@ -1475,6 +1495,7 @@
              new Plane(Vector3.left, new Vector3(1, 0, 0))
          ];
-         let keyStates = [];
+         let keyStates = {};
 +        let screenCenter = new Vector3(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 0);
  
          let cameraRotLerpStart = camera.rotation;

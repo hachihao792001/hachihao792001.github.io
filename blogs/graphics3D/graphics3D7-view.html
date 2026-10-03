@@ -387,7 +387,7 @@
                     thông tin input vào, và truyền luôn dt để cập nhật vị trí theo tốc độ thống nhất. Hàm updateRotation sẽ nhận vào tham số là sự thay đổi của vị trí con chuột so với
                     frame trước (sẽ nói rõ hơn ở phần dưới): (mouseMovementX, mouseMovementY). Sử dụng mouseMovementX để quay theo trục up (qua trái qua phải), chuột qua phải thì ta muốn
                     xoay camera theo cùng chiều kim đồng, tuy nhiên engine ta làm phép xoay theo ngược chiều kim đồng hồ, cho nên ta phải đổi dấu mouseMovementX. Với nhìn lên xuống, thì
-                    ta xoay theo trục right, cũng đổi dấu mouseMovementY với lí do tương tự. Hàm updateMovement nhận vào dt của frame hiện tại, và keyStates, là một mảng đánh dấu phím nào
+                    ta xoay theo trục right, cũng đổi dấu mouseMovementY với lí do tương tự. Hàm updateMovement nhận vào dt của frame hiện tại, và keyStates, là một map đánh dấu phím nào
                     đang được nhấn trong frame hiện tại, dựa vào keystates để cộng trừ pos tương ứng.
                     <pre><code class="language-javascript">class Camera {
     constructor(pos, euler, speed, sensitivity) {
@@ -463,7 +463,7 @@
                     <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event">keydown</a> và 
                     <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/keyup_event">keyup</a> để nhận event nhấn phím xuống và thả phím ra,
                     lấy phím đang nhấn bằng e.key và set thành true hoặc false tương ứng.
-                    <pre><code class="language-javascript">let keyStates = [];
+                    <pre><code class="language-javascript">let keyStates = {};	// đây là một map, không phải một mảng, nên xài {} thay vì []
 
 ...
                         
