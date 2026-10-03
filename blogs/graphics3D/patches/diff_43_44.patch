@@ -1,0 +1,158 @@
+--- "a/htmlPreviews\\htmlPreview43.html"
++++ "b/htmlPreviews\\htmlPreview44.html"
+@@ -36,15 +36,17 @@
+ 	</div>
+ 	<script>
+ 		// ===== math.js =====
+-		function edgeFunction(v0, v1, p) {
+-			return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
+-		}
++		class MathExtend {
++			static edgeFunction(v0, v1, p) {
++				return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
++			}
+ 
+-		function hypotSquare(ax, ay, az, bx, by, bz) {
+-			const dx = ax - bx;
+-			const dy = ay - by;
+-			const dz = az - bz;
+-			return dx * dx + dy * dy + dz * dz;
++			static hypotSquare(ax, ay, az, bx, by, bz) {
++				const dx = ax - bx;
++				const dy = ay - by;
++				const dz = az - bz;
++				return dx * dx + dy * dy + dz * dz;
++			}
+ 		}
+ 
+ 		class Vector2 {
+@@ -287,6 +289,44 @@
+ 			}
+ 		}
+ 
++		class BoundingBox {
++			constructor(minX, maxX, minY, maxY) {
++				this.minX = minX;
++				this.maxX = maxX;
++				this.minY = minY;
++				this.maxY = maxY;
++			}
++
++			isValid() {
++				return this.minX <= this.maxX && this.minY <= this.maxY;
++			}
++
++			static union(bbox1, bbox2) {
++				return new BoundingBox(
++					Math.min(bbox1.minX, bbox2.minX),
++					Math.max(bbox1.maxX, bbox2.maxX),
++					Math.min(bbox1.minY, bbox2.minY),
++					Math.max(bbox1.maxY, bbox2.maxY),
++				);
++			}
++
++			static intersect(bbox1, bbox2) {
++				return new BoundingBox(
++					Math.max(bbox1.minX, bbox2.minX),
++					Math.min(bbox1.maxX, bbox2.maxX),
++					Math.max(bbox1.minY, bbox2.minY),
++					Math.min(bbox1.maxY, bbox2.maxY),
++				);
++			}
++
++			static isOverlap(bbox1, bbox2) {
++				return (
++					((bbox1.minX < bbox2.maxX && bbox1.maxX > bbox2.minX) || (bbox2.minX < bbox1.maxX && bbox2.maxX > bbox1.minX)) &&
++					((bbox1.minY < bbox2.maxY && bbox1.maxY > bbox2.minY) || (bbox2.minY < bbox1.maxY && bbox2.maxY > bbox1.minY))
++				);
++			}
++		}
++
+ 		// ===== graphics.js =====
+ 		class Color {
+ 			constructor(r, g, b) {
+@@ -505,10 +545,10 @@
+ 						vertex2Y = vertex2.y,
+ 						vertex2Z = vertex2.z;
+ 
+-					const minX = bbox[0],
+-						maxX = bbox[1],
+-						minY = bbox[2],
+-						maxY = bbox[3];
++					const minX = bbox.minX,
++						maxX = bbox.maxX,
++						minY = bbox.minY,
++						maxY = bbox.maxY;
+ 
+ 					const signedDoubleArea = shadowTri.signedDoubleArea;
+ 
+@@ -624,9 +664,9 @@
+ 
+ 					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
+ 
+-					let edgeFunctionRow01 = edgeFunction(tri.vertices[0], tri.vertices[1], new Vector3(bbox[0], bbox[2], 0));
+-					let edgeFunctionRow12 = edgeFunction(tri.vertices[1], tri.vertices[2], new Vector3(bbox[0], bbox[2], 0));
+-					let edgeFunctionRow20 = edgeFunction(tri.vertices[2], tri.vertices[0], new Vector3(bbox[0], bbox[2], 0));
++					let edgeFunctionRow01 = MathExtend.edgeFunction(tri.vertices[0], tri.vertices[1], new Vector3(bbox.minX, bbox.minY, 0));
++					let edgeFunctionRow12 = MathExtend.edgeFunction(tri.vertices[1], tri.vertices[2], new Vector3(bbox.minX, bbox.minY, 0));
++					let edgeFunctionRow20 = MathExtend.edgeFunction(tri.vertices[2], tri.vertices[0], new Vector3(bbox.minX, bbox.minY, 0));
+ 
+ 					const vertex0 = tri.vertices[0],
+ 						vertex1 = tri.vertices[1],
+@@ -677,12 +717,12 @@
+ 					const textureWidth = texture ? texture.width : 0,
+ 						textureHeight = texture ? texture.height : 0;
+ 
+-					for (let y = bbox[2]; y <= bbox[3]; y++) {
++					for (let y = bbox.minY; y <= bbox.maxY; y++) {
+ 						let edgeFunction01 = edgeFunctionRow01;
+ 						let edgeFunction12 = edgeFunctionRow12;
+ 						let edgeFunction20 = edgeFunctionRow20;
+-						let pixelIndex = y * canvasWidth + bbox[0];
+-						for (let x = bbox[0]; x <= bbox[1]; x++) {
++						let pixelIndex = y * canvasWidth + bbox.minX;
++						for (let x = bbox.minX; x <= bbox.maxX; x++) {
+ 							if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+ 								const baryCoord0 = edgeFunction12 / signedDoubleArea;
+ 								const baryCoord1 = edgeFunction20 / signedDoubleArea;
+@@ -934,7 +974,7 @@
+ 				return outTris;
+ 			}
+ 
+-			boundingBox(maxWidth = gameCanvas.width, maxHeight = gameCanvas.height) {
++			boundingBox(maxWidth, maxHeight) {
+ 				let minX = Math.min(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
+ 				let maxX = Math.max(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
+ 				let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
+@@ -945,11 +985,11 @@
+ 				minY = Math.max(0, Math.trunc(minY));
+ 				maxY = Math.min(maxHeight - 1, Math.trunc(maxY));
+ 
+-				return [minX, maxX, minY, maxY];
++				return new BoundingBox(minX, maxX, minY, maxY);
+ 			}
+ 
+ 			calculateSignedDoubleArea() {
+-				this.signedDoubleArea = edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
++				this.signedDoubleArea = MathExtend.edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
+ 			}
+ 
+ 			getPointLightsThatCanAffectTri(pointLightRange, pointLights, outLights) {
+@@ -960,7 +1000,7 @@
+ 				let triBoundingCircleRadius2 = 0;
+ 				for (let i = 0; i < 3; i++) {
+ 					const currentWorldVertex = this.worldVertices[i];
+-					const currentRadius2 = hypotSquare(
++					const currentRadius2 = MathExtend.hypotSquare(
+ 						currentWorldVertex.x,
+ 						currentWorldVertex.y,
+ 						currentWorldVertex.z,
+@@ -983,7 +1023,7 @@
+ 					const toLightZ = lightPos.z - triWorldCenterZ;
+ 					if (triWorldNormal.x * toLightX + triWorldNormal.y * toLightY + triWorldNormal.z * toLightZ <= 0) continue;
+ 
+-					const lightDistance2 = hypotSquare(lightPos.x, lightPos.y, lightPos.z, triWorldCenterX, triWorldCenterY, triWorldCenterZ);
++					const lightDistance2 = MathExtend.hypotSquare(lightPos.x, lightPos.y, lightPos.z, triWorldCenterX, triWorldCenterY, triWorldCenterZ);
+ 					if (lightDistance2 > totalRange * totalRange) continue;
+ 
+ 					outLights[count] = lightPos;

@@ -87,6 +87,12 @@
         "id": "graphics3D14",
         "webTitle": "Graphics Engine 3D #14: Tái cấu trúc code",
         "title": "Graphics Engine 3D #14: Tái cấu trúc code",
-        "route": "/blogs/graphics3D/graphics3D14-structure.html"
+        "route": "/blogs/graphics3D/graphics3D14-restructure.html"
+    },
+    {
+        "id": "graphics3D15",
+        "webTitle": "Graphics Engine 3D #15: Hoàn thiện Hanvas Engine",
+        "title": "Graphics Engine 3D #15: Hoàn thiện Hanvas Engine",
+        "route": "/blogs/graphics3D/graphics3D15-hanvas.html"
     }
 ]

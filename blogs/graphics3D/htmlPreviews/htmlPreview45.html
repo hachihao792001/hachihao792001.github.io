@@ -3,253 +3,37 @@
 
 <head>
 	<meta charset="UTF-8" />
-	<style>
-		body {
-			text-align: center;
-			background: #f0f0f0;
-			font-family: 'Bahnschrift', 'Arial Sans-Serif', sans-serif;
-		}
-
-		#gameCanvas {
-			max-width: 100%;
-			height: auto;
-		}
-
-		.slider-value {
-			display: inline-block;
-			min-width: 3em;
-			text-align: left;
-			font-variant-numeric: tabular-nums;
-		}
-
-		input[type="range"] {
-			vertical-align: middle;
-		}
-
-		#controls {
-			display: grid;
-			grid-template-columns: max-content max-content;
-			justify-content: center;
-			justify-items: start;
-			align-items: center;
-			column-gap: 8px;
-			row-gap: 2px;
-		}
-
-		#controls .controlRow {
-			display: contents;
-		}
-
-		#controls .controlLabel {
-			justify-self: end;
-		}
-
-		#helpPopup {
-			position: fixed;
-			top: 80px;
-			left: 50%;
-			transform: translate(-50%, 0);
-			box-sizing: border-box;
-			width: min(400px, calc(100vw - 24px));
-			max-height: calc(100vh - 96px);
-			max-height: calc(100dvh - 96px);
-			overflow-y: auto;
-			text-align: left;
-			background: #fff;
-			border: 1px solid #aaa;
-			padding: 10px;
-		}
-
-		#helpPopup .helpPopupBar {
-			position: sticky;
-			top: -10px;
-			margin: -10px -10px 0;
-			padding: 10px 10px 4px;
-			text-align: right;
-			background: #fff;
-		}
-
-		@media (max-width: 480px),
-		(max-height: 600px) {
-			#helpPopup {
-				top: 12px;
-				max-height: calc(100vh - 24px);
-				max-height: calc(100dvh - 24px);
-			}
-		}
-
-		@media (max-width: 480px) {
-			#controls {
-				grid-template-columns: max-content;
-				justify-items: center;
-				row-gap: 0;
-			}
-
-			#controls .controlLabel {
-				justify-self: center;
-				margin-top: 4px;
-			}
-		}
-
-		#mobileControls .row {
-			display: flex;
-			flex-wrap: wrap;
-			justify-content: center;
-			gap: 10px;
-		}
-
-		#mobileControls>div {
-			margin-bottom: 8px;
-		}
-
-		#mobileControls .move-controls {
-			display: grid;
-			grid-template-columns: repeat(3, auto);
-			gap: 2px;
-		}
-
-		#mobileControls .look-controls {
-			display: grid;
-			grid-template-columns: repeat(3, auto);
-			gap: 2px;
-		}
-
-		#mobileControls button {
-			width: 40px;
-			height: 40px;
-			margin: 0px;
-			padding: 0px;
-			font-family: inherit;
-			font-size: 12px;
-			touch-action: none;
-			-webkit-user-select: none;
-			user-select: none;
-		}
-	</style>
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>Hanvas Engine</title>
+	<title>3D Engine</title>
 </head>
 
-<body>
-	<h1>Hanvas Engine</h1>
-	<div id="render">
-		<canvas id="gameCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff"></canvas>
-		<p id="asciiParagraph"
-			style="display:none; font-size: 2px; font-family: 'Courier New', Courier, monospace;letter-spacing: 1px; line-height: 2px; white-space: pre;">
-		</p>
-	</div>
-	<div>
-		<button id="mouseLookButton" style="display:none">Press here to look around (ASCII)</button>
-	</div>
+<body style="text-align: center; background: #f0f0f0">
+	<h1>3D Engine</h1>
+	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
 	<h2 id="fps">FPS: 0</h2>
 	<div>
-		<button id="helpButton"
-			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Help</button>
-		<button id="mobileControlsButton"
-			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Mobile
-			controls</button>
-		<div id="mobileControls" style="display: none">
-			<div class="row">
-				<div>
-					<b>Move</b><br />
-					<div class="move-controls">
-						<button data-key=" ">Up</button>
-						<button data-key="w">W</button>
-						<button data-key="Shift">Down</button>
-
-						<button data-key="a">A</button>
-						<button data-key="s">S</button>
-						<button data-key="d">D</button>
-					</div>
-				</div>
-
-				<div>
-					<b>Look</b><br />
-					<div class="look-controls">
-						<span></span>
-						<button data-look="0,-1">&uarr;</button>
-						<span></span>
-
-						<button data-look="-1,0">&larr;</button>
-						<button data-look="0,1">&darr;</button>
-						<button data-look="1,0">&rarr;</button>
-					</div>
-				</div>
-			</div>
-		</div>
+		Directional light intensity:
+		<input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" />
+		<span id="dirIntensityText" class="slider-value">1.0</span>
 	</div>
-	<div id="controls">
-		<div class="controlRow">
-			<label class="controlLabel" for="useASCII">ASCII:</label>
-			<span><input type="checkbox" id="useASCII" /></span>
-		</div>
-		<div class="controlRow" id="canvasResRow">
-			<label class="controlLabel" for="canvasResWidth">Canvas resolution:</label>
-			<span>
-				<input id="canvasResWidth" value="600" size="4" />
-				x
-				<input id="canvasResHeight" value="450" size="4" />
-			</span>
-		</div>
-		<div class="controlRow" id="asciiResRow" style="display: none">
-			<label class="controlLabel" for="asciiResWidth">ASCII resolution:</label>
-			<span>
-				<input id="asciiResWidth" value="260" size="4" />
-				x
-				<input id="asciiResHeight" value="195" size="4" />
-			</span>
-		</div>
-		<div class="controlRow">
-			<label class="controlLabel" for="dirIntensity">Directional light intensity:</label>
-			<span>
-				<input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" />
-				<span id="dirIntensityText" class="slider-value">1.0</span>
-			</span>
-		</div>
-		<div class="controlRow">
-			<label class="controlLabel" for="dirRotateSpeed">Directional light rotate speed:</label>
-			<span>
-				<input type="range" id="dirRotateSpeed" min="0" max="50" step="0.1" value="10" />
-				<span id="dirRotateSpeedText" class="slider-value">10</span>
-			</span>
-		</div>
-		<div class="controlRow">
-			<label class="controlLabel" for="pointIntensity">Point light intensity:</label>
-			<span>
-				<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
-				<span id="pointIntensityText" class="slider-value">1.0</span>
-			</span>
-		</div>
-		<div class="controlRow">
-			<label class="controlLabel" for="pointRange">Point light range:</label>
-			<span>
-				<input type="range" id="pointRange" min="0" max="60" step="1" value="14" />
-				<span id="pointRangeText" class="slider-value">14</span>
-			</span>
-		</div>
-		<div class="controlRow">
-			<label class="controlLabel" for="useShadow">Shadow:</label>
-			<span><input type="checkbox" id="useShadow" checked="checked" /></span>
-		</div>
+	<div>
+		Directional light rotate speed:
+		<input type="range" id="dirRotateSpeed" min="0" max="50" step="0.1" value="10" />
+		<span id="dirRotateSpeedText" class="slider-value">10</span>
 	</div>
-
-	<div id="helpPopup" style="display: none">
-		<div class="helpPopupBar">
-			<button id="helpCloseButton"
-				style="font-family: inherit; font-size: 15px; height: 30px; padding: 0 16px">Close</button>
-		</div>
-		PC controls:
-		<ul>
-			<li>W, A, S, D to move</li>
-			<li>Space, shift to fly up and down</li>
-			<li>Mouse to look around</li>
-		</ul>
-		Touch controls:
-		<ul>
-			<li>Mobile controls to move and look around</li>
-		</ul>
+	<div>
+		Point light intensity:
+		<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
+		<span id="pointIntensityText" class="slider-value">1.0</span>
 	</div>
-
+	<div>
+		Point light range:
+		<input type="range" id="pointRange" min="0" max="60" step="1" value="14" />
+		<span id="pointRangeText" class="slider-value">14</span>
+	</div>
+	<div>
+		Shadow:
+		<input type="checkbox" id="useShadow" checked="checked" />
+	</div>
 	<script>
 		// ===== math.js =====
 		class MathExtend {
@@ -297,14 +81,9 @@
 			static up;
 			static down;
 			static forward;
-			static back;
 
 			clone() {
 				return new Vector3(this.x, this.y, this.z, this.w);
-			}
-
-			equal(vec) {
-				return this.x == vec.x && this.y == vec.y && this.z == vec.z;
 			}
 
 			static add(vec1, vec2) {
@@ -354,40 +133,8 @@
 				this.z = m.m[2][0] * x + m.m[2][1] * y + m.m[2][2] * z + m.m[2][3] * w;
 				this.w = m.m[3][0] * x + m.m[3][1] * y + m.m[3][2] * z + m.m[3][3] * w;
 			}
-
-			projectVectorToPlane(planeNormal) {
-				let dot = Vector3.dot(this, planeNormal);
-				return Vector3.sub(this, Vector3.mul(planeNormal, dot));
-			}
-
-			static getAxisAndRadianBetween(vec1, vec2) {
-				let dot = Vector3.dot(vec1, vec2);
-				let almostOne = 0.9999;
-				if (dot >= almostOne) return [Vector3.up, 0];
-				if (dot <= -almostOne) return [Vector3.up, Math.PI];
-
-				let axis = Vector3.cross(vec1, vec2);
-				axis.normalize();
-
-				let angle = -Math.acos(dot);
-
-				return [axis, angle];
-			}
-
-			static getRadianBetweenWithAxis(vec1, vec2, axis) {
-				let projectedV1 = vec1.projectVectorToPlane(axis);
-				let projectedV2 = vec2.projectVectorToPlane(axis);
-				projectedV1.normalize();
-				projectedV2.normalize();
-
-				let dot = Vector3.dot(projectedV1, projectedV2);
-				dot = Math.min(Math.max(dot, -1), 1);
-				let angle = Math.acos(dot);
-
-				let cross = Vector3.cross(projectedV1, projectedV2);
-				return Vector3.dot(cross, axis) > 0 ? -angle : angle;
-			}
 		}
+
 		Vector3.zero = new Vector3(0, 0, 0);
 		Vector3.one = new Vector3(1, 1, 1);
 		Vector3.left = new Vector3(-1, 0, 0);
@@ -395,7 +142,6 @@
 		Vector3.up = new Vector3(0, 1, 0);
 		Vector3.down = new Vector3(0, -1, 0);
 		Vector3.forward = new Vector3(0, 0, 1);
-		Vector3.back = new Vector3(0, 0, -1);
 
 		class Mat4x4 {
 			constructor() {
@@ -446,13 +192,6 @@
 				return matrix;
 			}
 
-			static ViewFromPosRot(pos, rotation) {
-				let forward = rotation.rotateVector(Vector3.forward);
-				let right = rotation.rotateVector(Vector3.right);
-				let up = rotation.rotateVector(Vector3.up);
-				return Mat4x4.View(right, up, forward, pos);
-			}
-
 			static Translation(x, y, z) {
 				let matrix = new Mat4x4();
 				matrix.m[0][0] = 1;
@@ -483,41 +222,9 @@
 				this.d = d;
 			}
 
-			static dot(p, q) {
-				return p.a * q.a + p.b * q.b + p.c * q.c + p.d * q.d;
-			}
-
-			static lerp(from, to, t) {
-				let toA = to.a,
-					toB = to.b,
-					toC = to.c,
-					toD = to.d;
-
-				if (Quaternion.dot(from, to) < 0) {
-					toA = -toA;
-					toB = -toB;
-					toC = -toC;
-					toD = -toD;
-				}
-
-				t = Math.min(Math.max(t, 0), 1);
-
-				return new Quaternion(from.a + (toA - from.a) * t, from.b + (toB - from.b) * t, from.c + (toC - from.c) * t, from.d + (toD - from.d) * t);
-			}
-
 			static buildQuaternionAxisAngle(axis, angle) {
 				let radian = (angle / 180.0) * Math.PI;
 				const half = radian / 2;
-				const s = -Math.sin(half);
-				return new Quaternion(Math.cos(half), axis.x * s, axis.y * s, axis.z * s);
-			}
-
-			static isClose(a, b, margin) {
-				return 1 - Math.abs(Quaternion.dot(a, b)) < margin;
-			}
-
-			static buildQuaternionAxisRadian(axis, angle) {
-				const half = angle / 2.0;
 				const s = -Math.sin(half);
 				return new Quaternion(Math.cos(half), axis.x * s, axis.y * s, axis.z * s);
 			}
@@ -559,28 +266,6 @@
 				const res = Quaternion.multiply(Quaternion.multiply(this, qVec), this.conjugate());
 				return new Vector3(res.b, res.c, res.d);
 			}
-
-			inverseRotateVector(v) {
-				const qVec = new Quaternion(0, v.x, v.y, v.z);
-				const res = Quaternion.multiply(Quaternion.multiply(this.conjugate(), qVec), this);
-				return new Vector3(res.b, res.c, res.d);
-			}
-
-			static lookRotation(forward, up) {
-				let [fixForwardAxis, fixForwardAngle] = Vector3.getAxisAndRadianBetween(Vector3.forward, forward);
-				let firstRotation = Quaternion.buildQuaternionAxisRadian(fixForwardAxis, fixForwardAngle);
-
-				let upAfterFirstRotation = firstRotation.rotateVector(Vector3.up).normalize();
-				let correctUp = up.projectVectorToPlane(forward).normalize();
-
-				if (Math.abs(Vector3.dot(upAfterFirstRotation, correctUp)) < 0.999999) {
-					let fixUpAngle = Vector3.getRadianBetweenWithAxis(upAfterFirstRotation, correctUp, forward);
-					let secondRotation = Quaternion.buildQuaternionAxisRadian(forward, fixUpAngle);
-					return Quaternion.multiply(secondRotation, firstRotation);
-				} else {
-					return firstRotation;
-				}
-			}
 		}
 
 		class Plane {
@@ -601,25 +286,6 @@
 				let t = (this.D - An) / (Bn - An);
 				let vectorAM = Vector3.mul(vectorAB, t);
 				return [t, Vector3.add(A, vectorAM)];
-			}
-
-			distanceToPoint(p) {
-				return Vector3.dot(p, this.normal) - this.D;
-			}
-
-			isIntersectingWithTris(tris) {
-				for (let tri of tris) {
-					if (tri.isIntersectingPlane(this)) return true;
-				}
-				return false;
-			}
-
-			clipWithTris(tris) {
-				let clippedTris = [];
-				for (let tri of tris) {
-					clippedTris.push(...tri.clipAgainstPlane(this));
-				}
-				return clippedTris;
 			}
 		}
 
@@ -717,15 +383,6 @@
 				}
 			}
 
-			isIntersectingPlane(plane) {
-				for (let i = 0; i < this.vertices.length; i++) {
-					let next = (i + 1) % this.vertices.length;
-					let t = plane.intersectWithLine(this.vertices[i], this.vertices[next])[0];
-					if (t >= 0 && t <= 1) return true;
-				}
-
-				return false;
-			}
 
 			clipAgainstPlane(plane) {
 				let outTris = [];
@@ -809,30 +466,25 @@
 				this.g = g;
 				this.b = b;
 			}
-
-			grayScale01() {
-				return (this.r + this.g + this.b) / 3.0 / 255.0;
-			}
 		}
 
 		class Texture {
-			constructor(url = "") {
+			constructor(url) {
 				this.pixels = null;
 				this.width = 0;
 				this.height = 0;
-				if (url) this.load(url);
+				this.load(url);
 			}
 
 			async load(url) {
 				const img = new Image();
 				img.crossOrigin = "anonymous";
 				img.src = url;
-				const loaded = new Promise((resolve) => {
+				await new Promise((resolve) => {
 					img.onload = () => {
 						resolve();
 					};
 				});
-				await loaded;
 				const tempCanvas = document.createElement("canvas");
 				tempCanvas.width = img.width;
 				tempCanvas.height = img.height;
@@ -851,142 +503,72 @@
 		let shadowBias = 0.01;
 		let shadowMapDistance = 20;
 
-		class Transform {
-			constructor(localPosition = Vector3.zero.clone(), localEulerAngles = Vector3.zero.clone(), localScale = Vector3.one.clone(), name = "Transform") {
-				this.localPosition = localPosition;
-				this.localRotation = Quaternion.buildQuaternionEuler(localEulerAngles);
-				this.localScale = localScale;
-				this.name = name;
-
-				this._parent = null;
-				this._children = [];
-				this.gameObject = null;
+		class Camera {
+			constructor(pos, euler, speed, sensitivity) {
+				this.pos = pos;
+				this.rotation = Quaternion.buildQuaternionEuler(euler);
+				this.speed = speed;
+				this.sensitivity = sensitivity;
 			}
 
-			// ---------------------------------------------------------------- hierarchy
+			getFrustumCenter(customZFar = -1) {
+				let forward = this.rotation.rotateVector(Vector3.forward);
 
-			get parent() {
-				return this._parent;
+				let near = Vector3.add(this.pos, Vector3.mul(forward, znear));
+				if (customZFar == -1) customZFar = zfar;
+				let far = Vector3.add(this.pos, Vector3.mul(forward, customZFar));
+				return Vector3.div(Vector3.add(near, far), 2);
 			}
 
-			set parent(parent) {
-				this.setParent(parent);
+			updateRotation(mouseMovementX, mouseMovementY) {
+				let q = Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity);
+
+				let right = this.rotation.rotateVector(Vector3.right);
+				q = Quaternion.multiply(q, Quaternion.buildQuaternionAxisAngle(right, -mouseMovementY * this.sensitivity));
+
+				this.rotation = Quaternion.multiply(q, this.rotation);
 			}
 
-			get children() {
-				return this._children;
-			}
+			updateMovement(dt, keyStates) {
+				let forward = this.rotation.rotateVector(Vector3.forward);
+				let right = this.rotation.rotateVector(Vector3.right);
 
-			get childCount() {
-				return this._children.length;
-			}
-
-			get root() {
-				let current = this;
-				while (current._parent != null) {
-					current = current._parent;
+				if (keyStates["w"]) {
+					this.pos = Vector3.add(this.pos, Vector3.mul(forward, dt * this.speed));
 				}
-				return current;
-			}
-
-			setParent(parent, worldPositionStays = true) {
-				if (parent === this._parent) return;
-				if (parent != null && parent.isChildOf(this)) {
-					console.warn("Cannot parent " + this.name + " to " + parent.name + ": that would make a cycle");
-					return;
+				if (keyStates["s"]) {
+					this.pos = Vector3.sub(this.pos, Vector3.mul(forward, dt * this.speed));
 				}
-
-				let worldPosition = this.position;
-				let worldRotation = this.rotation;
-				let worldScale = this.lossyScale;
-
-				// detach old parent
-				if (this._parent != null) {
-					let index = this._parent._children.indexOf(this);
-					if (index >= 0) this._parent._children.splice(index, 1);
+				if (keyStates["a"]) {
+					this.pos = Vector3.sub(this.pos, Vector3.mul(right, dt * this.speed));
 				}
-
-				this._parent = parent;
-				if (parent != null) parent._children.push(this);
-
-				if (worldPositionStays) {
-					this.position = worldPosition;
-					this.rotation = worldRotation;
-					let parentScale = parent != null ? parent.lossyScale : Vector3.one;
-					this.localScale = new Vector3(worldScale.x / parentScale.x, worldScale.y / parentScale.y, worldScale.z / parentScale.z);
+				if (keyStates["d"]) {
+					this.pos = Vector3.add(this.pos, Vector3.mul(right, dt * this.speed));
+				}
+				if (keyStates["Shift"]) {
+					this.pos = Vector3.add(this.pos, Vector3.mul(Vector3.down, dt * this.speed));
+				}
+				if (keyStates[" "]) {
+					this.pos = Vector3.add(this.pos, Vector3.mul(Vector3.up, dt * this.speed));
 				}
 			}
 
-			isChildOf(parent) {
-				let current = this;
-				while (current != null) {
-					if (current === parent) return true;
-					current = current._parent;
-				}
-				return false;
+			getViewMatrix() {
+				let forward = this.rotation.rotateVector(Vector3.forward);
+				let right = this.rotation.rotateVector(Vector3.right);
+				let up = this.rotation.rotateVector(Vector3.up);
+				return Mat4x4.View(right, up, forward, this.pos);
 			}
+		}
 
-			getChild(index) {
-				return this._children[index];
-			}
-
-			detachChildren() {
-				for (let child of this._children.slice()) {
-					child.setParent(this._parent);
-				}
-			}
-
-			// ------------------------------------------------------------- world space
-
-			get position() {
-				if (this._parent == null) return this.localPosition;
-				return this._parent.transformPoint(this.localPosition);
-			}
-
-			set position(worldPosition) {
-				this.localPosition = this._parent == null ? worldPosition : this._parent.inverseTransformPoint(worldPosition);
-			}
-
-			get rotation() {
-				if (this._parent == null) return this.localRotation;
-				return Quaternion.multiply(this._parent.rotation, this.localRotation);
-			}
-
-			set rotation(worldRotation) {
-				this.localRotation = this._parent == null ? worldRotation : Quaternion.multiply(this._parent.rotation.conjugate(), worldRotation);
-			}
-
-			get lossyScale() {
-				if (this._parent == null) return this.localScale;
-				return Vector3.scale(this._parent.lossyScale, this.localScale);
-			}
-
-			// ------------------------------------------------------------------ basics
-
-			clone() {
-				let t = new Transform(this.localPosition.clone(), Vector3.zero, this.localScale.clone(), this.name);
-				t.localRotation = new Quaternion(this.localRotation.a, this.localRotation.b, this.localRotation.c, this.localRotation.d);
-				return t;
-			}
-
-			getForward() {
-				return this.rotation.rotateVector(Vector3.forward).normalize();
-			}
-
-			getRight() {
-				return this.rotation.rotateVector(Vector3.right).normalize();
-			}
-
-			getUp() {
-				return this.rotation.rotateVector(Vector3.up).normalize();
-			}
-
-			translate(offset) {
-				this.position = Vector3.add(this.position, offset);
-			}
-
-			translateLocal(offset) {
-				this.position = Vector3.add(this.position, this.rotation.rotateVector(offset));
+		class GameObject {
+			constructor(pos, eulerAngles, scale, color, mesh, texture = null) {
+				this.pos = pos;
+				this.scale = scale;
+				this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
+				this.color = color;
+				this.mesh = mesh;
+				this.texture = texture;
 			}
 
 			rotate(eulerX, eulerY, eulerZ) {
@@ -994,159 +576,19 @@
 				this.rotation = Quaternion.multiply(q, this.rotation);
 			}
 
-			rotateAround(axis, angle) {
-				this.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(axis, angle), this.rotation);
-			}
-
-			setEulerAngles(eulerAngles) {
-				this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
-			}
-
-			setLocalEulerAngles(eulerAngles) {
-				this.localRotation = Quaternion.buildQuaternionEuler(eulerAngles);
-			}
-
-			lookRotation(forward, up = Vector3.up) {
-				this.rotation = Quaternion.lookRotation(forward, up);
-			}
-
-			lookAt(target, up = Vector3.up) {
-				this.lookRotation(Vector3.sub(target, this.position).normalize(), up);
-			}
-
-			// ---------------------------------------------------------------- matrices
-
-			getScaleMatrix() {
-				let scale = this.lossyScale;
-				return Mat4x4.Scale(scale.x, scale.y, scale.z);
-			}
-
-			getTranslationMatrix() {
-				let position = this.position;
-				return Mat4x4.Translation(position.x, position.y, position.z);
-			}
-
-			getViewMatrix() {
-				return Mat4x4.ViewFromPosRot(this.position, this.rotation);
-			}
-
-			// ------------------------------------------------------- space conversions
-
-			inverseTransformPoint(point) {
-				let local = this.rotation.inverseRotateVector(Vector3.sub(point, this.position));
-				let scale = this.lossyScale;
-				return new Vector3(local.x / scale.x, local.y / scale.y, local.z / scale.z);
-			}
-
-			transformPoint(point) {
-				return Vector3.add(this.position, this.rotation.rotateVector(Vector3.scale(point, this.lossyScale)));
-			}
-
-			transformDirection(direction) {
-				return this.rotation.rotateVector(direction);
-			}
-
-			inverseTransformDirection(direction) {
-				return this.rotation.inverseRotateVector(direction);
-			}
-		}
-
-		class Camera {
-			static maxPitch = 89.9;
-			constructor(pos, euler, speed, sensitivity) {
-				this.transform = new Transform(pos, euler);
-				this.speed = speed;
-				this.sensitivity = sensitivity;
-			}
-
-			getFrustumCenter(zNear, zFar, customZFar = -1) {
-				let forward = this.transform.getForward();
-
-				let near = Vector3.add(this.transform.position, Vector3.mul(forward, zNear));
-				if (customZFar == -1) customZFar = zFar;
-				let far = Vector3.add(this.transform.position, Vector3.mul(forward, customZFar));
-				return Vector3.div(Vector3.add(near, far), 2);
-			}
-
-			updateRotation(mouseMovementX, mouseMovementY) {
-				let rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity), this.transform.rotation);
-
-				let pitchAngle = -mouseMovementY * this.sensitivity;
-				let forwardY = rotation.rotateVector(Vector3.forward).y;
-				let currentPitch = Math.asin(Math.max(-1, Math.min(1, forwardY))) * (180 / Math.PI);
-				pitchAngle = Math.max(-Camera.maxPitch - currentPitch, Math.min(Camera.maxPitch - currentPitch, pitchAngle));
-
-				let right = rotation.rotateVector(Vector3.right);
-				this.transform.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(right, pitchAngle), rotation);
-			}
-
-			updateMovement(dt, keyStates) {
-				let forward = this.transform.getForward();
-				let right = this.transform.getRight();
-				let step = dt * this.speed;
-
-				if (keyStates["w"]) {
-					this.transform.translate(Vector3.mul(forward, step));
-				}
-				if (keyStates["s"]) {
-					this.transform.translate(Vector3.mul(forward, -step));
-				}
-				if (keyStates["a"]) {
-					this.transform.translate(Vector3.mul(right, -step));
-				}
-				if (keyStates["d"]) {
-					this.transform.translate(Vector3.mul(right, step));
-				}
-				if (keyStates["Shift"]) {
-					this.transform.translate(Vector3.mul(Vector3.down, step));
-				}
-				if (keyStates[" "]) {
-					this.transform.translate(Vector3.mul(Vector3.up, step));
-				}
-			}
-
-			getViewMatrix() {
-				return this.transform.getViewMatrix();
-			}
-		}
-
-		class GameObject {
-			static incrementingID = 0;
-
-			constructor(pos, eulerAngles, scale, color, mesh, texture = null, name = "") {
-				this.id = GameObject.incrementingID++;
-				this.name = name || `GameObject ${this.id}`;
-				this.transform = new Transform(pos, eulerAngles, scale, this.name);
-				this.transform.gameObject = this;
-				this.color = color;
-				this.mesh = mesh;
-				this.texture = texture;
-			}
-
 			getTransformedTriangles() {
 				let transformedTris = [];
-				let scaleMat = this.transform.getScaleMatrix();
-				let rotation = this.transform.rotation;
-				let translationMat = this.transform.getTranslationMatrix();
+				let scaleMat = Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z);
+				let translationMat = Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z);
 				for (let tri of this.mesh.tris) {
 					let transformedTri = tri.clone();
 					transformedTri.mulMat4x4(scaleMat);
-					transformedTri.rotate(rotation);
+					transformedTri.rotate(this.rotation);
 					transformedTri.mulMat4x4(translationMat);
 					transformedTri.updateWorldVertices();
 					transformedTri.color = this.color;
 					transformedTri.texture = this.texture;
 					transformedTris.push(transformedTri);
-				}
-				return transformedTris;
-			}
-
-			getTransformedTrianglesWithChildren() {
-				let transformedTris = this.getTransformedTriangles();
-				for (let child of this.transform.children) {
-					if (child.gameObject != null) {
-						transformedTris.push(...child.gameObject.getTransformedTrianglesWithChildren());
-					}
 				}
 				return transformedTris;
 			}
@@ -1173,7 +615,7 @@
 				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
 				let right = Vector3.cross(up, this.dir).normalize();
 				up = Vector3.cross(this.dir, right).normalize();
-				//let frustumCenter = camera.getFrustumCenter(znear, zfar, shadowMapDistance);
+				//let frustumCenter = camera.getFrustumCenter(shadowMapDistance);
 				let frustumCenter = Vector3.zero;
 				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
 				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
@@ -1214,7 +656,6 @@
 
 					shadowTri.calculateSignedDoubleArea();
 
-					// everything the per pixel loop needs, read once instead of once per pixel
 					const vertex0 = shadowTri.vertices[0],
 						vertex1 = shadowTri.vertices[1],
 						vertex2 = shadowTri.vertices[2];
@@ -1284,6 +725,7 @@
 					pixelWorldPosY + triWorldNormalY * normalOffset,
 					pixelWorldPosZ + triWorldNormalZ * normalOffset,
 				);
+
 				lightSpacePos.mulMat4x4(this.viewMatrix);
 				lightSpacePos.mulMat4x4(this.projectionMatrix);
 
@@ -1301,52 +743,29 @@
 		}
 
 		class Rasterizer {
-			constructor(canvasWidth, canvasHeight, ctx, asciiParagraph) {
-				this.canvasWidth = canvasWidth;
-				this.canvasHeight = canvasHeight;
-				this.ctx = ctx;
-				this.asciiParagraph = asciiParagraph;
+			constructor() {
+				this.imageData = ctx.createImageData(gameCanvas.width, gameCanvas.height);
 
-				this.imageData = this.ctx.createImageData(this.canvasWidth, this.canvasHeight);
 				this.screenBuffer = this.imageData.data;
 				this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);
-				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
+				this.depthBuffer = new Float64Array(gameCanvas.width * gameCanvas.height);
 
-				this.screenBuffer.fill(255);
-				this.depthBuffer.fill(Infinity);
-
-				this.screenCenterX = Math.floor(this.canvasWidth / 2);
-				this.screenCenterY = Math.floor(this.canvasHeight / 2);
-			}
-
-			resize(canvasWidth, canvasHeight) {
-				this.canvasWidth = canvasWidth;
-				this.canvasHeight = canvasHeight;
-
-				this.imageData = this.ctx.createImageData(this.canvasWidth, this.canvasHeight);
-				this.screenBuffer = this.imageData.data;
-				this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);
-				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
-
-				this.screenBuffer.fill(255);
-				this.depthBuffer.fill(Infinity);
-
-				this.screenCenterX = Math.floor(this.canvasWidth / 2);
-				this.screenCenterY = Math.floor(this.canvasHeight / 2);
+				this.clearScreen();
 			}
 
 			clearScreen() {
-				this.screenBuffer32.fill(0xfff4f4f4);
+				this.screenBuffer32.fill(0xfff0f0f0);
 				this.depthBuffer.fill(Infinity);
 			}
 
-			rasterizeClipSpaceTriangles(tris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow) {
+			processTriangles(tris) {
 				const screenBuffer = this.screenBuffer;
 				const depthBuffer = this.depthBuffer;
-				const canvasWidth = this.canvasWidth;
-				const canvasHeight = this.canvasHeight;
+				const canvasWidth = gameCanvas.width;
+				const canvasHeight = gameCanvas.height;
 				const activeLights = new Array(maxActiveLights);
 				const pointLightRange2 = pointLightRange * pointLightRange;
+
 				for (let tri of tris) {
 					let vertices = tri.vertices;
 					for (let i = 0; i < vertices.length; i++) {
@@ -1366,7 +785,6 @@
 						worldNormalZ = triWorldNormal.z;
 
 					const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
-					const activeLightCount = pointLightIntensity > 0 ? tri.getPointLightsThatCanAffectTri(pointLightRange, pointLights, activeLights) : 0;
 
 					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
 
@@ -1374,7 +792,6 @@
 					let edgeFunctionRow12 = MathExtend.edgeFunction(tri.vertices[1], tri.vertices[2], new Vector3(bbox.minX, bbox.minY, 0));
 					let edgeFunctionRow20 = MathExtend.edgeFunction(tri.vertices[2], tri.vertices[0], new Vector3(bbox.minX, bbox.minY, 0));
 
-					// everything the per pixel loop needs, read once instead of once per pixel
 					const vertex0 = tri.vertices[0],
 						vertex1 = tri.vertices[1],
 						vertex2 = tri.vertices[2];
@@ -1415,6 +832,9 @@
 						perspectiveWorld2Y = world2.y * uv2W,
 						perspectiveWorld2Z = world2.z * uv2W;
 
+					const pointLightRangeSquare = pointLightRange * pointLightRange;
+					const activeLightCount = pointLightIntensity > 0 ? tri.getPointLightsThatCanAffectTri(pointLightRange, pointLights, activeLights) : 0;
+
 					const triColor = tri.color;
 					const texture = tri.texture;
 					const texturePixels = texture ? texture.pixels : null;
@@ -1451,26 +871,24 @@
 									}
 
 									let totalPointLightDiffuse = 0;
-									if (pointLightIntensity > 0) {
-										for (let i = 0; i < activeLightCount; i++) {
-											const lightPos = activeLights[i];
-											const pointLightVecX = lightPos.x - pixelWorldX;
-											const pointLightVecY = lightPos.y - pixelWorldY;
-											const pointLightVecZ = lightPos.z - pixelWorldZ;
-											const distanceFromPixelToPointLight2 =
-												pointLightVecX * pointLightVecX + pointLightVecY * pointLightVecY + pointLightVecZ * pointLightVecZ;
-											if (distanceFromPixelToPointLight2 >= pointLightRange2) continue;
+									for (let i = 0; i < activeLightCount; i++) {
+										const lightPos = activeLights[i];
+										const pointLightVecX = lightPos.x - pixelWorldX;
+										const pointLightVecY = lightPos.y - pixelWorldY;
+										const pointLightVecZ = lightPos.z - pixelWorldZ;
+										const distanceFromPixelToPointLight2 =
+											pointLightVecX * pointLightVecX + pointLightVecY * pointLightVecY + pointLightVecZ * pointLightVecZ;
+										if (distanceFromPixelToPointLight2 >= pointLightRangeSquare) continue;
 
-											const distance = Math.sqrt(distanceFromPixelToPointLight2);
-											const dot = (worldNormalX * pointLightVecX + worldNormalY * pointLightVecY + worldNormalZ * pointLightVecZ) / distance;
-											const currentPointLightDiffuse = (1 + dot) / 2;
-											const pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRange2;
-											const inverseSquareDistance = 1 / (1 + 0.02 * distanceFromPixelToPointLight2);
-											const attenuation = (1 - pointLightDistanceRatio) * inverseSquareDistance;
-											totalPointLightDiffuse += currentPointLightDiffuse * attenuation;
-										}
-										totalPointLightDiffuse *= pointLightIntensity;
+										const distance = Math.sqrt(distanceFromPixelToPointLight2);
+										const dot = (worldNormalX * pointLightVecX + worldNormalY * pointLightVecY + worldNormalZ * pointLightVecZ) / distance;
+										const currentPointLightDiffuse = (1 + dot) / 2;
+										const pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRangeSquare;
+										const inverseSquareDistance = 1 / (1 + 0.02 * distanceFromPixelToPointLight2);
+										const attenuation = (1 - pointLightDistanceRatio) * inverseSquareDistance;
+										totalPointLightDiffuse += currentPointLightDiffuse * attenuation;
 									}
+									totalPointLightDiffuse *= pointLightIntensity;
 
 									const lightIntensity = Math.max(ambientLight, (dirLightDiffuse + totalPointLightDiffuse) * shadowFactor);
 
@@ -1506,25 +924,8 @@
 				}
 			}
 
-			drawCall(useASCII = false) {
-				if (!useASCII) {
-					this.ctx.putImageData(this.imageData, 0, 0);
-				} else {
-					let renderString = "";
-					let grayScaleASCII = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. ";
-					for (let y = 0; y < this.canvasHeight; y++) {
-						for (let x = 0; x < this.canvasWidth; x++) {
-							let index = (y * this.canvasWidth + x) * 4;
-							let color = new Color(this.imageData.data[index], this.imageData.data[index + 1], this.imageData.data[index + 2]);
-							let grayScale01 = color.grayScale01();
-							let pixelLetter = grayScaleASCII[Math.floor((1 - grayScale01) * (grayScaleASCII.length - 1))];
-							renderString += pixelLetter;
-						}
-						renderString += "\n";
-					}
-
-					if (this.asciiParagraph != null && this.asciiParagraph.innerText != renderString) this.asciiParagraph.innerText = renderString;
-				}
+			drawCall() {
+				ctx.putImageData(this.imageData, 0, 0);
 			}
 		}
 
@@ -1684,7 +1085,7 @@
 
 				let count = 0;
 				for (let i = 0; i < pointLights.length; i++) {
-					const lightPos = pointLights[i].transform.position;
+					const lightPos = pointLights[i].pos;
 
 					const toLightX = lightPos.x - triWorldCenterX;
 					const toLightY = lightPos.y - triWorldCenterY;
@@ -1707,7 +1108,7 @@
 				this.tris = tris;
 			}
 
-			setTriangles(tris, color = new Color(255, 255, 255)) {
+			setTriangles(tris, color) {
 				this.tris = [];
 				for (let tri of tris) {
 					this.tris.push(
@@ -1718,35 +1119,6 @@
 						),
 					);
 				}
-			}
-		}
-
-		class Quad extends Mesh {
-			constructor() {
-				super(Quad.generateInitialTriangles());
-			}
-
-			static generateInitialTriangles() {
-				let tris = [];
-				let color = new Color(255, 255, 255);
-
-				tris.push(
-					new Triangle(
-						[new Vector3(0.5, -0.5, 0), new Vector3(0.5, 0.5, 0), new Vector3(-0.5, 0.5, 0)],
-						[new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
-						color,
-					),
-				);
-
-				tris.push(
-					new Triangle(
-						[new Vector3(0.5, -0.5, 0), new Vector3(-0.5, 0.5, 0), new Vector3(-0.5, -0.5, 0)],
-						[new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
-						color,
-					),
-				);
-
-				return tris;
 			}
 		}
 
@@ -1905,7 +1277,7 @@
 							triVertices.push(vertexCoord);
 							triUVs.push(vertexUV);
 						}
-						let newTri = new Triangle(triVertices, triUVs);
+						let newTri = new Triangle(triVertices, triUVs, this.color);
 						triangles.push(newTri);
 					}
 				}
@@ -1917,54 +1289,25 @@
 		// ===== index.js =====
 		const gameCanvas = (document.getElementById("gameCanvas"));
 		const ctx = (gameCanvas.getContext("2d"));
-		const asciiParagraph = (document.getElementById("asciiParagraph"));
-		const rasterizer = new Rasterizer(gameCanvas.width, gameCanvas.height, ctx, asciiParagraph);
+		const rasterizer = new Rasterizer();
 		const fov = 60;
 		let znear = 0.01,
 			zfar = 1000;
 		let projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
-		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 5, 0.2);
+		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 2, 0.2);
 		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
 		let keyStates = {};
-
-		const asciiCheckBox = (document.getElementById("useASCII"));
-		const asciiResRow = (document.getElementById("asciiResRow"));
-		const canvasResRow = (document.getElementById("canvasResRow"));
-		const renderDiv = (document.getElementById("render"));
-		const mouseLookButton = (document.getElementById("mouseLookButton"));
-
-		const canvasResWidthInput = (document.getElementById("canvasResWidth"));
-		const canvasResHeightInput = (document.getElementById("canvasResHeight"));
-		const asciiResWidthInput = (document.getElementById("asciiResWidth"));
-		const asciiResHeightInput = (document.getElementById("asciiResHeight"));
-
-		let useASCII = false;
-		let asciiWidth = 260;
-		let asciiHeight = 195;
-		let canvasRenderWidth = 600;
-		let canvasRenderHeight = 450;
-
-		canvasResWidthInput.value = canvasRenderWidth.toString();
-		canvasResHeightInput.value = canvasRenderHeight.toString();
 
 		const fpsInfo = (document.getElementById("fps"));
 		let frames = 0,
 			fpsTimeCounter = 0;
 
-		const mobileControls = (document.getElementById("mobileControls"));
-		const mobileControlsButton = (document.getElementById("mobileControlsButton"));
-
-		const helpButton = (document.getElementById("helpButton"));
-		const helpPopup = (document.getElementById("helpPopup"));
-		const helpCloseButton = (document.getElementById("helpCloseButton"));
-
-		let lookInput = { x: 0, y: 0 };
-		let lookSpeed = 450;
-
 		const lightDirIntensitySlider = (document.getElementById("dirIntensity"));
 		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
 		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
 		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
+		const shadowCheckbox = (document.getElementById("useShadow"));
+		let useShadow = true;
 		let dirLightDefaultDir = new Vector3(-1, -1, -1);
 		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
 		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
@@ -1976,9 +1319,6 @@
 		const pointLightRangeSlider = (document.getElementById("pointRange"));
 		const pointLightRangeText = (document.getElementById("pointRangeText"));
 		let pointLightRange = parseFloat(pointLightRangeSlider.value);
-
-		const shadowCheckbox = (document.getElementById("useShadow"));
-		let useShadow = true;
 
 		let brickTexture = new Texture(
 			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
@@ -1998,79 +1338,12 @@
 		);
 		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
 		let pointLights = [
-			new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 1"),
-			new GameObject(new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 2"),
+			new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh),
+			new GameObject(new Vector3(1.6, 1, 4.2), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh),
 		];
 
 		let lastTime = performance.now();
 		let dt = 0;
-
-		function updateGameObjectTransforms() {
-			camera.updateMovement(dt, keyStates);
-			if (lookInput.x != 0 || lookInput.y != 0) {
-				camera.updateRotation(lookInput.x * dt * lookSpeed, lookInput.y * dt * lookSpeed);
-			}
-
-			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
-			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
-			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
-		}
-
-		function gameObjectToWorldSpaceTriangles() {
-			let objectTris = [];
-			objectTris.push(...ground.getTransformedTrianglesWithChildren());
-			for (let light of pointLights) {
-				objectTris.push(...light.getTransformedTrianglesWithChildren());
-			}
-			objectTris.push(...woodTower.getTransformedTrianglesWithChildren());
-
-			return objectTris;
-		}
-
-		function worldSpaceToViewSpace(objectTris) {
-			const viewMat = camera.getViewMatrix();
-
-			let visibleTris = [];
-			for (let tri of objectTris) {
-				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.transform.position)) < 0) {
-					tri.mulMat4x4(viewMat);
-					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
-				}
-			}
-
-			return visibleTris;
-		}
-
-		function sortNearestFirst(visibleTris) {
-			for (let tri of visibleTris) {
-				const vertices = tri.vertices;
-				const centerX = (vertices[0].x + vertices[1].x + vertices[2].x) / 3;
-				const centerY = (vertices[0].y + vertices[1].y + vertices[2].y) / 3;
-				const centerZ = (vertices[0].z + vertices[1].z + vertices[2].z) / 3;
-				tri.viewDistanceSquared = centerX * centerX + centerY * centerY + centerZ * centerZ;
-			}
-			visibleTris.sort((a, b) => a.viewDistanceSquared - b.viewDistanceSquared);
-		}
-
-		function viewSpaceToClipSpace(visibleTris) {
-			for (let tri of visibleTris) {
-				tri.mulMat4x4(projectionMatrix);
-				tri.perspectiveDivide();
-			}
-		}
-
-		function rasterize(visibleTris) {
-			rasterizer.clearScreen();
-			rasterizer.rasterizeClipSpaceTriangles(visibleTris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow);
-			rasterizer.drawCall(useASCII);
-
-			let x = rasterizer.screenCenterX,
-				y = rasterizer.screenCenterY;
-			ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-			ctx.fillRect(x - 2, y - 2, 5, 5);
-			ctx.fillStyle = "#ffffff";
-			ctx.fillRect(x - 1, y - 1, 3, 3);
-		}
 
 		function update(time = performance.now()) {
 			dt = (time - lastTime) / 1000;
@@ -2084,18 +1357,51 @@
 				fpsTimeCounter = 0;
 			}
 
-			updateGameObjectTransforms();
-			let objectTris = gameObjectToWorldSpaceTriangles();
+			rasterizer.clearScreen();
+
+			camera.updateMovement(dt, keyStates);
+			const viewMat = camera.getViewMatrix();
+
+			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
+			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
+			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
+
+			let objectTris = [];
+			objectTris.push(...ground.getTransformedTriangles());
+			for (let light of pointLights) {
+				objectTris.push(...light.getTransformedTriangles());
+			}
+			objectTris.push(...woodTower.getTransformedTriangles());
 
 			if (useShadow) {
 				dirLight.buildViewAndProjectionMatrix();
 				dirLight.buildShadowMap(objectTris);
 			}
 
-			let visibleTris = worldSpaceToViewSpace(objectTris);
-			sortNearestFirst(visibleTris);
-			viewSpaceToClipSpace(visibleTris);
-			rasterize(visibleTris);
+			let visibleTris = [];
+			for (let tri of objectTris) {
+				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
+					tri.mulMat4x4(viewMat);
+					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
+				}
+			}
+
+			for (let tri of visibleTris) {
+				const vertices = tri.vertices;
+				const centerX = (vertices[0].x + vertices[1].x + vertices[2].x) / 3;
+				const centerY = (vertices[0].y + vertices[1].y + vertices[2].y) / 3;
+				const centerZ = (vertices[0].z + vertices[1].z + vertices[2].z) / 3;
+				tri.viewDistanceSquared = centerX * centerX + centerY * centerY + centerZ * centerZ;
+			}
+			visibleTris.sort((a, b) => a.viewDistanceSquared - b.viewDistanceSquared);
+
+			for (let tri of visibleTris) {
+				tri.mulMat4x4(projectionMatrix);
+				tri.perspectiveDivide();
+			}
+
+			rasterizer.processTriangles(visibleTris);
+			rasterizer.drawCall();
 
 			requestAnimationFrame(update);
 		}
@@ -2126,83 +1432,16 @@
 			useShadow = shadowCheckbox.checked;
 		});
 
-		function readResolution(input, min, max, current) {
-			let value = parseInt(input.value);
-			if (isNaN(value)) return current;
-			return Math.max(min, Math.min(max, value));
-		}
-
-		function applyRenderResolution() {
-			gameCanvas.width = useASCII ? asciiWidth : canvasRenderWidth;
-			gameCanvas.height = useASCII ? asciiHeight : canvasRenderHeight;
-
-			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
-			rasterizer.resize(gameCanvas.width, gameCanvas.height);
-		}
-
-		function applyCanvasResolution() {
-			canvasRenderWidth = readResolution(canvasResWidthInput, 16, 1920, canvasRenderWidth);
-			canvasRenderHeight = readResolution(canvasResHeightInput, 16, 1440, canvasRenderHeight);
-			canvasResWidthInput.value = canvasRenderWidth.toString();
-			canvasResHeightInput.value = canvasRenderHeight.toString();
-			if (!useASCII) applyRenderResolution();
-		}
-		canvasResWidthInput.addEventListener("change", applyCanvasResolution);
-		canvasResHeightInput.addEventListener("change", applyCanvasResolution);
-
-		function applyAsciiResolution() {
-			asciiWidth = readResolution(asciiResWidthInput, 8, 500, asciiWidth);
-			asciiHeight = readResolution(asciiResHeightInput, 8, 400, asciiHeight);
-			asciiResWidthInput.value = asciiWidth.toString();
-			asciiResHeightInput.value = asciiHeight.toString();
-			if (useASCII) applyRenderResolution();
-		}
-		asciiResWidthInput.addEventListener("change", applyAsciiResolution);
-		asciiResHeightInput.addEventListener("change", applyAsciiResolution);
-
-		async function requestMouseLook() {
-			try {
-				await renderDiv.requestPointerLock({
-					unadjustedMovement: true,
-				});
-			} catch (e) {
-				try {
-					await renderDiv.requestPointerLock();
-				} catch (fallbackError) {
-					// mobile
-				}
-			}
-		}
-
-		mouseLookButton.addEventListener("click", requestMouseLook);
-
-		gameCanvas.addEventListener("mousedown", () => {
-			if (document.pointerLockElement !== renderDiv) requestMouseLook();
+		gameCanvas.addEventListener("click", async () => {
+			await gameCanvas.requestPointerLock({
+				unadjustedMovement: true,
+			});
 		});
 
-		document.addEventListener("contextmenu", (e) => {
-			if (document.pointerLockElement === renderDiv) e.preventDefault();
-		});
-
-		document.addEventListener("mousemove", (e) => {
-			if (document.pointerLockElement === renderDiv) {
+		gameCanvas.addEventListener("mousemove", (e) => {
+			if (document.pointerLockElement === gameCanvas) {
 				camera.updateRotation(e.movementX, e.movementY);
 			}
-		});
-
-		document.addEventListener("pointerlockchange", () => {
-			mouseLookButton.textContent = document.pointerLockElement === renderDiv ? "Mouse look on - Esc to release" : "Press here to look around (ASCII)";
-		});
-
-		asciiCheckBox.addEventListener("change", () => {
-			useASCII = asciiCheckBox.checked;
-			applyRenderResolution();
-			asciiParagraph.style.display = useASCII ? "" : "none";
-			gameCanvas.style.display = useASCII ? "none" : "";
-			mouseLookButton.style.display = useASCII ? "" : "none";
-			asciiResRow.style.display = useASCII ? "" : "none";
-			canvasResRow.style.display = useASCII ? "none" : "";
-			if (document.pointerLockElement != null) document.exitPointerLock();
 		});
 
 		window.addEventListener("keydown", (e) => {
@@ -2210,60 +1449,6 @@
 		});
 		window.addEventListener("keyup", (e) => {
 			keyStates[e.key] = false;
-		});
-		mobileControlsButton.addEventListener("click", () => {
-			mobileControls.style.display = mobileControls.style.display == "none" ? "" : "none";
-			mobileControlsButton.blur();
-		});
-
-		helpButton.addEventListener("click", () => {
-			helpPopup.style.display = helpPopup.style.display == "none" ? "" : "none";
-			helpButton.blur();
-		});
-
-		helpCloseButton.addEventListener("click", () => {
-			helpPopup.style.display = "none";
-			helpCloseButton.blur();
-		});
-
-		const keyButtons = mobileControls.querySelectorAll("button[data-key]");
-		keyButtons.forEach((button) => {
-			const key = (button.getAttribute("data-key"));
-			button.addEventListener("pointerdown", (e) => {
-				e.preventDefault();
-				keyStates[key] = true;
-				button.setPointerCapture(e.pointerId);
-			});
-			const release = () => {
-				keyStates[key] = false;
-			};
-			button.addEventListener("pointerup", release);
-			button.addEventListener("pointercancel", release);
-		});
-
-		const lookButtons = mobileControls.querySelectorAll("button[data-look]");
-		lookButtons.forEach((button) => {
-			if (!button.dataset.look) return;
-			const dir = button.dataset.look.split(",");
-			const x = parseInt(dir[0]),
-				y = parseInt(dir[1]);
-			let pressed = false;
-			button.addEventListener("pointerdown", (e) => {
-				e.preventDefault();
-				if (pressed) return;
-				pressed = true;
-				lookInput.x += x;
-				lookInput.y += y;
-				button.setPointerCapture(e.pointerId);
-			});
-			const release = () => {
-				if (!pressed) return;
-				pressed = false;
-				lookInput.x -= x;
-				lookInput.y -= y;
-			};
-			button.addEventListener("pointerup", release);
-			button.addEventListener("pointercancel", release);
 		});
 	</script>
 </body>

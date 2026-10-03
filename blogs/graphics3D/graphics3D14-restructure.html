@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="A post by Hà Chí Hào.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="graphics3D.css">
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Graphics Engine 3D</title>
+</head>
+
+<body data-graphics3D-id="graphics3D14">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Tái cấu trúc code</h1>
+
+                    Xong blog 13 rồi thì engine đã chạy nhanh hơn nhiều, nhưng nó lại đồng thời khó đọc hơn 😅. Blog này sẽ tái cấu trúc lại engine "1 chút"
+					cho nó có lại tí readability (thật ra là do mình muốn thống nhất nó về repo <a href="https://github.com/hachihao792001/HanvasEngine">Hanvas Engine</a>).
+
+                    <h2>1. Gom nhóm các class</h2>
+					Ở <a href="https://github.com/hachihao792001/HanvasEngine">Hanvas Engine</a> mình đã tách các class ra thành các file js modules,
+					các class chung 1 "loại" sẽ nằm chung file, cụ thể:
+					<ul>
+						<li>math.js: Các class thuần toán học như Vector2, Vector3, Mat4x4, Quaternion, Plane (và vài class khác mình tạo thêm trong blog này)</li>
+						<li>graphics.js: Các class về đồ họa, chỉ có Color, Texture</li>
+						<li>mesh.js: Class Mesh và các class con Triangle, Cube, ObjMesh</li>
+						<li>engine.js: Các class liên quan tới game engine: Camera, GameObject, DirectionalLight, Rasterizer</li>
+						<li>index.js: các biến liên quan tới scene + game loop + mấy cái listener</li>
+					</ul>
+
+					Mục đích của phần này là xếp lại các class, sao cho những class chung 1 "loại" thì nằm kế nhau, sau đó phân cách các phần bằng 1 comment.<br/><br/>
+
+                    Nhân tiện mình dọn luôn mấy thứ chết trong file:
+                    <ul>
+                        <li><code>edgePlanes</code>: 4 cái mặt phẳng để clip theo 4 cạnh màn hình, viết từ <a style="display: inline;" href="graphics3D7-view.html">blog 7</a>, và
+                        từ <a style="display: inline;" href="graphics3D8-rasterizer.html">blog 8</a> tới giờ không ai gọi tới (vì rasterizer đã tự giới hạn trong bounding box rồi).</li>
+                        <li>Đoạn code dùng phím I, K, J, L, U, O để di chuyển point light: cái đó chỉ để test, không phải một phần của engine.</li>
+                        <li>Đổi tên biến <code>canvas</code> thành <code>gameCanvas</code>, vì lát nữa trong
+                        	<code>Texture</code> còn một cái <code>canvas</code> tạm nữa, hai cái trùng tên đọc rất dễ nhầm.</li>
+                    </ul>
+
+					Kết quả (Diff sẽ khá khó đọc vì mình có reformat nó nữa):
+                    <div class="htmlPreview" id="htmlPreview43" data-disabled="true"></div>
+
+                    <h2>2. MathExtend và BoundingBox</h2>
+                    Hai hàm global <code>edgeFunction</code> và <code>hypotSquare</code> đó giờ không có nơi nương thân. Cho nên giờ mình tạo class mới
+					<code>MathExtend</code> để chứa tụi nó:
+
+                    <pre><code class="language-javascript">class MathExtend {
+	static edgeFunction(v0, v1, p) {
+		return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
+	}
+
+	static hypotSquare(ax, ay, az, bx, by, bz) { ... }
+}</code></pre>
+
+                    Thứ hai là cái <code>Triangles.boundingBox()</code>. Từ blog 8 tới giờ nó trả về một mảng 4 phần tử, và chỗ
+                    dùng thì đọc như thế này:
+
+                    <pre><code class="language-javascript">const bbox = tri.boundingBox(canvasWidth, canvasHeight);
+...
+for (let y = bbox[2]; y &lt;= bbox[3]; y++) {
+	for (let x = bbox[0]; x &lt;= bbox[1]; x++) {
+		...
+	}
+}</code></pre>
+					Mình là người viết, nên mình quen 0, 1 là min x max x; 2, 3 là min y, max y. Nhưng người khác đọc vào thì chả khác gì magic number.
+					Cho nên mình tạo riêng luôn 1 class cho bounding box:
+                    <pre style="max-height: 400px"><code class="language-javascript">class BoundingBox {
+	constructor(minX, maxX, minY, maxY) {
+		this.minX = minX;
+		this.maxX = maxX;
+		this.minY = minY;
+		this.maxY = maxY;
+	}
+
+	isValid() {
+		return this.minX <= this.maxX && this.minY <= this.maxY;
+	}
+
+	static union(bbox1, bbox2) {
+		return new BoundingBox(
+			Math.min(bbox1.minX, bbox2.minX),
+			Math.max(bbox1.maxX, bbox2.maxX),
+			Math.min(bbox1.minY, bbox2.minY),
+			Math.max(bbox1.maxY, bbox2.maxY),
+		);
+	}
+
+	static intersect(bbox1, bbox2) {
+		return new BoundingBox(
+			Math.max(bbox1.minX, bbox2.minX),
+			Math.min(bbox1.maxX, bbox2.maxX),
+			Math.max(bbox1.minY, bbox2.minY),
+			Math.min(bbox1.maxY, bbox2.maxY),
+		);
+	}
+
+	static isOverlap(bbox1, bbox2) {
+		return (
+			((bbox1.minX < bbox2.maxX && bbox1.maxX > bbox2.minX) || (bbox2.minX < bbox1.maxX && bbox2.maxX > bbox1.minX)) &&
+			((bbox1.minY < bbox2.maxY && bbox1.maxY > bbox2.minY) || (bbox2.minY < bbox1.maxY && bbox2.maxY > bbox1.minY))
+		);
+	}
+}</code></pre>
+					Code sẽ trở nên dễ đọc hơn:
+                    <pre><code class="language-javascript">for (let y = bbox.minY; y &lt;= bbox.maxY; y++) {
+	for (let x = bbox.minX; x &lt;= bbox.maxX; x++) {</code></pre>
+
+                    Bốn hàm trợ giúp thì demo này không dùng tới. Mình thêm 4 hàm đó để phục vụ cho <a href="../portalblog/portalblog.html">portal</a>.
+					Nếu bạn hứng thú thì đọc blog đó để xem mình dùng làm gì.<br/><br/>
+
+                    Còn một chi tiết nhỏ, hàm <code>Triangles.boundingBox()</code> lấy tham số mặc định thẳng từ <code>gameCanvas</code>:
+
+                    <pre><code class="language-javascript">boundingBox(maxWidth = gameCanvas.width, maxHeight = gameCanvas.height) {</code></pre>
+					Như vậy nó khá là ko clean, tốt nhất nên không có giá trị mặc định gì cả:
+                    <pre><code class="language-javascript">boundingBox(maxWidth, maxHeight) {</code></pre>
+
+					Code trở thành:
+                    <div class="htmlPreview" id="htmlPreview44" data-disabled="true"></div>
+
+                    <h2>3. MathTriangle và Triangle</h2>
+                    Class <code>Triangle</code> bây giờ đang khá là bloat, ngoài chứa những biến, hàm phục vụ engine ra, thì nó cũng có những hàm thuần toán học,
+					như <code>getCenter</code>, <code>getNormal</code>, <code>mulMat4x4</code>, ...<br/>
+					Chỗ thấy rõ nhất là shadow map, bạn xem lại hàm <code>buildShadowMap</code>,
+					nó chỉ xài <code>vertices</code> chứ không xài <code>worldVertices</code> hay <code>uv</code>. Những hàm nó xài: <code>mulMat4x4</code>, 
+					<code>perspectiveDivide</code>, <code>boundingBox</code>, <code>calculateSignedDoubleArea</code> đều là hàm thuần toán học.<br/><br/>
+
+                    Cho nên ta tách phần toán học ra thành 1 class mới <code>MathTriangle</code>, còn <code>Triangle</code> kế thừa nó và thêm phần engine:
+
+                    <pre><code class="language-javascript">class MathTriangle {
+	constructor(vertices = []) { ... }		// chỉ có vertices và signedDoubleArea
+	mulMat4x4(m) { ... }
+	rotate(q) { ... }
+	getCenter() { ... }
+	getNormal() { ... }
+	clipAgainstPlane(plane) { ... }			// cắt hình, trả về các MathTriangle mới (thuần toán học)
+	boundingBox(maxWidth, maxHeight) { ... }
+}
+
+class Triangle extends MathTriangle {
+	constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
+		super(vertices);
+		this.uv = uv;
+		this.viewDistanceSquared = 0;
+		this.worldVertices = [...];
+		this.color = color;
+		this.texture = null;
+	}
+
+	clipAgainstPlane(plane) { ... }			// cắt hình VÀ nội suy uv, worldVertices
+	getWorldNormal() { ... }
+	getPointLightsThatCanAffectTri(...) { ... }
+}</code></pre>
+
+                    Để ý là <code>clipAgainstPlane</code> có ở cả hai. Bản ở
+                    <code>MathTriangle</code> chỉ cắt toạ độ - đủ dùng cho mấy phép toán hình học. Bản ở
+                    <code>Triangle</code> override nó, vì khi cắt một tam giác có texture thì hai đỉnh mới sinh ra còn
+                    phải được nội suy uv và toạ độ world nữa (xem lại <a href="graphics3D10-texture.html">blog 10</a>).<br/><br/>
+
+                    Và cái shadow map giờ khai báo đúng thứ nó cần:
+                    <pre><code class="language-javascript">this.shadowTri = new MathTriangle();</code></pre>
+
+                    Tiện tay mình khai báo sẵn <code>viewMatrix</code> và <code>projectionMatrix</code> trong
+                    constructor của <code>DirectionalLight</code> luôn (blog 9 mình thiếu), cho javascript đỡ phải suy diễn class ngầm.
+                    <div class="htmlPreview" id="htmlPreview45" data-disabled="true"></div>
+
+                    <div id="graphics3D-nav-bottom"></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3D.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>
