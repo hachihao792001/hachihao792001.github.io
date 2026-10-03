@@ -196,6 +196,95 @@ class Triangle extends MathTriangle {
                     constructor của <code>DirectionalLight</code> luôn (blog 9 mình thiếu), cho javascript đỡ phải suy diễn class ngầm.
                     <div class="htmlPreview" id="htmlPreview45" data-disabled="true"></div>
 
+                    <h2>4. Transform</h2>
+                    Vấn đề:
+					<ul>
+					<li><code>Camera</code> có <code>pos</code> và <code>rotation</code>.</li>
+					<li><code>GameObject</code> cũng có <code>pos</code>, <code>rotation</code> và <code>scale</code>.</li>
+					</ul>
+					Nếu bạn từng xài Unity hay game engine khác, thì
+					bạn biết là những thứ này có thể được gom trong 1 class riêng là <code>Transform</code>, là tổng hợp những "Phép biến
+					hình" trước khi đưa nó qua view matrix (y hệt cách mình giải thích model matrix trong <a href="graphics3D4-model.html">blog 4</a>).<br/><br/>
+
+					Mà đã làm Transform rồi, thì mình cũng phải làm luôn hệ thống parent - child giống trong Unity: Parent di chuyển, xoay, phóng to thì child cũng phải
+					di chuyển, xoay, phóng to theo. Như vậy class Transform sẽ có dạng như sau:
+                    <pre><code class="language-javascript">class Transform {
+	constructor(localPosition, localEulerAngles, localScale, name) {	// có name để dễ phân biệt
+		this.localPosition = localPosition;
+		this.localRotation = Quaternion.buildQuaternionEuler(localEulerAngles);
+		this.localScale = localScale;
+
+		this._parent = null;		// có dấu gạch dưới vì ta phải xem nó là private (có lí do)
+		this._children = [];		// có dấu gạch dưới vì ta phải xem nó là private (có lí do)
+		this.gameObject = null;		// reference về lại gameObject chứa nó, như Unity
+	}
+	...
+}</code></pre>
+					Ta lưu local thay vì world là vì để đỡ phải tính lại mỗi khi parent di chuyển. Từ local ta mới tính ngược lại world:
+                    <pre><code class="language-javascript">get position() {
+	if (this._parent == null) return this.localPosition;
+	return this._parent.transformPoint(this.localPosition);
+}
+
+get rotation() {
+	if (this._parent == null) return this.localRotation;
+	return Quaternion.multiply(this._parent.rotation, this.localRotation);
+}
+
+get lossyScale() {		// scale thế giới, đặt tên vậy cho giống Unity
+	if (this._parent == null) return this.localScale;
+	return Vector3.scale(this._parent.lossyScale, this.localScale);
+}</code></pre>
+
+                    Lúc mình học Unity, mình luôn nhớ hàm <a href="https://docs.unity3d.com/6000.6/Documentation/ScriptReference/Transform.TransformPoint.html">transformPoint</a>
+					là "convert từ local sang world". Còn khi đã quen với engine này, thì bạn có thể hiểu nó là "hàm <code>getTransformedTriangles</code> nhưng với 1 điểm",
+					hàm <code>getTransformedTriangles</code> ta áp dụng thứ tự scale -> rotate -> translate, ở đây ta cũng làm vậy:
+
+                    <pre><code class="language-javascript">transformPoint(point) {
+	return Vector3.add(this.position, this.rotation.rotateVector(Vector3.scale(point, this.lossyScale)));
+}</code></pre>
+
+                    <code>Camera</code> và <code>GameObject</code> giờ đều chỉ còn giữ một cái <code>Transform</code>:
+
+                    <pre><code class="language-javascript">class Camera {
+	static maxPitch = 89.9;
+	constructor(pos, euler, speed, sensitivity) {
+		this.transform = new Transform(pos, euler);
+		...
+	}
+	getViewMatrix() { return this.transform.getViewMatrix(); }
+}</code></pre>
+
+                    Nhân tiện mình thêm cái <code>maxPitch</code>: trước đây nếu bạn kéo chuột lên (pitch) quá lố thì camera sẽ lộn
+                    ngược ra sau và góc nhìn bị lật ngược. Giờ ta giới hạn lại pitch trong khoảng ±89.9 độ, trong hàm <code>updateRotation</code>:
+
+                    <pre><code class="language-javascript">updateRotation(mouseMovementX, mouseMovementY) {
+	let afterYawRotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity), this.transform.rotation);
+
+	let additionalPitchAngle = -mouseMovementY * this.sensitivity;
+	let forwardY = Math.max(-1, Math.min(1, afterYawRotation.rotateVector(Vector3.forward).y));
+	let currentPitch = Math.asin(forwardY) * (180 / Math.PI);
+	additionalPitchAngle = Math.max(-Camera.maxPitch - currentPitch, Math.min(Camera.maxPitch - currentPitch, additionalPitchAngle));
+
+	let right = afterYawRotation.rotateVector(Vector3.right);
+	this.transform.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(right, additionalPitchAngle), afterYawRotation);
+}</code></pre>
+					Ta không cập nhật xong pitch rồi mới giới hạn, mà ta giới hạn luôn độ tăng của pitch (<code>additionalPitchAngle</code>) trước khi cộng vào luôn.</br>
+					Về cái <code>currentPitch</code>: <code>forwardY</code> của <code>forward</code>, tức là độ dài hình chiếu của <code>forward</code> lên trục y thế giới. Độ dài hình
+					chiếu đó chính là sin của góc hợp bởi vector đơn vị và trục hoành (nhớ lại bản chất sin). Sin thì là đối / huyền = forwardY / vector đơn vị,
+					vector đơn vị thì là 1, nên suy ra sin góc = forwardY, suy ra góc = arcsin(forwardY). Phần code còn lại bạn có thể tự ngẫm.<br/><br/>
+
+                    Còn <code>GameObject</code>, vì có hệ thống children rồi, nên ta viết luôn 1 hàm để lấy hết tam giác đã biến đổi trong các children của GameObject,
+					và đệ quy cho tới khi nào hết:
+                    <pre><code class="language-javascript">getTransformedTrianglesWithChildren() {
+	let transformedTris = this.getTransformedTriangles();
+	for (let child of this.transform.children) {
+		if (child.gameObject != null) {
+			transformedTris.push(...child.gameObject.getTransformedTrianglesWithChildren());
+		}
+	}
+	return transformedTris;
+}</code></pre>
                     <div id="graphics3D-nav-bottom"></div>
             </div>
         </div>
