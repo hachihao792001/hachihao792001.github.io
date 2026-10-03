@@ -5,10 +5,13 @@ async function updatePreview() {
         const htmlPreviewId = htmlPreviewDiv.id;
         const htmlCode = await fetchHTMLCode(htmlPreviewId);
 
+		const startDisabled = htmlPreviewDiv.dataset.disabled === "true";
+
         const codePane = document.createElement("div");
         codePane.className = "codePane";
         const iframe = document.createElement("iframe");
-        iframe.srcdoc = htmlCode;
+        iframe.srcdoc = startDisabled ? "" : htmlCode;
+		iframe.dataset.disabled = startDisabled ? "true" : "false";
         htmlPreviewDiv.appendChild(codePane);
         htmlPreviewDiv.appendChild(iframe);
 
@@ -43,7 +46,7 @@ async function updatePreview() {
 
         const disableButton = document.createElement("button");
         disableButton.className = "disable-btn btn btn-outline-primary";
-        disableButton.textContent = "Disable";
+        disableButton.textContent = startDisabled ? "Enable" : "Disable";
         disableButton.addEventListener("click", () => {
             if (iframe.dataset.disabled === "true") {
                 iframe.srcdoc = htmlCode;
