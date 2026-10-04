@@ -207,7 +207,10 @@ class Triangle extends MathTriangle {
 					hình" trước khi đưa nó qua view matrix (y hệt cách mình giải thích model matrix trong <a href="graphics3D4-model.html">blog 4</a>).<br/><br/>
 
 					Mà đã làm Transform rồi, thì mình cũng phải làm luôn hệ thống parent - child giống trong Unity: Parent di chuyển, xoay, phóng to thì child cũng phải
-					di chuyển, xoay, phóng to theo. Như vậy class Transform sẽ có dạng như sau:
+					di chuyển, xoay, phóng to theo.
+
+					<h3>a. Các biến, hàm cơ bản</h3>
+					Với mô tả như trên thì constructor của class Transform sẽ có dạng như sau:
                     <pre><code class="language-javascript">class Transform {
 	constructor(localPosition, localEulerAngles, localScale, name) {	// có name để dễ phân biệt
 		this.localPosition = localPosition;
@@ -219,8 +222,15 @@ class Triangle extends MathTriangle {
 		this.gameObject = null;		// reference về lại gameObject chứa nó, như Unity
 	}
 	...
+	clone() {
+		let t = new Transform(this.localPosition.clone(), Vector3.zero, this.localScale.clone(), this.name);
+		t.localRotation = new Quaternion(this.localRotation.a, this.localRotation.b, this.localRotation.c, this.localRotation.d);
+		return t;
+	}
+	...
 }</code></pre>
-					Ta lưu local thay vì world là vì để đỡ phải tính lại mỗi khi parent di chuyển. Từ local ta mới tính ngược lại world:
+					Đầu tiên, lí do ta lưu local thay vì world là vì để đỡ phải tính lại position, rotation, scale của Transform hiện tại mỗi 
+					lần parent của nó di chuyển. Từ local ta mới tính ngược lại world khi cần, ngoài ra thì ta cũng phải thêm hàm để set world rồi chuyển lại local:
                     <pre><code class="language-javascript">get position() {
 	if (this._parent == null) return this.localPosition;
 	return this._parent.transformPoint(this.localPosition);
@@ -231,60 +241,225 @@ get rotation() {
 	return Quaternion.multiply(this._parent.rotation, this.localRotation);
 }
 
-get lossyScale() {		// scale thế giới, đặt tên vậy cho giống Unity
+get lossyScale() {		// scale thế giới, đặt tên vậy cho giống Unity, sẽ giải thích sau
 	if (this._parent == null) return this.localScale;
 	return Vector3.scale(this._parent.lossyScale, this.localScale);
-}</code></pre>
+}
 
-                    Lúc mình học Unity, mình luôn nhớ hàm <a href="https://docs.unity3d.com/6000.6/Documentation/ScriptReference/Transform.TransformPoint.html">transformPoint</a>
-					là "convert từ local sang world". Còn khi đã quen với engine này, thì bạn có thể hiểu nó là "hàm <code>getTransformedTriangles</code> nhưng với 1 điểm",
-					hàm <code>getTransformedTriangles</code> ta áp dụng thứ tự scale -> rotate -> translate, ở đây ta cũng làm vậy:
+set position(worldPosition) {
+	this.localPosition = this._parent == null ? worldPosition : this._parent.inverseTransformPoint(worldPosition);
+}
+
+set rotation(worldRotation) {
+	//conjugate() (liên hợp) của một quaternion đơn vị chính là nghịch đảo của quaternion đó (blog 6)
+	// dùng conjugate để "xoay ngược lại" world thành local (hope that make sense)
+	this.localRotation = this._parent == null ? worldRotation : Quaternion.multiply(this._parent.rotation.conjugate(), worldRotation);
+}
+
+// không có set lossyScale như Unity (có lí do), cho set vào localScale là đủ</code></pre>
+
+                    Các hàm trên có xài hàm <code>transformPoint</code> và <code>inverseTransformPoint</code> nên ta phải tạo luôn.
+					Lúc mình học Unity, mình luôn nhớ hàm <a href="https://docs.unity3d.com/6000.6/Documentation/ScriptReference/Transform.TransformPoint.html">Transform.TransformPoint</a>
+					là "convert từ local sang world". Còn khi đã quen với engine này, thì bạn có thể hiểu nó là "hàm <code>getTransformedTriangles</code>, nhưng thay vì
+					tính với mọi tam giác trong GameObject, thì chỉ tính với 1 điểm".
+					Hàm <code>getTransformedTriangles</code> ta áp dụng thứ tự scale -> rotate -> translate, ở đây ta cũng làm vậy:
 
                     <pre><code class="language-javascript">transformPoint(point) {
 	return Vector3.add(this.position, this.rotation.rotateVector(Vector3.scale(point, this.lossyScale)));
+}
+
+// inverseTransformPoint thì ngược lại: translate -> rotate -> scale
+inverseTransformPoint(point) {
+	// inverseRotateVector mình có giải thích ở blog Portal
+	let local = this.rotation.inverseRotateVector(Vector3.sub(point, this.position));
+	let scale = this.lossyScale;
+	return new Vector3(local.x / scale.x, local.y / scale.y, local.z / scale.z);
 }</code></pre>
+					<h3>b. Hàm setParent</h3>
+					Lí do tại sao <code>_parent</code> và <code>_children</code> lại phải được xem là private: vì 
+					quan hệ cha-con được lưu ở <b>hai nơi</b>: thằng con giữ con trỏ lên cha
+					(<code>_parent</code>), và thằng cha giữ danh sách con (<code>_children</code>). Nếu bạn gán tay
+					<code>a._parent = b</code> mà quên <code>b._children.push(a)</code> thì sẽ gặp vấn đề ngay.<br/><br/>
+					
+					Cho nên hai biến này chỉ được truy cập trong những hàm có liên quan tới quan hệ cha con giữa nhiều Transform,
+					và chỉ có hàm <code>setParent</code> là làm như vậy.<br/><br/>
+					
+					Hàm này có dạng <code>setParent(parent, worldPositionStays = true)</code>, <code>worldPositionStays</code>
+					nghĩa là "đổi cha nhưng Transform <b>đứng yên tại chỗ</b>". Hàm sẽ có ý tưởng cơ bản như sau:
+					<ol>
+						<li>Check nếu parent mới trùng parent cũ thì bỏ</li>
+						<li>Check nếu parent mới là hậu duệ của Transform hiện tại (gây vòng lặp vô tận) thì bỏ</li>
+						<li>Cache lại position, rotation, scale thế giới trước khi cập nhật parent</li>
+						<li>Gỡ Transform hiện tại khỏi parent cũ (nếu có)</li>
+						<li>Gắn vào parent mới (nhớ set luôn _children của parent)</li>
+						<li>Nếu <code>worldPositionStays=true</code> thì trả lại position, rotation, scale cũ</li>
+					</ol>
 
-                    <code>Camera</code> và <code>GameObject</code> giờ đều chỉ còn giữ một cái <code>Transform</code>:
-
-                    <pre><code class="language-javascript">class Camera {
-	static maxPitch = 89.9;
-	constructor(pos, euler, speed, sensitivity) {
-		this.transform = new Transform(pos, euler);
-		...
+                    <pre><code class="language-javascript">setParent(parent, worldPositionStays = true) {
+	if (parent === this._parent) return;
+	if (parent != null && parent.isDescendantOf(this)) {
+		console.warn("Cannot parent " + this.name + " to " + parent.name + ": that would make a cycle");
+		return;
 	}
-	getViewMatrix() { return this.transform.getViewMatrix(); }
-}</code></pre>
 
-                    Nhân tiện mình thêm cái <code>maxPitch</code>: trước đây nếu bạn kéo chuột lên (pitch) quá lố thì camera sẽ lộn
-                    ngược ra sau và góc nhìn bị lật ngược. Giờ ta giới hạn lại pitch trong khoảng ±89.9 độ, trong hàm <code>updateRotation</code>:
+	let worldPosition = this.position;		// cache lại world trước khi cập nhật parent
+	let worldRotation = this.rotation;
+	let worldScale = this.lossyScale;
 
-                    <pre><code class="language-javascript">updateRotation(mouseMovementX, mouseMovementY) {
-	let afterYawRotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity), this.transform.rotation);
-
-	let additionalPitchAngle = -mouseMovementY * this.sensitivity;
-	let forwardY = Math.max(-1, Math.min(1, afterYawRotation.rotateVector(Vector3.forward).y));
-	let currentPitch = Math.asin(forwardY) * (180 / Math.PI);
-	additionalPitchAngle = Math.max(-Camera.maxPitch - currentPitch, Math.min(Camera.maxPitch - currentPitch, additionalPitchAngle));
-
-	let right = afterYawRotation.rotateVector(Vector3.right);
-	this.transform.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(right, additionalPitchAngle), afterYawRotation);
-}</code></pre>
-					Ta không cập nhật xong pitch rồi mới giới hạn, mà ta giới hạn luôn độ tăng của pitch (<code>additionalPitchAngle</code>) trước khi cộng vào luôn.</br>
-					Về cái <code>currentPitch</code>: <code>forwardY</code> của <code>forward</code>, tức là độ dài hình chiếu của <code>forward</code> lên trục y thế giới. Độ dài hình
-					chiếu đó chính là sin của góc hợp bởi vector đơn vị và trục hoành (nhớ lại bản chất sin). Sin thì là đối / huyền = forwardY / vector đơn vị,
-					vector đơn vị thì là 1, nên suy ra sin góc = forwardY, suy ra góc = arcsin(forwardY). Phần code còn lại bạn có thể tự ngẫm.<br/><br/>
-
-                    Còn <code>GameObject</code>, vì có hệ thống children rồi, nên ta viết luôn 1 hàm để lấy hết tam giác đã biến đổi trong các children của GameObject,
-					và đệ quy cho tới khi nào hết:
-                    <pre><code class="language-javascript">getTransformedTrianglesWithChildren() {
-	let transformedTris = this.getTransformedTriangles();
-	for (let child of this.transform.children) {
-		if (child.gameObject != null) {
-			transformedTris.push(...child.gameObject.getTransformedTrianglesWithChildren());
-		}
+	if (this._parent != null) {				// gỡ khỏi parent cũ nếu có
+		let index = this._parent._children.indexOf(this);
+		if (index >= 0) this._parent._children.splice(index, 1);
 	}
-	return transformedTris;
+
+	this._parent = parent;					// gắn vào parent mới, cả 2 chiều
+	if (parent != null) parent._children.push(this);
+
+	if (worldPositionStays) {
+		this.position = worldPosition;		// setter sẽ tự đổi về local của cha mới
+		this.rotation = worldRotation;
+		let parentScale = parent != null ? parent.lossyScale : Vector3.one;
+		this.localScale = new Vector3(worldScale.x / parentScale.x, worldScale.y / parentScale.y, worldScale.z / parentScale.z);
+	}
 }</code></pre>
+
+					<h3>c. Tại sao scale thế giới lại được gọi là lossyScale</h3>
+					// TODO<br/><br/>
+
+					<h3>d. Những hàm bổ trợ khác</h3>
+					Đã số những hàm trong đây khá là hiển nhiên và dễ hiểu, hàm nào cần suy nghĩ chút thì mình thêm comment.<br/><br/>
+					Các hàm liên quan tới quan hệ cha - con:
+					<pre style="max-height: 400px"><code class="language-javascript">get parent() {
+	return this._parent;
+}
+
+set parent(parent) {
+	this.setParent(parent);
+}
+
+get children() {
+	return this._children;
+}
+
+get childCount() {
+	return this._children.length;
+}
+
+get root() {
+	let current = this;
+	while (current._parent != null) {
+		current = current._parent;
+	}
+	return current;
+}
+
+setParent(parent, worldPositionStays = true) {...} // đã giải thích
+
+isDescendantOf(parent) {
+	let current = this;
+	while (current != null) {
+		if (current === parent) return true;
+		current = current._parent;
+	}
+	return false;
+}
+
+getChild(index) {
+	return this._children[index];
+}
+
+detachChildren() {
+	for (let child of this._children.slice()) {
+		child.setParent(this._parent);
+	}
+}</code></pre>
+					Các hàm lấy hướng local:
+					<pre style="max-height: 400px"><code class="language-javascript">getForward() {
+	return this.rotation.rotateVector(Vector3.forward).normalize();
+}
+
+getRight() {
+	return this.rotation.rotateVector(Vector3.right).normalize();
+}
+
+getUp() {
+	return this.rotation.rotateVector(Vector3.up).normalize();
+}</code></pre>
+					Các hàm thay đổi position, rotation theo cách khác nhau ngoài việc set thẳng:
+					<pre style="max-height: 400px"><code class="language-javascript">translate(offset) {
+	this.position = Vector3.add(this.position, offset);
+}
+
+translateLocal(offset) {
+	this.position = Vector3.add(this.position, this.rotation.rotateVector(offset));
+}
+
+rotate(eulerX, eulerY, eulerZ) {
+	let q = Quaternion.buildQuaternionEuler(new Vector3(eulerX, eulerY, eulerZ));
+	this.rotation = Quaternion.multiply(q, this.rotation);
+}
+
+rotateAround(axis, angle) {	// lợi dụng hàm buildQuaternionAxisAngle
+	this.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(axis, angle), this.rotation);
+}
+
+setEulerAngles(eulerAngles) {
+	this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
+}
+
+setLocalEulerAngles(eulerAngles) {
+	this.localRotation = Quaternion.buildQuaternionEuler(eulerAngles);
+}
+
+lookRotation(forward, up = Vector3.up) {
+	this.rotation = Quaternion.lookRotation(forward, up);	// đã giải thích ở blog Portal
+}
+
+lookAt(target, up = Vector3.up) {
+	this.lookRotation(Vector3.sub(target, this.position).normalize(), up);
+}</code></pre>
+					Hàm <code>lookRotation</code> kéo theo một mớ hàm toán: <code>Quaternion.lookRotation</code>,
+                    <code>Quaternion.buildQuaternionAxisRadian</code>,
+                    <code>Vector3.projectVectorToPlane</code>, <code>Vector3.getAxisAndRadianBetween</code>,
+					<code>Vector3.getRadianBetweenWithAxis</code>. Mấy hàm này
+					mình đã giải thích kĩ trong <a href="../portalblog/portalblog.html">blog portal</a> (phần dựng
+					<code>lookRotation</code> để chỉnh lại roll của player sau khi teleport), nên ở đây mình không nói
+					lại nữa.<br/><br/>
+
+					Các hàm về ma trận:
+					<pre style="max-height: 400px"><code class="language-javascript">getScaleMatrix() {
+	let scale = this.lossyScale;
+	return Mat4x4.Scale(scale.x, scale.y, scale.z);
+}
+
+getTranslationMatrix() {
+	let position = this.position;
+	return Mat4x4.Translation(position.x, position.y, position.z);
+}
+
+getViewMatrix() {
+	return Mat4x4.ViewFromPosRot(this.position, this.rotation);
+}</code></pre>
+					Hàm <code>Mat4x4.ViewFromPosRot</code> bốc từ hàm <code>getViewMatrix</code> của <code>Camera</code> ra:
+					<pre><code class="language-javascript">static ViewFromPosRot(pos, rotation) {
+	let forward = rotation.rotateVector(Vector3.forward);
+	let right = rotation.rotateVector(Vector3.right);
+	let up = rotation.rotateVector(Vector3.up);
+	return Mat4x4.View(right, up, forward, pos);
+}</code></pre>
+					Hàm về chuyển đổi vector:
+					<pre style="max-height: 400px"><code class="language-javascript">transformDirection(direction) {
+	return this.rotation.rotateVector(direction);
+}
+
+inverseTransformDirection(direction) {
+	return this.rotation.inverseRotateVector(direction);
+}</code></pre>
+					Nếu bạn như mình hồi mới học Unity, hay bị lộn giữa 
+					<a href="https://docs.unity3d.com/6000.6/Documentation/ScriptReference/Transform.TransformPoint.html">TransformPoint</a> và 
+					<a href="https://docs.unity3d.com/6000.6/Documentation/ScriptReference/Transform.TransformDirection.html">TransformDirection</a>, 
+					thì như code bạn đã thấy, TransformDirection kệ position và scale của Transform, chỉ biến đổi theo rotation,
+					vì thứ ta cần biến đổi chỉ là hướng (đại lượng vector).
+					
                     <div id="graphics3D-nav-bottom"></div>
             </div>
         </div>
