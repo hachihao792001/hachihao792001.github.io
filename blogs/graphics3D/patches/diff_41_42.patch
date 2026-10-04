@@ -24,7 +24,7 @@
  					transformedTri.updateWorldVertices();
  					transformedTri.color = this.color;
  					transformedTri.texture = this.texture;
-@@ -1251,11 +1254,14 @@
+@@ -1250,11 +1253,14 @@
  				}
  			}
  

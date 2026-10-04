@@ -891,7 +891,7 @@
 
 			setParent(parent, worldPositionStays = true) {
 				if (parent === this._parent) return;
-				if (parent != null && parent.isChildOf(this)) {
+				if (parent != null && parent.isDescendantOf(this)) {
 					console.warn("Cannot parent " + this.name + " to " + parent.name + ": that would make a cycle");
 					return;
 				}
@@ -917,7 +917,7 @@
 				}
 			}
 
-			isChildOf(parent) {
+			isDescendantOf(parent) {
 				let current = this;
 				while (current != null) {
 					if (current === parent) return true;

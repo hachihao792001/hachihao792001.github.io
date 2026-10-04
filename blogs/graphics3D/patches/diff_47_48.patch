@@ -1,0 +1,104 @@
+--- "a/htmlPreviews\\htmlPreview47.html"
++++ "b/htmlPreviews\\htmlPreview48.html"
+@@ -1622,27 +1622,14 @@
+ 		let lastTime = performance.now();
+ 		let dt = 0;
+ 
+-		function update(time = performance.now()) {
+-			dt = (time - lastTime) / 1000;
+-			lastTime = time;
+-
+-			fpsTimeCounter += dt;
+-			frames++;
+-			if (fpsTimeCounter >= 1) {
+-				fpsInfo.textContent = `FPS: ${frames}`;
+-				frames = 0;
+-				fpsTimeCounter = 0;
+-			}
+-
+-			rasterizer.clearScreen();
+-
++		function updateGameObjectTransforms() {
+ 			camera.updateMovement(dt, keyStates);
+-			const viewMat = camera.getViewMatrix();
+-
+ 			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
+ 			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
+ 			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
++		}
+ 
++		function gameObjectToWorldSpaceTriangles() {
+ 			let objectTris = [];
+ 			objectTris.push(...ground.getTransformedTrianglesWithChildren());
+ 			for (let light of pointLights) {
+@@ -1650,10 +1637,18 @@
+ 			}
+ 			objectTris.push(...woodTower.getTransformedTrianglesWithChildren());
+ 
++			return objectTris;
++		}
++
++		function buildShadowMap(objectTris){
+ 			if (useShadow) {
+ 				dirLight.buildViewAndProjectionMatrix();
+ 				dirLight.buildShadowMap(objectTris);
+ 			}
++		}
++
++		function worldSpaceToViewSpace(objectTris) {
++			const viewMat = camera.getViewMatrix();
+ 
+ 			let visibleTris = [];
+ 			for (let tri of objectTris) {
+@@ -1663,6 +1658,10 @@
+ 				}
+ 			}
+ 
++			return visibleTris;
++		}
++
++		function sortNearestFirst(visibleTris) {
+ 			for (let tri of visibleTris) {
+ 				const vertices = tri.vertices;
+ 				const centerX = (vertices[0].x + vertices[1].x + vertices[2].x) / 3;
+@@ -1671,14 +1670,40 @@
+ 				tri.viewDistanceSquared = centerX * centerX + centerY * centerY + centerZ * centerZ;
+ 			}
+ 			visibleTris.sort((a, b) => a.viewDistanceSquared - b.viewDistanceSquared);
++		}
+ 
++		function viewSpaceToClipSpace(visibleTris) {
+ 			for (let tri of visibleTris) {
+ 				tri.mulMat4x4(projectionMatrix);
+ 				tri.perspectiveDivide();
+ 			}
++		}
+ 
++		function rasterize(visibleTris) {
++			rasterizer.clearScreen();
+ 			rasterizer.rasterizeClipSpaceTriangles(visibleTris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow);
+ 			rasterizer.drawCall();
++		}
++
++		function update(time = performance.now()) {
++			dt = (time - lastTime) / 1000;
++			lastTime = time;
++
++			fpsTimeCounter += dt;
++			frames++;
++			if (fpsTimeCounter >= 1) {
++				fpsInfo.textContent = `FPS: ${frames}`;
++				frames = 0;
++				fpsTimeCounter = 0;
++			}
++
++			updateGameObjectTransforms();
++			let objectTris = gameObjectToWorldSpaceTriangles();
++			buildShadowMap(objectTris);
++			let visibleTris = worldSpaceToViewSpace(objectTris);
++			sortNearestFirst(visibleTris);
++			viewSpaceToClipSpace(visibleTris);
++			rasterize(visibleTris);
+ 
+ 			requestAnimationFrame(update);
+ 		}

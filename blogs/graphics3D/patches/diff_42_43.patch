@@ -122,7 +122,7 @@
  				);
  			}
  
-@@ -264,935 +262,980 @@
+@@ -264,934 +262,979 @@
  			rotateVector(v) {
  				const qVec = new Quaternion(0, v.x, v.y, v.z);
  				const res = Quaternion.multiply(Quaternion.multiply(this, qVec), this.conjugate());
@@ -725,7 +725,6 @@
 +				const canvasWidth = gameCanvas.width;
 +				const canvasHeight = gameCanvas.height;
 +				const activeLights = new Array(maxActiveLights);
-+				const pointLightRange2 = pointLightRange * pointLightRange;
 +
  				for (let tri of tris) {
 -					this.tris.push(new Triangle(
@@ -1332,23 +1331,21 @@
 -				);
 +				return [minX, maxX, minY, maxY];
 +			}
- 
--				lightSpacePos.mulMat4x4(this.viewMatrix);
--				lightSpacePos.mulMat4x4(this.projectionMatrix);
++
 +			calculateSignedDoubleArea() {
 +				this.signedDoubleArea = edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
 +			}
  
--				lightSpacePos.x /= lightSpacePos.w;
--				lightSpacePos.y /= lightSpacePos.w;
--				lightSpacePos.z /= lightSpacePos.w;
+-				lightSpacePos.mulMat4x4(this.viewMatrix);
+-				lightSpacePos.mulMat4x4(this.projectionMatrix);
 +			getPointLightsThatCanAffectTri(pointLightRange, pointLights, outLights) {
 +				const triWorldCenterX = (this.worldVertices[0].x + this.worldVertices[1].x + this.worldVertices[2].x) / 3;
 +				const triWorldCenterY = (this.worldVertices[0].y + this.worldVertices[1].y + this.worldVertices[2].y) / 3;
 +				const triWorldCenterZ = (this.worldVertices[0].z + this.worldVertices[1].z + this.worldVertices[2].z) / 3;
  
--				const x = Math.floor((lightSpacePos.x + 1) * shadowMapSize / 2);
--				const y = Math.floor((-lightSpacePos.y + 1) * shadowMapSize / 2);
+-				lightSpacePos.x /= lightSpacePos.w;
+-				lightSpacePos.y /= lightSpacePos.w;
+-				lightSpacePos.z /= lightSpacePos.w;
 +				let triBoundingCircleRadius2 = 0;
 +				for (let i = 0; i < 3; i++) {
 +					const currentWorldVertex = this.worldVertices[i];
@@ -1364,16 +1361,23 @@
 +				}
 +				const totalRange = pointLightRange + Math.sqrt(triBoundingCircleRadius2);
  
+-				const x = Math.floor((lightSpacePos.x + 1) * shadowMapSize / 2);
+-				const y = Math.floor((-lightSpacePos.y + 1) * shadowMapSize / 2);
++				let triWorldNormal = this.getWorldNormal();
+ 
 -				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize)
 -					return false;
-+				let triWorldNormal = this.getWorldNormal();
++				let count = 0;
++				for (let i = 0; i < pointLights.length; i++) {
++					const lightPos = pointLights[i].pos;
  
 -				return lightSpacePos.z > this.shadowMap[y][x] + shadowBias;
 -			}
 -		}
-+				let count = 0;
-+				for (let i = 0; i < pointLights.length; i++) {
-+					const lightPos = pointLights[i].pos;
++					const toLightX = lightPos.x - triWorldCenterX;
++					const toLightY = lightPos.y - triWorldCenterY;
++					const toLightZ = lightPos.z - triWorldCenterZ;
++					if (triWorldNormal.x * toLightX + triWorldNormal.y * toLightY + triWorldNormal.z * toLightZ <= 0) continue;
  
 -		class Color {
 -			constructor(r, g, b) {
@@ -1381,18 +1385,13 @@
 -				this.g = g;
 -				this.b = b;
 -			}
-+					const toLightX = lightPos.x - triWorldCenterX;
-+					const toLightY = lightPos.y - triWorldCenterY;
-+					const toLightZ = lightPos.z - triWorldCenterZ;
-+					if (triWorldNormal.x * toLightX + triWorldNormal.y * toLightY + triWorldNormal.z * toLightZ <= 0) continue;
++					const lightDistance2 = hypotSquare(lightPos.x, lightPos.y, lightPos.z, triWorldCenterX, triWorldCenterY, triWorldCenterZ);
++					if (lightDistance2 > totalRange * totalRange) continue;
  
 -			updateColor(r, g, b) {
 -				this.r = r;
 -				this.g = g;
 -				this.b = b;
-+					const lightDistance2 = hypotSquare(lightPos.x, lightPos.y, lightPos.z, triWorldCenterX, triWorldCenterY, triWorldCenterZ);
-+					if (lightDistance2 > totalRange * totalRange) continue;
-+
 +					outLights[count] = lightPos;
 +					count++;
 +					if (count == outLights.length) break;
@@ -1467,7 +1466,6 @@
 -				const canvasWidth = canvas.width;
 -				const canvasHeight = canvas.height;
 -				const activeLights = new Array(maxActiveLights);
--				const pointLightRange2 = pointLightRange * pointLightRange;
 -
 -				for (let tri of tris) {
 -					let vertices = tri.vertices;
@@ -1844,7 +1842,7 @@
  		];
  
  		let lastTime = performance.now();
-@@ -1219,21 +1262,6 @@
+@@ -1218,21 +1261,6 @@
  			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
  			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
  
@@ -1866,7 +1864,7 @@
  			let objectTris = [];
  			objectTris.push(...ground.getTransformedTriangles());
  			for (let light of pointLights) {
-@@ -1300,22 +1328,22 @@
+@@ -1299,22 +1327,22 @@
  			useShadow = shadowCheckbox.checked;
  		});
  

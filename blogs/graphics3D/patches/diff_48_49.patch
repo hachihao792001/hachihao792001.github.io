@@ -1,0 +1,207 @@
+--- "a/htmlPreviews\\htmlPreview48.html"
++++ "b/htmlPreviews\\htmlPreview49.html"
+@@ -81,11 +81,16 @@
+ 			static up;
+ 			static down;
+ 			static forward;
++			static back;
+ 
+ 			clone() {
+ 				return new Vector3(this.x, this.y, this.z, this.w);
+ 			}
+ 
++			equal(vec) {
++				return this.x == vec.x && this.y == vec.y && this.z == vec.z;
++			}
++
+ 			static add(vec1, vec2) {
+ 				return new Vector3(vec1.x + vec2.x, vec1.y + vec2.y, vec1.z + vec2.z);
+ 			}
+@@ -152,6 +157,7 @@
+ 
+ 				return [axis, angle];
+ 			}
++
+ 			static getRadianBetweenWithAxis(vec1, vec2, axis) {
+ 				let projectedV1 = vec1.projectVectorToPlane(axis);
+ 				let projectedV2 = vec2.projectVectorToPlane(axis);
+@@ -174,6 +180,7 @@
+ 		Vector3.up = new Vector3(0, 1, 0);
+ 		Vector3.down = new Vector3(0, -1, 0);
+ 		Vector3.forward = new Vector3(0, 0, 1);
++		Vector3.back = new Vector3(0, 0, -1);
+ 
+ 		class Mat4x4 {
+ 			constructor() {
+@@ -260,12 +267,39 @@
+ 				this.d = d;
+ 			}
+ 
++			static dot(p, q) {
++				return p.a * q.a + p.b * q.b + p.c * q.c + p.d * q.d;
++			}
++
++			static lerp(from, to, t) {
++				let toA = to.a,
++					toB = to.b,
++					toC = to.c,
++					toD = to.d;
++
++				if (Quaternion.dot(from, to) < 0) {
++					toA = -toA;
++					toB = -toB;
++					toC = -toC;
++					toD = -toD;
++				}
++
++				t = Math.min(Math.max(t, 0), 1);
++
++				return new Quaternion(from.a + (toA - from.a) * t, from.b + (toB - from.b) * t, from.c + (toC - from.c) * t, from.d + (toD - from.d) * t);
++			}
++
+ 			static buildQuaternionAxisAngle(axis, angle) {
+ 				let radian = (angle / 180.0) * Math.PI;
+ 				const half = radian / 2;
+ 				const s = -Math.sin(half);
+ 				return new Quaternion(Math.cos(half), axis.x * s, axis.y * s, axis.z * s);
+ 			}
++
++			static isClose(a, b, margin) {
++				return 1 - Math.abs(Quaternion.dot(a, b)) < margin;
++			}
++
+ 			static buildQuaternionAxisRadian(axis, angle) {
+ 				const half = angle / 2.0;
+ 				const s = -Math.sin(half);
+@@ -315,7 +349,7 @@
+ 				const res = Quaternion.multiply(Quaternion.multiply(this.conjugate(), qVec), this);
+ 				return new Vector3(res.b, res.c, res.d);
+ 			}
+-			
++
+ 			static lookRotation(forward, up) {
+ 				let [fixForwardAxis, fixForwardAngle] = Vector3.getAxisAndRadianBetween(Vector3.forward, forward);
+ 				let firstRotation = Quaternion.buildQuaternionAxisRadian(fixForwardAxis, fixForwardAngle);
+@@ -352,6 +386,25 @@
+ 				let vectorAM = Vector3.mul(vectorAB, t);
+ 				return [t, Vector3.add(A, vectorAM)];
+ 			}
++
++			distanceToPoint(p) {
++				return Vector3.dot(p, this.normal) - this.D;
++			}
++
++			isIntersectingWithTris(tris) {
++				for (let tri of tris) {
++					if (tri.isIntersectingPlane(this)) return true;
++				}
++				return false;
++			}
++
++			clipWithTris(tris) {
++				let clippedTris = [];
++				for (let tri of tris) {
++					clippedTris.push(...tri.clipAgainstPlane(this));
++				}
++				return clippedTris;
++			}
+ 		}
+ 
+ 		class BoundingBox {
+@@ -448,6 +501,15 @@
+ 				}
+ 			}
+ 
++			isIntersectingPlane(plane) {
++				for (let i = 0; i < this.vertices.length; i++) {
++					let next = (i + 1) % this.vertices.length;
++					let t = plane.intersectWithLine(this.vertices[i], this.vertices[next])[0];
++					if (t >= 0 && t <= 1) return true;
++				}
++
++				return false;
++			}
+ 
+ 			clipAgainstPlane(plane) {
+ 				let outTris = [];
+@@ -534,22 +596,23 @@
+ 		}
+ 
+ 		class Texture {
+-			constructor(url) {
++			constructor(url = "") {
+ 				this.pixels = null;
+ 				this.width = 0;
+ 				this.height = 0;
+-				this.load(url);
++				if (url) this.load(url);
+ 			}
+ 
+ 			async load(url) {
+ 				const img = new Image();
+ 				img.crossOrigin = "anonymous";
+ 				img.src = url;
+-				await new Promise((resolve) => {
++				const loaded = new Promise((resolve) => {
+ 					img.onload = () => {
+ 						resolve();
+ 					};
+ 				});
++				await loaded;
+ 				const tempCanvas = document.createElement("canvas");
+ 				tempCanvas.width = img.width;
+ 				tempCanvas.height = img.height;
+@@ -1385,7 +1448,7 @@
+ 				this.tris = tris;
+ 			}
+ 
+-			setTriangles(tris, color) {
++			setTriangles(tris, color = new Color(255, 255, 255)) {
+ 				this.tris = [];
+ 				for (let tri of tris) {
+ 					this.tris.push(
+@@ -1399,6 +1462,35 @@
+ 			}
+ 		}
+ 
++		class Quad extends Mesh {
++			constructor() {
++				super(Quad.generateInitialTriangles());
++			}
++
++			static generateInitialTriangles() {
++				let tris = [];
++				let color = new Color(255, 255, 255);
++
++				tris.push(
++					new Triangle(
++						[new Vector3(0.5, -0.5, 0), new Vector3(0.5, 0.5, 0), new Vector3(-0.5, 0.5, 0)],
++						[new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
++						color,
++					),
++				);
++
++				tris.push(
++					new Triangle(
++						[new Vector3(0.5, -0.5, 0), new Vector3(-0.5, 0.5, 0), new Vector3(-0.5, -0.5, 0)],
++						[new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
++						color,
++					),
++				);
++
++				return tris;
++			}
++		}
++
+ 		class Cube extends Mesh {
+ 			constructor() {
+ 				super(Cube.generateInitialTriangles());
+@@ -1554,7 +1646,7 @@
+ 							triVertices.push(vertexCoord);
+ 							triUVs.push(vertexUV);
+ 						}
+-						let newTri = new Triangle(triVertices, triUVs, this.color);
++						let newTri = new Triangle(triVertices, triUVs);
+ 						triangles.push(newTri);
+ 					}
+ 				}

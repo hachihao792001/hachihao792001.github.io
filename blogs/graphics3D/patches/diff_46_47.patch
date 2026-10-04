@@ -1,0 +1,63 @@
+--- "a/htmlPreviews\\htmlPreview46.html"
++++ "b/htmlPreviews\\htmlPreview47.html"
+@@ -1018,12 +1018,15 @@
+ 		}
+ 
+ 		class Rasterizer {
+-			constructor() {
+-				this.imageData = ctx.createImageData(gameCanvas.width, gameCanvas.height);
++			constructor(canvasWidth, canvasHeight, ctx) {
++				this.canvasWidth = canvasWidth;
++				this.canvasHeight = canvasHeight;
++				this.ctx = ctx;
+ 
++				this.imageData = this.ctx.createImageData(this.canvasWidth, this.canvasHeight);
+ 				this.screenBuffer = this.imageData.data;
+ 				this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);
+-				this.depthBuffer = new Float64Array(gameCanvas.width * gameCanvas.height);
++				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
+ 
+ 				this.clearScreen();
+ 			}
+@@ -1033,11 +1036,11 @@
+ 				this.depthBuffer.fill(Infinity);
+ 			}
+ 
+-			processTriangles(tris) {
++			rasterizeClipSpaceTriangles(tris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow) {
+ 				const screenBuffer = this.screenBuffer;
+ 				const depthBuffer = this.depthBuffer;
+-				const canvasWidth = gameCanvas.width;
+-				const canvasHeight = gameCanvas.height;
++				const canvasWidth = this.canvasWidth;
++				const canvasHeight = this.canvasHeight;
+ 				const activeLights = new Array(maxActiveLights);
+ 
+ 				for (let tri of tris) {
+@@ -1199,7 +1202,7 @@
+ 			}
+ 
+ 			drawCall() {
+-				ctx.putImageData(this.imageData, 0, 0);
++				this.ctx.putImageData(this.imageData, 0, 0);
+ 			}
+ 		}
+ 
+@@ -1563,7 +1566,7 @@
+ 		// ===== index.js =====
+ 		const gameCanvas = (document.getElementById("gameCanvas"));
+ 		const ctx = (gameCanvas.getContext("2d"));
+-		const rasterizer = new Rasterizer();
++		const rasterizer = new Rasterizer(gameCanvas.width, gameCanvas.height, ctx);
+ 		const fov = 60;
+ 		let znear = 0.01,
+ 			zfar = 1000;
+@@ -1674,7 +1677,7 @@
+ 				tri.perspectiveDivide();
+ 			}
+ 
+-			rasterizer.processTriangles(visibleTris);
++			rasterizer.rasterizeClipSpaceTriangles(visibleTris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow);
+ 			rasterizer.drawCall();
+ 
+ 			requestAnimationFrame(update);

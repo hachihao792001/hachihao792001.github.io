@@ -323,7 +323,10 @@ inverseTransformPoint(point) {
 }</code></pre>
 
 					<h3>c. Tại sao scale thế giới lại được gọi là lossyScale</h3>
-					// TODO<br/><br/>
+					Tại sao Unity không gọi scale thế giới là <code>worldScale</code> mà lại là <code>lossyScale</code>? Nhìn qua thì bạn hiểu là do
+					nó bị "mất thông tin" theo 1 cách gì đó. Để mình giải thích bằng 1 ví dụ:
+
+					<br/><br/>
 
 					<h3>d. Những hàm bổ trợ khác</h3>
 					Đã số những hàm trong đây khá là hiển nhiên và dễ hiểu, hàm nào cần suy nghĩ chút thì mình thêm comment.<br/><br/>
@@ -372,7 +375,7 @@ detachChildren() {
 		child.setParent(this._parent);
 	}
 }</code></pre>
-					Các hàm lấy hướng local:
+					Các hàm lấy các hướng trục local:
 					<pre style="max-height: 400px"><code class="language-javascript">getForward() {
 	return this.rotation.rotateVector(Vector3.forward).normalize();
 }
@@ -460,6 +463,380 @@ inverseTransformDirection(direction) {
 					thì như code bạn đã thấy, TransformDirection kệ position và scale của Transform, chỉ biến đổi theo rotation,
 					vì thứ ta cần biến đổi chỉ là hướng (đại lượng vector).
 					
+					<h3>e. Sử dụng Transform khắp nơi</h3>
+                    Có được class Transform rồi, ta thế nó vào <code>Camera</code>:
+
+                    <pre style="max-height: 500px"><code class="language-javascript">class Camera {
+	static maxPitch = 89.9;
+	constructor(pos, euler, speed, sensitivity) {
+		this.transform = new Transform(pos, euler);		// <-----------------------
+		this.speed = speed;
+		this.sensitivity = sensitivity;
+	}
+
+	// truyền vào zNear, zFar thay vì lấy từ global
+	getFrustumCenter(zNear, zFar, customZFar = -1) {
+		let forward = this.transform.getForward();		// <-----------------------
+
+		let near = Vector3.add(this.transform.position, Vector3.mul(forward, zNear));			// <-----------------------
+		if (customZFar == -1) customZFar = zFar;
+		let far = Vector3.add(this.transform.position, Vector3.mul(forward, customZFar));		// <-----------------------
+		return Vector3.div(Vector3.add(near, far), 2);
+	}
+
+	updateRotation(mouseMovementX, mouseMovementY) {
+		let afterYawRotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity), this.transform.rotation);	// <-----------------------
+
+		let additionalPitchAngle = -mouseMovementY * this.sensitivity;
+		let forwardY = Math.max(-1, Math.min(1, afterYawRotation.rotateVector(Vector3.forward).y));
+		let currentPitch = Math.asin(forwardY) * (180 / Math.PI);
+		additionalPitchAngle = Math.max(-Camera.maxPitch - currentPitch, Math.min(Camera.maxPitch - currentPitch, additionalPitchAngle));
+
+		let right = afterYawRotation.rotateVector(Vector3.right);
+		this.transform.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(right, additionalPitchAngle), afterYawRotation);	// <-----------------------
+	}
+
+	// mọi hàng trong hàm này đều thay đổi (trừ các hàm if keyStates)
+	updateMovement(dt, keyStates) {
+		let forward = this.transform.getForward();
+		let right = this.transform.getRight();
+		let step = dt * this.speed;
+
+		if (keyStates["w"]) {
+			this.transform.translate(Vector3.mul(forward, step));
+		}
+		if (keyStates["s"]) {
+			this.transform.translate(Vector3.mul(forward, -step));
+		}
+		if (keyStates["a"]) {
+			this.transform.translate(Vector3.mul(right, -step));
+		}
+		if (keyStates["d"]) {
+			this.transform.translate(Vector3.mul(right, step));
+		}
+		if (keyStates["Shift"]) {
+			this.transform.translate(Vector3.mul(Vector3.down, step));
+		}
+		if (keyStates[" "]) {
+			this.transform.translate(Vector3.mul(Vector3.up, step));
+		}
+	}
+
+	getViewMatrix() {
+		return this.transform.getViewMatrix();	// <-----------------------
+	}
+}</code></pre>
+
+					Còn <code>GameObject</code>, vì có hệ thống children, nên ta viết luôn 1 hàm để lấy hết tam giác đã biến đổi trong các children của GameObject,
+					và đệ quy cho tới khi nào hết:
+                    <pre><code class="language-javascript">getTransformedTrianglesWithChildren() {
+	let transformedTris = this.getTransformedTriangles();
+	for (let child of this.transform.children) {
+		if (child.gameObject != null) {
+			transformedTris.push(...child.gameObject.getTransformedTrianglesWithChildren());
+		}
+	}
+	return transformedTris;
+}</code></pre>
+                    Class GameObject sau khi dùng Transform:
+					<pre><code class="language-javascript">class GameObject {
+	static incrementingID = 0;
+
+	constructor(pos, eulerAngles, scale, color, mesh, texture = null, name = "") {
+		this.id = GameObject.incrementingID++;
+		this.name = name || `GameObject ${this.id}`;
+		this.transform = new Transform(pos, eulerAngles, scale, this.name);	// <-----------------------
+		this.transform.gameObject = this;		// <-----------------------
+		this.color = color;
+		this.mesh = mesh;
+		this.texture = texture;
+	}
+
+	getTransformedTriangles() {
+		let transformedTris = [];
+		let scaleMat = this.transform.getScaleMatrix();		// <-----------------------
+		let rotation = this.transform.rotation;				// <-----------------------
+		let translationMat = this.transform.getTranslationMatrix();		// <-----------------------
+		for (let tri of this.mesh.tris) {
+			...
+		}
+		return transformedTris;
+	}
+
+	getTransformedTrianglesWithChildren() {...}	// đã nói ở trên
+}</code></pre>
+					Thay luôn sử dụng <code>Transform</code> ở những chỗ lặt vặt khác, khá nhiều nên mình không nhắc tới, bạn xem Diff sẽ thấy rõ:
+                    <div class="htmlPreview" id="htmlPreview46" data-disabled="true"></div>
+
+                    <h2>5. Rasterizer không đọc biến global</h2>
+                    Bên trong Rasterizer nó đang đọc thẳng <code>ctx</code> và <code>gameCanvas</code>. Với lại hàm
+                    <code>processTriangles</code> bên trong thò ra lấy
+                    <code>dirLight</code>, <code>pointLights</code>, <code>pointLightIntensity</code>,
+                    <code>pointLightRange</code>, <code>useShadow</code>.<br/><br/>
+
+                    Viết như vậy vi phạm quy tắc gì đó của Clean code mình cũng không rõ. Nhưng cái mình biết là
+					viết như vậy bạn sẽ không thể có hai cái rasterizer để vẽ ra hai canvas khác nhau khi cần. Và cũng không thể render
+                    cùng một scene với bộ lighting khác nhau. Sửa thì khá dễ, chỉ là chuyển mấy thứ nó đọc lén thành tham số.<br/><br/>
+
+					Như vậy class Rasterizer trở thành (mình đổi tên <code>processTriangles</code> thành <code>rasterizerClipSpaceTriangles</code> cho đúng
+					mục đích và đối tượng của hàm):
+                    <pre><code class="language-javascript">class Rasterizer {
+	constructor(canvasWidth, canvasHeight, ctx) {
+		this.canvasWidth = canvasWidth;				// <------------------
+		this.canvasHeight = canvasHeight;			// <------------------
+		this.ctx = ctx;								// <------------------
+
+		this.imageData = this.ctx.createImageData(this.canvasWidth, this.canvasHeight);		// <------------------
+		this.screenBuffer = this.imageData.data;
+		this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);
+		this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);			// <------------------
+
+		this.clearScreen();
+	}
+
+	...
+
+	rasterizeClipSpaceTriangles(tris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow) {	// <------------------
+		const screenBuffer = this.screenBuffer;
+		const depthBuffer = this.depthBuffer;
+		const canvasWidth = this.canvasWidth;		// <------------------
+		const canvasHeight = this.canvasHeight;		// <------------------
+		...
+	}
+
+	drawCall() {
+		this.ctx.putImageData(this.imageData, 0, 0);	// <------------------
+	}
+}</code></pre>
+					Full code (xem Diff để xem mấy chỗ gọi):
+                    <div class="htmlPreview" id="htmlPreview47" data-disabled="true"></div>
+
+                    <h2>6. Tách update() thành nhiều hàm</h2>
+                    Hàm <code>update()</code> hiện tại dài 70 dòng, và làm những thứ sau: 	
+					<ol>
+						<li>Tính delta time, tính fps</li>
+						<li>Xử lí phím, update vị trí, rotation của mọi object trong thế giới (xoay dirLight)</li>
+						<li>Chuẩn bị các triangles của các object ở world space</li>
+						<li>Build shadow map</li>
+						<li>Đưa các triangles về view space, backface culling, near plane clipping</li>
+						<li>Sort tam giác</li>
+						<li>Đưa các triangles về clip space (nhân projection matrix và chia z)</li>
+						<li>Clear screen, đưa triangles cho rasteriezer xử lí và gọi drawCall</li>
+					</ol>
+					Khá nhiều thứ trong 1 hàm, cho nên ta sẽ tách từng bước ra thành từng hàm riêng cho dễ đọc (trừ cái đầu, vì nó liên quan trực tiếp tới
+					việc update):
+					<pre style="max-height: 500px;"><code class="language-javascript">function updateGameObjectTransforms() {
+	camera.updateMovement(dt, keyStates);
+	let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
+	dirLightRotation = Quaternion.multiply(q, dirLightRotation);
+	dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
+}
+
+function gameObjectToWorldSpaceTriangles() {
+	let objectTris = [];
+	objectTris.push(...ground.getTransformedTrianglesWithChildren());
+	for (let light of pointLights) {
+		objectTris.push(...light.getTransformedTrianglesWithChildren());
+	}
+	objectTris.push(...woodTower.getTransformedTrianglesWithChildren());
+
+	return objectTris;
+}
+
+function buildShadowMap(objectTris){
+	if (useShadow) {
+		dirLight.buildViewAndProjectionMatrix();
+		dirLight.buildShadowMap(objectTris);
+	}
+}
+
+function worldSpaceToViewSpace(objectTris) {
+	const viewMat = camera.getViewMatrix();
+
+	let visibleTris = [];
+	for (let tri of objectTris) {
+		if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.transform.position)) < 0) {
+			tri.mulMat4x4(viewMat);
+			visibleTris.push(...tri.clipAgainstPlane(nearPlane));
+		}
+	}
+
+	return visibleTris;
+}
+
+function sortNearestFirst(visibleTris) {
+	for (let tri of visibleTris) {
+		const vertices = tri.vertices;
+		const centerX = (vertices[0].x + vertices[1].x + vertices[2].x) / 3;
+		const centerY = (vertices[0].y + vertices[1].y + vertices[2].y) / 3;
+		const centerZ = (vertices[0].z + vertices[1].z + vertices[2].z) / 3;
+		tri.viewDistanceSquared = centerX * centerX + centerY * centerY + centerZ * centerZ;
+	}
+	visibleTris.sort((a, b) => a.viewDistanceSquared - b.viewDistanceSquared);
+}
+
+function viewSpaceToClipSpace(visibleTris) {
+	for (let tri of visibleTris) {
+		tri.mulMat4x4(projectionMatrix);
+		tri.perspectiveDivide();
+	}
+}
+
+function rasterize(visibleTris) {
+	rasterizer.clearScreen();
+	rasterizer.rasterizeClipSpaceTriangles(visibleTris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow);
+	rasterizer.drawCall();
+}</code></pre>
+					Như vậy hàm update trở thành:
+                    <pre><code class="language-javascript">function update(time = performance.now()) {
+	dt = (time - lastTime) / 1000;
+	lastTime = time;
+
+	fpsTimeCounter += dt;
+	frames++;
+	if (fpsTimeCounter >= 1) {
+		fpsInfo.textContent = `FPS: ${frames}`;
+		frames = 0;
+		fpsTimeCounter = 0;
+	}
+
+	updateGameObjectTransforms();
+	let objectTris = gameObjectToWorldSpaceTriangles();
+	buildShadowMap(objectTris);
+	let visibleTris = worldSpaceToViewSpace(objectTris);
+	sortNearestFirst(visibleTris);
+	viewSpaceToClipSpace(visibleTris);
+	rasterize(visibleTris);
+
+	requestAnimationFrame(update);
+}</code></pre>
+					Kết quả (xem Diff):
+                    <div class="htmlPreview" id="htmlPreview48" data-disabled="true"></div>
+
+                    <h2>7. Các hàm bổ trợ thêm</h2>
+                    Những hàm trong phần này đều không được sử dụng trong demo, nhưng có thể sẽ cần ở demo khác, mục đích của chúng ta vẫn
+					là làm một engine làm base để từ đó làm gì cũng được.<br/><br/>
+
+					<code>Vector3</code> mình thêm <code>equal</code> và <code>Vector3.back</code> (nên có từ lâu rồi):
+					<pre style="max-height: 400px"><code class="language-javascript">equal(vec) {
+	return this.x == vec.x && this.y == vec.y && this.z == vec.z;
+}
+...
+Vector3.back = new Vector3(0, 0, -1);</code></pre>
+
+					Các hàm bổ trợ thêm cho class <code>Plane</code>:
+					<pre style="max-height: 400px"><code class="language-javascript">distanceToPoint(p) {
+	return Vector3.dot(p, this.normal) - this.D;	// xem lại blog 7 nếu không hiểu
+}
+
+isIntersectingWithTris(tris) {
+	for (let tri of tris) {
+		if (tri.isIntersectingPlane(this)) return true;
+	}
+	return false;
+}
+
+clipWithTris(tris) {	// tris là array MathTriangle
+	let clippedTris = [];
+	for (let tri of tris) {
+		clippedTris.push(...tri.clipAgainstPlane(this));
+	}
+	return clippedTris;
+}</code></pre>
+					Thêm hàm <code>MathTriangle.isIntersectingPlane</code> để bổ trợ hàm <code>Plane.isIntersectingWithTris</code> ở trên:
+					<pre style="max-height: 400px"><code class="language-javascript">isIntersectingPlane(plane) {
+	for (let i = 0; i < this.vertices.length; i++) {
+		let next = (i + 1) % this.vertices.length;
+		let t = plane.intersectWithLine(this.vertices[i], this.vertices[next])[0];
+		if (t >= 0 && t <= 1) return true;
+	}
+
+	return false;
+}</code></pre>
+
+					Các hàm bổ trợ thêm cho class <code>Quaternion</code>:
+					<pre style="max-height: 400px"><code class="language-javascript">static dot(p, q) {
+	return p.a * q.a + p.b * q.b + p.c * q.c + p.d * q.d;
+}
+
+static lerp(from, to, t) {
+	let toA = to.a,
+		toB = to.b,
+		toC = to.c,
+		toD = to.d;
+
+	// chọn đường ngắn nhất, đọc blog Portal để hiểu rõ thêm
+	if (Quaternion.dot(from, to) < 0) {
+		toA = -toA;
+		toB = -toB;
+		toC = -toC;
+		toD = -toD;
+	}
+
+	t = Math.min(Math.max(t, 0), 1);
+
+	return new Quaternion(from.a + (toA - from.a) * t, from.b + (toB - from.b) * t, from.c + (toC - from.c) * t, from.d + (toD - from.d) * t);
+}
+		
+static isClose(a, b, margin) {
+	return 1 - Math.abs(Quaternion.dot(a, b)) < margin;
+}</code></pre>
+					Một class Quad (tứ diện 3D) mới:
+					<pre style="max-height: 400px"><code class="language-javascript">class Quad extends Mesh {
+	constructor() {
+		super(Quad.generateInitialTriangles());
+	}
+
+	static generateInitialTriangles() {
+		let tris = [];
+		let color = new Color(255, 255, 255);
+
+		tris.push(
+			new Triangle(
+				[new Vector3(0.5, -0.5, 0), new Vector3(0.5, 0.5, 0), new Vector3(-0.5, 0.5, 0)],
+				[new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
+				color,
+			),
+		);
+
+		tris.push(
+			new Triangle(
+				[new Vector3(0.5, -0.5, 0), new Vector3(-0.5, 0.5, 0), new Vector3(-0.5, -0.5, 0)],
+				[new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
+				color,
+			),
+		);
+
+		return tris;
+	}
+}</code></pre>
+
+                    Kèm theo đó là vài chỗ sửa nhỏ mà trước giờ mình không để ý:
+
+                    <pre><code class="language-javascript">class Mesh {
+	...
+	// thêm màu mặc định, thay vì để undefined chui vào
+	setTriangles(tris, color = new Color(255, 255, 255)) { ... }
+}
+
+class Texture {
+	// cho phép tạo một texture rỗng, có url mới load không thì thôi
+	constructor(url = "") {
+		...
+		if (url) this.load(url);
+	}
+}
+
+class ObjMesh {
+	parseOBJ(objText){
+		...
+		// bỏ this.color - ObjMesh không có field tên color
+		let newTri = new Triangle(triVertices, triUVs);
+	}
+}</code></pre>
+					Kết quả (Xem diff):
+                    <div class="htmlPreview" id="htmlPreview49" data-disabled="true"></div>
+
                     <div id="graphics3D-nav-bottom"></div>
             </div>
         </div>

@@ -86,7 +86,7 @@
  
  					const signedDoubleArea = shadowTri.signedDoubleArea;
  
-@@ -629,9 +669,9 @@
+@@ -628,9 +668,9 @@
  
  					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
  
@@ -99,7 +99,7 @@
  
  					const vertex0 = tri.vertices[0],
  						vertex1 = tri.vertices[1],
-@@ -682,12 +722,12 @@
+@@ -681,12 +721,12 @@
  					const textureWidth = texture ? texture.width : 0,
  						textureHeight = texture ? texture.height : 0;
  
@@ -115,7 +115,7 @@
  							if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
  								const baryCoord0 = edgeFunction12 / signedDoubleArea;
  								const baryCoord1 = edgeFunction20 / signedDoubleArea;
-@@ -939,7 +979,7 @@
+@@ -938,7 +978,7 @@
  				return outTris;
  			}
  
@@ -124,7 +124,7 @@
  				let minX = Math.min(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
  				let maxX = Math.max(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
  				let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
-@@ -950,11 +990,11 @@
+@@ -949,11 +989,11 @@
  				minY = Math.max(0, Math.trunc(minY));
  				maxY = Math.min(maxHeight - 1, Math.trunc(maxY));
  
@@ -138,7 +138,7 @@
  			}
  
  			getPointLightsThatCanAffectTri(pointLightRange, pointLights, outLights) {
-@@ -965,7 +1005,7 @@
+@@ -964,7 +1004,7 @@
  				let triBoundingCircleRadius2 = 0;
  				for (let i = 0; i < 3; i++) {
  					const currentWorldVertex = this.worldVertices[i];
@@ -147,7 +147,7 @@
  						currentWorldVertex.x,
  						currentWorldVertex.y,
  						currentWorldVertex.z,
-@@ -988,7 +1028,7 @@
+@@ -987,7 +1027,7 @@
  					const toLightZ = lightPos.z - triWorldCenterZ;
  					if (triWorldNormal.x * toLightX + triWorldNormal.y * toLightY + triWorldNormal.z * toLightZ <= 0) continue;
  
