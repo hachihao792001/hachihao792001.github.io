@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview16.html"
 +++ "b/htmlPreviews\\htmlPreview17.html"
-@@ -496,6 +496,12 @@
+@@ -501,6 +501,12 @@
  		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
  		let camera = new Camera(Vector3.zero, Vector3.zero, 2, 0.2);
  		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
@@ -13,7 +13,7 @@
  		let keyStates = {};
  
  		const fpsInfo = document.getElementById("fps");
-@@ -548,7 +554,18 @@
+@@ -553,7 +559,18 @@
  			for (let tri of visibleTris) {
  				tri.mulMat4x4(projectionMatrix);
  				tri.perspectiveDivide();

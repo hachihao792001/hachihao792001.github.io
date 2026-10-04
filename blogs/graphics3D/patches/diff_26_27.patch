@@ -77,7 +77,7 @@
  					outTri2.color = this.color;
  					outTris.push(outTri2);
  				}
-@@ -485,66 +511,78 @@
+@@ -490,66 +516,78 @@
  				this.tris.push(new Triangle([
  					new Vector3(-0.5, -0.5, -0.5),
  					new Vector3(-0.5, 0.5, -0.5),
@@ -168,7 +168,7 @@
  			}
  
  			rotate(eulerX, eulerY, eulerZ) {
-@@ -673,10 +711,22 @@
+@@ -678,10 +716,22 @@
  
  									let lightIntensity = Math.max(ambientLight, dirLightDiffuse + totalPointLightDiffuse);
  
@@ -194,7 +194,7 @@
  									);
  								}
  							}
-@@ -750,6 +800,19 @@
+@@ -755,6 +805,19 @@
  			new Cube(new Vector3(1.6, 1, 4.2), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255))
  		];
  

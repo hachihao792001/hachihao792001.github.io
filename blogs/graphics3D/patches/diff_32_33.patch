@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview32.html"
 +++ "b/htmlPreviews\\htmlPreview33.html"
-@@ -722,10 +722,13 @@
+@@ -727,10 +727,13 @@
  			}
  
  			isInShadow(pixelWorldPos, triWorldNormal) {
@@ -16,7 +16,7 @@
  				lightSpacePos.mulMat4x4(this.viewMatrix);
  				lightSpacePos.mulMat4x4(this.projectionMatrix);
  
-@@ -936,7 +939,7 @@
+@@ -941,7 +944,7 @@
  		const lightDirIntensitySlider = document.getElementById("dirIntensity");
  		const lightDirIntensityText = document.getElementById("dirIntensityText");
  		let shadowMapSize = 512;

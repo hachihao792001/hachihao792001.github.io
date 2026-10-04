@@ -43,7 +43,7 @@
  		}
  
  		class Plane {
-@@ -916,6 +952,8 @@
+@@ -921,6 +957,8 @@
  				const depthBuffer = this.depthBuffer;
  				const canvasWidth = canvas.width;
  				const canvasHeight = canvas.height;
@@ -52,7 +52,7 @@
  
  				for (let tri of tris) {
  					let vertices = tri.vertices;
-@@ -970,6 +1008,7 @@
+@@ -975,6 +1013,7 @@
  					const perspectiveWorld2X = world2.x * uv2W, perspectiveWorld2Y = world2.y * uv2W, perspectiveWorld2Z = world2.z * uv2W;
  
  					const pointLightRangeSquare = pointLightRange * pointLightRange;
@@ -60,7 +60,7 @@
  
  					const triColor = tri.color;
  					const texture = tri.texture;
-@@ -1003,8 +1042,8 @@
+@@ -1008,8 +1047,8 @@
  									}
  
  									let totalPointLightDiffuse = 0;
@@ -71,7 +71,7 @@
  										const pointLightVecX = lightPos.x - pixelWorldX;
  										const pointLightVecY = lightPos.y - pixelWorldY;
  										const pointLightVecZ = lightPos.z - pixelWorldZ;
-@@ -1062,6 +1101,14 @@
+@@ -1067,6 +1106,14 @@
  			return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
  		}
  

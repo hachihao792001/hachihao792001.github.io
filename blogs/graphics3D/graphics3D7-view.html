@@ -504,6 +504,42 @@ canvas.addEventListener("mousemove", (e) => {
         camera.updateRotation(e.movementX, e.movementY);
     }
 });</code></pre>
+                    Tiếp theo ta phải giải quyết vấn đê mà mọi game đều phải giải quyết: khi bạn kéo chuột lên (pitch) quá lố thì camera sẽ lộn ngược
+                    ra sau và cả góc nhìn bị lật ngược. Ta giới hạn lại pitch trong khoảng ±89.9 độ:
+
+                    <pre><code class="language-javascript">class Camera {
+    static maxPitch = 89.9;
+
+    ...
+
+    updateRotation(mouseMovementX, mouseMovementY) {
+        let afterYawRotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity), this.rotation);
+
+        let additionalPitchAngle = -mouseMovementY * this.sensitivity;
+        let forwardY = Math.max(-1, Math.min(1, afterYawRotation.rotateVector(Vector3.forward).y));
+        let currentPitch = Math.asin(forwardY) * (180 / Math.PI);
+        additionalPitchAngle = Math.max(-Camera.maxPitch - currentPitch, Math.min(Camera.maxPitch - currentPitch, additionalPitchAngle));
+
+        let right = afterYawRotation.rotateVector(Vector3.right);
+        this.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(right, additionalPitchAngle), afterYawRotation);
+    }
+}</code></pre>
+                    Để ý là ta không cập nhật xong pitch rồi mới giới hạn, mà ta giới hạn luôn <b>độ tăng</b> của pitch
+                    (<code>additionalPitchAngle</code>) trước khi cộng nó vào. Làm ngược lại thì camera sẽ lộn qua rồi
+                    mới bị kéo về, tức là sẽ giật một cái mỗi frame.<br/><br/>
+
+                    Về cái <code>currentPitch</code>: <code>forwardY</code> là thành phần y của <code>forward</code>, tức
+                    là độ dài hình chiếu của <code>forward</code> lên trục y thế giới. Độ dài hình chiếu đó chính là sin
+                    của góc hợp bởi vector đơn vị và mặt phẳng ngang (nhớ lại bản chất sin). Sin thì là đối / huyền =
+                    forwardY / độ dài vector, mà vector đơn vị thì độ dài là 1, nên sin góc = forwardY, suy ra góc =
+                    arcsin(forwardY). Cái <code>Math.max(-1, Math.min(1, ...))</code> bọc bên ngoài là vì sai số số thực
+                    có thể cho ra 1.0000000001, mà <code>Math.asin</code> của một số ngoài đoạn [-1, 1] thì trả về
+                    <code>NaN</code><br/><br/>
+
+                    Còn tại sao là 89.9 mà không phải 90: ở đúng 90 độ thì <code>forward</code> trùng khít với trục up
+                    của thế giới, lúc đó hướng "qua trái qua phải" không còn xác định được nữa. Chừa lại một phần mười
+                    độ là đủ để không bao giờ chạm vào trường hợp đó.<br/><br/>
+
                     Full code (nhấn vào canvas để thử):
                     <div class="htmlPreview" id="htmlPreview14"></div>
                     Khi bạn di chuyển qua lại bạn sẽ thấy ngay 2 vấn đề lớn:

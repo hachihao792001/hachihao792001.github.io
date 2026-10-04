@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview40.html"
 +++ "b/htmlPreviews\\htmlPreview41.html"
-@@ -831,40 +831,50 @@
+@@ -836,40 +836,50 @@
  
  					shadowTri.calculateSignedDoubleArea();
  

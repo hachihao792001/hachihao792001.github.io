@@ -24,7 +24,7 @@
  		}
  
  		class Plane {
-@@ -646,6 +656,11 @@
+@@ -651,6 +661,11 @@
  		const fpsInfo = document.getElementById("fps");
  		let frames = 0, fpsTimeCounter = 0;
  
@@ -36,7 +36,7 @@
  		let cube1 = new Cube(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0));
  		let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0));
  
-@@ -678,6 +693,7 @@
+@@ -683,6 +698,7 @@
  			let visibleTris = [];
  			for (let tri of objectTris) {
  				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
@@ -44,7 +44,7 @@
  					tri.mulMat4x4(viewMat);
  					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
  				}
-@@ -711,6 +727,11 @@
+@@ -716,6 +732,11 @@
  
  		update();
  

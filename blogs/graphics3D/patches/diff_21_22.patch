@@ -27,7 +27,7 @@
  		}
  
  		class Plane {
-@@ -538,13 +551,17 @@
+@@ -543,13 +556,17 @@
  			constructor() {
  				this.imageData = ctx.createImageData(canvas.width, canvas.height);
  				this.screenBuffer = [];
@@ -45,7 +45,7 @@
  				}
  			}
  
-@@ -552,6 +569,7 @@
+@@ -557,6 +574,7 @@
  				for (let i = 0; i < this.screenBuffer.length; i++) {
  					for (let j = 0; j < this.screenBuffer[i].length; j++) {
  						this.screenBuffer[i][j].updateColor(240, 240, 240);
@@ -53,7 +53,7 @@
  					}
  				}
  			}
-@@ -563,14 +581,20 @@
+@@ -568,14 +586,20 @@
  						vertices[i] = new Vector3(
  							vertices[i].x * (canvas.width / 2) + canvas.width / 2,
  							-vertices[i].y * (canvas.height / 2) + canvas.height / 2,
@@ -76,7 +76,7 @@
  							}
  						}
  					}
-@@ -651,10 +675,11 @@
+@@ -656,10 +680,11 @@
  					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
  				}
  			}

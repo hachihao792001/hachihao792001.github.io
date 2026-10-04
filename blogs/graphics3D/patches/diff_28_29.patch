@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview28.html"
 +++ "b/htmlPreviews\\htmlPreview29.html"
-@@ -681,6 +681,12 @@
+@@ -686,6 +686,12 @@
  						tri.vertices[0],
  						new Vector3(bbox[0], bbox[2], 0));
  
@@ -13,7 +13,7 @@
  					for (let y = bbox[2]; y <= bbox[3]; y++) {
  						let edgeFunction01 = edgeFunctionRow01;
  						let edgeFunction12 = edgeFunctionRow12;
-@@ -695,11 +701,14 @@
+@@ -700,11 +706,14 @@
  								if (z < this.depthBuffer[y][x]) {
  									this.depthBuffer[y][x] = z;
  
@@ -31,7 +31,7 @@
  
  									let totalPointLightDiffuse = 0;
  									const pointLightRangeSquare = pointLightRange * pointLightRange;
-@@ -723,7 +732,7 @@
+@@ -728,7 +737,7 @@
  										let pixelUV = new Vector2(
  											tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,
  											tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2,
@@ -40,7 +40,7 @@
  										);
  										pixelUV = Vector2.div(pixelUV, pixelUV.w);
  
-@@ -885,16 +894,7 @@
+@@ -890,16 +899,7 @@
  				tri.perspectiveDivide();
  			}
  

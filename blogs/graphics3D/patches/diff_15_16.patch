@@ -94,7 +94,7 @@
  		}
  
  		class Camera {
-@@ -408,6 +495,7 @@
+@@ -413,6 +500,7 @@
  		let znear = 0.01, zfar = 1000;
  		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
  		let camera = new Camera(Vector3.zero, Vector3.zero, 2, 0.2);
@@ -102,7 +102,7 @@
  		let keyStates = {};
  
  		const fpsInfo = document.getElementById("fps");
-@@ -440,36 +528,43 @@
+@@ -445,36 +533,43 @@
  			cube1.rotate(0, 50 * dt, 0);
  			cube2.rotate(50 * dt, 0, 0);
  

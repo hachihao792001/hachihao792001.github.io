@@ -9,7 +9,7 @@
  	<script>
  		class Vector2 {
  			constructor(u = 0, v = 0, w = 1) {
-@@ -930,6 +932,22 @@
+@@ -935,6 +937,22 @@
  		const pointLightRangeSlider = document.getElementById("pointRange");
  		const pointLightRangeText = document.getElementById("pointRangeText");
  		let pointLightRange = parseFloat(pointLightRangeSlider.value);
@@ -32,7 +32,7 @@
  
  		let cube1 = new Cube(new Vector3(0, 0.35, 5), new Vector3(0, 0, 0), new Vector3(0.7, 0.7, 0.7), new Color(255, 0, 0));
  		let cube2 = new Cube(new Vector3(0, 0, 5), Vector3.zero, new Vector3(3, 0.1, 3), new Color(0, 255, 0));
-@@ -995,6 +1013,7 @@
+@@ -1000,6 +1018,7 @@
  			}
  
  			dirLight.buildShadowMap(objectTris);

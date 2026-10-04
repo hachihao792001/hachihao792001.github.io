@@ -47,7 +47,7 @@
  					outTris.push(outTri2);
  				}
  
-@@ -419,11 +425,12 @@
+@@ -424,11 +430,12 @@
  		}
  
  		class Cube {
@@ -61,7 +61,7 @@
  
  				this.generateInitialTriangles();
  			}
-@@ -433,66 +440,66 @@
+@@ -438,66 +445,66 @@
  				this.tris.push(new Triangle([
  					new Vector3(-0.5, -0.5, -0.5),
  					new Vector3(-0.5, 0.5, -0.5),
@@ -140,7 +140,7 @@
  			}
  
  			rotate(eulerX, eulerY, eulerZ) {
-@@ -563,7 +570,7 @@
+@@ -568,7 +575,7 @@
  					for (let y = bbox[2]; y <= bbox[3]; y++) {
  						for (let x = bbox[0]; x <= bbox[1]; x++) {
  							if (tri.isPointInTriangle([x, y])) {
@@ -149,7 +149,7 @@
  							}
  						}
  					}
-@@ -595,7 +602,7 @@
+@@ -600,7 +607,7 @@
  		const fov = 60;
  		let znear = 0.01, zfar = 1000;
  		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
@@ -158,7 +158,7 @@
  		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
  		let edgePlanes = [
  			new Plane(Vector3.down, new Vector3(0, 1, 0)),
-@@ -608,9 +615,8 @@
+@@ -613,9 +620,8 @@
  		const fpsInfo = document.getElementById("fps");
  		let frames = 0, fpsTimeCounter = 0;
  
@@ -170,7 +170,7 @@
  
  		let lastTime = performance.now();
  		let dt = 0;
-@@ -633,7 +639,6 @@
+@@ -638,7 +644,6 @@
  			const viewMat = camera.getViewMatrix();
  
  			cube1.rotate(0, 50 * dt, 0);

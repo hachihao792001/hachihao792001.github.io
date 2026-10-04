@@ -37,7 +37,7 @@
  				}
  			}
  
-@@ -715,8 +722,11 @@
+@@ -720,8 +727,11 @@
  									if (imgPixels != null) {
  										let pixelUV = new Vector2(
  											tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,

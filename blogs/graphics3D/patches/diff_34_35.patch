@@ -40,7 +40,7 @@
  					outTris.push(outTri2);
  				}
  
-@@ -687,12 +692,13 @@
+@@ -692,12 +697,13 @@
  		}
  
  		class GameObject {
@@ -55,7 +55,7 @@
  			}
  
  			rotate(eulerX, eulerY, eulerZ) {
-@@ -709,6 +715,7 @@
+@@ -714,6 +720,7 @@
  					transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
  					transformedTri.updateWorldVertices();
  					transformedTri.color = this.color;
@@ -63,7 +63,7 @@
  					transformedTris.push(transformedTri);
  				}
  				return transformedTris;
-@@ -840,6 +847,34 @@
+@@ -845,6 +852,34 @@
  			}
  		}
  
@@ -98,7 +98,7 @@
  		class Rasterizer {
  			constructor() {
  				this.imageData = ctx.createImageData(canvas.width, canvas.height);
-@@ -946,7 +981,7 @@
+@@ -951,7 +986,7 @@
  									let lightIntensity = Math.max(ambientLight, (dirLightDiffuse + totalPointLightDiffuse) * shadowFactor);
  
  									let texColor = tri.color;
@@ -107,7 +107,7 @@
  										let pixelUV = new Vector2(
  											tri.uv[0].u * baryCoord0 + tri.uv[1].u * baryCoord1 + tri.uv[2].u * baryCoord2,
  											tri.uv[0].v * baryCoord0 + tri.uv[1].v * baryCoord1 + tri.uv[2].v * baryCoord2,
-@@ -954,10 +989,10 @@
+@@ -959,10 +994,10 @@
  										);
  										pixelUV = Vector2.div(pixelUV, pixelUV.w);
  
@@ -122,7 +122,7 @@
  									}
  
  									this.screenBuffer[y][x].updateColor(
-@@ -1032,28 +1067,20 @@
+@@ -1037,28 +1072,20 @@
  		const pointLightRangeText = document.getElementById("pointRangeText");
  		let pointLightRange = parseFloat(pointLightRangeSlider.value);
  

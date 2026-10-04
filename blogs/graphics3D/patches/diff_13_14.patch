@@ -25,11 +25,13 @@
  			static Translation(x, y, z) {
  				let matrix = new Mat4x4();
  				matrix.m[0][0] = 1;
-@@ -239,6 +257,55 @@
+@@ -239,6 +257,60 @@
  			}
  		}
  
 +		class Camera {
++			static maxPitch = 89.9;
++
 +			constructor(pos, euler, speed, sensitivity) {
 +				this.pos = pos;
 +				this.rotation = Quaternion.buildQuaternionEuler(euler);
@@ -38,12 +40,15 @@
 +			}
 +
 +			updateRotation(mouseMovementX, mouseMovementY) {
-+				let q = Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity);
++				let afterYawRotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity), this.rotation);
 +
-+				let right = this.rotation.rotateVector(Vector3.right);
-+				q = Quaternion.multiply(q, Quaternion.buildQuaternionAxisAngle(right, -mouseMovementY * this.sensitivity));
++				let additionalPitchAngle = -mouseMovementY * this.sensitivity;
++				let forwardY = Math.max(-1, Math.min(1, afterYawRotation.rotateVector(Vector3.forward).y));
++				let currentPitch = Math.asin(forwardY) * (180 / Math.PI);
++				additionalPitchAngle = Math.max(-Camera.maxPitch - currentPitch, Math.min(Camera.maxPitch - currentPitch, additionalPitchAngle));
 +
-+				this.rotation = Quaternion.multiply(q, this.rotation);
++				let right = afterYawRotation.rotateVector(Vector3.right);
++				this.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(right, additionalPitchAngle), afterYawRotation);
 +			}
 +
 +			updateMovement(dt, keyStates) {
@@ -81,7 +86,7 @@
  		class Cube {
  			constructor(pos, eulerAngles, scale) {
  				this.tris = [];
-@@ -340,7 +407,8 @@
+@@ -340,7 +412,8 @@
  		const fov = 60;
  		let znear = 0.01, zfar = 1000;
  		let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);
@@ -91,7 +96,7 @@
  
  		const fpsInfo = document.getElementById("fps");
  		let frames = 0, fpsTimeCounter = 0;
-@@ -365,6 +433,10 @@
+@@ -365,6 +438,10 @@
  			}
  
  			ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -102,7 +107,7 @@
  			cube1.rotate(0, 50 * dt, 0);
  			cube2.rotate(50 * dt, 0, 0);
  
-@@ -372,9 +444,10 @@
+@@ -372,9 +449,10 @@
  			allTris.push(...cube1.getTransformedTriangles());
  			allTris.push(...cube2.getTransformedTriangles());
  			for (let tri of allTris) {
@@ -114,7 +119,7 @@
  						vertices[i].mulMat4x4(projectionMatrix);
  						vertices[i] = Vector3.div(vertices[i], vertices[i].w);
  						vertices[i] = new Vector3(
-@@ -396,6 +469,24 @@
+@@ -396,6 +474,24 @@
  
  		update();
  

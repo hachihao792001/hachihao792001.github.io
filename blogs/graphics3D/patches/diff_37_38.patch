@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview37.html"
 +++ "b/htmlPreviews\\htmlPreview38.html"
-@@ -820,18 +820,28 @@
+@@ -825,18 +825,28 @@
  				}
  			}
  
@@ -33,7 +33,7 @@
  
  				const x = Math.floor((lightSpacePos.x + 1) * shadowMapSize / 2);
  				const y = Math.floor((-lightSpacePos.y + 1) * shadowMapSize / 2);
-@@ -902,20 +912,29 @@
+@@ -907,20 +917,29 @@
  			}
  
  			processTriangles(tris) {
@@ -68,7 +68,7 @@
  
  					let edgeFunctionRow01 = edgeFunction(
  						tri.vertices[0],
-@@ -930,85 +949,107 @@
+@@ -935,85 +954,107 @@
  						tri.vertices[0],
  						new Vector3(bbox[0], bbox[2], 0));
  

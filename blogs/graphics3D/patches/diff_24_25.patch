@@ -138,7 +138,7 @@
  			}
  		}
  
-@@ -517,6 +554,7 @@
+@@ -522,6 +559,7 @@
  					transformedTri.mulMat4x4(Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z));
  					transformedTri.rotate(this.rotation);
  					transformedTri.mulMat4x4(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z));
@@ -146,7 +146,7 @@
  					transformedTris.push(transformedTri);
  				}
  				return transformedTris;
-@@ -576,6 +614,8 @@
+@@ -581,6 +619,8 @@
  
  					tri.calculateSignedDoubleArea();
  
@@ -155,7 +155,7 @@
  					const bbox = tri.boundingBox();
  
  					let edgeFunctionRow01 = edgeFunction(
-@@ -604,7 +644,27 @@
+@@ -609,7 +649,27 @@
  
  								if (z < this.depthBuffer[y][x]) {
  									this.depthBuffer[y][x] = z;
@@ -184,7 +184,7 @@
  								}
  							}
  							edgeFunction01 += (tri.vertices[0].y - tri.vertices[1].y);
-@@ -661,8 +721,13 @@
+@@ -666,8 +726,13 @@
  		let lightDir = new Vector3(-1, -1, -1).normalize();
  		let dirLightIntensity = parseFloat(lightDirIntensitySlider.value);
  
@@ -198,7 +198,7 @@
  
  		let lastTime = performance.now();
  		let dt = 0;
-@@ -685,15 +750,28 @@
+@@ -690,15 +755,28 @@
  			const viewMat = camera.getViewMatrix();
  
  			cube1.rotate(0, 50 * dt, 0);
@@ -228,7 +228,7 @@
  					tri.mulMat4x4(viewMat);
  					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
  				}
-@@ -732,6 +810,11 @@
+@@ -737,6 +815,11 @@
  			lightDirIntensityText.textContent = dirLightIntensity.toFixed(2);
  		});
  

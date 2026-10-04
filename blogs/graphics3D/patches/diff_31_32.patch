@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview31.html"
 +++ "b/htmlPreviews\\htmlPreview32.html"
-@@ -473,6 +473,16 @@
+@@ -475,6 +475,16 @@
  				this.sensitivity = sensitivity;
  			}
  
@@ -15,9 +15,9 @@
 +			}
 +
  			updateRotation(mouseMovementX, mouseMovementY) {
- 				let q = Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity);
+ 				let afterYawRotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity), this.rotation);
  
-@@ -635,11 +645,14 @@
+@@ -640,11 +650,14 @@
  					}
  					this.shadowMap.push(row);
  				}
@@ -33,7 +33,7 @@
  				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
  				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
  			}
-@@ -724,7 +737,7 @@
+@@ -729,7 +742,7 @@
  				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize)
  					return false;
  
@@ -42,7 +42,7 @@
  			}
  		}
  
-@@ -923,7 +936,8 @@
+@@ -928,7 +941,8 @@
  		const lightDirIntensitySlider = document.getElementById("dirIntensity");
  		const lightDirIntensityText = document.getElementById("dirIntensityText");
  		let shadowMapSize = 512;
@@ -52,7 +52,7 @@
  		let dirLight = new DirectionalLight(new Vector3(-1, -1, -1), parseFloat(lightDirIntensitySlider.value));
  
  		const pointLightIntensitySlider = document.getElementById("pointIntensity");
-@@ -1012,6 +1026,7 @@
+@@ -1017,6 +1031,7 @@
  				objectTris.push(...light.getTransformedTriangles());
  			}
  

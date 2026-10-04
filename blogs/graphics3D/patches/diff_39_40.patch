@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview39.html"
 +++ "b/htmlPreviews\\htmlPreview40.html"
-@@ -771,6 +771,10 @@
+@@ -776,6 +776,10 @@
  			constructor(dir, intensity) {
  				this.dir = dir.normalize();
  				this.intensity = intensity;
@@ -11,7 +11,7 @@
  				this.shadowMap = [];
  				for (let i = 0; i < shadowMapSize; i++) {
  					let row = [];
-@@ -800,11 +804,20 @@
+@@ -805,11 +809,20 @@
  					}
  				}
  

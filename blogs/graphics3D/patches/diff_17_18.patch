@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview17.html"
 +++ "b/htmlPreviews\\htmlPreview18.html"
-@@ -9,507 +9,62 @@
+@@ -9,512 +9,62 @@
  <body style="text-align: center; background: #f0f0f0">
  	<h1>3D Engine</h1>
  	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
@@ -285,12 +285,8 @@
 -						frontPoints.push(i);
 -					} else {
 -						behindPoints.push(i);
-+			clearScreen() {
-+				for (let i = 0; i < this.screenBuffer.length; i++) {
-+					for (let j = 0; j < this.screenBuffer[i].length; j++) {
-+						this.screenBuffer[i][j].updateColor(240, 240, 240);
- 					}
- 				}
+-					}
+-				}
 -
 -				if (frontPoints.length == 3) {
 -					outTris.push(this.clone());
@@ -316,7 +312,11 @@
 -					if (frontPoints[0] == 0 && frontPoints[1] == 2) {
 -						frontPoints[0] = 2;
 -						frontPoints[1] = 0;
--					}
++			clearScreen() {
++				for (let i = 0; i < this.screenBuffer.length; i++) {
++					for (let j = 0; j < this.screenBuffer[i].length; j++) {
++						this.screenBuffer[i][j].updateColor(240, 240, 240);
+ 					}
 -
 -					let f0 = this.vertices[frontPoints[0]];
 -					let f1 = this.vertices[frontPoints[1]];
@@ -334,7 +334,7 @@
 -					outTri2.vertices[1] = intersection2;
 -					outTri2.vertices[2] = intersection1.clone();
 -					outTris.push(outTri2);
--				}
+ 				}
 -
 -				return outTris;
 -			}
@@ -361,6 +361,8 @@
 -		}
 -
 -		class Camera {
+-			static maxPitch = 89.9;
+-
 -			constructor(pos, euler, speed, sensitivity) {
 -				this.pos = pos;
 -				this.rotation = Quaternion.buildQuaternionEuler(euler);
@@ -369,12 +371,15 @@
 -			}
 -
 -			updateRotation(mouseMovementX, mouseMovementY) {
--				let q = Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity);
+-				let afterYawRotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity), this.rotation);
 -
--				let right = this.rotation.rotateVector(Vector3.right);
--				q = Quaternion.multiply(q, Quaternion.buildQuaternionAxisAngle(right, -mouseMovementY * this.sensitivity));
+-				let additionalPitchAngle = -mouseMovementY * this.sensitivity;
+-				let forwardY = Math.max(-1, Math.min(1, afterYawRotation.rotateVector(Vector3.forward).y));
+-				let currentPitch = Math.asin(forwardY) * (180 / Math.PI);
+-				additionalPitchAngle = Math.max(-Camera.maxPitch - currentPitch, Math.min(Camera.maxPitch - currentPitch, additionalPitchAngle));
 -
--				this.rotation = Quaternion.multiply(q, this.rotation);
+-				let right = afterYawRotation.rotateVector(Vector3.right);
+-				this.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(right, additionalPitchAngle), afterYawRotation);
  			}
 -
 -			updateMovement(dt, keyStates) {
@@ -410,15 +415,16 @@
 +					}
  				}
 -			}
--
+ 
 -			getViewMatrix() {
 -				let forward = this.rotation.rotateVector(Vector3.forward);
 -				let right = this.rotation.rotateVector(Vector3.right);
 -				let up = this.rotation.rotateVector(Vector3.up);
 -				return Mat4x4.View(right, up, forward, this.pos);
--			}
--		}
--
++				ctx.putImageData(this.imageData, 0, 0);
+ 			}
+ 		}
+ 
 -		class Cube {
 -			constructor(pos, eulerAngles, scale) {
 -				this.tris = [];
@@ -439,7 +445,7 @@
 -					new Vector3(-0.5, -0.5, -0.5),
 -					new Vector3(0.5, 0.5, -0.5),
 -					new Vector3(0.5, -0.5, -0.5)]));
- 
+-
 -				// RIGHT
 -				this.tris.push(new Triangle([
 -					new Vector3(0.5, -0.5, -0.5),
@@ -511,10 +517,9 @@
 -					transformedTris.push(transformedTri);
 -				}
 -				return transformedTris;
-+				ctx.putImageData(this.imageData, 0, 0);
- 			}
- 		}
- 
+-			}
+-		}
+-
 -
  		const canvas = document.getElementById("gameCanvas");
  		const ctx = canvas.getContext("2d");
@@ -541,7 +546,7 @@
  
  		let lastTime = performance.now();
  		let dt = 0;
-@@ -518,95 +73,20 @@
+@@ -523,95 +73,20 @@
  			dt = (time - lastTime) / 1000;
  			lastTime = time;
  

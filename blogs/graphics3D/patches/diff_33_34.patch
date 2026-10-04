@@ -9,7 +9,7 @@
  	<script>
  		class Vector2 {
  			constructor(u = 0, v = 0, w = 1) {
-@@ -524,94 +522,177 @@
+@@ -529,94 +527,177 @@
  			}
  		}
  
@@ -219,7 +219,7 @@
  			}
  
  			rotate(eulerX, eulerY, eulerZ) {
-@@ -621,12 +702,13 @@
+@@ -626,12 +707,13 @@
  
  			getTransformedTriangles() {
  				let transformedTris = [];
@@ -234,7 +234,7 @@
  					transformedTris.push(transformedTri);
  				}
  				return transformedTris;
-@@ -949,33 +1031,20 @@
+@@ -954,33 +1036,20 @@
  		const pointLightRangeSlider = document.getElementById("pointRange");
  		const pointLightRangeText = document.getElementById("pointRangeText");
  		let pointLightRange = parseFloat(pointLightRangeSlider.value);
@@ -276,7 +276,7 @@
  		img.onload = () => {
  			const tempCanvas = document.createElement("canvas");
  			tempCanvas.width = img.width;
-@@ -1028,10 +1097,10 @@
+@@ -1033,10 +1102,10 @@
  			for (let light of pointLights) {
  				objectTris.push(...light.getTransformedTriangles());
  			}

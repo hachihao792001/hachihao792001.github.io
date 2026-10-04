@@ -348,7 +348,7 @@
  
  				minX = Math.max(0, Math.trunc(minX));
  				maxX = Math.min(canvas.width - 1, Math.trunc(maxX));
-@@ -48,6 +349,170 @@
+@@ -48,6 +349,175 @@
  			}
  		}
  
@@ -373,6 +373,8 @@
 +		}
 +
 +		class Camera {
++			static maxPitch = 89.9;
++
 +			constructor(pos, euler, speed, sensitivity) {
 +				this.pos = pos;
 +				this.rotation = Quaternion.buildQuaternionEuler(euler);
@@ -381,12 +383,15 @@
 +			}
 +
 +			updateRotation(mouseMovementX, mouseMovementY) {
-+				let q = Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity);
++				let afterYawRotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity), this.rotation);
 +
-+				let right = this.rotation.rotateVector(Vector3.right);
-+				q = Quaternion.multiply(q, Quaternion.buildQuaternionAxisAngle(right, -mouseMovementY * this.sensitivity));
++				let additionalPitchAngle = -mouseMovementY * this.sensitivity;
++				let forwardY = Math.max(-1, Math.min(1, afterYawRotation.rotateVector(Vector3.forward).y));
++				let currentPitch = Math.asin(forwardY) * (180 / Math.PI);
++				additionalPitchAngle = Math.max(-Camera.maxPitch - currentPitch, Math.min(Camera.maxPitch - currentPitch, additionalPitchAngle));
 +
-+				this.rotation = Quaternion.multiply(q, this.rotation);
++				let right = afterYawRotation.rotateVector(Vector3.right);
++				this.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(right, additionalPitchAngle), afterYawRotation);
 +			}
 +
 +			updateMovement(dt, keyStates) {
@@ -519,7 +524,7 @@
  		class Color {
  			constructor(r, g, b) {
  				this.r = r;
-@@ -83,6 +548,28 @@
+@@ -83,6 +553,28 @@
  					}
  				}
  			}
@@ -548,7 +553,7 @@
  			drawCall() {
  				let index = 0;
  				for (let y = 0; y < canvas.height; y++) {
-@@ -98,16 +585,32 @@
+@@ -98,16 +590,32 @@
  				ctx.putImageData(this.imageData, 0, 0);
  			}
  		}
@@ -586,7 +591,7 @@
  
  		let lastTime = performance.now();
  		let dt = 0;
-@@ -116,31 +619,79 @@
+@@ -116,31 +624,79 @@
  			dt = (time - lastTime) / 1000;
  			lastTime = time;
  

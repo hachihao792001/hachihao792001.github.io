@@ -122,7 +122,7 @@
  				);
  			}
  
-@@ -264,930 +262,975 @@
+@@ -264,935 +262,980 @@
  			rotateVector(v) {
  				const qVec = new Quaternion(0, v.x, v.y, v.z);
  				const res = Quaternion.multiply(Quaternion.multiply(this, qVec), this.conjugate());
@@ -144,20 +144,17 @@
 -				} else {
 -					this.vertices = vertices;
 -				}
-+		class Plane {
-+			constructor(normal, P) {
-+				this.normal = normal.normalize();
-+				this.P = P;
-+				this.D = Vector3.dot(this.normal, this.P);
-+			}
- 
+-
 -				this.uv = uv;
 -				this.viewDistanceSquared = 0;   // khai báo sẵn để hidden class của Triangle không đổi giữa chừng
 -				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
 -				this.color = color;
 -				this.texture = null;
-+			isPointInFrontOfPlane(p) {
-+				return Vector3.dot(p, this.normal) >= this.D;
++		class Plane {
++			constructor(normal, P) {
++				this.normal = normal.normalize();
++				this.P = P;
++				this.D = Vector3.dot(this.normal, this.P);
  			}
  
 -			clone() {
@@ -170,6 +167,14 @@
 -				tri.color = this.color;
 -				tri.texture = this.texture;
 -				return tri;
++			isPointInFrontOfPlane(p) {
++				return Vector3.dot(p, this.normal) >= this.D;
+ 			}
+ 
+-			updateWorldVertices() {
+-				for (let i = 0; i < this.vertices.length; i++) {
+-					this.worldVertices[i] = this.vertices[i].clone();
+-				}
 +			intersectWithLine(A, B) {
 +				let An = Vector3.dot(A, this.normal);
 +				let Bn = Vector3.dot(B, this.normal);
@@ -180,9 +185,9 @@
  			}
 +		}
  
--			updateWorldVertices() {
--				for (let i = 0; i < this.vertices.length; i++) {
--					this.worldVertices[i] = this.vertices[i].clone();
+-			mulMat4x4(m) {
+-				for (let v of this.vertices) {
+-					v.mulMat4x4(m);
 -				}
 +		// ===== graphics.js =====
 +		class Color {
@@ -192,9 +197,9 @@
 +				this.b = b;
  			}
  
--			mulMat4x4(m) {
--				for (let v of this.vertices) {
--					v.mulMat4x4(m);
+-			rotate(q) {
+-				for (let i = 0; i < this.vertices.length; i++) {
+-					this.vertices[i] = q.rotateVector(this.vertices[i]);
 -				}
 +			updateColor(r, g, b) {
 +				this.r = r;
@@ -203,10 +208,11 @@
  			}
 +		}
  
--			rotate(q) {
--				for (let i = 0; i < this.vertices.length; i++) {
--					this.vertices[i] = q.rotateVector(this.vertices[i]);
--				}
+-			getCenter() {
+-				let x = (this.vertices[0].x + this.vertices[1].x + this.vertices[2].x) / 3.0;
+-				let y = (this.vertices[0].y + this.vertices[1].y + this.vertices[2].y) / 3.0;
+-				let z = (this.vertices[0].z + this.vertices[1].z + this.vertices[2].z) / 3.0;
+-				return new Vector3(x, y, z);
 +		class Texture {
 +			constructor(url) {
 +				this.pixels = null;
@@ -215,11 +221,12 @@
 +				this.load(url);
  			}
  
--			getCenter() {
--				let x = (this.vertices[0].x + this.vertices[1].x + this.vertices[2].x) / 3.0;
--				let y = (this.vertices[0].y + this.vertices[1].y + this.vertices[2].y) / 3.0;
--				let z = (this.vertices[0].z + this.vertices[1].z + this.vertices[2].z) / 3.0;
--				return new Vector3(x, y, z);
+-			getNormal() {
+-				let v1 = Vector3.sub(this.vertices[0], this.vertices[1]);
+-				let v2 = Vector3.sub(this.vertices[1], this.vertices[2]);
+-				let normal = Vector3.cross(v1, v2);
+-				normal.normalize();
+-				return normal;
 +			async load(url) {
 +				const img = new Image();
 +				img.crossOrigin = "anonymous";
@@ -240,20 +247,29 @@
  			}
 +		}
  
--			getNormal() {
--				let v1 = Vector3.sub(this.vertices[0], this.vertices[1]);
--				let v2 = Vector3.sub(this.vertices[1], this.vertices[2]);
+-			getWorldNormal() {
+-				let v1 = Vector3.sub(this.worldVertices[0], this.worldVertices[1]);
+-				let v2 = Vector3.sub(this.worldVertices[1], this.worldVertices[2]);
 -				let normal = Vector3.cross(v1, v2);
 -				normal.normalize();
 -				return normal;
+-			}
 +		// ===== engine.js =====
 +		let maxActiveLights = 16;
 +		let ambientLight = 0.2;
 +		let shadowMapSize = 512;
 +		let shadowBias = 0.01;
 +		let shadowMapDistance = 20;
-+
+ 
+-			perspectiveDivide() {
+-				for (let i = 0; i < this.vertices.length; i++) {
+-					let z = this.vertices[i].w;
+-					this.vertices[i] = Vector3.div(this.vertices[i], z);
+-					this.uv[i] = Vector2.div(this.uv[i], z);
+-				}
 +		class Camera {
++			static maxPitch = 89.9;
++
 +			constructor(pos, euler, speed, sensitivity) {
 +				this.pos = pos;
 +				this.rotation = Quaternion.buildQuaternionEuler(euler);
@@ -261,39 +277,55 @@
 +				this.sensitivity = sensitivity;
  			}
  
--			getWorldNormal() {
--				let v1 = Vector3.sub(this.worldVertices[0], this.worldVertices[1]);
--				let v2 = Vector3.sub(this.worldVertices[1], this.worldVertices[2]);
--				let normal = Vector3.cross(v1, v2);
--				normal.normalize();
--				return normal;
+-			clipAgainstPlane(plane) {
+-				let outTris = [];
 +			getFrustumCenter(customZFar = -1) {
 +				let forward = this.rotation.rotateVector(Vector3.forward);
-+
+ 
+-				let frontPoints = [];
+-				let behindPoints = [];
 +				let near = Vector3.add(this.pos, Vector3.mul(forward, znear));
 +				if (customZFar == -1) customZFar = zfar;
 +				let far = Vector3.add(this.pos, Vector3.mul(forward, customZFar));
 +				return Vector3.div(Vector3.add(near, far), 2);
- 			}
- 
--			perspectiveDivide() {
--				for (let i = 0; i < this.vertices.length; i++) {
--					let z = this.vertices[i].w;
--					this.vertices[i] = Vector3.div(this.vertices[i], z);
--					this.uv[i] = Vector2.div(this.uv[i], z);
-+			updateRotation(mouseMovementX, mouseMovementY) {
-+				let q = Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity);
-+
-+				let right = this.rotation.rotateVector(Vector3.right);
-+				q = Quaternion.multiply(q, Quaternion.buildQuaternionAxisAngle(right, -mouseMovementY * this.sensitivity));
-+
-+				this.rotation = Quaternion.multiply(q, this.rotation);
 +			}
-+
+ 
+-				for (let i = 0; i < this.vertices.length; i++) {
+-					if (plane.isPointInFrontOfPlane(this.vertices[i])) {
+-						frontPoints.push(i);
+-					} else {
+-						behindPoints.push(i);
+-					}
+-				}
++			updateRotation(mouseMovementX, mouseMovementY) {
++				let afterYawRotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity), this.rotation);
+ 
+-				if (frontPoints.length == 3) {
+-					outTris.push(this.clone());
+-				} else if (frontPoints.length == 1 && behindPoints.length == 2) {
+-					let outTri = new Triangle();
++				let additionalPitchAngle = -mouseMovementY * this.sensitivity;
++				let forwardY = Math.max(-1, Math.min(1, afterYawRotation.rotateVector(Vector3.forward).y));
++				let currentPitch = Math.asin(forwardY) * (180 / Math.PI);
++				additionalPitchAngle = Math.max(-Camera.maxPitch - currentPitch, Math.min(Camera.maxPitch - currentPitch, additionalPitchAngle));
+ 
+-					if (behindPoints[0] == 0 && behindPoints[1] == 2) {
+-						behindPoints[0] = 2;
+-						behindPoints[1] = 0;
+-					}
++				let right = afterYawRotation.rotateVector(Vector3.right);
++				this.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(right, additionalPitchAngle), afterYawRotation);
++			}
+ 
+-					let f = this.vertices[frontPoints[0]];
+-					let b0 = this.vertices[behindPoints[0]];
+-					let b1 = this.vertices[behindPoints[1]];
 +			updateMovement(dt, keyStates) {
 +				let forward = this.rotation.rotateVector(Vector3.forward);
 +				let right = this.rotation.rotateVector(Vector3.right);
-+
+ 
+-					let [t1, intersection1] = plane.intersectWithLine(f, b0);
+-					let [t2, intersection2] = plane.intersectWithLine(f, b1);
 +				if (keyStates["w"]) {
 +					this.pos = Vector3.add(this.pos, Vector3.mul(forward, dt * this.speed));
 +				}
@@ -311,11 +343,23 @@
 +				}
 +				if (keyStates[" "]) {
 +					this.pos = Vector3.add(this.pos, Vector3.mul(Vector3.up, dt * this.speed));
- 				}
- 			}
++				}
++			}
  
--			clipAgainstPlane(plane) {
--				let outTris = [];
+-					outTri.vertices[0] = f;
+-					outTri.vertices[1] = intersection1;
+-					outTri.vertices[2] = intersection2;
+-					outTri.worldVertices[0] = this.worldVertices[frontPoints[0]];
+-					outTri.worldVertices[1] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
+-					outTri.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[1]], t2);
+-					outTri.uv[0] = this.uv[frontPoints[0]];
+-					outTri.uv[1] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
+-					outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
+-					outTri.color = this.color;
+-					outTri.texture = this.texture;
+-					outTris.push(outTri);
+-				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
+-					let outTri1 = new Triangle(), outTri2 = new Triangle();
 +			getViewMatrix() {
 +				let forward = this.rotation.rotateVector(Vector3.forward);
 +				let right = this.rotation.rotateVector(Vector3.right);
@@ -324,8 +368,10 @@
 +			}
 +		}
  
--				let frontPoints = [];
--				let behindPoints = [];
+-					if (frontPoints[0] == 0 && frontPoints[1] == 2) {
+-						frontPoints[0] = 2;
+-						frontPoints[1] = 0;
+-					}
 +		class GameObject {
 +			constructor(pos, eulerAngles, scale, color, mesh, texture = null) {
 +				this.pos = pos;
@@ -336,16 +382,16 @@
 +				this.texture = texture;
 +			}
  
--				for (let i = 0; i < this.vertices.length; i++) {
--					if (plane.isPointInFrontOfPlane(this.vertices[i])) {
--						frontPoints.push(i);
--					} else {
--						behindPoints.push(i);
+-					let f0 = this.vertices[frontPoints[0]];
+-					let f1 = this.vertices[frontPoints[1]];
+-					let b = this.vertices[behindPoints[0]];
 +			rotate(eulerX, eulerY, eulerZ) {
 +				let q = Quaternion.buildQuaternionEuler(new Vector3(eulerX, eulerY, eulerZ));
 +				this.rotation = Quaternion.multiply(q, this.rotation);
 +			}
-+
+ 
+-					let [t1, intersection1] = plane.intersectWithLine(f0, b);
+-					let [t2, intersection2] = plane.intersectWithLine(f1, b);
 +			getTransformedTriangles() {
 +				let transformedTris = [];
 +				let scaleMat = Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z);
@@ -363,101 +409,6 @@
 +				return transformedTris;
 +			}
 +		}
-+
-+		class DirectionalLight {
-+			constructor(dir, intensity) {
-+				this.dir = dir.normalize();
-+				this.intensity = intensity;
-+
-+				this.shadowTri = new Triangle(
-+					[new Vector3(0, 0, 0), new Vector3(0, 0, 0), new Vector3(0, 0, 0)],
-+					[new Vector2(0, 0), new Vector2(0, 0), new Vector2(0, 0)],
-+				);
-+				this.shadowMap = [];
-+				for (let i = 0; i < shadowMapSize; i++) {
-+					let row = [];
-+					for (let j = 0; j < shadowMapSize; j++) {
-+						row.push(Infinity);
- 					}
-+					this.shadowMap.push(row);
- 				}
-+			}
- 
--				if (frontPoints.length == 3) {
--					outTris.push(this.clone());
--				} else if (frontPoints.length == 1 && behindPoints.length == 2) {
--					let outTri = new Triangle();
-+			buildViewAndProjectionMatrix() {
-+				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
-+				let right = Vector3.cross(up, this.dir).normalize();
-+				up = Vector3.cross(this.dir, right).normalize();
-+				//let frustumCenter = camera.getFrustumCenter(shadowMapDistance);
-+				let frustumCenter = Vector3.zero;
-+				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
-+				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
-+				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
-+			}
- 
--					if (behindPoints[0] == 0 && behindPoints[1] == 2) {
--						behindPoints[0] = 2;
--						behindPoints[1] = 0;
-+			buildShadowMap(tris) {
-+				for (let i = 0; i < shadowMapSize; i++) {
-+					for (let j = 0; j < shadowMapSize; j++) {
-+						this.shadowMap[i][j] = Infinity;
- 					}
-+				}
- 
--					let f = this.vertices[frontPoints[0]];
--					let b0 = this.vertices[behindPoints[0]];
--					let b1 = this.vertices[behindPoints[1]];
-+				const shadowTri = this.shadowTri;
- 
--					let [t1, intersection1] = plane.intersectWithLine(f, b0);
--					let [t2, intersection2] = plane.intersectWithLine(f, b1);
-+				for (let tri of tris) {
-+					if (Vector3.dot(tri.getWorldNormal(), this.dir) >= 0) continue;
- 
--					outTri.vertices[0] = f;
--					outTri.vertices[1] = intersection1;
--					outTri.vertices[2] = intersection2;
--					outTri.worldVertices[0] = this.worldVertices[frontPoints[0]];
--					outTri.worldVertices[1] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);
--					outTri.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[1]], t2);
--					outTri.uv[0] = this.uv[frontPoints[0]];
--					outTri.uv[1] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
--					outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
--					outTri.color = this.color;
--					outTri.texture = this.texture;
--					outTris.push(outTri);
--				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
--					let outTri1 = new Triangle(), outTri2 = new Triangle();
--
--					if (frontPoints[0] == 0 && frontPoints[1] == 2) {
--						frontPoints[0] = 2;
--						frontPoints[1] = 0;
-+					for (let i = 0; i < 3; i++) {
-+						const sourceVertex = tri.vertices[i];
-+						const shadowVertex = shadowTri.vertices[i];
-+						shadowVertex.x = sourceVertex.x;
-+						shadowVertex.y = sourceVertex.y;
-+						shadowVertex.z = sourceVertex.z;
-+						shadowVertex.w = sourceVertex.w;
- 					}
- 
--					let f0 = this.vertices[frontPoints[0]];
--					let f1 = this.vertices[frontPoints[1]];
--					let b = this.vertices[behindPoints[0]];
-+					shadowTri.mulMat4x4(this.viewMatrix);
-+					shadowTri.mulMat4x4(this.projectionMatrix);
-+					shadowTri.perspectiveDivide();
- 
--					let [t1, intersection1] = plane.intersectWithLine(f0, b);
--					let [t2, intersection2] = plane.intersectWithLine(f1, b);
-+					for (let i = 0; i < shadowTri.vertices.length; i++) {
-+						shadowTri.vertices[i].x = ((shadowTri.vertices[i].x + 1) * shadowMapSize) / 2;
-+						shadowTri.vertices[i].y = ((-shadowTri.vertices[i].y + 1) * shadowMapSize) / 2;
-+					}
  
 -					outTri1.vertices[0] = f0;
 -					outTri1.vertices[1] = f1;
@@ -471,7 +422,10 @@
 -					outTri1.color = this.color;
 -					outTri1.texture = this.texture;
 -					outTris.push(outTri1);
-+					const bbox = shadowTri.boundingBox(shadowMapSize, shadowMapSize);
++		class DirectionalLight {
++			constructor(dir, intensity) {
++				this.dir = dir.normalize();
++				this.intensity = intensity;
  
 -					outTri2.vertices[0] = f1.clone();
 -					outTri2.vertices[1] = intersection2;
@@ -485,11 +439,101 @@
 -					outTri2.color = this.color;
 -					outTri2.texture = this.texture;
 -					outTris.push(outTri2);
--				}
-+					shadowTri.calculateSignedDoubleArea();
++				this.shadowTri = new Triangle(
++					[new Vector3(0, 0, 0), new Vector3(0, 0, 0), new Vector3(0, 0, 0)],
++					[new Vector2(0, 0), new Vector2(0, 0), new Vector2(0, 0)],
++				);
++				this.shadowMap = [];
++				for (let i = 0; i < shadowMapSize; i++) {
++					let row = [];
++					for (let j = 0; j < shadowMapSize; j++) {
++						row.push(Infinity);
++					}
++					this.shadowMap.push(row);
+ 				}
++			}
  
 -				return outTris;
++			buildViewAndProjectionMatrix() {
++				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
++				let right = Vector3.cross(up, this.dir).normalize();
++				up = Vector3.cross(this.dir, right).normalize();
++				//let frustumCenter = camera.getFrustumCenter(shadowMapDistance);
++				let frustumCenter = Vector3.zero;
++				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
++				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
++				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
+ 			}
+ 
+-			boundingBox(maxWidth = canvas.width, maxHeight = canvas.height) {
+-				let minX = Math.min(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
+-				let maxX = Math.max(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
+-				let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
+-				let maxY = Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
++			buildShadowMap(tris) {
++				for (let i = 0; i < shadowMapSize; i++) {
++					for (let j = 0; j < shadowMapSize; j++) {
++						this.shadowMap[i][j] = Infinity;
++					}
++				}
+ 
+-				minX = Math.max(0, Math.trunc(minX));
+-				maxX = Math.min(maxWidth - 1, Math.trunc(maxX));
+-				minY = Math.max(0, Math.trunc(minY));
+-				maxY = Math.min(maxHeight - 1, Math.trunc(maxY));
++				const shadowTri = this.shadowTri;
+ 
+-				return [minX, maxX, minY, maxY];
 -			}
++				for (let tri of tris) {
++					if (Vector3.dot(tri.getWorldNormal(), this.dir) >= 0) continue;
+ 
+-			calculateSignedDoubleArea() {
+-				this.signedDoubleArea = edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
+-			}
++					for (let i = 0; i < 3; i++) {
++						const sourceVertex = tri.vertices[i];
++						const shadowVertex = shadowTri.vertices[i];
++						shadowVertex.x = sourceVertex.x;
++						shadowVertex.y = sourceVertex.y;
++						shadowVertex.z = sourceVertex.z;
++						shadowVertex.w = sourceVertex.w;
++					}
+ 
+-			getPointLightsThatCanAffectTri(pointLightRange, pointLights, outLights) {
+-				const triWorldCenterX = (this.worldVertices[0].x + this.worldVertices[1].x + this.worldVertices[2].x) / 3;
+-				const triWorldCenterY = (this.worldVertices[0].y + this.worldVertices[1].y + this.worldVertices[2].y) / 3;
+-				const triWorldCenterZ = (this.worldVertices[0].z + this.worldVertices[1].z + this.worldVertices[2].z) / 3;
++					shadowTri.mulMat4x4(this.viewMatrix);
++					shadowTri.mulMat4x4(this.projectionMatrix);
++					shadowTri.perspectiveDivide();
+ 
+-				let triBoundingCircleRadius2 = 0;
+-				for (let i = 0; i < 3; i++) {
+-					const currentWorldVertex = this.worldVertices[i];
+-					const currentRadius2 = hypotSquare(
+-						currentWorldVertex.x, currentWorldVertex.y, currentWorldVertex.z,
+-						triWorldCenterX, triWorldCenterY, triWorldCenterZ);
+-					if (currentRadius2 > triBoundingCircleRadius2) triBoundingCircleRadius2 = currentRadius2;
+-				}
+-				const totalRange = pointLightRange + Math.sqrt(triBoundingCircleRadius2);
++					for (let i = 0; i < shadowTri.vertices.length; i++) {
++						shadowTri.vertices[i].x = ((shadowTri.vertices[i].x + 1) * shadowMapSize) / 2;
++						shadowTri.vertices[i].y = ((-shadowTri.vertices[i].y + 1) * shadowMapSize) / 2;
++					}
+ 
+-				let triWorldNormal = this.getWorldNormal();
++					const bbox = shadowTri.boundingBox(shadowMapSize, shadowMapSize);
+ 
+-				let count = 0;
+-				for (let i = 0; i < pointLights.length; i++) {
+-					const lightPos = pointLights[i].pos;
++					shadowTri.calculateSignedDoubleArea();
+ 
+-					const toLightX = lightPos.x - triWorldCenterX;
+-					const toLightY = lightPos.y - triWorldCenterY;
+-					const toLightZ = lightPos.z - triWorldCenterZ;
+-					if (triWorldNormal.x * toLightX + triWorldNormal.y * toLightY + triWorldNormal.z * toLightZ <= 0) continue;
 +					const vertex0 = shadowTri.vertices[0],
 +						vertex1 = shadowTri.vertices[1],
 +						vertex2 = shadowTri.vertices[2];
@@ -508,17 +552,17 @@
 +						minY = bbox[2],
 +						maxY = bbox[3];
  
--			boundingBox(maxWidth = canvas.width, maxHeight = canvas.height) {
--				let minX = Math.min(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
--				let maxX = Math.max(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
--				let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
--				let maxY = Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
+-					const lightDistance2 = hypotSquare(lightPos.x, lightPos.y, lightPos.z, triWorldCenterX, triWorldCenterY, triWorldCenterZ);
+-					if (lightDistance2 > totalRange * totalRange) continue;
 +					const signedDoubleArea = shadowTri.signedDoubleArea;
  
--				minX = Math.max(0, Math.trunc(minX));
--				maxX = Math.min(maxWidth - 1, Math.trunc(maxX));
--				minY = Math.max(0, Math.trunc(minY));
--				maxY = Math.min(maxHeight - 1, Math.trunc(maxY));
+-					outLights[count] = lightPos;
+-					count++;
+-					if (count == outLights.length) break;
+-				}
+-				return count;
+-			}
+-		}
 +					const edgeSlopeX01 = vertex0Y - vertex1Y;
 +					const edgeSlopeX12 = vertex1Y - vertex2Y;
 +					const edgeSlopeX20 = vertex2Y - vertex0Y;
@@ -526,31 +570,31 @@
 +					const edgeSlopeY12 = vertex2X - vertex1X;
 +					const edgeSlopeY20 = vertex0X - vertex2X;
  
--				return [minX, maxX, minY, maxY];
+-		class Plane {
+-			constructor(normal, P) {
+-				this.normal = normal.normalize();
+-				this.P = P;
+-				this.D = Vector3.dot(this.normal, this.P);
 -			}
 +					const shadowMap = this.shadowMap;
  
--			calculateSignedDoubleArea() {
--				this.signedDoubleArea = edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
+-			isPointInFrontOfPlane(p) {
+-				return Vector3.dot(p, this.normal) >= this.D;
 -			}
 +					let edgeFunctionRow01 = edgeSlopeX01 * (minX - vertex0X) + edgeSlopeY01 * (minY - vertex0Y);
 +					let edgeFunctionRow12 = edgeSlopeX12 * (minX - vertex1X) + edgeSlopeY12 * (minY - vertex1Y);
 +					let edgeFunctionRow20 = edgeSlopeX20 * (minX - vertex2X) + edgeSlopeY20 * (minY - vertex2Y);
  
--			getPointLightsThatCanAffectTri(pointLightRange, pointLights, outLights) {
--				const triWorldCenterX = (this.worldVertices[0].x + this.worldVertices[1].x + this.worldVertices[2].x) / 3;
--				const triWorldCenterY = (this.worldVertices[0].y + this.worldVertices[1].y + this.worldVertices[2].y) / 3;
--				const triWorldCenterZ = (this.worldVertices[0].z + this.worldVertices[1].z + this.worldVertices[2].z) / 3;
+-			intersectWithLine(A, B) {
+-				let An = Vector3.dot(A, this.normal);
+-				let Bn = Vector3.dot(B, this.normal);
+-				let vectorAB = Vector3.sub(B, A);
+-				let t = (this.D - An) / (Bn - An);
+-				let vectorAM = Vector3.mul(vectorAB, t);
+-				return [t, Vector3.add(A, vectorAM)];
 +					for (let y = minY; y <= maxY; y++) {
 +						const shadowMapRow = shadowMap[y];
- 
--				let triBoundingCircleRadius2 = 0;
--				for (let i = 0; i < 3; i++) {
--					const currentWorldVertex = this.worldVertices[i];
--					const currentRadius2 = hypotSquare(
--						currentWorldVertex.x, currentWorldVertex.y, currentWorldVertex.z,
--						triWorldCenterX, triWorldCenterY, triWorldCenterZ);
--					if (currentRadius2 > triBoundingCircleRadius2) triBoundingCircleRadius2 = currentRadius2;
++
 +						let edgeFunction01 = edgeFunctionRow01;
 +						let edgeFunction12 = edgeFunctionRow12;
 +						let edgeFunction20 = edgeFunctionRow20;
@@ -569,119 +613,69 @@
 +						edgeFunctionRow12 += edgeSlopeY12;
 +						edgeFunctionRow20 += edgeSlopeY20;
 +					}
- 				}
--				const totalRange = pointLightRange + Math.sqrt(triBoundingCircleRadius2);
-+			}
++				}
+ 			}
+-		}
  
--				let triWorldNormal = this.getWorldNormal();
+-		class Camera {
+-			static maxPitch = 89.9;
 +			isInShadow(pixelWorldPosX, pixelWorldPosY, pixelWorldPosZ, triWorldNormalX, triWorldNormalY, triWorldNormalZ) {
 +				let dotProduct = triWorldNormalX * this.dir.x + triWorldNormalY * this.dir.y + triWorldNormalZ * this.dir.z;
 +				if (dotProduct >= 0) return false;
  
--				let count = 0;
--				for (let i = 0; i < pointLights.length; i++) {
--					const lightPos = pointLights[i].pos;
-+				let texelSize = shadowMapDistance / shadowMapSize;
-+				let normalOffset = texelSize * (1 - Math.abs(dotProduct));
- 
--					const toLightX = lightPos.x - triWorldCenterX;
--					const toLightY = lightPos.y - triWorldCenterY;
--					const toLightZ = lightPos.z - triWorldCenterZ;
--					if (triWorldNormal.x * toLightX + triWorldNormal.y * toLightY + triWorldNormal.z * toLightZ <= 0) continue;
-+				let lightSpacePos = new Vector3(
-+					pixelWorldPosX + triWorldNormalX * normalOffset,
-+					pixelWorldPosY + triWorldNormalY * normalOffset,
-+					pixelWorldPosZ + triWorldNormalZ * normalOffset,
-+				);
- 
--					const lightDistance2 = hypotSquare(lightPos.x, lightPos.y, lightPos.z, triWorldCenterX, triWorldCenterY, triWorldCenterZ);
--					if (lightDistance2 > totalRange * totalRange) continue;
-+				lightSpacePos.mulMat4x4(this.viewMatrix);
-+				lightSpacePos.mulMat4x4(this.projectionMatrix);
- 
--					outLights[count] = lightPos;
--					count++;
--					if (count == outLights.length) break;
--				}
--				return count;
--			}
--		}
-+				lightSpacePos.x /= lightSpacePos.w;
-+				lightSpacePos.y /= lightSpacePos.w;
-+				lightSpacePos.z /= lightSpacePos.w;
- 
--		class Plane {
--			constructor(normal, P) {
--				this.normal = normal.normalize();
--				this.P = P;
--				this.D = Vector3.dot(this.normal, this.P);
--			}
-+				const x = Math.floor(((lightSpacePos.x + 1) * shadowMapSize) / 2);
-+				const y = Math.floor(((-lightSpacePos.y + 1) * shadowMapSize) / 2);
- 
--			isPointInFrontOfPlane(p) {
--				return Vector3.dot(p, this.normal) >= this.D;
--			}
-+				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize) return false;
- 
--			intersectWithLine(A, B) {
--				let An = Vector3.dot(A, this.normal);
--				let Bn = Vector3.dot(B, this.normal);
--				let vectorAB = Vector3.sub(B, A);
--				let t = (this.D - An) / (Bn - An);
--				let vectorAM = Vector3.mul(vectorAB, t);
--				return [t, Vector3.add(A, vectorAM)];
-+				return lightSpacePos.z > this.shadowMap[y][x] + shadowBias;
- 			}
- 		}
- 
--		class Camera {
 -			constructor(pos, euler, speed, sensitivity) {
 -				this.pos = pos;
 -				this.rotation = Quaternion.buildQuaternionEuler(euler);
 -				this.speed = speed;
 -				this.sensitivity = sensitivity;
 -			}
-+		class Rasterizer {
-+			constructor() {
-+				this.imageData = ctx.createImageData(gameCanvas.width, gameCanvas.height);
++				let texelSize = shadowMapDistance / shadowMapSize;
++				let normalOffset = texelSize * (1 - Math.abs(dotProduct));
  
 -			getFrustumCenter(customZFar = -1) {
 -				let forward = this.rotation.rotateVector(Vector3.forward);
-+				this.screenBuffer = this.imageData.data;
-+				this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);
-+				this.depthBuffer = new Float64Array(gameCanvas.width * gameCanvas.height);
++				let lightSpacePos = new Vector3(
++					pixelWorldPosX + triWorldNormalX * normalOffset,
++					pixelWorldPosY + triWorldNormalY * normalOffset,
++					pixelWorldPosZ + triWorldNormalZ * normalOffset,
++				);
  
 -				let near = Vector3.add(this.pos, Vector3.mul(forward, znear));
 -				if (customZFar == -1)
 -					customZFar = zfar;
 -				let far = Vector3.add(this.pos, Vector3.mul(forward, customZFar));
 -				return Vector3.div(Vector3.add(near, far), 2);
-+				this.clearScreen();
- 			}
+-			}
++				lightSpacePos.mulMat4x4(this.viewMatrix);
++				lightSpacePos.mulMat4x4(this.projectionMatrix);
  
 -			updateRotation(mouseMovementX, mouseMovementY) {
--				let q = Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity);
--
--				let right = this.rotation.rotateVector(Vector3.right);
--				q = Quaternion.multiply(q, Quaternion.buildQuaternionAxisAngle(right, -mouseMovementY * this.sensitivity));
--
--				this.rotation = Quaternion.multiply(q, this.rotation);
-+			clearScreen() {
-+				this.screenBuffer32.fill(0xfff0f0f0);
-+				this.depthBuffer.fill(Infinity);
+-				let afterYawRotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity), this.rotation);
++				lightSpacePos.x /= lightSpacePos.w;
++				lightSpacePos.y /= lightSpacePos.w;
++				lightSpacePos.z /= lightSpacePos.w;
+ 
+-				let additionalPitchAngle = -mouseMovementY * this.sensitivity;
+-				let forwardY = Math.max(-1, Math.min(1, afterYawRotation.rotateVector(Vector3.forward).y));
+-				let currentPitch = Math.asin(forwardY) * (180 / Math.PI);
+-				additionalPitchAngle = Math.max(-Camera.maxPitch - currentPitch, Math.min(Camera.maxPitch - currentPitch, additionalPitchAngle));
++				const x = Math.floor(((lightSpacePos.x + 1) * shadowMapSize) / 2);
++				const y = Math.floor(((-lightSpacePos.y + 1) * shadowMapSize) / 2);
+ 
+-				let right = afterYawRotation.rotateVector(Vector3.right);
+-				this.rotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(right, additionalPitchAngle), afterYawRotation);
++				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize) return false;
++
++				return lightSpacePos.z > this.shadowMap[y][x] + shadowBias;
  			}
++		}
  
 -			updateMovement(dt, keyStates) {
 -				let forward = this.rotation.rotateVector(Vector3.forward);
 -				let right = this.rotation.rotateVector(Vector3.right);
-+			processTriangles(tris) {
-+				const screenBuffer = this.screenBuffer;
-+				const depthBuffer = this.depthBuffer;
-+				const canvasWidth = gameCanvas.width;
-+				const canvasHeight = gameCanvas.height;
-+				const activeLights = new Array(maxActiveLights);
-+				const pointLightRange2 = pointLightRange * pointLightRange;
++		class Rasterizer {
++			constructor() {
++				this.imageData = ctx.createImageData(gameCanvas.width, gameCanvas.height);
  
 -				if (keyStates['w']) {
 -					this.pos = Vector3.add(this.pos, Vector3.mul(forward, dt * this.speed));
@@ -702,7 +696,46 @@
 -					this.pos = Vector3.add(this.pos, Vector3.mul(Vector3.up, dt * this.speed));
 -				}
 -			}
-+				for (let tri of tris) {
++				this.screenBuffer = this.imageData.data;
++				this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);
++				this.depthBuffer = new Float64Array(gameCanvas.width * gameCanvas.height);
+ 
+-			getViewMatrix() {
+-				let forward = this.rotation.rotateVector(Vector3.forward);
+-				let right = this.rotation.rotateVector(Vector3.right);
+-				let up = this.rotation.rotateVector(Vector3.up);
+-				return Mat4x4.View(right, up, forward, this.pos);
++				this.clearScreen();
+ 			}
+-		}
+ 
+-		class Mesh {
+-			constructor(tris = []) {
+-				this.tris = tris;
++			clearScreen() {
++				this.screenBuffer32.fill(0xfff0f0f0);
++				this.depthBuffer.fill(Infinity);
+ 			}
+ 
+-			setTriangles(tris, color) {
+-				this.tris = [];
++			processTriangles(tris) {
++				const screenBuffer = this.screenBuffer;
++				const depthBuffer = this.depthBuffer;
++				const canvasWidth = gameCanvas.width;
++				const canvasHeight = gameCanvas.height;
++				const activeLights = new Array(maxActiveLights);
++				const pointLightRange2 = pointLightRange * pointLightRange;
++
+ 				for (let tri of tris) {
+-					this.tris.push(new Triangle(
+-						[tri.vertices[0].clone(), tri.vertices[1].clone(), tri.vertices[2].clone()],
+-						[tri.uv[0].clone(), tri.uv[1].clone(), tri.uv[2].clone()],
+-						color
+-					));
+-				}
+-			}
+-		}
 +					let vertices = tri.vertices;
 +					for (let i = 0; i < vertices.length; i++) {
 +						vertices[i] = new Vector3(
@@ -712,50 +745,20 @@
 +						);
 +					}
  
--			getViewMatrix() {
--				let forward = this.rotation.rotateVector(Vector3.forward);
--				let right = this.rotation.rotateVector(Vector3.right);
--				let up = this.rotation.rotateVector(Vector3.up);
--				return Mat4x4.View(right, up, forward, this.pos);
--			}
--		}
-+					tri.calculateSignedDoubleArea();
-+					const signedDoubleArea = tri.signedDoubleArea;
- 
--		class Mesh {
--			constructor(tris = []) {
--				this.tris = tris;
--			}
-+					const triWorldNormal = tri.getWorldNormal();
-+					const worldNormalX = triWorldNormal.x,
-+						worldNormalY = triWorldNormal.y,
-+						worldNormalZ = triWorldNormal.z;
- 
--			setTriangles(tris, color) {
--				this.tris = [];
--				for (let tri of tris) {
--					this.tris.push(new Triangle(
--						[tri.vertices[0].clone(), tri.vertices[1].clone(), tri.vertices[2].clone()],
--						[tri.uv[0].clone(), tri.uv[1].clone(), tri.uv[2].clone()],
--						color
--					));
--				}
--			}
--		}
-+					const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
- 
 -		class Cube extends Mesh {
 -			constructor() {
 -				super(Cube.generateInitialTriangles());
 -			}
-+					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
++					tri.calculateSignedDoubleArea();
++					const signedDoubleArea = tri.signedDoubleArea;
  
 -			static generateInitialTriangles() {
 -				let tris = [];
 -				let color = new Color(255, 255, 255);
-+					let edgeFunctionRow01 = edgeFunction(tri.vertices[0], tri.vertices[1], new Vector3(bbox[0], bbox[2], 0));
-+					let edgeFunctionRow12 = edgeFunction(tri.vertices[1], tri.vertices[2], new Vector3(bbox[0], bbox[2], 0));
-+					let edgeFunctionRow20 = edgeFunction(tri.vertices[2], tri.vertices[0], new Vector3(bbox[0], bbox[2], 0));
++					const triWorldNormal = tri.getWorldNormal();
++					const worldNormalX = triWorldNormal.x,
++						worldNormalY = triWorldNormal.y,
++						worldNormalZ = triWorldNormal.z;
  
 -				// FRONT
 -				tris.push(new Triangle([
@@ -768,12 +771,7 @@
 -					new Vector3(0.5, 0.5, -0.5),
 -					new Vector3(0.5, -0.5, -0.5)],
 -					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)], color));
-+					const vertex0 = tri.vertices[0],
-+						vertex1 = tri.vertices[1],
-+						vertex2 = tri.vertices[2];
-+					const vertex0Z = vertex0.z,
-+						vertex1Z = vertex1.z,
-+						vertex2Z = vertex2.z;
++					const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
  
 -				// RIGHT
 -				tris.push(new Triangle([
@@ -787,12 +785,7 @@
 -					new Vector3(0.5, 0.5, 0.5),
 -					new Vector3(0.5, -0.5, 0.5)],
 -					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(0, 1)], color));
-+					const edgeSlopeX01 = vertex0.y - vertex1.y;
-+					const edgeSlopeX12 = vertex1.y - vertex2.y;
-+					const edgeSlopeX20 = vertex2.y - vertex0.y;
-+					const edgeSlopeY01 = vertex1.x - vertex0.x;
-+					const edgeSlopeY12 = vertex2.x - vertex1.x;
-+					const edgeSlopeY20 = vertex0.x - vertex2.x;
++					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
  
 -				// BACK
 -				tris.push(new Triangle([
@@ -806,6 +799,60 @@
 -					new Vector3(-0.5, 0.5, 0.5),
 -					new Vector3(-0.5, -0.5, 0.5)],
 -					[new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)], color));
++					let edgeFunctionRow01 = edgeFunction(tri.vertices[0], tri.vertices[1], new Vector3(bbox[0], bbox[2], 0));
++					let edgeFunctionRow12 = edgeFunction(tri.vertices[1], tri.vertices[2], new Vector3(bbox[0], bbox[2], 0));
++					let edgeFunctionRow20 = edgeFunction(tri.vertices[2], tri.vertices[0], new Vector3(bbox[0], bbox[2], 0));
+ 
+-				// LEFT
+-				tris.push(new Triangle([
+-					new Vector3(-0.5, -0.5, 0.5),
+-					new Vector3(-0.5, 0.5, 0.5),
+-					new Vector3(-0.5, 0.5, -0.5)],
+-					[new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0)], color));
+-
+-				tris.push(new Triangle([
+-					new Vector3(-0.5, -0.5, 0.5),
+-					new Vector3(-0.5, 0.5, -0.5),
+-					new Vector3(-0.5, -0.5, -0.5)],
+-					[new Vector2(0, 1), new Vector2(1, 0), new Vector2(0, 0)], color));
++					const vertex0 = tri.vertices[0],
++						vertex1 = tri.vertices[1],
++						vertex2 = tri.vertices[2];
++					const vertex0Z = vertex0.z,
++						vertex1Z = vertex1.z,
++						vertex2Z = vertex2.z;
+ 
+-				// TOP
+-				tris.push(new Triangle([
+-					new Vector3(-0.5, 0.5, -0.5),
+-					new Vector3(-0.5, 0.5, 0.5),
+-					new Vector3(0.5, 0.5, 0.5)],
+-					[new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)], color));
+-
+-				tris.push(new Triangle([
+-					new Vector3(-0.5, 0.5, -0.5),
+-					new Vector3(0.5, 0.5, 0.5),
+-					new Vector3(0.5, 0.5, -0.5)],
+-					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)], color));
++					const edgeSlopeX01 = vertex0.y - vertex1.y;
++					const edgeSlopeX12 = vertex1.y - vertex2.y;
++					const edgeSlopeX20 = vertex2.y - vertex0.y;
++					const edgeSlopeY01 = vertex1.x - vertex0.x;
++					const edgeSlopeY12 = vertex2.x - vertex1.x;
++					const edgeSlopeY20 = vertex0.x - vertex2.x;
+ 
+-				// BOTTOM
+-				tris.push(new Triangle([
+-					new Vector3(0.5, -0.5, 0.5),
+-					new Vector3(-0.5, -0.5, 0.5),
+-					new Vector3(-0.5, -0.5, -0.5)],
+-					[new Vector2(1, 1), new Vector2(0, 1), new Vector2(0, 0)], color));
+-
+-				tris.push(new Triangle([
+-					new Vector3(0.5, -0.5, 0.5),
+-					new Vector3(-0.5, -0.5, -0.5),
+-					new Vector3(0.5, -0.5, -0.5)],
+-					[new Vector2(1, 1), new Vector2(0, 0), new Vector2(1, 0)], color));
 +					const uv0 = tri.uv[0],
 +						uv1 = tri.uv[1],
 +						uv2 = tri.uv[2];
@@ -832,51 +879,29 @@
 +						perspectiveWorld2Y = world2.y * uv2W,
 +						perspectiveWorld2Z = world2.z * uv2W;
  
--				// LEFT
--				tris.push(new Triangle([
--					new Vector3(-0.5, -0.5, 0.5),
--					new Vector3(-0.5, 0.5, 0.5),
--					new Vector3(-0.5, 0.5, -0.5)],
--					[new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0)], color));
--
--				tris.push(new Triangle([
--					new Vector3(-0.5, -0.5, 0.5),
--					new Vector3(-0.5, 0.5, -0.5),
--					new Vector3(-0.5, -0.5, -0.5)],
--					[new Vector2(0, 1), new Vector2(1, 0), new Vector2(0, 0)], color));
+-				return tris;
+-			}
+-		}
 +					const pointLightRangeSquare = pointLightRange * pointLightRange;
 +					const activeLightCount = pointLightIntensity > 0 ? tri.getPointLightsThatCanAffectTri(pointLightRange, pointLights, activeLights) : 0;
  
--				// TOP
--				tris.push(new Triangle([
--					new Vector3(-0.5, 0.5, -0.5),
--					new Vector3(-0.5, 0.5, 0.5),
--					new Vector3(0.5, 0.5, 0.5)],
--					[new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)], color));
--
--				tris.push(new Triangle([
--					new Vector3(-0.5, 0.5, -0.5),
--					new Vector3(0.5, 0.5, 0.5),
--					new Vector3(0.5, 0.5, -0.5)],
--					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)], color));
+-		class ObjMesh extends Mesh {
+-			constructor(objURL) {
+-				super();
+-				this.load(objURL);
+-			}
 +					const triColor = tri.color;
 +					const texture = tri.texture;
 +					const texturePixels = texture ? texture.pixels : null;
 +					const textureWidth = texture ? texture.width : 0,
 +						textureHeight = texture ? texture.height : 0;
  
--				// BOTTOM
--				tris.push(new Triangle([
--					new Vector3(0.5, -0.5, 0.5),
--					new Vector3(-0.5, -0.5, 0.5),
--					new Vector3(-0.5, -0.5, -0.5)],
--					[new Vector2(1, 1), new Vector2(0, 1), new Vector2(0, 0)], color));
--
--				tris.push(new Triangle([
--					new Vector3(0.5, -0.5, 0.5),
--					new Vector3(-0.5, -0.5, -0.5),
--					new Vector3(0.5, -0.5, -0.5)],
--					[new Vector2(1, 1), new Vector2(0, 0), new Vector2(1, 0)], color));
+-			async load(url) {
+-				const response = await fetch(url);
+-				const objText = await response.text();
+-				const triangles = this.parseOBJ(objText);
+-				this.setTriangles(triangles);
+-			}
 +					for (let y = bbox[2]; y <= bbox[3]; y++) {
 +						let edgeFunction01 = edgeFunctionRow01;
 +						let edgeFunction12 = edgeFunctionRow12;
@@ -889,53 +914,17 @@
 +								const baryCoord2 = edgeFunction01 / signedDoubleArea;
 +								const z = vertex0Z * baryCoord0 + vertex1Z * baryCoord1 + vertex2Z * baryCoord2;
  
--				return tris;
--			}
--		}
-+								if (z < depthBuffer[pixelIndex]) {
-+									depthBuffer[pixelIndex] = z;
- 
--		class ObjMesh extends Mesh {
--			constructor(objURL) {
--				super();
--				this.load(objURL);
--			}
-+									const pixelInvZ = uv0W * baryCoord0 + uv1W * baryCoord1 + uv2W * baryCoord2;
- 
--			async load(url) {
--				const response = await fetch(url);
--				const objText = await response.text();
--				const triangles = this.parseOBJ(objText);
--				this.setTriangles(triangles);
--			}
-+									const pixelWorldX =
-+										(perspectiveWorld0X * baryCoord0 + perspectiveWorld1X * baryCoord1 + perspectiveWorld2X * baryCoord2) / pixelInvZ;
-+									const pixelWorldY =
-+										(perspectiveWorld0Y * baryCoord0 + perspectiveWorld1Y * baryCoord1 + perspectiveWorld2Y * baryCoord2) / pixelInvZ;
-+									const pixelWorldZ =
-+										(perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
- 
 -			parseOBJ(objText) {
 -				const vertices = [];
 -				const uvs = [];
 -				const triangles = [];
 -				const lines = objText.split("\n");
-+									let shadowFactor = 1.0;
-+									if (useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
-+										shadowFactor = 0.5;
-+									}
++								if (z < depthBuffer[pixelIndex]) {
++									depthBuffer[pixelIndex] = z;
  
 -				for (let line of lines) {
 -					if (!line || line.startsWith("#")) continue;
-+									let totalPointLightDiffuse = 0;
-+									for (let i = 0; i < activeLightCount; i++) {
-+										const lightPos = activeLights[i];
-+										const pointLightVecX = lightPos.x - pixelWorldX;
-+										const pointLightVecY = lightPos.y - pixelWorldY;
-+										const pointLightVecZ = lightPos.z - pixelWorldZ;
-+										const distanceFromPixelToPointLight2 =
-+											pointLightVecX * pointLightVecX + pointLightVecY * pointLightVecY + pointLightVecZ * pointLightVecZ;
-+										if (distanceFromPixelToPointLight2 >= pointLightRangeSquare) continue;
++									const pixelInvZ = uv0W * baryCoord0 + uv1W * baryCoord1 + uv2W * baryCoord2;
  
 -					if (line.startsWith("v ")) {
 -						const values = line.split(" ");
@@ -952,6 +941,36 @@
 -						));
 -					} else if (line.startsWith("f ")) {
 -						const vertexInfoStrs = line.split(" ").slice(1);
++									const pixelWorldX =
++										(perspectiveWorld0X * baryCoord0 + perspectiveWorld1X * baryCoord1 + perspectiveWorld2X * baryCoord2) / pixelInvZ;
++									const pixelWorldY =
++										(perspectiveWorld0Y * baryCoord0 + perspectiveWorld1Y * baryCoord1 + perspectiveWorld2Y * baryCoord2) / pixelInvZ;
++									const pixelWorldZ =
++										(perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
+ 
+-						let triVertices = [];
+-						let triUVs = [];
+-						for (let vertexInfoStr of vertexInfoStrs) {
+-							const vertexInfo = vertexInfoStr.split("/");
+-							const vertexCoord = vertices[parseInt(vertexInfo[0]) - 1];
+-							const vertexUV = uvs[parseInt(vertexInfo[1]) - 1];
++									let shadowFactor = 1.0;
++									if (useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
++										shadowFactor = 0.5;
++									}
+ 
+-							triVertices.push(vertexCoord);
+-							triUVs.push(vertexUV);
++									let totalPointLightDiffuse = 0;
++									for (let i = 0; i < activeLightCount; i++) {
++										const lightPos = activeLights[i];
++										const pointLightVecX = lightPos.x - pixelWorldX;
++										const pointLightVecY = lightPos.y - pixelWorldY;
++										const pointLightVecZ = lightPos.z - pixelWorldZ;
++										const distanceFromPixelToPointLight2 =
++											pointLightVecX * pointLightVecX + pointLightVecY * pointLightVecY + pointLightVecZ * pointLightVecZ;
++										if (distanceFromPixelToPointLight2 >= pointLightRangeSquare) continue;
++
 +										const distance = Math.sqrt(distanceFromPixelToPointLight2);
 +										const dot = (worldNormalX * pointLightVecX + worldNormalY * pointLightVecY + worldNormalZ * pointLightVecZ) / distance;
 +										const currentPointLightDiffuse = (1 + dot) / 2;
@@ -961,17 +980,9 @@
 +										totalPointLightDiffuse += currentPointLightDiffuse * attenuation;
 +									}
 +									totalPointLightDiffuse *= pointLightIntensity;
- 
--						let triVertices = [];
--						let triUVs = [];
--						for (let vertexInfoStr of vertexInfoStrs) {
--							const vertexInfo = vertexInfoStr.split("/");
--							const vertexCoord = vertices[parseInt(vertexInfo[0]) - 1];
--							const vertexUV = uvs[parseInt(vertexInfo[1]) - 1];
++
 +									const lightIntensity = Math.max(ambientLight, (dirLightDiffuse + totalPointLightDiffuse) * shadowFactor);
- 
--							triVertices.push(vertexCoord);
--							triUVs.push(vertexUV);
++
 +									let texR = triColor.r,
 +										texG = triColor.g,
 +										texB = triColor.b;
@@ -1833,7 +1844,7 @@
  		];
  
  		let lastTime = performance.now();
-@@ -1214,21 +1257,6 @@
+@@ -1219,21 +1262,6 @@
  			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
  			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
  
@@ -1855,7 +1866,7 @@
  			let objectTris = [];
  			objectTris.push(...ground.getTransformedTriangles());
  			for (let light of pointLights) {
-@@ -1295,22 +1323,22 @@
+@@ -1300,22 +1328,22 @@
  			useShadow = shadowCheckbox.checked;
  		});
  
