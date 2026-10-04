@@ -326,7 +326,37 @@ inverseTransformPoint(point) {
 					Tại sao Unity không gọi scale thế giới là <code>worldScale</code> mà lại là <code>lossyScale</code>? Nhìn qua thì bạn hiểu là do
 					nó bị "mất thông tin" theo 1 cách gì đó. Để mình giải thích bằng 1 ví dụ:
 
-					<br/><br/>
+
+					 <div align="center">
+                        <img src="images/graphics3D14/lossyScale.png" style="max-height: 400px; max-width: 100vw;" /></a>
+                    </div>
+
+					Hình vuông xanh lá là con của hình vuông đỏ, có 2 trường hợp:
+					<ul>
+						<li><b>Thằng con không xoay so với cha</b>: trục x của con trùng trục x của cha, nên khi cha scale x lên 2,
+							thằng con cũng scale x lên 2, kết quả là một hình chữ nhật 2x1.
+						<code>lossyScale</code> = (2, 1, 1), và 3 con số đó mô tả đúng y hình dạng thật.</li>
+						<li><b>Thằng con xoay 45° quanh trục Z so với cha</b>: Khi cha scale lên, nó bị giãn ra theo trục x của
+							cha và biến thành 1 hình thoi dẹt, 4 góc của nó không vuông góc nhau nữa, lossyScale thì cũng là (2, 1, 1).
+							Tuy nhiên khi ta suy nghĩ một hình
+							vuông có lossyScale là (2, 1, 1), ta cũng chỉ nghĩ nó là một hình vuông được kéo dãn ra bình thường như hình
+							phải cùng, chứ không phải là 1 hình thoi dẹt.</li>
+					</ul>
+
+					Và đó chính là chỗ mất thông tin: cái hình thoi dẹt <b>không</b> thể tạo ra từ hình vuông
+					bằng cách scale rồi xoay được, dù có góc xoay nào hay scale kiểu nào đi chăng nữa (scale thì luôn phải theo trục local).
+					Xoay không làm méo góc, scale theo 3 trục cũng không làm méo góc - mà cái hình kia thì góc đã méo.
+					Nó là một phép <a href="https://en.wikipedia.org/wiki/Shear_mapping"><b>shear</b></a> (biến dạng
+					xiên), và shear thì cần nguyên một ma trận 3x3 mới diễn tả đủ, chứ 3 con số thì không đủ chỗ
+					chứa, nó đã bị mất thông tin.<br/><br/>
+
+					Có 2 trường hợp mà <code>lossyScale</code> sẽ chính xác, và cũng là 2 trường hợp bạn đa số gặp:
+					<ul>
+						<li>Không có thằng nào trong chuỗi cha-con bị xoay so với cha của nó (mọi trục đều song song
+						nhau).</li>
+						<li>Hoặc mọi thằng cha đều scale đều (x = y = z). Scale đều thì không phân biệt trục nào với
+						trục nào, nên xoay trước hay xoay sau cũng ra cùng một kết quả, không có gì để méo cả.</li>
+					</ul>
 
 					<h3>d. Những hàm bổ trợ khác</h3>
 					Đã số những hàm trong đây khá là hiển nhiên và dễ hiểu, hàm nào cần suy nghĩ chút thì mình thêm comment.<br/><br/>
