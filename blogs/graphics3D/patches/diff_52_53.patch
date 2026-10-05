@@ -1,0 +1,118 @@
+--- "a/htmlPreviews\\htmlPreview52.html"
++++ "b/htmlPreviews\\htmlPreview53.html"
+@@ -44,6 +44,40 @@
+ 			justify-self: end;
+ 		}
+ 
++		#helpPopup {
++			position: fixed;
++			top: 80px;
++			left: 50%;
++			transform: translate(-50%, 0);
++			box-sizing: border-box;
++			width: min(400px, calc(100vw - 24px));
++			max-height: calc(100vh - 96px);
++			max-height: calc(100dvh - 96px);
++			overflow-y: auto;
++			text-align: left;
++			background: #fff;
++			border: 1px solid #aaa;
++			padding: 10px;
++		}
++
++		#helpPopup .helpPopupBar {
++			position: sticky;
++			top: -10px;
++			margin: -10px -10px 0;
++			padding: 10px 10px 4px;
++			text-align: right;
++			background: #fff;
++		}
++
++		@media (max-width: 480px),
++		(max-height: 600px) {
++			#helpPopup {
++				top: 12px;
++				max-height: calc(100vh - 24px);
++				max-height: calc(100dvh - 24px);
++			}
++		}
++
+ 		@media (max-width: 480px) {
+ 			#controls {
+ 				grid-template-columns: max-content;
+@@ -93,11 +127,11 @@
+ 		}
+ 	</style>
+ 	<meta name="viewport" content="width=device-width, initial-scale=1" />
+-	<title>3D Engine</title>
++	<title>Hanvas Engine</title>
+ </head>
+ 
+ <body>
+-	<h1>3D Engine</h1>
++	<h1>Hanvas Engine</h1>
+ 	<div id="render">
+ 		<canvas id="gameCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff"></canvas>
+ 		<p id="asciiParagraph"
+@@ -109,6 +143,8 @@
+ 	</div>
+ 	<h2 id="fps">FPS: 0</h2>
+ 	<div>
++		<button id="helpButton"
++			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Help</button>
+ 		<button id="mobileControlsButton"
+ 			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Mobile
+ 			controls</button>
+@@ -197,6 +233,23 @@
+ 		</div>
+ 	</div>
+ 
++	<div id="helpPopup" style="display: none">
++		<div class="helpPopupBar">
++			<button id="helpCloseButton"
++				style="font-family: inherit; font-size: 15px; height: 30px; padding: 0 16px">Close</button>
++		</div>
++		PC controls:
++		<ul>
++			<li>W, A, S, D to move</li>
++			<li>Space, shift to fly up and down</li>
++			<li>Mouse to look around</li>
++		</ul>
++		Touch controls:
++		<ul>
++			<li>Mobile controls to move and look around</li>
++		</ul>
++	</div>
++
+ 	<script>
+ 		// ===== math.js =====
+ 		class MathExtend {
+@@ -1896,6 +1949,10 @@
+ 		const mobileControls = (document.getElementById("mobileControls"));
+ 		const mobileControlsButton = (document.getElementById("mobileControlsButton"));
+ 
++		const helpButton = (document.getElementById("helpButton"));
++		const helpPopup = (document.getElementById("helpPopup"));
++		const helpCloseButton = (document.getElementById("helpCloseButton"));
++
+ 		let lookInput = { x: 0, y: 0 };
+ 		let lookSpeed = 450;
+ 
+@@ -2152,6 +2209,16 @@
+ 			mobileControlsButton.blur();
+ 		});
+ 
++		helpButton.addEventListener("click", () => {
++			helpPopup.style.display = helpPopup.style.display == "none" ? "" : "none";
++			helpButton.blur();
++		});
++
++		helpCloseButton.addEventListener("click", () => {
++			helpPopup.style.display = "none";
++			helpCloseButton.blur();
++		});
++
+ 		const keyButtons = mobileControls.querySelectorAll("button[data-key]");
+ 		keyButtons.forEach((button) => {
+ 			const key = (button.getAttribute("data-key"));

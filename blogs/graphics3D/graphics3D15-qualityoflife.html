@@ -127,7 +127,7 @@ canvasResHeightInput.addEventListener("change", readAndApplyResolutionInput);</c
 }</code></pre>
 
 					Kết quả (mình có tăng tốc độ bay camera lên 5, và dời point light thứ 2 một tí):
-                    <div class="htmlPreview" id="htmlPreview50"></div>
+                    <div class="htmlPreview" id="htmlPreview50" data-disabled="true"></div>
 
                     <h2>2. Render ra ASCII</h2>
 					Cái này thật ra không có gì khó, vì đây là một software rasterizer, ta điều khiển từng pixel một, do đó ta muốn output
@@ -312,8 +312,264 @@ document.addEventListener("mousemove", (e) => {				// đổi gameCanvas thành d
 });</code></pre>
 					
                     Kết quả:
+                    <div class="htmlPreview" id="htmlPreview51" data-disabled="true"></div>
 
-                    <div class="htmlPreview" id="htmlPreview51"></div>
+                    <h2>3. Điều khiển trên điện thoại</h2>
+					Phần này mình sẽ thêm các nút di chuyển ngay bên dưới canvas, để cho điện thoại cũng "chơi" được engine này 😳<br/><br/>
+
+					Tuy nhiên trước tiên thì mình cải thiện 1 tí mấy element bên dưới canvas, tái cấu trúc nó và để nó vào 1 grid bằng css:
+					<pre style="max-height: 500px"><code class="language-html">&lt;style&gt;
+	.slider-value {
+		display: inline-block;
+		min-width: 3em;
+		text-align: left;
+		font-variant-numeric: tabular-nums;
+	}
+
+	input[type="range"] {
+		vertical-align: middle;
+	}
+
+	#controls {
+		display: grid;
+		grid-template-columns: max-content max-content;
+		justify-content: center;
+		justify-items: start;
+		align-items: center;
+		column-gap: 8px;
+		row-gap: 2px;
+	}
+
+	#controls .controlRow {
+		display: contents;
+	}
+
+	#controls .controlLabel {
+		justify-self: end;
+	}
+
+	@media (max-width: 480px) {
+		#controls {
+			grid-template-columns: max-content;
+			justify-items: center;
+			row-gap: 0;
+		}
+
+		#controls .controlLabel {
+			justify-self: center;
+			margin-top: 4px;
+		}
+	}
+&lt;/style&gt;
+						
+&lt;div id=&quot;controls&quot;&gt;
+	&lt;div class=&quot;controlRow&quot;&gt;
+		&lt;label class=&quot;controlLabel&quot; for=&quot;useASCII&quot;&gt;ASCII:&lt;/label&gt;
+		&lt;span&gt;&lt;input type=&quot;checkbox&quot; id=&quot;useASCII&quot; /&gt;&lt;/span&gt;
+	&lt;/div&gt;
+	&lt;div class=&quot;controlRow&quot; id=&quot;canvasResRow&quot;&gt;
+		&lt;label class=&quot;controlLabel&quot; for=&quot;canvasResWidth&quot;&gt;Canvas resolution:&lt;/label&gt;
+		&lt;span&gt;
+			&lt;input id=&quot;canvasResWidth&quot; value=&quot;600&quot; size=&quot;4&quot; /&gt;
+			x
+			&lt;input id=&quot;canvasResHeight&quot; value=&quot;450&quot; size=&quot;4&quot; /&gt;
+		&lt;/span&gt;
+	&lt;/div&gt;
+	&lt;div class=&quot;controlRow&quot; id=&quot;asciiResRow&quot; style=&quot;display: none&quot;&gt;
+		&lt;label class=&quot;controlLabel&quot; for=&quot;asciiResWidth&quot;&gt;ASCII resolution:&lt;/label&gt;
+		&lt;span&gt;
+			&lt;input id=&quot;asciiResWidth&quot; value=&quot;260&quot; size=&quot;4&quot; /&gt;
+			x
+			&lt;input id=&quot;asciiResHeight&quot; value=&quot;195&quot; size=&quot;4&quot; /&gt;
+		&lt;/span&gt;
+	&lt;/div&gt;
+	&lt;div class=&quot;controlRow&quot;&gt;
+		&lt;label class=&quot;controlLabel&quot; for=&quot;dirIntensity&quot;&gt;Directional light intensity:&lt;/label&gt;
+		&lt;span&gt;
+			&lt;input type=&quot;range&quot; id=&quot;dirIntensity&quot; min=&quot;0&quot; max=&quot;5&quot; step=&quot;0.1&quot; value=&quot;1&quot; /&gt;
+			&lt;span id=&quot;dirIntensityText&quot; class=&quot;slider-value&quot;&gt;1.0&lt;/span&gt;
+		&lt;/span&gt;
+	&lt;/div&gt;
+	&lt;div class=&quot;controlRow&quot;&gt;
+		&lt;label class=&quot;controlLabel&quot; for=&quot;dirRotateSpeed&quot;&gt;Directional light rotate speed:&lt;/label&gt;
+		&lt;span&gt;
+			&lt;input type=&quot;range&quot; id=&quot;dirRotateSpeed&quot; min=&quot;0&quot; max=&quot;50&quot; step=&quot;0.1&quot; value=&quot;10&quot; /&gt;
+			&lt;span id=&quot;dirRotateSpeedText&quot; class=&quot;slider-value&quot;&gt;10&lt;/span&gt;
+		&lt;/span&gt;
+	&lt;/div&gt;
+	&lt;div class=&quot;controlRow&quot;&gt;
+		&lt;label class=&quot;controlLabel&quot; for=&quot;pointIntensity&quot;&gt;Point light intensity:&lt;/label&gt;
+		&lt;span&gt;
+			&lt;input type=&quot;range&quot; id=&quot;pointIntensity&quot; min=&quot;0&quot; max=&quot;5&quot; step=&quot;0.1&quot; value=&quot;1&quot; /&gt;
+			&lt;span id=&quot;pointIntensityText&quot; class=&quot;slider-value&quot;&gt;1.0&lt;/span&gt;
+		&lt;/span&gt;
+	&lt;/div&gt;
+	&lt;div class=&quot;controlRow&quot;&gt;
+		&lt;label class=&quot;controlLabel&quot; for=&quot;pointRange&quot;&gt;Point light range:&lt;/label&gt;
+		&lt;span&gt;
+			&lt;input type=&quot;range&quot; id=&quot;pointRange&quot; min=&quot;0&quot; max=&quot;60&quot; step=&quot;1&quot; value=&quot;14&quot; /&gt;
+			&lt;span id=&quot;pointRangeText&quot; class=&quot;slider-value&quot;&gt;14&lt;/span&gt;
+		&lt;/span&gt;
+	&lt;/div&gt;
+	&lt;div class=&quot;controlRow&quot;&gt;
+		&lt;label class=&quot;controlLabel&quot; for=&quot;useShadow&quot;&gt;Shadow:&lt;/label&gt;
+		&lt;span&gt;&lt;input type=&quot;checkbox&quot; id=&quot;useShadow&quot; checked=&quot;checked&quot; /&gt;&lt;/span&gt;
+	&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+
+					Có phần <code>&lt;style&gt;</code> rồi thì mình cải thiện body và canvas:
+					<pre><code class="language-css">body {
+	text-align: center;
+	background: #f0f0f0;
+	font-family: 'Bahnschrift', 'Arial Sans-Serif', sans-serif;
+}
+
+#gameCanvas {
+	max-width: 100%;
+	height: auto;
+}</code></pre>
+					Tới các nút di chuyển trên mobile. Mình sẽ để hết những nút đó trong 1 div, rồi bên ngoài sẽ có 1 nút
+					<code>mobileControlsButton</code> để toggle div, mặc định là sẽ ẩn
+					<pre class="language-html"><code>&lt;button id=&quot;mobileControlsButton&quot;
+	style=&quot;font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px&quot;&gt;Mobile
+	controls&lt;/button&gt;
+&lt;div id=&quot;mobileControls&quot; style=&quot;display: none&quot;&gt;
+...
+&lt;/div&gt;</code></pre>
+					<pre><code class="language-javascript">mobileControlsButton.addEventListener("click", () => {
+	mobileControls.style.display = mobileControls.style.display == "none" ? "" : "none";
+	mobileControlsButton.blur();
+});</code></pre>
+
+					Bên trong div thì mình để thành 2 grid, grid bên trái để di chuyển và grid bên phải để nhìn qua nhìn lại:
+					<pre><code class="language-html">&lt;div id=&quot;mobileControls&quot; style=&quot;display: none&quot;&gt;
+	&lt;div class=&quot;row&quot;&gt;
+		&lt;div&gt;
+			&lt;b&gt;Move&lt;/b&gt;&lt;br /&gt;
+			&lt;div class=&quot;move-controls&quot;&gt;
+				&lt;button data-key=&quot; &quot;&gt;Up&lt;/button&gt;		&lt;!-- set attribute data-key để script biết button này tương ứng nút nào --&gt;
+				&lt;button data-key=&quot;w&quot;&gt;W&lt;/button&gt;
+				&lt;button data-key=&quot;Shift&quot;&gt;Down&lt;/button&gt;
+
+				&lt;button data-key=&quot;a&quot;&gt;A&lt;/button&gt;
+				&lt;button data-key=&quot;s&quot;&gt;S&lt;/button&gt;
+				&lt;button data-key=&quot;d&quot;&gt;D&lt;/button&gt;
+			&lt;/div&gt;
+		&lt;/div&gt;
+
+		&lt;div&gt;
+			&lt;b&gt;Look&lt;/b&gt;&lt;br /&gt;
+			&lt;div class=&quot;look-controls&quot;&gt;
+				&lt;span&gt;&lt;/span&gt;
+				&lt;button data-look=&quot;0,-1&quot;&gt;&amp;uarr;&lt;/button&gt;		&lt;!-- set attribute data-look để script biết button này di chuyển theo hướng nào --&gt;
+				&lt;span&gt;&lt;/span&gt;
+
+				&lt;button data-look=&quot;-1,0&quot;&gt;&amp;larr;&lt;/button&gt;
+				&lt;button data-look=&quot;0,1&quot;&gt;&amp;darr;&lt;/button&gt;
+				&lt;button data-look=&quot;1,0&quot;&gt;&amp;rarr;&lt;/button&gt;
+			&lt;/div&gt;
+		&lt;/div&gt;
+	&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+					
+                    Vì từ blog 5 tới giờ camera không đọc bàn phím trực tiếp - nó đọc từ <code>keyStates</code>. 
+					Cho nên khi mấy nút đó được nhấn, mình chỉ cần ghi vào đúng cái <code>keyStates</code> đó, không cần phải sửa
+                    <code>Camera</code> một chút nào 😳
+
+                    <pre><code class="language-javascript">const keyButtons = mobileControls.querySelectorAll("button[data-key]");
+keyButtons.forEach((button) => {
+	const key = (button.getAttribute("data-key"));		// sử dụng data-key ở trên
+	button.addEventListener("pointerdown", (e) => {
+		e.preventDefault();
+		keyStates[key] = true;
+		button.setPointerCapture(e.pointerId);	// xử lí tình huống nhấn nút rồi trượt ngón tay ra ngoài
+	});
+	const release = () => {
+		keyStates[key] = false;
+	};
+	button.addEventListener("pointerup", release);
+	button.addEventListener("pointercancel", release);	// trường hợp trình duyệt cướp con trỏ giữa chừng (vuốt, ...)
+});</code></pre>
+
+                    Mình dùng <a
+                    href="https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events">pointer event</a> chứ không
+                    phải <code>mousedown</code>/<code>touchstart</code>, vì pointer event gộp chung chuột, cảm ứng và
+                    bút thành một API.<br/><br/>
+
+                    Phần nhìn xung quanh: Với chuột, mình có sẵn <code>movementX</code> và <code>movementY</code> của chuột trong event 
+					<a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/mousemove_event">mousemove</a>. Còn với
+					nút bấm, mình tạo một cái object <code>lookInput</code> để cộng dồn vào:
+
+                    <pre><code class="language-javascript">let lookInput = { x: 0, y: 0 };
+let lookSpeed = 450;
+...
+const lookButtons = mobileControls.querySelectorAll("button[data-look]");
+lookButtons.forEach((button) => {
+	if (!button.dataset.look) return;
+	const dir = button.dataset.look.split(",");
+	const x = parseInt(dir[0]),
+		y = parseInt(dir[1]);
+	let pressed = false;
+	button.addEventListener("pointerdown", (e) => {
+		e.preventDefault();
+		if (pressed) return;
+		pressed = true;
+		lookInput.x += x;
+		lookInput.y += y;
+		button.setPointerCapture(e.pointerId);
+	});
+	const release = () => {
+		if (!pressed) return;
+		pressed = false;
+		lookInput.x -= x;	// trừ lại, thay vì set = 0, để khi 2 nút ngược nhau thì chúng triệt tiêu nhau
+		lookInput.y -= y;
+	};
+	button.addEventListener("pointerup", release);
+	button.addEventListener("pointercancel", release);
+});</code></pre>
+					Như vậy chỗ quay camera chỉ là:
+					<pre><code class="language-javascript">updateGameObjectTransforms() {
+	camera.updateMovement(dt, keyStates);
+	if (lookInput.x != 0 || lookInput.y != 0) {
+		camera.updateRotation(lookInput.x * dt * lookSpeed, lookInput.y * dt * lookSpeed);
+	}
+	...
+}</code></pre>
+
+                    Thêm thẻ meta viewport để điện thoại không tự thu nhỏ trang lại:
+                    <pre><code class="language-html">&lt;meta name="viewport" content="width=device-width, initial-scale=1" /&gt;</code></pre>
+
+                    Và cuối cùng là cái crosshair ở giữa màn hình - một chấm trắng viền đen vẽ đè lên canvas sau khi
+                    rasterize xong:
+
+                    <pre><code class="language-javascript">function rasterize(visibleTris) {
+	...
+	let x = rasterizer.screenCenterX,
+		y = rasterizer.screenCenterY;
+	ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+	ctx.fillRect(x - 2, y - 2, 5, 5);
+	ctx.fillStyle = "#ffffff";
+	ctx.fillRect(x - 1, y - 1, 3, 3);
+}</code></pre>
+					Tính screenCenter trong hàm <code>Rasterizer.updateResolution</code>
+					<pre><code class="language-javascript">updateResolution(canvasWidth, canvasHeight) {
+	...
+	this.screenCenterX = Math.floor(this.canvasWidth / 2);
+	this.screenCenterY = Math.floor(this.canvasHeight / 2);
+}</code></pre>
+					Kết quả:
+                    <div class="htmlPreview" id="htmlPreview52" data-disabled="true"></div>
+
+                    <h2>4. Help popup và đặt tên</h2>
+                    Bản cuối cùng thêm một cái popup hướng dẫn sử dụng, và đổi tên title thành Hanvas Engine (bạn bấm diff
+					để xem chứ những thay đổi này cũng không liên quan gì chính engine):
+                    <div class="htmlPreview" id="htmlPreview53"></div>
+
+                    Đã hết 15 blog, từ một pixel vẽ lên canvas tới một cái engine có texture, shadow, nhiều loại đèn, chạy
+                    được trên điện thoại 😳 
+                    Như mình có nói đi nói lại nhiều lần. Bản engine đã tách thành các file js module nằm ở <a
+                    href="https://github.com/hachihao792001/HanvasEngine">repo Hanvas Engine</a>. Everything is still MATH & ALGORITHMS.
+
 
                     <div id="graphics3D-nav-bottom"></div>
             </div>
