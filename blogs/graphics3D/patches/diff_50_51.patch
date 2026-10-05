@@ -1,0 +1,214 @@
+--- "a/htmlPreviews\\htmlPreview50.html"
++++ "b/htmlPreviews\\htmlPreview51.html"
+@@ -8,9 +8,21 @@
+ 
+ <body style="text-align: center; background: #f0f0f0">
+ 	<h1>3D Engine</h1>
+-	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
++	<div id="render">
++		<canvas id="gameCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff"></canvas>
++		<p id="asciiParagraph"
++			style="display:none; font-size: 2px; font-family: 'Courier New', Courier, monospace;letter-spacing: 1px; line-height: 2px; white-space: pre;">
++		</p>
++	</div>
++	<div>
++		<button id="mouseLookButton" style="display:none">Press here to look around (ASCII)</button>
++	</div>
+ 	<h2 id="fps">FPS: 0</h2>
+ 	<div>
++		ASCII:
++		<input type="checkbox" id="useASCII" />
++	</div>
++	<div id="canvasResRow">
+ 		Canvas resolution:
+ 		<span>
+ 			<input id="canvasResWidth" value="600" size="4" />
+@@ -18,6 +30,14 @@
+ 			<input id="canvasResHeight" value="450" size="4" />
+ 		</span>
+ 	</div>
++	<div id="asciiResRow" style="display: none">
++		ASCII resolution:
++		<span>
++			<input id="asciiResWidth" value="260" size="4" />
++			x
++			<input id="asciiResHeight" value="195" size="4" />
++		</span>
++	</div>
+ 	<div>
+ 		Directional light intensity:
+ 		<input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" />
+@@ -601,6 +621,10 @@
+ 				this.g = g;
+ 				this.b = b;
+ 			}
++
++			grayScale01() {
++				return (this.r + this.g + this.b) / 3.0 / 255.0;
++			}
+ 		}
+ 
+ 		class Texture {
+@@ -1089,10 +1113,11 @@
+ 		}
+ 
+ 		class Rasterizer {
+-			constructor(canvasWidth, canvasHeight, ctx) {
++			constructor(canvasWidth, canvasHeight, ctx, asciiParagraph) {
+ 				this.canvasWidth = canvasWidth;
+ 				this.canvasHeight = canvasHeight;
+ 				this.ctx = ctx;
++				this.asciiParagraph = asciiParagraph;
+ 
+ 				this.imageData = this.ctx.createImageData(this.canvasWidth, this.canvasHeight);
+ 				this.screenBuffer = this.imageData.data;
+@@ -1284,8 +1309,26 @@
+ 				}
+ 			}
+ 
+-			drawCall() {
+-				this.ctx.putImageData(this.imageData, 0, 0);
++			drawCall(useASCII = false) {
++				if (!useASCII) {
++					this.ctx.putImageData(this.imageData, 0, 0);
++				} else {
++					let renderString = "";
++					let grayScaleASCII = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. ";
++					for (let y = 0; y < this.canvasHeight; y++) {
++						for (let x = 0; x < this.canvasWidth; x++) {
++							let index = (y * this.canvasWidth + x) * 4;
++							let color = new Color(this.imageData.data[index], this.imageData.data[index + 1], this.imageData.data[index + 2]);
++							let grayScale01 = color.grayScale01();
++							let pixelLetter = grayScaleASCII[Math.floor((1 - grayScale01) * (grayScaleASCII.length - 1))];
++							renderString += pixelLetter;
++						}
++						renderString += "\n";
++					}
++
++					if (this.asciiParagraph != null && this.asciiParagraph.innerText != renderString)
++						this.asciiParagraph.innerText = renderString;
++				}
+ 			}
+ 		}
+ 
+@@ -1678,7 +1721,8 @@
+ 		// ===== index.js =====
+ 		const gameCanvas = (document.getElementById("gameCanvas"));
+ 		const ctx = (gameCanvas.getContext("2d"));
+-		const rasterizer = new Rasterizer(gameCanvas.width, gameCanvas.height, ctx);
++		const asciiParagraph = (document.getElementById("asciiParagraph"));
++		const rasterizer = new Rasterizer(gameCanvas.width, gameCanvas.height, ctx, asciiParagraph);
+ 		const fov = 60;
+ 		let znear = 0.01,
+ 			zfar = 1000;
+@@ -1687,8 +1731,20 @@
+ 		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
+ 		let keyStates = {};
+ 
++		const asciiCheckBox = (document.getElementById("useASCII"));
++		const asciiResRow = (document.getElementById("asciiResRow"));
++		const canvasResRow = (document.getElementById("canvasResRow"));
++		const renderDiv = (document.getElementById("render"));
++		const mouseLookButton = (document.getElementById("mouseLookButton"));
++
+ 		const canvasResWidthInput = (document.getElementById("canvasResWidth"));
+ 		const canvasResHeightInput = (document.getElementById("canvasResHeight"));
++		const asciiResWidthInput = (document.getElementById("asciiResWidth"));
++		const asciiResHeightInput = (document.getElementById("asciiResHeight"));
++
++		let useASCII = false;
++		let asciiWidth = 260;
++		let asciiHeight = 195;
+ 		let canvasRenderWidth = 600;
+ 		let canvasRenderHeight = 450;
+ 
+@@ -1803,7 +1859,7 @@
+ 		function rasterize(visibleTris) {
+ 			rasterizer.clearScreen();
+ 			rasterizer.rasterizeClipSpaceTriangles(visibleTris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow);
+-			rasterizer.drawCall();
++			rasterizer.drawCall(useASCII);
+ 		}
+ 
+ 		function update(time = performance.now()) {
+@@ -1862,8 +1918,8 @@
+ 		}
+ 
+ 		function updateRenderResolution() {
+-			gameCanvas.width = canvasRenderWidth;
+-			gameCanvas.height = canvasRenderHeight;
++			gameCanvas.width = useASCII ? asciiWidth : canvasRenderWidth;
++			gameCanvas.height = useASCII ? asciiHeight : canvasRenderHeight;
+ 
+ 			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+ 			rasterizer.updateResolution(gameCanvas.width, gameCanvas.height);
+@@ -1874,23 +1930,62 @@
+ 			canvasRenderHeight = readResolution(canvasResHeightInput, 16, 1440, canvasRenderHeight);
+ 			canvasResWidthInput.value = canvasRenderWidth.toString();
+ 			canvasResHeightInput.value = canvasRenderHeight.toString();
+-			updateRenderResolution();
++			if (!useASCII) updateRenderResolution();
+ 		}
+ 		canvasResWidthInput.addEventListener("change", readAndApplyResolutionInput);
+ 		canvasResHeightInput.addEventListener("change", readAndApplyResolutionInput);
+ 
+-		gameCanvas.addEventListener("click", async () => {
+-			await gameCanvas.requestPointerLock({
+-				unadjustedMovement: true,
+-			});
++		function readAndApplyASCIIResolutionInput() {
++			asciiWidth = readResolution(asciiResWidthInput, 8, 500, asciiWidth);
++			asciiHeight = readResolution(asciiResHeightInput, 8, 400, asciiHeight);
++			asciiResWidthInput.value = asciiWidth.toString();
++			asciiResHeightInput.value = asciiHeight.toString();
++			if (useASCII) updateRenderResolution();
++		}
++		asciiResWidthInput.addEventListener("change", readAndApplyASCIIResolutionInput);
++		asciiResHeightInput.addEventListener("change", readAndApplyASCIIResolutionInput);
++
++		async function requestMouseLook() {
++			try {
++				await renderDiv.requestPointerLock({
++					unadjustedMovement: true,
++				});
++			} catch (e) {
++				try {
++					await renderDiv.requestPointerLock();
++				} catch (fallbackError) {
++					// mobile
++				}
++			}
++		}
++
++		mouseLookButton.addEventListener("click", requestMouseLook);
++
++		gameCanvas.addEventListener("mousedown", () => {
++			if (document.pointerLockElement !== renderDiv) requestMouseLook();
+ 		});
+ 
+-		gameCanvas.addEventListener("mousemove", (e) => {
+-			if (document.pointerLockElement === gameCanvas) {
++		document.addEventListener("mousemove", (e) => {
++			if (document.pointerLockElement === renderDiv) {
+ 				camera.updateRotation(e.movementX, e.movementY);
+ 			}
+ 		});
+ 
++		document.addEventListener("pointerlockchange", () => {
++			mouseLookButton.textContent = document.pointerLockElement === renderDiv ? "Mouse look on - Esc to release" : "Press here to look around (ASCII)";
++		});
++
++		asciiCheckBox.addEventListener("change", () => {
++			useASCII = asciiCheckBox.checked;
++			updateRenderResolution();
++			asciiParagraph.style.display = useASCII ? "" : "none";
++			gameCanvas.style.display = useASCII ? "none" : "";
++			mouseLookButton.style.display = useASCII ? "" : "none";
++			asciiResRow.style.display = useASCII ? "" : "none";
++			canvasResRow.style.display = useASCII ? "none" : "";
++			if (document.pointerLockElement != null) document.exitPointerLock();
++		});
++
+ 		window.addEventListener("keydown", (e) => {
+ 			keyStates[e.key] = true;
+ 		});

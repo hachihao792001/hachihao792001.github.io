@@ -129,7 +129,192 @@ canvasResHeightInput.addEventListener("change", readAndApplyResolutionInput);</c
 					Kết quả (mình có tăng tốc độ bay camera lên 5, và dời point light thứ 2 một tí):
                     <div class="htmlPreview" id="htmlPreview50"></div>
 
-                    
+                    <h2>2. Render ra ASCII</h2>
+					Cái này thật ra không có gì khó, vì đây là một software rasterizer, ta điều khiển từng pixel một, do đó ta muốn output
+					ra dạng nào cũng được, ASCII chỉ là một trong những dạng đó. Nếu muốn bạn có thể output nó ra 1 grid các checkbox cũng được 😅.<br/><br/>
+
+					Đầu tiên, ta thêm 1 paragraph để chứa output ASCII của chúng ta, để nó mặc định <code>display: none</code>, có <code>monospace</code> 
+					để cho character có kích thước vuông, có <code>white-space: pre</code> để trình duyệt không nuốt mất dấu cách và xuống dòng.
+					Để nó kế bên gameCanvas, và nhét nó trong 1 div <code>render</code> bự hơn (có lí do):
+					<pre><code class="language-html">&lt;div id="render"&gt;
+	&lt;canvas id="gameCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff"&gt;&lt;/canvas&gt;
+	&lt;p id="asciiParagraph"
+		style="display:none; font-size: 2px; font-family: 'Courier New', Courier, monospace;letter-spacing: 1px; line-height: 2px; white-space: pre;">
+	&lt;/p&gt;
+&lt;/div&gt;</code></pre>
+					Tiếp theo là check box để bật tắt ASCII:
+					<pre><code class="language-html">&lt;div&gt;
+	ASCII:
+	&lt;input type="checkbox" id="useASCII" /&gt;
+&lt;/div&gt;</code></pre>
+					Về resolution của ASCII: Vì một kí tự thường sẽ lớn hơn khá nhiều so với một pixel, cho nên ta nên phân resolution ra 
+					giữa ASCII và Canvas, ASCII thì sẽ có resolution mặc định nhỏ hơn.<br/>
+					Về việc thêm element: mình
+					nhét 2 cái input resolution canvas vào 1 div <code>canvasResRow</code> mới, rồi tạo 2 input resolution ASCII mới trong
+					1 div <code>asciiResRow</code> mới:
+				<pre><code class="language-html">&lt;div id=&quot;canvasResRow&quot;&gt;
+	Canvas resolution:
+	&lt;span&gt;
+		&lt;input id=&quot;canvasResWidth&quot; value=&quot;600&quot; size=&quot;4&quot; /&gt;
+		x
+		&lt;input id=&quot;canvasResHeight&quot; value=&quot;450&quot; size=&quot;4&quot; /&gt;
+	&lt;/span&gt;
+&lt;/div&gt;
+&lt;div id=&quot;asciiResRow&quot; style=&quot;display: none&quot;&gt;
+	ASCII resolution:
+	&lt;span&gt;
+		&lt;input id=&quot;asciiResWidth&quot; value=&quot;260&quot; size=&quot;4&quot; /&gt;
+		x
+		&lt;input id=&quot;asciiResHeight&quot; value=&quot;195&quot; size=&quot;4&quot; /&gt;
+	&lt;/span&gt;
+&lt;/div&gt;</code></pre>
+					Phần khai báo javascript cho những element mới thêm ở trên:
+					<pre><code class="language-javascript">const asciiParagraph = (document.getElementById("asciiParagraph"));
+...
+const asciiCheckBox = (document.getElementById("useASCII"));
+const asciiResRow = (document.getElementById("asciiResRow"));
+const canvasResRow = (document.getElementById("canvasResRow"));
+
+const canvasResWidthInput = (document.getElementById("canvasResWidth"));
+const canvasResHeightInput = (document.getElementById("canvasResHeight"));
+const asciiResWidthInput = (document.getElementById("asciiResWidth"));
+const asciiResHeightInput = (document.getElementById("asciiResHeight"));
+
+let useASCII = false;
+let asciiWidth = 260;
+let asciiHeight = 195;
+let canvasRenderWidth = 600;
+let canvasRenderHeight = 450;</code></pre>
+
+					Khi bật tắt ASCII mode, ngoài bật tắt các element tương ứng, thì resolution cũng phải đổi theo
+					<pre><code class="language-javascript">asciiCheckBox.addEventListener("change", () => {
+	useASCII = asciiCheckBox.checked;
+	updateRenderResolution();		// <--------------------
+	asciiParagraph.style.display = useASCII ? "" : "none";
+	gameCanvas.style.display = useASCII ? "none" : "";
+	asciiResRow.style.display = useASCII ? "" : "none";
+	canvasResRow.style.display = useASCII ? "none" : "";
+});</code></pre>
+					Cập nhật và thêm cho các hàm update resolution:
+					<pre><code class="language-javascript">function updateRenderResolution() {
+	gameCanvas.width = useASCII ? asciiWidth : canvasRenderWidth;		// <-----------------------------
+	gameCanvas.height = useASCII ? asciiHeight : canvasRenderHeight;	// <-----------------------------
+
+	...
+}
+
+function readAndApplyResolutionInput() {
+	...
+	if (!useASCII) updateRenderResolution();		// <-----------------------------
+}
+...
+		
+function readAndApplyASCIIResolutionInput() {
+	asciiWidth = readResolution(asciiResWidthInput, 8, 500, asciiWidth);
+	asciiHeight = readResolution(asciiResHeightInput, 8, 400, asciiHeight);
+	asciiResWidthInput.value = asciiWidth.toString();
+	asciiResHeightInput.value = asciiHeight.toString();
+	if (useASCII) updateRenderResolution();
+}
+asciiResWidthInput.addEventListener("change", readAndApplyASCIIResolutionInput);
+asciiResHeightInput.addEventListener("change", readAndApplyASCIIResolutionInput);</code></pre>
+
+					Oke xong phần setup HTML rồi, giờ tới phần thật sự render ASCII.<br/><br/>
+					Ta cần trả lời câu hỏi sau: Sao để chuyển từ 1 pixel ra 1 ký tự?
+					Output từ 1 pixel ra 1 ký tự thì sẽ không giữ được thông tin màu (ký tự thuần thì không có màu). Tuy nhiên ta có thể dựa
+					vào grayScale của màu để suy ra độ đậm nhạt, từ đó suy ra kí tự.<br/><br/>
+					
+					Đầu tiên ta thêm hàm tính grayScale, nó chỉ là trung bình của 3 channel, chia 255 để đưa nó về khoảng [0; 1]:
+                    <pre><code class="language-javascript">grayScale01() {
+	return (this.r + this.g + this.b) / 3.0 / 255.0;
+}</code></pre>
+
+                    Về suy ra kí tự, ta dùng dãy bên dưới để nội suy ra kí tự từ grayScale.
+
+                    <pre><code class="language-javascript">let grayScaleASCII = "$@B%8&amp;WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~&lt;>i!lI;:,\"^`'. ";</code></pre>
+					<i style="font-size: small">Nguồn: <a href="https://paulbourke.net/dataformats/asciiart/">Paul Bourke</a></i><br/>
+
+                    Đầu dãy là <code>$</code>, <code>@</code>, <code>B</code> - mấy kí tự có mấy nét gần nhau, nhìn đậm. Cuối dãy
+                    là <code>.</code> và dấu cách, nhìn nhạt. Nên pixel càng "sáng" thì càng lấy kí tự ở cuối, tức là phải lấy
+                    <code>1 - grayScale01</code>.<br/><br/>
+
+					Về việc render thì ta phải sửa class Rasterizer, nhưng thật ra ta chỉ cần thêm reference tới <code>asciiParagraph</code> và
+					if trong hàm <code>drawCall</code>:
+                    <pre><code class="language-javascript">class Rasterizer {
+	constructor(canvasWidth, canvasHeight, ctx, asciiParagraph) {
+		...
+		this.asciiParagraph = asciiParagraph;
+		...
+	}
+	...
+	drawCall(useASCII = false) {
+		if (!useASCII) {
+			this.ctx.putImageData(this.imageData, 0, 0);
+		} else {
+			let renderString = "";		// string bình thường là đủ
+			let grayScaleASCII = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. ";
+			for (let y = 0; y &lt; this.canvasHeight; y++) {
+				for (let x = 0; x &lt; this.canvasWidth; x++) {
+					let index = (y * this.canvasWidth + x) * 4;
+					let color = new Color(this.imageData.data[index], this.imageData.data[index + 1], this.imageData.data[index + 2]);
+					let grayScale01 = color.grayScale01();
+					// nội suy với độ dài dãy
+					let pixelLetter = grayScaleASCII[Math.floor((1 - grayScale01) * (grayScaleASCII.length - 1))];
+					renderString += pixelLetter;
+				}
+				renderString += "\n";
+			}
+
+			if (this.asciiParagraph != null && this.asciiParagraph.innerText != renderString)
+				this.asciiParagraph.innerText = renderString;
+		}
+	}
+}</code></pre>
+
+                    Cái <code>this.asciiParagraph.innerText != renderString</code> để cho nếu khung hình không đổi thì đừng cập nhật,
+					paragraph mà bị cập nhật liên tục thì bạn sẽ không thể bôi đậm và copy, mất tính "magic".<br/><br/>
+
+					Thật ra như vậy là xong việc render rồi, tuy nhiên có 1 vấn đề lớn: khi bật ASCII, <code>gameCanvas</code> bị ẩn đi,
+					bạn sẽ không lock pointer được để nhìn qua lại. Cho nên mình nhét cả
+					2 cái vào 1 cái div <code>render</code> mà mình đã nói tới ở trên, ta sẽ lock pointer chung vào đó. Với ASCII thì 
+					thêm một nút "Press here to look around" để lock thay vì nhấn vào paragraph, sẽ khá kỳ:
+					<pre><code class="language-html">&lt;div&gt;
+	&lt;button id=&quot;mouseLookButton&quot; style=&quot;display:none&quot;&gt;Press here to look around (ASCII)&lt;/button&gt;
+&lt;/div&gt;</code></pre>
+					<pre><code class="language-javascript">const mouseLookButton = (document.getElementById("mouseLookButton"));
+...
+document.addEventListener("pointerlockchange", () => {
+	mouseLookButton.textContent = document.pointerLockElement === renderDiv ? "Mouse look on - Esc to release" : "Press here to look around (ASCII)";
+});</code></pre>
+
+					Tạo riêng 1 hàm để gọi pointer lock:
+                    <pre><code class="language-javascript">async function requestMouseLook() {
+	try {
+		await renderDiv.requestPointerLock({ unadjustedMovement: true });
+	} catch (e) {
+		try {
+			await renderDiv.requestPointerLock();	// trình duyệt không hỗ trợ unadjustedMovement (linux)
+		} catch (fallbackError) {
+			// điện thoại
+		}
+	}
+}
+mouseLookButton.addEventListener("click", requestMouseLook);
+
+gameCanvas.addEventListener("mousedown", () => {
+	if (document.pointerLockElement !== renderDiv) requestMouseLook();
+});
+
+document.addEventListener("mousemove", (e) => {				// đổi gameCanvas thành document
+	if (document.pointerLockElement === renderDiv) {		// đổi gameCanvas thành renderDiv
+		camera.updateRotation(e.movementX, e.movementY);
+	}
+});</code></pre>
+					
+                    Kết quả:
+
+                    <div class="htmlPreview" id="htmlPreview51"></div>
+
                     <div id="graphics3D-nav-bottom"></div>
             </div>
         </div>

@@ -3,135 +3,11 @@
 
 <head>
 	<meta charset="UTF-8" />
-	<style>
-		body {
-			text-align: center;
-			background: #f0f0f0;
-			font-family: 'Bahnschrift', 'Arial Sans-Serif', sans-serif;
-		}
-
-		#gameCanvas {
-			max-width: 100%;
-			height: auto;
-		}
-
-		.slider-value {
-			display: inline-block;
-			min-width: 3em;
-			text-align: left;
-			font-variant-numeric: tabular-nums;
-		}
-
-		input[type="range"] {
-			vertical-align: middle;
-		}
-
-		#controls {
-			display: grid;
-			grid-template-columns: max-content max-content;
-			justify-content: center;
-			justify-items: start;
-			align-items: center;
-			column-gap: 8px;
-			row-gap: 2px;
-		}
-
-		#controls .controlRow {
-			display: contents;
-		}
-
-		#controls .controlLabel {
-			justify-self: end;
-		}
-
-		#helpPopup {
-			position: fixed;
-			top: 80px;
-			left: 50%;
-			transform: translate(-50%, 0);
-			box-sizing: border-box;
-			width: min(400px, calc(100vw - 24px));
-			max-height: calc(100vh - 96px);
-			max-height: calc(100dvh - 96px);
-			overflow-y: auto;
-			text-align: left;
-			background: #fff;
-			border: 1px solid #aaa;
-			padding: 10px;
-		}
-
-		#helpPopup .helpPopupBar {
-			position: sticky;
-			top: -10px;
-			margin: -10px -10px 0;
-			padding: 10px 10px 4px;
-			text-align: right;
-			background: #fff;
-		}
-
-		@media (max-width: 480px),
-		(max-height: 600px) {
-			#helpPopup {
-				top: 12px;
-				max-height: calc(100vh - 24px);
-				max-height: calc(100dvh - 24px);
-			}
-		}
-
-		@media (max-width: 480px) {
-			#controls {
-				grid-template-columns: max-content;
-				justify-items: center;
-				row-gap: 0;
-			}
-
-			#controls .controlLabel {
-				justify-self: center;
-				margin-top: 4px;
-			}
-		}
-
-		#mobileControls .row {
-			display: flex;
-			flex-wrap: wrap;
-			justify-content: center;
-			gap: 10px;
-		}
-
-		#mobileControls>div {
-			margin-bottom: 8px;
-		}
-
-		#mobileControls .move-controls {
-			display: grid;
-			grid-template-columns: repeat(3, auto);
-			gap: 2px;
-		}
-
-		#mobileControls .look-controls {
-			display: grid;
-			grid-template-columns: repeat(3, auto);
-			gap: 2px;
-		}
-
-		#mobileControls button {
-			width: 40px;
-			height: 40px;
-			margin: 0px;
-			padding: 0px;
-			font-family: inherit;
-			font-size: 12px;
-			touch-action: none;
-			-webkit-user-select: none;
-			user-select: none;
-		}
-	</style>
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>Hanvas Engine</title>
+	<title>3D Engine</title>
 </head>
 
-<body>
-	<h1>Hanvas Engine</h1>
+<body style="text-align: center; background: #f0f0f0">
+	<h1>3D Engine</h1>
 	<div id="render">
 		<canvas id="gameCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff"></canvas>
 		<p id="asciiParagraph"
@@ -143,113 +19,49 @@
 	</div>
 	<h2 id="fps">FPS: 0</h2>
 	<div>
-		<button id="helpButton"
-			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Help</button>
-		<button id="mobileControlsButton"
-			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Mobile
-			controls</button>
-		<div id="mobileControls" style="display: none">
-			<div class="row">
-				<div>
-					<b>Move</b><br />
-					<div class="move-controls">
-						<button data-key=" ">Up</button>
-						<button data-key="w">W</button>
-						<button data-key="Shift">Down</button>
-
-						<button data-key="a">A</button>
-						<button data-key="s">S</button>
-						<button data-key="d">D</button>
-					</div>
-				</div>
-
-				<div>
-					<b>Look</b><br />
-					<div class="look-controls">
-						<span></span>
-						<button data-look="0,-1">&uarr;</button>
-						<span></span>
-
-						<button data-look="-1,0">&larr;</button>
-						<button data-look="0,1">&darr;</button>
-						<button data-look="1,0">&rarr;</button>
-					</div>
-				</div>
-			</div>
-		</div>
+		ASCII:
+		<input type="checkbox" id="useASCII" />
 	</div>
-	<div id="controls">
-		<div class="controlRow">
-			<label class="controlLabel" for="useASCII">ASCII:</label>
-			<span><input type="checkbox" id="useASCII" /></span>
-		</div>
-		<div class="controlRow" id="canvasResRow">
-			<label class="controlLabel" for="canvasResWidth">Canvas resolution:</label>
-			<span>
-				<input id="canvasResWidth" value="600" size="4" />
-				x
-				<input id="canvasResHeight" value="450" size="4" />
-			</span>
-		</div>
-		<div class="controlRow" id="asciiResRow" style="display: none">
-			<label class="controlLabel" for="asciiResWidth">ASCII resolution:</label>
-			<span>
-				<input id="asciiResWidth" value="260" size="4" />
-				x
-				<input id="asciiResHeight" value="195" size="4" />
-			</span>
-		</div>
-		<div class="controlRow">
-			<label class="controlLabel" for="dirIntensity">Directional light intensity:</label>
-			<span>
-				<input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" />
-				<span id="dirIntensityText" class="slider-value">1.0</span>
-			</span>
-		</div>
-		<div class="controlRow">
-			<label class="controlLabel" for="dirRotateSpeed">Directional light rotate speed:</label>
-			<span>
-				<input type="range" id="dirRotateSpeed" min="0" max="50" step="0.1" value="10" />
-				<span id="dirRotateSpeedText" class="slider-value">10</span>
-			</span>
-		</div>
-		<div class="controlRow">
-			<label class="controlLabel" for="pointIntensity">Point light intensity:</label>
-			<span>
-				<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
-				<span id="pointIntensityText" class="slider-value">1.0</span>
-			</span>
-		</div>
-		<div class="controlRow">
-			<label class="controlLabel" for="pointRange">Point light range:</label>
-			<span>
-				<input type="range" id="pointRange" min="0" max="60" step="1" value="14" />
-				<span id="pointRangeText" class="slider-value">14</span>
-			</span>
-		</div>
-		<div class="controlRow">
-			<label class="controlLabel" for="useShadow">Shadow:</label>
-			<span><input type="checkbox" id="useShadow" checked="checked" /></span>
-		</div>
+	<div id="canvasResRow">
+		Canvas resolution:
+		<span>
+			<input id="canvasResWidth" value="600" size="4" />
+			x
+			<input id="canvasResHeight" value="450" size="4" />
+		</span>
 	</div>
-
-	<div id="helpPopup" style="display: none">
-		<div class="helpPopupBar">
-			<button id="helpCloseButton"
-				style="font-family: inherit; font-size: 15px; height: 30px; padding: 0 16px">Close</button>
-		</div>
-		PC controls:
-		<ul>
-			<li>W, A, S, D to move</li>
-			<li>Space, shift to fly up and down</li>
-			<li>Mouse to look around</li>
-		</ul>
-		Touch controls:
-		<ul>
-			<li>Mobile controls to move and look around</li>
-		</ul>
+	<div id="asciiResRow" style="display: none">
+		ASCII resolution:
+		<span>
+			<input id="asciiResWidth" value="260" size="4" />
+			x
+			<input id="asciiResHeight" value="195" size="4" />
+		</span>
 	</div>
-
+	<div>
+		Directional light intensity:
+		<input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" />
+		<span id="dirIntensityText" class="slider-value">1.0</span>
+	</div>
+	<div>
+		Directional light rotate speed:
+		<input type="range" id="dirRotateSpeed" min="0" max="50" step="0.1" value="10" />
+		<span id="dirRotateSpeedText" class="slider-value">10</span>
+	</div>
+	<div>
+		Point light intensity:
+		<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
+		<span id="pointIntensityText" class="slider-value">1.0</span>
+	</div>
+	<div>
+		Point light range:
+		<input type="range" id="pointRange" min="0" max="60" step="1" value="14" />
+		<span id="pointRangeText" class="slider-value">14</span>
+	</div>
+	<div>
+		Shadow:
+		<input type="checkbox" id="useShadow" checked="checked" />
+	</div>
 	<script>
 		// ===== math.js =====
 		class MathExtend {
@@ -388,6 +200,7 @@
 				return Vector3.dot(cross, axis) > 0 ? -angle : angle;
 			}
 		}
+
 		Vector3.zero = new Vector3(0, 0, 0);
 		Vector3.one = new Vector3(1, 1, 1);
 		Vector3.left = new Vector3(-1, 0, 0);
@@ -445,7 +258,6 @@
 				matrix.m[3][3] = 1;
 				return matrix;
 			}
-
 			static ViewFromPosRot(pos, rotation) {
 				let forward = rotation.rotateVector(Vector3.forward);
 				let right = rotation.rotateVector(Vector3.right);
@@ -1214,7 +1026,6 @@
 
 					shadowTri.calculateSignedDoubleArea();
 
-					// everything the per pixel loop needs, read once instead of once per pixel
 					const vertex0 = shadowTri.vertices[0],
 						vertex1 = shadowTri.vertices[1],
 						vertex2 = shadowTri.vertices[2];
@@ -1284,6 +1095,7 @@
 					pixelWorldPosY + triWorldNormalY * normalOffset,
 					pixelWorldPosZ + triWorldNormalZ * normalOffset,
 				);
+
 				lightSpacePos.mulMat4x4(this.viewMatrix);
 				lightSpacePos.mulMat4x4(this.projectionMatrix);
 
@@ -1312,11 +1124,7 @@
 				this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);
 				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
 
-				this.screenBuffer.fill(255);
-				this.depthBuffer.fill(Infinity);
-
-				this.screenCenterX = Math.floor(this.canvasWidth / 2);
-				this.screenCenterY = Math.floor(this.canvasHeight / 2);
+				this.clearScreen();
 			}
 
 			updateResolution(canvasWidth, canvasHeight) {
@@ -1328,15 +1136,11 @@
 				this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);
 				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
 
-				this.screenBuffer.fill(255);
-				this.depthBuffer.fill(Infinity);
-
-				this.screenCenterX = Math.floor(this.canvasWidth / 2);
-				this.screenCenterY = Math.floor(this.canvasHeight / 2);
+				this.clearScreen();
 			}
 
 			clearScreen() {
-				this.screenBuffer32.fill(0xfff4f4f4);
+				this.screenBuffer32.fill(0xfff0f0f0);
 				this.depthBuffer.fill(Infinity);
 			}
 
@@ -1346,7 +1150,7 @@
 				const canvasWidth = this.canvasWidth;
 				const canvasHeight = this.canvasHeight;
 				const activeLights = new Array(maxActiveLights);
-				const pointLightRange2 = pointLightRange * pointLightRange;
+
 				for (let tri of tris) {
 					let vertices = tri.vertices;
 					for (let i = 0; i < vertices.length; i++) {
@@ -1366,7 +1170,6 @@
 						worldNormalZ = triWorldNormal.z;
 
 					const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
-					const activeLightCount = pointLightIntensity > 0 ? tri.getPointLightsThatCanAffectTri(pointLightRange, pointLights, activeLights) : 0;
 
 					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
 
@@ -1374,7 +1177,6 @@
 					let edgeFunctionRow12 = MathExtend.edgeFunction(tri.vertices[1], tri.vertices[2], new Vector3(bbox.minX, bbox.minY, 0));
 					let edgeFunctionRow20 = MathExtend.edgeFunction(tri.vertices[2], tri.vertices[0], new Vector3(bbox.minX, bbox.minY, 0));
 
-					// everything the per pixel loop needs, read once instead of once per pixel
 					const vertex0 = tri.vertices[0],
 						vertex1 = tri.vertices[1],
 						vertex2 = tri.vertices[2];
@@ -1415,6 +1217,9 @@
 						perspectiveWorld2Y = world2.y * uv2W,
 						perspectiveWorld2Z = world2.z * uv2W;
 
+					const pointLightRangeSquare = pointLightRange * pointLightRange;
+					const activeLightCount = pointLightIntensity > 0 ? tri.getPointLightsThatCanAffectTri(pointLightRange, pointLights, activeLights) : 0;
+
 					const triColor = tri.color;
 					const texture = tri.texture;
 					const texturePixels = texture ? texture.pixels : null;
@@ -1451,26 +1256,24 @@
 									}
 
 									let totalPointLightDiffuse = 0;
-									if (pointLightIntensity > 0) {
-										for (let i = 0; i < activeLightCount; i++) {
-											const lightPos = activeLights[i];
-											const pointLightVecX = lightPos.x - pixelWorldX;
-											const pointLightVecY = lightPos.y - pixelWorldY;
-											const pointLightVecZ = lightPos.z - pixelWorldZ;
-											const distanceFromPixelToPointLight2 =
-												pointLightVecX * pointLightVecX + pointLightVecY * pointLightVecY + pointLightVecZ * pointLightVecZ;
-											if (distanceFromPixelToPointLight2 >= pointLightRange2) continue;
+									for (let i = 0; i < activeLightCount; i++) {
+										const lightPos = activeLights[i];
+										const pointLightVecX = lightPos.x - pixelWorldX;
+										const pointLightVecY = lightPos.y - pixelWorldY;
+										const pointLightVecZ = lightPos.z - pixelWorldZ;
+										const distanceFromPixelToPointLight2 =
+											pointLightVecX * pointLightVecX + pointLightVecY * pointLightVecY + pointLightVecZ * pointLightVecZ;
+										if (distanceFromPixelToPointLight2 >= pointLightRangeSquare) continue;
 
-											const distance = Math.sqrt(distanceFromPixelToPointLight2);
-											const dot = (worldNormalX * pointLightVecX + worldNormalY * pointLightVecY + worldNormalZ * pointLightVecZ) / distance;
-											const currentPointLightDiffuse = (1 + dot) / 2;
-											const pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRange2;
-											const inverseSquareDistance = 1 / (1 + 0.02 * distanceFromPixelToPointLight2);
-											const attenuation = (1 - pointLightDistanceRatio) * inverseSquareDistance;
-											totalPointLightDiffuse += currentPointLightDiffuse * attenuation;
-										}
-										totalPointLightDiffuse *= pointLightIntensity;
+										const distance = Math.sqrt(distanceFromPixelToPointLight2);
+										const dot = (worldNormalX * pointLightVecX + worldNormalY * pointLightVecY + worldNormalZ * pointLightVecZ) / distance;
+										const currentPointLightDiffuse = (1 + dot) / 2;
+										const pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRangeSquare;
+										const inverseSquareDistance = 1 / (1 + 0.02 * distanceFromPixelToPointLight2);
+										const attenuation = (1 - pointLightDistanceRatio) * inverseSquareDistance;
+										totalPointLightDiffuse += currentPointLightDiffuse * attenuation;
 									}
+									totalPointLightDiffuse *= pointLightIntensity;
 
 									const lightIntensity = Math.max(ambientLight, (dirLightDiffuse + totalPointLightDiffuse) * shadowFactor);
 
@@ -1523,7 +1326,8 @@
 						renderString += "\n";
 					}
 
-					if (this.asciiParagraph != null && this.asciiParagraph.innerText != renderString) this.asciiParagraph.innerText = renderString;
+					if (this.asciiParagraph != null && this.asciiParagraph.innerText != renderString)
+						this.asciiParagraph.innerText = renderString;
 				}
 			}
 		}
@@ -1951,16 +1755,6 @@
 		let frames = 0,
 			fpsTimeCounter = 0;
 
-		const mobileControls = (document.getElementById("mobileControls"));
-		const mobileControlsButton = (document.getElementById("mobileControlsButton"));
-
-		const helpButton = (document.getElementById("helpButton"));
-		const helpPopup = (document.getElementById("helpPopup"));
-		const helpCloseButton = (document.getElementById("helpCloseButton"));
-
-		let lookInput = { x: 0, y: 0 };
-		let lookSpeed = 450;
-
 		const lightDirIntensitySlider = (document.getElementById("dirIntensity"));
 		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
 		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
@@ -2007,10 +1801,6 @@
 
 		function updateGameObjectTransforms() {
 			camera.updateMovement(dt, keyStates);
-			if (lookInput.x != 0 || lookInput.y != 0) {
-				camera.updateRotation(lookInput.x * dt * lookSpeed, lookInput.y * dt * lookSpeed);
-			}
-
 			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
 			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
 			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
@@ -2025,6 +1815,13 @@
 			objectTris.push(...woodTower.getTransformedTrianglesWithChildren());
 
 			return objectTris;
+		}
+
+		function buildShadowMap(objectTris) {
+			if (useShadow) {
+				dirLight.buildViewAndProjectionMatrix();
+				dirLight.buildShadowMap(objectTris);
+			}
 		}
 
 		function worldSpaceToViewSpace(objectTris) {
@@ -2063,13 +1860,6 @@
 			rasterizer.clearScreen();
 			rasterizer.rasterizeClipSpaceTriangles(visibleTris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow);
 			rasterizer.drawCall(useASCII);
-
-			let x = rasterizer.screenCenterX,
-				y = rasterizer.screenCenterY;
-			ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-			ctx.fillRect(x - 2, y - 2, 5, 5);
-			ctx.fillStyle = "#ffffff";
-			ctx.fillRect(x - 1, y - 1, 3, 3);
 		}
 
 		function update(time = performance.now()) {
@@ -2086,12 +1876,7 @@
 
 			updateGameObjectTransforms();
 			let objectTris = gameObjectToWorldSpaceTriangles();
-
-			if (useShadow) {
-				dirLight.buildViewAndProjectionMatrix();
-				dirLight.buildShadowMap(objectTris);
-			}
-
+			buildShadowMap(objectTris);
 			let visibleTris = worldSpaceToViewSpace(objectTris);
 			sortNearestFirst(visibleTris);
 			viewSpaceToClipSpace(visibleTris);
@@ -2180,10 +1965,6 @@
 			if (document.pointerLockElement !== renderDiv) requestMouseLook();
 		});
 
-		document.addEventListener("contextmenu", (e) => {
-			if (document.pointerLockElement === renderDiv) e.preventDefault();
-		});
-
 		document.addEventListener("mousemove", (e) => {
 			if (document.pointerLockElement === renderDiv) {
 				camera.updateRotation(e.movementX, e.movementY);
@@ -2210,60 +1991,6 @@
 		});
 		window.addEventListener("keyup", (e) => {
 			keyStates[e.key] = false;
-		});
-		mobileControlsButton.addEventListener("click", () => {
-			mobileControls.style.display = mobileControls.style.display == "none" ? "" : "none";
-			mobileControlsButton.blur();
-		});
-
-		helpButton.addEventListener("click", () => {
-			helpPopup.style.display = helpPopup.style.display == "none" ? "" : "none";
-			helpButton.blur();
-		});
-
-		helpCloseButton.addEventListener("click", () => {
-			helpPopup.style.display = "none";
-			helpCloseButton.blur();
-		});
-
-		const keyButtons = mobileControls.querySelectorAll("button[data-key]");
-		keyButtons.forEach((button) => {
-			const key = (button.getAttribute("data-key"));
-			button.addEventListener("pointerdown", (e) => {
-				e.preventDefault();
-				keyStates[key] = true;
-				button.setPointerCapture(e.pointerId);
-			});
-			const release = () => {
-				keyStates[key] = false;
-			};
-			button.addEventListener("pointerup", release);
-			button.addEventListener("pointercancel", release);
-		});
-
-		const lookButtons = mobileControls.querySelectorAll("button[data-look]");
-		lookButtons.forEach((button) => {
-			if (!button.dataset.look) return;
-			const dir = button.dataset.look.split(",");
-			const x = parseInt(dir[0]),
-				y = parseInt(dir[1]);
-			let pressed = false;
-			button.addEventListener("pointerdown", (e) => {
-				e.preventDefault();
-				if (pressed) return;
-				pressed = true;
-				lookInput.x += x;
-				lookInput.y += y;
-				button.setPointerCapture(e.pointerId);
-			});
-			const release = () => {
-				if (!pressed) return;
-				pressed = false;
-				lookInput.x -= x;
-				lookInput.y -= y;
-			};
-			button.addEventListener("pointerup", release);
-			button.addEventListener("pointercancel", release);
 		});
 	</script>
 </body>

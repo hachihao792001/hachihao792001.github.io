@@ -2828,15 +2828,15 @@
         canvasResWidthInput.addEventListener("change", readAndApplyResolutionInput);
         canvasResHeightInput.addEventListener("change", readAndApplyResolutionInput);
 
-        function applyAsciiResolution() {
+        function readAndApplyASCIIResolutionInput() {
             asciiWidth = readResolution(asciiResWidthInput, 8, 500, asciiWidth);
             asciiHeight = readResolution(asciiResHeightInput, 8, 400, asciiHeight);
             asciiResWidthInput.value = asciiWidth.toString();
             asciiResHeightInput.value = asciiHeight.toString();
             if (useASCII) updateRenderResolution();
         }
-        asciiResWidthInput.addEventListener("change", applyAsciiResolution);
-        asciiResHeightInput.addEventListener("change", applyAsciiResolution);
+        asciiResWidthInput.addEventListener("change", readAndApplyASCIIResolutionInput);
+        asciiResHeightInput.addEventListener("change", readAndApplyASCIIResolutionInput);
 
         async function requestMouseLook() {
             try {
