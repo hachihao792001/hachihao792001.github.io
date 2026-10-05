@@ -73,15 +73,6 @@
  			static buildQuaternionAxisRadian(axis, angle) {
  				const half = angle / 2.0;
  				const s = -Math.sin(half);
-@@ -315,7 +349,7 @@
- 				const res = Quaternion.multiply(Quaternion.multiply(this.conjugate(), qVec), this);
- 				return new Vector3(res.b, res.c, res.d);
- 			}
--			
-+
- 			static lookRotation(forward, up) {
- 				let [fixForwardAxis, fixForwardAngle] = Vector3.getAxisAndRadianBetween(Vector3.forward, forward);
- 				let firstRotation = Quaternion.buildQuaternionAxisRadian(fixForwardAxis, fixForwardAngle);
 @@ -352,6 +386,25 @@
  				let vectorAM = Vector3.mul(vectorAB, t);
  				return [t, Vector3.add(A, vectorAM)];

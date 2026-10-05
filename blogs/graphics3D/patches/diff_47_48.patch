@@ -38,7 +38,7 @@
 +			return objectTris;
 +		}
 +
-+		function buildShadowMap(objectTris){
++		function buildShadowMap(objectTris) {
  			if (useShadow) {
  				dirLight.buildViewAndProjectionMatrix();
  				dirLight.buildShadowMap(objectTris);

@@ -1319,7 +1319,7 @@
 				this.screenCenterY = Math.floor(this.canvasHeight / 2);
 			}
 
-			resize(canvasWidth, canvasHeight) {
+			updateResolution(canvasWidth, canvasHeight) {
 				this.canvasWidth = canvasWidth;
 				this.canvasHeight = canvasHeight;
 
@@ -2132,30 +2132,30 @@
 			return Math.max(min, Math.min(max, value));
 		}
 
-		function applyRenderResolution() {
+		function updateRenderResolution() {
 			gameCanvas.width = useASCII ? asciiWidth : canvasRenderWidth;
 			gameCanvas.height = useASCII ? asciiHeight : canvasRenderHeight;
 
 			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
-			rasterizer.resize(gameCanvas.width, gameCanvas.height);
+			rasterizer.updateResolution(gameCanvas.width, gameCanvas.height);
 		}
 
-		function applyCanvasResolution() {
+		function readAndApplyResolutionInput() {
 			canvasRenderWidth = readResolution(canvasResWidthInput, 16, 1920, canvasRenderWidth);
 			canvasRenderHeight = readResolution(canvasResHeightInput, 16, 1440, canvasRenderHeight);
 			canvasResWidthInput.value = canvasRenderWidth.toString();
 			canvasResHeightInput.value = canvasRenderHeight.toString();
-			if (!useASCII) applyRenderResolution();
+			if (!useASCII) updateRenderResolution();
 		}
-		canvasResWidthInput.addEventListener("change", applyCanvasResolution);
-		canvasResHeightInput.addEventListener("change", applyCanvasResolution);
+		canvasResWidthInput.addEventListener("change", readAndApplyResolutionInput);
+		canvasResHeightInput.addEventListener("change", readAndApplyResolutionInput);
 
 		function applyAsciiResolution() {
 			asciiWidth = readResolution(asciiResWidthInput, 8, 500, asciiWidth);
 			asciiHeight = readResolution(asciiResHeightInput, 8, 400, asciiHeight);
 			asciiResWidthInput.value = asciiWidth.toString();
 			asciiResHeightInput.value = asciiHeight.toString();
-			if (useASCII) applyRenderResolution();
+			if (useASCII) updateRenderResolution();
 		}
 		asciiResWidthInput.addEventListener("change", applyAsciiResolution);
 		asciiResHeightInput.addEventListener("change", applyAsciiResolution);
@@ -2196,7 +2196,7 @@
 
 		asciiCheckBox.addEventListener("change", () => {
 			useASCII = asciiCheckBox.checked;
-			applyRenderResolution();
+			updateRenderResolution();
 			asciiParagraph.style.display = useASCII ? "" : "none";
 			gameCanvas.style.display = useASCII ? "none" : "";
 			mouseLookButton.style.display = useASCII ? "" : "none";

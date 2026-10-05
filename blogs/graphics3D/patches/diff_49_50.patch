@@ -1,0 +1,117 @@
+--- "a/htmlPreviews\\htmlPreview49.html"
++++ "b/htmlPreviews\\htmlPreview50.html"
+@@ -10,6 +10,14 @@
+ 	<h1>3D Engine</h1>
+ 	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
+ 	<h2 id="fps">FPS: 0</h2>
++	<div>
++		Canvas resolution:
++		<span>
++			<input id="canvasResWidth" value="600" size="4" />
++			x
++			<input id="canvasResHeight" value="450" size="4" />
++		</span>
++	</div>
+ 	<div>
+ 		Directional light intensity:
+ 		<input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" />
+@@ -1094,6 +1102,18 @@
+ 				this.clearScreen();
+ 			}
+ 
++			updateResolution(canvasWidth, canvasHeight) {
++				this.canvasWidth = canvasWidth;
++				this.canvasHeight = canvasHeight;
++
++				this.imageData = this.ctx.createImageData(this.canvasWidth, this.canvasHeight);
++				this.screenBuffer = this.imageData.data;
++				this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);
++				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
++
++				this.clearScreen();
++			}
++
+ 			clearScreen() {
+ 				this.screenBuffer32.fill(0xfff0f0f0);
+ 				this.depthBuffer.fill(Infinity);
+@@ -1663,10 +1683,18 @@
+ 		let znear = 0.01,
+ 			zfar = 1000;
+ 		let projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+-		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 2, 0.2);
++		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 5, 0.2);
+ 		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
+ 		let keyStates = {};
+ 
++		const canvasResWidthInput = (document.getElementById("canvasResWidth"));
++		const canvasResHeightInput = (document.getElementById("canvasResHeight"));
++		let canvasRenderWidth = 600;
++		let canvasRenderHeight = 450;
++
++		canvasResWidthInput.value = canvasRenderWidth.toString();
++		canvasResHeightInput.value = canvasRenderHeight.toString();
++
+ 		const fpsInfo = (document.getElementById("fps"));
+ 		let frames = 0,
+ 			fpsTimeCounter = 0;
+@@ -1675,8 +1703,6 @@
+ 		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
+ 		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
+ 		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
+-		const shadowCheckbox = (document.getElementById("useShadow"));
+-		let useShadow = true;
+ 		let dirLightDefaultDir = new Vector3(-1, -1, -1);
+ 		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
+ 		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
+@@ -1689,6 +1715,9 @@
+ 		const pointLightRangeText = (document.getElementById("pointRangeText"));
+ 		let pointLightRange = parseFloat(pointLightRangeSlider.value);
+ 
++		const shadowCheckbox = (document.getElementById("useShadow"));
++		let useShadow = true;
++
+ 		let brickTexture = new Texture(
+ 			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
+ 		);
+@@ -1707,8 +1736,8 @@
+ 		);
+ 		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
+ 		let pointLights = [
+-			new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh),
+-			new GameObject(new Vector3(1.6, 1, 4.2), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh),
++			new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 1"),
++			new GameObject(new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 2"),
+ 		];
+ 
+ 		let lastTime = performance.now();
+@@ -1826,6 +1855,30 @@
+ 			useShadow = shadowCheckbox.checked;
+ 		});
+ 
++		function readResolution(input, min, max, current) {
++			let value = parseInt(input.value);
++			if (isNaN(value)) return current;
++			return Math.max(min, Math.min(max, value));
++		}
++
++		function updateRenderResolution() {
++			gameCanvas.width = canvasRenderWidth;
++			gameCanvas.height = canvasRenderHeight;
++
++			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
++			rasterizer.updateResolution(gameCanvas.width, gameCanvas.height);
++		}
++
++		function readAndApplyResolutionInput() {
++			canvasRenderWidth = readResolution(canvasResWidthInput, 16, 1920, canvasRenderWidth);
++			canvasRenderHeight = readResolution(canvasResHeightInput, 16, 1440, canvasRenderHeight);
++			canvasResWidthInput.value = canvasRenderWidth.toString();
++			canvasResHeightInput.value = canvasRenderHeight.toString();
++			updateRenderResolution();
++		}
++		canvasResWidthInput.addEventListener("change", readAndApplyResolutionInput);
++		canvasResHeightInput.addEventListener("change", readAndApplyResolutionInput);
++
+ 		gameCanvas.addEventListener("click", async () => {
+ 			await gameCanvas.requestPointerLock({
+ 				unadjustedMovement: true,
