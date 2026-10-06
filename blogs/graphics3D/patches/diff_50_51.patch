@@ -49,19 +49,22 @@
  		}
  
  		class Texture {
-@@ -1089,8 +1113,10 @@
+@@ -1089,10 +1113,12 @@
  		}
  
  		class Rasterizer {
 -			constructor(canvasWidth, canvasHeight, ctx) {
 +			constructor(canvasWidth, canvasHeight, ctx, asciiParagraph) {
- 				this.ctx = ctx;
++				this.ctx = ctx;
 +				this.asciiParagraph = asciiParagraph;
 +
- 				this.updateResolution(canvasWidth, canvasHeight);
- 			}
+ 				this.canvasWidth = canvasWidth;
+ 				this.canvasHeight = canvasHeight;
+-				this.ctx = ctx;
  
-@@ -1276,8 +1302,26 @@
+ 				this.imageData = this.ctx.createImageData(this.canvasWidth, this.canvasHeight);
+ 				this.screenBuffer = this.imageData.data;
+@@ -1284,8 +1310,26 @@
  				}
  			}
  
@@ -90,7 +93,7 @@
  			}
  		}
  
-@@ -1670,7 +1714,8 @@
+@@ -1678,7 +1722,8 @@
  		// ===== index.js =====
  		const gameCanvas = (document.getElementById("gameCanvas"));
  		const ctx = (gameCanvas.getContext("2d"));
@@ -100,7 +103,7 @@
  		const fov = 60;
  		let znear = 0.01,
  			zfar = 1000;
-@@ -1679,8 +1724,20 @@
+@@ -1687,8 +1732,20 @@
  		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
  		let keyStates = {};
  
@@ -121,7 +124,7 @@
  		let canvasRenderWidth = 600;
  		let canvasRenderHeight = 450;
  
-@@ -1795,7 +1852,7 @@
+@@ -1803,7 +1860,7 @@
  		function rasterize(visibleTris) {
  			rasterizer.clearScreen();
  			rasterizer.rasterizeClipSpaceTriangles(visibleTris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow);
@@ -130,7 +133,7 @@
  		}
  
  		function update(time = performance.now()) {
-@@ -1854,8 +1911,8 @@
+@@ -1862,8 +1919,8 @@
  		}
  
  		function updateRenderResolution() {
@@ -141,7 +144,7 @@
  
  			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
  			rasterizer.updateResolution(gameCanvas.width, gameCanvas.height);
-@@ -1866,23 +1923,62 @@
+@@ -1874,23 +1931,62 @@
  			canvasRenderHeight = readResolution(canvasResHeightInput, 16, 1440, canvasRenderHeight);
  			canvasResWidthInput.value = canvasRenderWidth.toString();
  			canvasResHeightInput.value = canvasRenderHeight.toString();

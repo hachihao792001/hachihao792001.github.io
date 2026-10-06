@@ -125,11 +125,6 @@ canvasResHeightInput.addEventListener("change", readAndApplyResolutionInput);</c
 	
 	this.clearScreen();
 }</code></pre>
-					Hàm này làm mọi thứ gần như y hệt constructor, nên constructor bây giờ gọi nó luôn.
-					<pre><code class="language-javascript">constructor(canvasWidth, canvasHeight, ctx) {
-	this.ctx = ctx;
-	this.updateResolution(canvasWidth, canvasHeight);
-}</code></pre>
 
 					Kết quả (mình có tăng tốc độ bay camera lên 5, và dời point light thứ 2 một tí):
                     <div class="htmlPreview" id="htmlPreview50" data-disabled="true"></div>

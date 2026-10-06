@@ -88,7 +88,17 @@
  	<script>
  		// ===== math.js =====
  		class MathExtend {
-@@ -1889,6 +1942,10 @@
+@@ -1261,6 +1314,9 @@
+ 				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
+ 
+ 				this.clearScreen();
++
++				this.screenCenterX = Math.floor(this.canvasWidth / 2);
++				this.screenCenterY = Math.floor(this.canvasHeight / 2);
+ 			}
+ 
+ 			updateResolution(canvasWidth, canvasHeight) {
+@@ -1897,6 +1953,10 @@
  		const mobileControls = (document.getElementById("mobileControls"));
  		const mobileControlsButton = (document.getElementById("mobileControlsButton"));
  
@@ -99,7 +109,7 @@
  		let lookInput = { x: 0, y: 0 };
  		let lookSpeed = 450;
  
-@@ -2145,6 +2202,16 @@
+@@ -2153,6 +2213,16 @@
  			mobileControlsButton.blur();
  		});
  
