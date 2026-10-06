@@ -88,7 +88,7 @@
  	<script>
  		// ===== math.js =====
  		class MathExtend {
-@@ -1896,6 +1949,10 @@
+@@ -1889,6 +1942,10 @@
  		const mobileControls = (document.getElementById("mobileControls"));
  		const mobileControlsButton = (document.getElementById("mobileControlsButton"));
  
@@ -99,7 +99,7 @@
  		let lookInput = { x: 0, y: 0 };
  		let lookSpeed = 450;
  
-@@ -2152,6 +2209,16 @@
+@@ -2145,6 +2202,16 @@
  			mobileControlsButton.blur();
  		});
  

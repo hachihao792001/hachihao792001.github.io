@@ -238,7 +238,7 @@
  	<script>
  		// ===== math.js =====
  		class MathExtend {
-@@ -1137,6 +1272,9 @@
+@@ -1130,6 +1265,9 @@
  				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
  
  				this.clearScreen();
@@ -248,7 +248,7 @@
  			}
  
  			clearScreen() {
-@@ -1755,6 +1893,12 @@
+@@ -1748,6 +1886,12 @@
  		let frames = 0,
  			fpsTimeCounter = 0;
  
@@ -261,7 +261,7 @@
  		const lightDirIntensitySlider = (document.getElementById("dirIntensity"));
  		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
  		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
-@@ -1801,6 +1945,10 @@
+@@ -1794,6 +1938,10 @@
  
  		function updateGameObjectTransforms() {
  			camera.updateMovement(dt, keyStates);
@@ -272,7 +272,7 @@
  			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
  			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
  			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
-@@ -1860,6 +2008,13 @@
+@@ -1853,6 +2001,13 @@
  			rasterizer.clearScreen();
  			rasterizer.rasterizeClipSpaceTriangles(visibleTris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow);
  			rasterizer.drawCall(useASCII);
@@ -286,7 +286,7 @@
  		}
  
  		function update(time = performance.now()) {
-@@ -1992,6 +2147,50 @@
+@@ -1985,6 +2140,50 @@
  		window.addEventListener("keyup", (e) => {
  			keyStates[e.key] = false;
  		});

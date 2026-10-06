@@ -15,26 +15,22 @@
  	<div>
  		Directional light intensity:
  		<input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" />
-@@ -1094,6 +1102,18 @@
- 				this.clearScreen();
- 			}
+@@ -1082,9 +1090,13 @@
  
-+			updateResolution(canvasWidth, canvasHeight) {
-+				this.canvasWidth = canvasWidth;
-+				this.canvasHeight = canvasHeight;
-+
-+				this.imageData = this.ctx.createImageData(this.canvasWidth, this.canvasHeight);
-+				this.screenBuffer = this.imageData.data;
-+				this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);
-+				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
-+
-+				this.clearScreen();
+ 		class Rasterizer {
+ 			constructor(canvasWidth, canvasHeight, ctx) {
++				this.ctx = ctx;
++				this.updateResolution(canvasWidth, canvasHeight);
 +			}
 +
- 			clearScreen() {
- 				this.screenBuffer32.fill(0xfff0f0f0);
- 				this.depthBuffer.fill(Infinity);
-@@ -1663,10 +1683,18 @@
++			updateResolution(canvasWidth, canvasHeight) {
+ 				this.canvasWidth = canvasWidth;
+ 				this.canvasHeight = canvasHeight;
+-				this.ctx = ctx;
+ 
+ 				this.imageData = this.ctx.createImageData(this.canvasWidth, this.canvasHeight);
+ 				this.screenBuffer = this.imageData.data;
+@@ -1663,10 +1675,18 @@
  		let znear = 0.01,
  			zfar = 1000;
  		let projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
@@ -54,7 +50,7 @@
  		const fpsInfo = (document.getElementById("fps"));
  		let frames = 0,
  			fpsTimeCounter = 0;
-@@ -1675,8 +1703,6 @@
+@@ -1675,8 +1695,6 @@
  		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
  		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
  		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
@@ -63,7 +59,7 @@
  		let dirLightDefaultDir = new Vector3(-1, -1, -1);
  		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
  		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
-@@ -1689,6 +1715,9 @@
+@@ -1689,6 +1707,9 @@
  		const pointLightRangeText = (document.getElementById("pointRangeText"));
  		let pointLightRange = parseFloat(pointLightRangeSlider.value);
  
@@ -73,7 +69,7 @@
  		let brickTexture = new Texture(
  			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
  		);
-@@ -1707,8 +1736,8 @@
+@@ -1707,8 +1728,8 @@
  		);
  		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
  		let pointLights = [
@@ -84,7 +80,7 @@
  		];
  
  		let lastTime = performance.now();
-@@ -1826,6 +1855,30 @@
+@@ -1826,6 +1847,30 @@
  			useShadow = shadowCheckbox.checked;
  		});
  
