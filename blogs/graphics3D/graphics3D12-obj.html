@@ -507,7 +507,7 @@ shadowCheckbox.addEventListener("change", () => {
         let inShadow = useShadow ? dirLight.isInShadow(pixelWorldPos, triWorldNormal) : false;
         ...
 }</code></pre>
-                    Model này khá bự, nên mình tăng shadowMapDistance lên 20, và mình không dùng hàm getFrustumCenter để lấy điểm mà nguồn sáng chiếu vào nữa, mình để
+                    Model này khá bự, nên mình tăng shadowMapDistance lên 16, shadowMapSize lên 768 và giảm shadowBias xuống 0.0015 cho hết shadow acne lẫn peter panning, hạ cái tháp xuống 0.17 cho chân nó chạm đất (model gốc bị lơ lửng), và mình không dùng hàm getFrustumCenter để lấy điểm mà nguồn sáng chiếu vào nữa, mình để
                     nó luôn là (0, 0, 0) để nó luôn đẹp, demo đẹp là được 😅<br/><br/>
                     Và đây là sản phẩm cuối cùng 😳😳😳:
                     <div class="htmlPreview" id="htmlPreview36"></div>

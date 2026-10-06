@@ -94,8 +94,8 @@
  
  		class Plane {
 @@ -503,27 +568,225 @@
- 		let shadowBias = 0.01;
- 		let shadowMapDistance = 20;
+ 		let shadowBias = 0.0015;
+ 		let shadowMapDistance = 16;
  
 +		class Transform {
 +			constructor(localPosition = Vector3.zero.clone(), localEulerAngles = Vector3.zero.clone(), localScale = Vector3.one.clone(), name = "Transform") {

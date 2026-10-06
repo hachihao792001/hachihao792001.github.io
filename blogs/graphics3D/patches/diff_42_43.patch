@@ -257,9 +257,9 @@
 +		// ===== engine.js =====
 +		let maxActiveLights = 16;
 +		let ambientLight = 0.2;
-+		let shadowMapSize = 512;
-+		let shadowBias = 0.01;
-+		let shadowMapDistance = 20;
++		let shadowMapSize = 768;
++		let shadowBias = 0.0015;
++		let shadowMapDistance = 16;
  
 -			perspectiveDivide() {
 -				for (let i = 0; i < this.vertices.length; i++) {
@@ -1795,9 +1795,9 @@
 +		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
 +		const shadowCheckbox = (document.getElementById("useShadow"));
  		let useShadow = true;
--		let shadowMapSize = 512;
--		let shadowBias = 0.01;
--		let shadowMapDistance = 20;
+-		let shadowMapSize = 768;
+-		let shadowBias = 0.0015;
+-		let shadowMapDistance = 16;
  		let dirLightDefaultDir = new Vector3(-1, -1, -1);
  		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
  		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
@@ -1824,9 +1824,9 @@
 +		);
  
  		let cubeMesh = new Cube();
--		let woodTower = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(1, 1, 1), new Color(255, 255, 255),
+-		let woodTower = new GameObject(new Vector3(0, -0.17, 0), Vector3.zero, new Vector3(1, 1, 1), new Color(255, 255, 255),
 +		let woodTower = new GameObject(
-+			new Vector3(0, 0, 0),
++			new Vector3(0, -0.17, 0),
 +			Vector3.zero,
 +			new Vector3(1, 1, 1),
 +			new Color(255, 255, 255),

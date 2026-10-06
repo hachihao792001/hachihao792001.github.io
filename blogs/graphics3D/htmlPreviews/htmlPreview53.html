@@ -847,9 +847,9 @@
 		// ===== engine.js =====
 		let maxActiveLights = 16;
 		let ambientLight = 0.2;
-		let shadowMapSize = 512;
-		let shadowBias = 0.01;
-		let shadowMapDistance = 20;
+		let shadowMapSize = 768;
+		let shadowBias = 0.0015;
+		let shadowMapDistance = 16;
 
 		class Transform {
 			constructor(localPosition = Vector3.zero.clone(), localEulerAngles = Vector3.zero.clone(), localScale = Vector3.one.clone(), name = "Transform") {
@@ -1984,7 +1984,7 @@
 
 		let cubeMesh = new Cube();
 		let woodTower = new GameObject(
-			new Vector3(0, 0, 0),
+			new Vector3(0, -0.17, 0),
 			Vector3.zero,
 			new Vector3(1, 1, 1),
 			new Color(255, 255, 255),

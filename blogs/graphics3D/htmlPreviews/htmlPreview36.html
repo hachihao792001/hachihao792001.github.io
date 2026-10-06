@@ -1074,9 +1074,9 @@
 		const lightDirRotateSpeedText = document.getElementById("dirRotateSpeedText");
 		const shadowCheckbox = document.getElementById("useShadow");
 		let useShadow = true;
-		let shadowMapSize = 512;
-		let shadowBias = 0.01;
-		let shadowMapDistance = 20;
+		let shadowMapSize = 768;
+		let shadowBias = 0.0015;
+		let shadowMapDistance = 16;
 		let dirLightDefaultDir = new Vector3(-1, -1, -1);
 		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
 		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
@@ -1093,7 +1093,7 @@
 		let woodTexture = new Texture("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/Wood_Tower_Col.jpg");
 
 		let cubeMesh = new Cube();
-		let woodTower = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(1, 1, 1), new Color(255, 255, 255),
+		let woodTower = new GameObject(new Vector3(0, -0.17, 0), Vector3.zero, new Vector3(1, 1, 1), new Color(255, 255, 255),
 			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj"),
 			woodTexture);
 		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
