@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="A post by Hà Chí Hào.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="../graphics3D/graphics3D.css">
+    <style>
+        .blog-content ul li a {
+            display: inline;
+            font-weight: inherit;
+            margin-bottom: 0;
+        }
+    </style>
+
+    <script src="/js/prism.js"></script>
+
+    <title>Chuyển Hanvas Engine thành WebGL</title>
+</head>
+
+<body data-graphics3D-id="webgl1">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>WebGL cơ bản</h1>
+
+					Trước khi đụng vào engine, blog này mình sẽ nói tới các khái niệm cơ bản của WebGL, vì nó khá là khó hiểu nếu bạn chưa từng đụng vào nó.
+					Cuối blog thì ta sẽ vẽ được 1 cục cube có màu được nội suy giữa các đỉnh 😳
+
+					<h2>1. WebGL là gì</h2>
+
+					<a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGL2RenderingContext">WebGL2</a> là API của trình duyệt để
+					nói chuyện với GPU. Nó gần như là bản JavaScript của <a href="https://www.khronos.org/opengles/">OpenGL ES 3.0</a>, và
+					<a href="https://caniuse.com/webgl2">mọi trình duyệt hiện nay đều hỗ trợ</a>. Nếu bạn muốn tự tìm hiểu, thì bạn có thể tìm
+					youtube tutorials, hoặc xem <a href="https://webgl2fundamentals.org/">WebGL2 Fundamentals</a>.<br/><br/>
+
+					Những gì GPU làm thật ra đa số là những gì xảy ra trong hàm <code>rasterizeClipSpaceTriangles</code> và trước đó 1 chút 😳:
+					<ul>
+						<li>Chia x, y, z cho w (perspective divide, <a href="/blogs/graphics3D/graphics3D3-projection.html">blog #3</a>),</li>
+						<li>Nhân x, y từ giá trị [-1, 1] (Normalized Device Coordinates) ra kích thước canvas (screen space)</li>
+						<li>Với các pixel nằm trong tam giác: nội suy giá trị depth ở từng pixel theo barycentric coordinates (<a href="/blogs/graphics3D/graphics3D8-rasterizer.html">blog #8</a>)
+						và so sánh với depth buffer</li>
+						<li>Nội suy uv để lấy pixel trên texture cho đúng</li>
+						<li>Nội suy vị trí thế giới của pixel để tính point light, shadow</li>
+					</ul>
+
+					Những thứ trên sẽ được thực hiện trong các <code>Shader</code> trong GPU. <code>Shader</code> là các chương trình nhỏ viết bằng
+					ngôn ngữ <a href="https://registry.khronos.org/OpenGL/specs/es/3.0/GLSL_ES_Specification_3.00.pdf">GLSL</a> chạy trong GPU, chúng được
+					GPU chạy song song nên có thể làm việc với hàng nghìn pixel cùng lúc. Có những shader ngầm và những shader mà ta có thể điều chỉnh được,
+					phổ biến nhất là <code>Vertex shader</code> và <code>Fragment shader</code>:
+
+					<ul>
+						<li><b>Vertex shader</b>: Nhận vào 1 đỉnh trong thế giới, và trả ra vị trí của đỉnh đó trong clip space.</li>
+						<li><b>Fragment shader</b>: Chạy một lần cho mỗi pixel trong mỗi tam giác, và trả ra màu của pixel đó.</li>
+					</ul>
+
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3DWebGL.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>
