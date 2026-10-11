@@ -61,10 +61,13 @@
 					<a href="https://caniuse.com/webgl2">mọi trình duyệt hiện nay đều hỗ trợ</a>. Nếu bạn muốn tự tìm hiểu, thì bạn có thể tìm
 					youtube tutorials, hoặc xem <a href="https://webgl2fundamentals.org/">WebGL2 Fundamentals</a>.<br/><br/>
 
-					Những gì GPU làm thật ra đa số là những gì xảy ra trong hàm <code>rasterizeClipSpaceTriangles</code> và trước đó 1 chút 😳:
+					GPU có thể thay thế hầu hết những gì xảy ra trong hàm <code>update</code>:
 					<ul>
-						<li>Chia x, y, z cho w (perspective divide, <a href="/blogs/graphics3D/graphics3D3-projection.html">blog #3</a>),</li>
-						<li>Nhân x, y từ giá trị [-1, 1] (Normalized Device Coordinates) ra kích thước canvas (screen space)</li>
+						<li>Chuyển từng tam giác trong từng GameObject từ object space thành world space</li>
+						<li>Dựng shadow map</li>
+						<li>Chuyển qua view space</li>
+						<li>Chuyển qua clip space, perspective divide/li>
+						<li>Nhân x, y từ giá trị [-1, 1] ra kích thước canvas (screen space)</li>
 						<li>Với các pixel nằm trong tam giác: nội suy giá trị depth ở từng pixel theo barycentric coordinates (<a href="/blogs/graphics3D/graphics3D8-rasterizer.html">blog #8</a>)
 						và so sánh với depth buffer</li>
 						<li>Nội suy uv để lấy pixel trên texture cho đúng</li>
@@ -80,6 +83,35 @@
 						<li><b>Vertex shader</b>: Nhận vào 1 đỉnh trong thế giới, và trả ra vị trí của đỉnh đó trong clip space.</li>
 						<li><b>Fragment shader</b>: Chạy một lần cho mỗi pixel trong mỗi tam giác, và trả ra màu của pixel đó.</li>
 					</ul>
+
+					<h2>2. Chuẩn bị canvas và tô 1 màu cho nó</h2>
+					Mình cũng sẽ bắt đầu từ chính htmlPreview1 của series trước, chưa có gì cả:
+					<div class="htmlPreview" id="htmlPreview1"></div>
+					Với series Software Rasterizer, ta làm như sau để lấy context canvas:
+                    <pre><code class="language-javascript">const gameCanvas = document.getElementById("gameCanvas");
+const ctx = gameCanvas.getContext("2d");</code></pre>
+					Còn với WebGL ta chỉ cần thay đổi 1 chỗ duy nhất, ở chỗ lấy context:
+                    <pre><code class="language-javascript">const gameCanvas = document.getElementById("gameCanvas");
+const gl = gameCanvas.getContext("webgl2");		// <--------------------------</code></pre>
+
+					Còn về việc tô 1 màu cho canvas, ta sẽ dùng 2 dòng sau:
+					<pre><code class="language-javascript">gl.clearColor(1, 0, 0, 1);
+gl.clear(gl.COLOR_BUFFER_BIT);</code></pre>
+					Dòng đầu tiên là để set màu (R, G, B, A) cho việc clear màn hình, mỗi channel nằm trong khoảng giá trị [0; 1].<br/>
+					Dòng thứ 2 mới thật sự
+					là gọi clear màn hình. <code>gl.COLOR_BUFFER_BIT</code> là để ta nói là ta đang muốn clear color buffer. Ngoài ra còn có các loại buffer khác,
+					và mình có thể clear tất cả mấy cái đó cùng 1 lúc, mình sẽ nói về chúng sau.
+
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview2"></div>
+
+					Nhân tiện mình đang giải thích 2 dòng đơn giản như trên, mình xin nói cách hoạt động của WebGL luôn: nó hoạt động với các <b>trạng thái (state)</b>,
+					có những hàm gọi chỉ để set trạng thái, và có những hàm mới là thật sự làm gì đó. Với 2 hàng trên thì <code>clearColor</code> chính là 1 hàm
+					set trạng thái, và hàm <code>clear</code> mới là hàm thật sự clear. Suốt series này bạn sẽ gặp "pattern" này suốt nên tốt nhất là hãy thấm
+					nhuần nó sớm 😳
+
+					<h2>3. Vẽ một tam giác</h2>
+
 
 
                     <div id="graphics3D-nav-bottom"></div>

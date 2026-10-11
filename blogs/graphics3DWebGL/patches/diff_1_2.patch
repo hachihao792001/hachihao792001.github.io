@@ -1,0 +1,15 @@
+--- "a/htmlPreviews\\htmlPreview1.html"
++++ "b/htmlPreviews\\htmlPreview2.html"
+@@ -10,7 +10,11 @@
+ 	<h1>3D Engine</h1>
+ 	<canvas id="gameCanvas" width="400" height="300" style="border: 2px solid #aaa; background: #fff"></canvas>
+ 	<script>
+-		// Nội dung script
++		let gameCanvas = document.getElementById("gameCanvas");
++		let gl = gameCanvas.getContext("webgl2");
++
++		gl.clearColor(1, 0, 0, 1);
++		gl.clear(gl.COLOR_BUFFER_BIT);
+ 	</script>
+ </body>
+ 
