@@ -111,9 +111,119 @@ gl.clear(gl.COLOR_BUFFER_BIT);</code></pre>
 					nhuần nó sớm 😳
 
 					<h2>3. Vẽ một tam giác</h2>
+					Tiêu đề nghe thì có vẻ đơn giản, tuy nhiên ta sẽ phải thêm khá nhiều code 😳<br/><br/>
 
+					Đầu tiên mình sẽ giới thiệu cho bạn phiên bản đơn giản nhất của <code>Vertex shader</code> và <code>Fragment shader</code>.<br/><br/>
 
+					<b>Vertex shader</b>:
+					<pre><code class="language-hlsl">#version 300 es
+in vec3 aPosition;
 
+void main() {
+	gl_Position = vec4(aPosition, 1.0);
+}</code></pre>
+					<ul>
+						<li><code>#version 300 es</code>: bắt buộc phải là dòng đầu tiên của shader, dòng này cho biết ta đang sử dụng GLSL bản mới của WebGL2.</li>
+						<li><code>in vec3 aPosition</code>: khai báo 1 <b>attribute</b>, <code>in</code> nghĩa là đây là 1 tham số đầu vào,
+							<code>vec3</code> là kiểu (Vector3), <code>aPosition</code> là tên của attribute (chữ a đầu tên là viết tắt của attribute, theo quy ước).
+							Cái này chính là tọa độ đỉnh trong world space mà ta cần phải đưa vertex shader, nhiệm vụ của vertex shader là chuyển nó thành clip space trong hàm main.</li>
+						<li>Trong hàm main, <code>gl_Position</code> chính là đầu ra của shader (vị trí đỉnh trong clip space).
+						Ta chưa biết làm gì nên dùng luôn <code>aPosition</code> để truyền vào, nhưng vì <code>gl_Position</code> là <code>vec4</code> nên cần thêm
+						1 số <code>1.0</code> ở sau. Số này chính là <code>w</code>, để shader có thể perspective divide (sẽ nói sau).</li>
+					</ul><br/>
+					<b>Fragment shader</b>:
+			<pre><code class="language-hlsl">#version 300 es
+precision highp float;
+out vec4 outColor;
+
+void main() {
+	outColor = vec4(0, 0, 1, 1.0);
+}</code></pre>
+					<ul>
+						<li><code>#version 300 es</code>: như trên.</li>
+						<li><code>precision highp float</code>: nói cho WebGL biết là ta sẽ sử dụng độ chính xác là <code>highp</code>. <code>precision</code> là
+							một instruction, <code>highp</code> là độ chính xác float 32-bit, còn <code>float</code> là ... kiểu float. Nếu muốn tìm hiểu thêm thì 
+							bạn có thể Google, hỏi AI, chứ mình nghĩ hiểu như vậy là đủ.</li>
+						<li><code>out vec4 outColor</code>: biến đầu ra của Fragment shader, chỉ vậy thôi. Tuy nhiên bạn có thể sẽ thắc mắc là tại sao Vertex shader không
+						cần khai báo biến đầu ra, mà mặc định có sẵn <code>gl_Position</code>, còn Fragment shader thì phải khai báo. Đó là tại vì Fragment shader
+						có thể xuất ra nhiều output, bạn có thể dùng output để đưa lên màn hình luôn, hoặc để vào 1 Texture, hoặc cho nó trải qua một quá trình khác.
+						Còn Vertex shader mặc định là chỉ có 1 chỗ cho nó xuất, output của nó là đầu vào của Fragment shader.</li>
+						<li>Vì <code>outColor</code> là biến đầu ra nên trong hàm main ta set màu cuối cùng vào nó. Set tạm cho nó 1 màu xanh trước.</li>
+					</ul><br/>
+
+					Có được Shader rồi, tiếp đến là ta nạp nó vào trong Javascript. Trước hết thì bạn phải biết là Shader được lưu ở dạng 1 biến string luôn, which is
+					literally like this:
+					<pre><code class="language-javascript">const vertexShaderSource = `#version 300 es
+in vec3 aPosition;
+
+void main() {
+	gl_Position = vec4(aPosition, 1.0);
+}`;
+
+const fragmentShaderSource = `#version 300 es
+precision highp float;
+out vec4 outColor;
+
+void main() {
+	outColor = vec4(0, 0, 1, 1.0);
+}`;</code></pre> 
+					Có được source Shader rồi, thì ta phải compile nó (nó cũng là 1 chương trình). Vì có 2 shader nên mình viết 1 hàm để gọi chung:
+					<pre><code class="language-javascript">function compileShader(type, source) {
+	const shader = gl.createShader(type);		// hàm createShader để tạo shader
+	gl.shaderSource(shader, source);			// hàm shaderSource để truyền source vào shader
+	gl.compileShader(shader);					// hàm compileShader để ... compile shader
+	if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {		// check nếu shader compile lỗi
+		const log = gl.getShaderInfoLog(shader);					// lấy log
+		gl.deleteShader(shader);									// xóa shader
+		throw new Error("Shader compile error: " + log);			// throw exception với log
+	}
+	return shader;
+}</code></pre>
+					Những comment trên cũng đủ giải thích những gì mà hàm này làm. Mình sẽ nói thêm về cái if cuối: khi WebGL compile shader, nếu nó
+					bị lỗi, thì nó sẽ im luôn. Cho nên ta phải check kết quả compile và tự log ra, hoặc tốt hơn là throw exception luôn.<br/><br/>
+
+					Compile được shader rồi, thì tiếp theo ta phải để nó vào trong 1 program của WebGL (comment đã đủ để giải thích):
+					<pre><code class="language-javascript">const program = gl.createProgram();						// hàm createProgram để tạo program
+gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexShaderSource));			// tạo, compile vertex shader và gắn nó vào program
+gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource));		// tạo, compile fragment shader và gắn nó vào program
+gl.linkProgram(program);																// link program vào trình duyệt
+if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {									// check lỗi program như check lỗi shader
+	throw new Error("Program link error: " + gl.getProgramInfoLog(program));
+}
+gl.useProgram(program);		// sử dụng program</code></pre>
+					
+					Phần setup hệ thống đằng sau đã xong, bây giờ ta mới lo tới phần vẽ tam giác. Đầu tiên, ta định nghĩa 3 đỉnh của tam giác trước.
+					Ta phải dùng mảng 1 chiều <code>Float32Array</code> vì đó là kiểu mà WebGL chấp nhận:
+					<pre><code class="language-javascript">const vertexData = new Float32Array([
+	0, 0.5, 0,
+	-0.5, -0.5, 0,
+	0.5, -0.5, 0
+]);</code></pre>
+					Để đưa dữ liệu đỉnh này vào WebGL, thì trước tiên bạn hãy nhớ lại những gì mà mình giải thích cho hàm <code>clearColor</code>.
+					Mình nói là WebGL làm việc với các <code>state</code>, việc đưa dữ liệu đỉnh vào WebGL chính là 1
+					ví dụ điển hình. Thay vì như code bình thường là tạo 1 biến rồi gán dữ liệu cho nó, thì ta phải tạo 1 vùng nhớ,
+					bind vùng nhớ đó để nói cho WebGL biết là ta sẽ làm việc với vùng nhớ này, rồi mới chuyển dữ liệu vào vùng nhớ đang được bind:
+					<pre><code class="language-javascript">const vertexBuffer = gl.createBuffer();		// tạo buffer
+gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);					// bind vùng nhớ vào ARRAY_BUFFER
+gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);		// chuyển dữ liệu vào vùng nhớ đang được bind trong ARRAY_BUFFER (vertexBuffer)</code></pre>
+					
+					Bạn hãy tưởng tượng <code>gl.ARRAY_BUFFER</code> là một cái "khe", trong khe có gì thì WebGL sẽ làm việc với nó. Ta nhét vùng nhớ 
+					<code>vertexBuffer</code> vào khe, thế là sau này WebGL sẽ làm việc với <code>vertexBuffer</code>.
+					Ngoài <code>gl.ARRAY_BUFFER</code> thì sẽ có những loại buffer khác, mình sẽ nói sau.<br/>
+					Về hàm <code>gl.bufferData</code>, nó
+					có tham số cuối là <code>gl.STATIC_DRAW</code>, nghĩa là ta sẽ chỉ vẽ nó 1 lần trong suốt quá trình chạy, ngoài ra còn những mode khác,
+					mình cũng sẽ nói sau.<br/><br/>
+
+					Có được vùng nhớ có dữ liệu rồi, ta phải truyền nó vào trong program, vào trong Vertex Shader. 
+					Ta sẽ lấy địa chỉ của attribute <code>aPosition</code> bằng hàm <code>getAttribLocation</code>, và truyền dữ liệu vào nó.
+					Tuy nhiên, shader sẽ không thể magically hiểu 1 mảng 1 chiều có 9 phần tử có ý nghĩa là gì, mà mình phải nói cho nó ý nghĩa,
+					bằng hàm <code>vertexAttribPointer</code>, cụ thể như sau:
+					<pre><code  class="language-javascript">const aPosition = gl.getAttribLocation(program, "aPosition");	// lấy địa chỉ của attribute aPosition
+gl.enableVertexAttribArray(aPosition);			// phải có dòng này
+gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 12, 0);		// hàm nói cho program biết ý nghĩa của vertexBuffer</code></pre> 
+
+						
+					
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
