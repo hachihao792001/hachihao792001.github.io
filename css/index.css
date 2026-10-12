@@ -176,6 +176,8 @@
 
 .site-nav-footer {
     display: flex;
+    /* the narrowest desktop rail cannot fit the collapse button on one row */
+    flex-wrap: wrap;
     gap: var(--space-2);
     padding: var(--space-3) var(--space-4) var(--space-5);
     margin-top: auto;
@@ -191,7 +193,8 @@
     border-radius: 50%;
     color: rgba(255, 255, 255, 0.85);
     transition: background var(--dur-fast) var(--ease),
-        color var(--dur-fast) var(--ease);
+        color var(--dur-fast) var(--ease),
+        opacity var(--dur-fast) var(--ease);
 }
 
 .site-nav-social:hover {
@@ -202,6 +205,13 @@
 .site-nav-social svg {
     width: 1.15rem;
     height: 1.15rem;
+}
+
+/* --- desktop collapse button --------------------------------------------- */
+
+/* the mobile bar already has its own toggle */
+.site-nav-collapse {
+    display: none;
 }
 
 /* ==========================================================================
@@ -218,7 +228,16 @@
         position: sticky;
         top: 0;
         max-height: 100vh;
+        overflow-x: hidden;
         overflow-y: auto;
+    }
+
+    /* the content column fills whatever the rail leaves, so it follows the
+       rail while the rail animates its width */
+    .sidebar~.col-lg-10 {
+        flex: 1 1 0;
+        width: auto;
+        min-width: 0;
     }
 
     /* fills the rail so the social links sit at the bottom. Only on desktop:
@@ -230,10 +249,130 @@
 
     .site-nav-bar {
         padding: var(--space-6) var(--space-4) var(--space-5);
+        /* a fixed cap gives the collapse a height to animate down from */
+        max-height: 12rem;
+        overflow: hidden;
+        transition: opacity var(--dur-fast) var(--ease);
+    }
+
+    .site-nav-link {
+        overflow: hidden;
+    }
+
+    .site-nav-label {
+        transition: opacity var(--dur-fast) var(--ease);
     }
 
     .site-nav-name {
         font-size: 1.5rem;
+    }
+
+    .site-nav-collapse {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        flex: none;
+        margin-left: auto;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.85);
+        cursor: pointer;
+        transition: background var(--dur-fast) var(--ease),
+            color var(--dur-fast) var(--ease),
+            opacity var(--dur-fast) var(--ease);
+    }
+
+    .site-nav-collapse:hover {
+        background: rgba(255, 255, 255, 0.16);
+        color: #ffffff;
+    }
+
+    .site-nav-collapse svg {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    /* --- collapsed rail: icons only, set on <html> by loadsidebar.js ----- */
+
+    .sidebar-collapsed .sidebar {
+        width: 4rem;
+        padding-left: 0;
+    }
+
+    .sidebar-collapsed .site-nav-bar {
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        opacity: 0;
+        /* keeps the invisible brand link out of the tab order */
+        visibility: hidden;
+    }
+
+    .sidebar-collapsed .site-nav-list {
+        padding: var(--space-5) var(--space-2) var(--space-4);
+    }
+
+    /* the icon stays left aligned so it can slide into place, this padding
+       is what centres it in the 4rem rail */
+    .sidebar-collapsed .site-nav-link {
+        padding: var(--space-2) 15px;
+    }
+
+    /* still read by screen readers, the link would otherwise have no name */
+    .sidebar-collapsed .site-nav-label {
+        opacity: 0;
+    }
+
+    .sidebar-collapsed .site-nav-link,
+    .sidebar-animating .site-nav-link {
+        white-space: nowrap;
+    }
+
+    .sidebar-collapsed .site-nav-footer {
+        flex-direction: column;
+        align-items: center;
+        padding: var(--space-3) 0 var(--space-5);
+    }
+
+    .sidebar-collapsed .site-nav-collapse {
+        margin-left: 0;
+    }
+
+    .sidebar-collapsed .site-nav-collapse svg {
+        transform: rotate(180deg);
+    }
+
+    /* --- collapse animation, sidebar-animating is set by loadsidebar.js
+           for the length of the width transition ---------------------------- */
+
+    .sidebar-animating .sidebar {
+        transition: width var(--dur) var(--ease),
+            padding-left var(--dur) var(--ease);
+    }
+
+    /* the text switches off straight away, it would otherwise rewrap on every
+       frame, and fades back in once the rail has settled. The link icons stay
+       and slide to their new spot. */
+    .sidebar-animating .site-nav-bar {
+        opacity: 0;
+        transition: max-height var(--dur) var(--ease),
+            padding var(--dur) var(--ease),
+            opacity 0s;
+    }
+
+    .sidebar-animating .site-nav-list,
+    .sidebar-animating .site-nav-link {
+        transition: padding var(--dur) var(--ease);
+    }
+
+    .sidebar-animating .site-nav-label,
+    .sidebar-animating .site-nav-footer>* {
+        opacity: 0;
+        transition-duration: 0s;
     }
 }
 
