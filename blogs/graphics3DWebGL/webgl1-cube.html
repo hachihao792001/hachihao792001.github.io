@@ -110,7 +110,7 @@ gl.clear(gl.COLOR_BUFFER_BIT);</code></pre>
 					set trạng thái, và hàm <code>clear</code> mới là hàm thật sự clear. Suốt series này bạn sẽ gặp "pattern" này suốt nên tốt nhất là hãy thấm
 					nhuần nó sớm 😳
 
-					<h2>3. Vẽ một tam giác</h2>
+					<h2>3. Vẽ một tam giác có 1 màu</h2>
 					Tiêu đề nghe thì có vẻ đơn giản, tuy nhiên ta sẽ phải thêm khá nhiều code 😳
 
 					<h3>a. Shader</h3>
@@ -256,6 +256,46 @@ gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 12, 0);		// hàm nói cho 
 
 					Kết quả:
 					<div class="htmlPreview" id="htmlPreview3"></div>
+
+					<h2>4. Vẽ một tam giác có màu được nội suy</h2>
+					Ở trên, ta đang "cheat chọt" 1 chút, ta cho fragment shader luôn trả về 1 màu duy nhất. Nhưng thật ra màu phải đi chung với đỉnh,
+					và nhiệm vụ của WebGL là nội suy màu giữa các đỉnh với nhau 1 cách tự động.<br/><br/>
+					Những gì mà ta phải làm chỉ có như sau:
+					<ol>
+						<li>Thêm một attribute màu của đỉnh trong vertex shader</li>
+						<li>Chuyển attribute đó cho fragment shader, fragment shader sẽ trả về màu tương ứng</li>
+						<li>Ở <code>vertexData</code>, thêm dữ liệu màu cho từng đỉnh</li>
+						<li>Thêm một đoạn lấy địa chỉ của <code>aColor</code> và gọi <code>enableVertexAttribArray</code>,
+							<code>vertexAttribPointer</code> tương tự như attribute <code>aPosition</code></li>
+					</ol>
+					Bước 1 và 2 như sau:<br/><br/>
+					Vertex shader:
+					<pre><code class="language-hlsl">#version 300 es
+in vec3 aPosition;
+in vec3 aColor;			// <--------------------------
+out vec4 vColor;		// <--------------------------
+
+void main(){
+	gl_Position = vec4(aPosition, 1.0);
+	vColor = vec4(aColor, 1.0);		// <--------------------------
+}</code></pre>
+					Ta thêm attribute đầu vào <code>aColor</code> để nhận dữ liệu màu từ Javascript. Nhưng vertex shader sẽ không làm được gì với nó,
+					chỉ có thể chuyển nó cho Fragment shader, bằng cách tạo một attribute đầu ra <code>vColor</code> và set cho nó ở hàm main (v là viết tắt
+					của Varying, nghĩa là nó sẽ thay đổi theo từng pixel). Thật ra <code>aColor</code> có thể là <code>vec4</code> cũng được nhưng để đơn giản
+					thì mình dùng <code>vec3</code> thôi.<br/><br/>
+					Fragment shader:
+					<pre><code class="language-hlsl">#version 300 es
+precision highp float;
+
+in vec4 vColor;			// <--------------------------
+out vec4 outColor;
+
+void main(){
+	outColor = vColor;	// <--------------------------
+}</code></pre>
+					Fragment shader nhận <code>vColor</code> từ vertex shader, và set <code>outColor</code> bằng nó trong hàm main, chỉ đơn giản vậy thôi. Lúc này bạn
+					thắc mắc là vậy khúc nội suy xảy ra ở đâu? Câu trả lời là nó xảy ra ở giữa vertex shader và fragment shader, GPU biết cách map các đỉnh từ vertex shader
+					sang các pixel cho fragment shader. Như cách mà ta xài barycentric coordinates để map trong Software Rasterizer vậy.
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
