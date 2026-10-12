@@ -95,7 +95,7 @@ const ctx = gameCanvas.getContext("2d");</code></pre>
 const gl = gameCanvas.getContext("webgl2");		// <--------------------------</code></pre>
 
 					Còn về việc tô 1 màu cho canvas, ta sẽ dùng 2 dòng sau:
-					<pre><code class="language-javascript">gl.clearColor(1, 0, 0, 1);
+					<pre><code class="language-javascript">gl.clearColor(0.9, 0.9, 0.9, 1);
 gl.clear(gl.COLOR_BUFFER_BIT);</code></pre>
 					Dòng đầu tiên là để set màu (R, G, B, A) cho việc clear màn hình, mỗi channel nằm trong khoảng giá trị [0; 1].<br/>
 					Dòng thứ 2 mới thật sự
@@ -111,8 +111,9 @@ gl.clear(gl.COLOR_BUFFER_BIT);</code></pre>
 					nhuần nó sớm 😳
 
 					<h2>3. Vẽ một tam giác</h2>
-					Tiêu đề nghe thì có vẻ đơn giản, tuy nhiên ta sẽ phải thêm khá nhiều code 😳<br/><br/>
+					Tiêu đề nghe thì có vẻ đơn giản, tuy nhiên ta sẽ phải thêm khá nhiều code 😳
 
+					<h3>a. Shader</h3>
 					Đầu tiên mình sẽ giới thiệu cho bạn phiên bản đơn giản nhất của <code>Vertex shader</code> và <code>Fragment shader</code>.<br/><br/>
 
 					<b>Vertex shader</b>:
@@ -137,7 +138,7 @@ precision highp float;
 out vec4 outColor;
 
 void main() {
-	outColor = vec4(0, 0, 1, 1.0);
+	outColor = vec4(1, 0, 0, 1.0);
 }</code></pre>
 					<ul>
 						<li><code>#version 300 es</code>: như trên.</li>
@@ -148,7 +149,7 @@ void main() {
 						cần khai báo biến đầu ra, mà mặc định có sẵn <code>gl_Position</code>, còn Fragment shader thì phải khai báo. Đó là tại vì Fragment shader
 						có thể xuất ra nhiều output, bạn có thể dùng output để đưa lên màn hình luôn, hoặc để vào 1 Texture, hoặc cho nó trải qua một quá trình khác.
 						Còn Vertex shader mặc định là chỉ có 1 chỗ cho nó xuất, output của nó là đầu vào của Fragment shader.</li>
-						<li>Vì <code>outColor</code> là biến đầu ra nên trong hàm main ta set màu cuối cùng vào nó. Set tạm cho nó 1 màu xanh trước.</li>
+						<li>Vì <code>outColor</code> là biến đầu ra nên trong hàm main ta set màu cuối cùng vào nó. Set tạm cho nó 1 màu đỏ trước.</li>
 					</ul><br/>
 
 					Có được Shader rồi, tiếp đến là ta nạp nó vào trong Javascript. Trước hết thì bạn phải biết là Shader được lưu ở dạng 1 biến string luôn, which is
@@ -166,7 +167,7 @@ out vec4 outColor;
 
 void main() {
 	outColor = vec4(0, 0, 1, 1.0);
-}`;</code></pre> 
+}`;</code></pre>
 					Có được source Shader rồi, thì ta phải compile nó (nó cũng là 1 chương trình). Vì có 2 shader nên mình viết 1 hàm để gọi chung:
 					<pre><code class="language-javascript">function compileShader(type, source) {
 	const shader = gl.createShader(type);		// hàm createShader để tạo shader
@@ -180,8 +181,9 @@ void main() {
 	return shader;
 }</code></pre>
 					Những comment trên cũng đủ giải thích những gì mà hàm này làm. Mình sẽ nói thêm về cái if cuối: khi WebGL compile shader, nếu nó
-					bị lỗi, thì nó sẽ im luôn. Cho nên ta phải check kết quả compile và tự log ra, hoặc tốt hơn là throw exception luôn.<br/><br/>
+					bị lỗi, thì nó sẽ im luôn. Cho nên ta phải check kết quả compile và tự log ra, hoặc tốt hơn là throw exception luôn.
 
+					<h3>b. Program</h3>
 					Compile được shader rồi, thì tiếp theo ta phải để nó vào trong 1 program của WebGL (comment đã đủ để giải thích):
 					<pre><code class="language-javascript">const program = gl.createProgram();						// hàm createProgram để tạo program
 gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexShaderSource));			// tạo, compile vertex shader và gắn nó vào program
@@ -192,6 +194,7 @@ if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {									// check lỗi p
 }
 gl.useProgram(program);		// sử dụng program</code></pre>
 					
+					<h3>c. Vertex buffer</h3>
 					Phần setup hệ thống đằng sau đã xong, bây giờ ta mới lo tới phần vẽ tam giác. Đầu tiên, ta định nghĩa 3 đỉnh của tam giác trước.
 					Ta phải dùng mảng 1 chiều <code>Float32Array</code> vì đó là kiểu mà WebGL chấp nhận:
 					<pre><code class="language-javascript">const vertexData = new Float32Array([
@@ -208,22 +211,51 @@ gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);					// bind vùng nhớ vào ARRAY
 gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);		// chuyển dữ liệu vào vùng nhớ đang được bind trong ARRAY_BUFFER (vertexBuffer)</code></pre>
 					
 					Bạn hãy tưởng tượng <code>gl.ARRAY_BUFFER</code> là một cái "khe", trong khe có gì thì WebGL sẽ làm việc với nó. Ta nhét vùng nhớ 
-					<code>vertexBuffer</code> vào khe, thế là sau này WebGL sẽ làm việc với <code>vertexBuffer</code>.
+					<code>vertexBuffer</code> vào khe, thế là sau này WebGL sẽ làm việc với <code>vertexBuffer</code>. Thông thường thì ta chỉ nhét vùng nhớ
+					vào khe 1 lần duy nhất cho cả chương trình, ta sẽ chuẩn bị hết mọi thứ trước để nhét vào lúc đầu rồi bốc ra dùng, chứ không update khe liên tục.
 					Ngoài <code>gl.ARRAY_BUFFER</code> thì sẽ có những loại buffer khác, mình sẽ nói sau.<br/>
 					Về hàm <code>gl.bufferData</code>, nó
 					có tham số cuối là <code>gl.STATIC_DRAW</code>, nghĩa là ta sẽ chỉ vẽ nó 1 lần trong suốt quá trình chạy, ngoài ra còn những mode khác,
-					mình cũng sẽ nói sau.<br/><br/>
+					mình cũng sẽ nói sau.
 
+					<h3>d. Đưa Vertex buffer vào Shader</h3>
 					Có được vùng nhớ có dữ liệu rồi, ta phải truyền nó vào trong program, vào trong Vertex Shader. 
 					Ta sẽ lấy địa chỉ của attribute <code>aPosition</code> bằng hàm <code>getAttribLocation</code>, và truyền dữ liệu vào nó.
 					Tuy nhiên, shader sẽ không thể magically hiểu 1 mảng 1 chiều có 9 phần tử có ý nghĩa là gì, mà mình phải nói cho nó ý nghĩa,
 					bằng hàm <code>vertexAttribPointer</code>, cụ thể như sau:
-					<pre><code  class="language-javascript">const aPosition = gl.getAttribLocation(program, "aPosition");	// lấy địa chỉ của attribute aPosition
+					<pre><code class="language-javascript">const aPosition = gl.getAttribLocation(program, "aPosition");	// lấy địa chỉ của attribute aPosition
 gl.enableVertexAttribArray(aPosition);			// phải có dòng này
 gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 12, 0);		// hàm nói cho program biết ý nghĩa của vertexBuffer</code></pre> 
 
-						
-					
+					Các tham số của <code>vertexAttribPointer</code>:
+					<pre><code class="language-javascript">gl.vertexAttribPointer(
+	//địa chỉ của attribute, 
+	//số component mà attribute này xài (aPosition là vec3 nên có 3 component x, y, z),
+	//loại component,
+	//normalized hay không (normalized là map 0..255 thành 0..1), dành cho màu,
+	//stride: kích thước của 1 vertex (byte),
+	//offset: vị trí bắt đầu của attribute này);</code></pre>
+					Chắc bạn sẽ có nhiều thắc mắc. Với mình lúc đầu học, thì thắc mắc lớn nhất của mình là: 3 dòng này sao không có dòng nào nhắc tới 
+					<code>gl.ARRAY_BUFFER</code> thế nhỉ. Thật ra không cần nhắc tới đâu, vì mặc định <code>gl.enableVertexAttribArray</code> và
+					<code>gl.vertexAttribPointer</code> sẽ luôn làm việc với <code>gl.ARRAY_BUFFER</code>. Những loại buffer khác (điển hình là
+					<code>gl.ELEMENT_ARRAY_BUFFER</code>, sẽ nói tới sau) cũng sẽ có những hàm dành riêng cho nó. Tuy nhiên bạn phải hiểu là buffer loại nào
+					cũng là dữ liệu thuần, quan trọng là ta sử dụng nó thế nào, và biết hàm nào làm việc với "khe" nào.<br/><br/>
+
+					Ngoài ra hàm trên còn có <code>stride</code> và <code>offset</code>, sẽ hơi khó giải thích với dữ kiện ít như vậy, mình cũng sẽ nói sau (Damn I said this a lot already).<br/><br/>
+
+					OK, ta đã có shader, có program để chứa shader, có vùng nhớ để chứa dữ liệu, đã truyền dữ liệu vào shader, còn gì nữa không? Nah, that's all of it,
+					it's time to actually draw:
+					<pre><code class="language-javascript">gl.drawArrays(gl.TRIANGLES, 0, 3);</code></pre>
+					Tham số:
+					<pre><code class="language-javascript">gl.drawArrays(
+	//loại primitive (có nhiều loại nhưng mình sẽ chỉ xài gl.TRIANGLES), 
+	//index bắt đầu
+	//số vertex);</code></pre>
+					Về cái index bắt đầu, cái này là index của vertex, chứ không phải offset theo byte. 
+					Cụ thể khi nó = 2, thì nghĩa là bắt đầu vẽ từ vertex 2, chứ không phải vẽ từ offset là 2 byte.<br/><br/>
+
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview3"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

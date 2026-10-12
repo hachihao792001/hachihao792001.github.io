@@ -13,6 +13,9 @@
 		let gameCanvas = document.getElementById("gameCanvas");
 		let gl = gameCanvas.getContext("webgl2");
 
+		gl.clearColor(0.9, 0.9, 0.9, 1);
+		gl.clear(gl.COLOR_BUFFER_BIT);
+
 		const vertexShaderSource = `#version 300 es
 in vec3 aPosition;
 
@@ -25,7 +28,7 @@ precision highp float;
 out vec4 outColor;
 
 void main(){
-	outColor = vec4(0, 0, 1, 1);
+	outColor = vec4(1, 0, 0, 1);
 }`;
 		function compileShader(type, source) {
 			const shader = gl.createShader(type);
@@ -60,9 +63,6 @@ void main(){
 		const aPosition = gl.getAttribLocation(program, "aPosition");
 		gl.enableVertexAttribArray(aPosition);
 		gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 12, 0);
-
-		gl.clearColor(1, 0, 0, 1);
-		gl.clear(gl.COLOR_BUFFER_BIT);
 
 		gl.drawArrays(gl.TRIANGLES, 0, 3);
 
