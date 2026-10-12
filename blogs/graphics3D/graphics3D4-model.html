@@ -105,7 +105,7 @@
                     $$
 
                     Cuối cùng đến với phép xoay, là Rotation Matrix, cái này sẽ hơi khó tí. Cho nên ta hãy nói về nó ở 2D trước, ta muốn xoay một vector \(v\) một góc
-                    (\(θ\)) xung quanh gốc tọa độ (0; 0) thành vector \(v'\) (lưu ý là xoay ngược chiều kim đồng hồ). Để cho đúng Đại số tuyến tính (và cũng để dễ tính),
+                    (\(θ\)) xung quanh gốc tọa độ <code>(0; 0)</code> thành vector \(v'\) (lưu ý là xoay ngược chiều kim đồng hồ). Để cho đúng Đại số tuyến tính (và cũng để dễ tính),
                     ta sẽ vẽ luôn trục x, y sau khi xoay xong, cái này người ta gọi là chuyển hệ quy chiếu, hay chuyển cơ sở sao đó mình cũng quên rồi. 
                     Mình tô màu hệ quy chiếu của \(v\) là màu đen và hệ quy chiếu của \(v'\) là đỏ để cho bạn dễ nhìn.
                     <div align="center">
@@ -197,7 +197,7 @@
                     (mình xin nhắc lại là cả 3 rotation matrix mình tìm được ở trên đều là extrinsic rotation <b>nếu nó ở riêng</b>),
                     nhưng mà dám chắc một điều là bạn phải thống nhất trong toàn engine về thứ tự nhân, đối với mình thì mình chọn \(XYZ\).<br/><br/>
 
-                    Toán đã đủ, bây giờ là code time 😳 Đầu tiên ta tạo những hàm xây dựng các ma trận mà ta đã tìm ra, để hết trong class Mat4x4. Lưu ý là đối với 3 cái rotation
+                    Toán đã đủ, bây giờ là code time 😳 Đầu tiên ta tạo những hàm xây dựng các ma trận mà ta đã tìm ra, để hết trong class <code>Mat4x4</code>. Lưu ý là đối với 3 cái rotation
                     matrix nó vẫn là ma trận 4 chiều, để dòng 4 cột 4 là 1 để giữ nguyên \(w\) là được. Ngoài ra ta thêm một hàm nhân 2 ma trận, và ma trận đơn vị (là ma trận behave giống
                     như số 1, ma trận nào nhân nó cũng thành chính nó):
                     <pre><code class="language-javascript">class Mat4x4 {
@@ -292,18 +292,18 @@ Mat4x4.Identity.m[3][3] = 1;</code></pre>
                     tin của mesh (đỉnh, cạnh, tam giác, ...) là một thông tin "cứng", ta luôn phải có được thông tin đó để sử dụng, ngoài ra một lí do khác nữa là nếu bạn liên tục
                     nhân ma trận vào thì sai số sẽ càng ngày càng nhiều (đặc điểm của float).<br/><br/>
 
-                    Về "tổng hợp biến đổi" của translation và scale khá đơn giản, bạn chỉ cần lưu thuộc tính vị trí và scale dưới dạng Vector3, rồi khi cần (cuối frame) 
-                    thì tạo thành ma trận rồi xài luôn. Riêng đối với Rotation là một chuyện khác, nếu bạn nghĩ là chỉ cần tạo một thuộc tính Vector3 lưu độ xoay của vật ở 3 trục,
-                    rồi nhân rotation matrix tương ứng ở cuối frame, thì nó sẽ có khá nhiều vấn đề. Ví dụ 1 vật lúc đầu có rotation là (30, 0, 0),
-                    trong 1 frame bạn muốn xoay một vật 45 độ ở trục Y, thì bạn cộng nó vô rotation là thành (30, 45, 0), tức là tổng hợp biến đổi là xoay X 30 độ, xong rồi
-                    xoay Y 45 độ, thì thật ra nó vẫn hiển thị đúng. Tuy nhiên, nếu lúc đầu là (0, 30, 0), và xoay 45 độ ở trục X \(\rightarrow\) tổng hợp biến đổi là xoay
+                    Về "tổng hợp biến đổi" của translation và scale khá đơn giản, bạn chỉ cần lưu thuộc tính vị trí và scale dưới dạng <code>Vector3</code>, rồi khi cần (cuối frame) 
+                    thì tạo thành ma trận rồi xài luôn. Riêng đối với Rotation là một chuyện khác, nếu bạn nghĩ là chỉ cần tạo một thuộc tính <code>Vector3</code> lưu độ xoay của vật ở 3 trục,
+                    rồi nhân rotation matrix tương ứng ở cuối frame, thì nó sẽ có khá nhiều vấn đề. Ví dụ 1 vật lúc đầu có rotation là <code>(30, 0, 0)</code>,
+                    trong 1 frame bạn muốn xoay một vật 45 độ ở trục Y, thì bạn cộng nó vô rotation là thành <code>(30, 45, 0)</code>, tức là tổng hợp biến đổi là xoay X 30 độ, xong rồi
+                    xoay Y 45 độ, thì thật ra nó vẫn hiển thị đúng. Tuy nhiên, nếu lúc đầu là <code>(0, 30, 0)</code>, và xoay 45 độ ở trục X \(\rightarrow\) tổng hợp biến đổi là xoay
                     Y 30 độ xong rồi xoay X 45 độ, thì ở cuối frame bạn thực hiện phép nhân ma trận \(XYZ\) (mình đã thống nhất ở trên) thì nó sẽ xoay kiểu intrinsic ngay. Giải pháp là
-                    thay vì lưu rotation như một Vector3, bạn hãy lưu luôn nguyên cái rotation matrix, có thay đổi gì cứ nhân thêm vào nó (nhân vào đằng trước) là nó sẽ luôn
+                    thay vì lưu rotation như một <code>Vector3</code>, bạn hãy lưu luôn nguyên cái rotation matrix, có thay đổi gì cứ nhân thêm vào nó (nhân vào đằng trước) là nó sẽ luôn
                     extrinsic.<br/><br/>
 
-                    Tiếp theo, mình sẽ tạo một Cube để đại diện cho một khối lập phương có đầy đủ đặc tính vị trí, độ xoay (ma trận) và tỉ lệ trong không gian, mình sẽ chuyển hàm makeCube vào
-                    trong class này, đổi tên thành generateInitialTriangles (các tam giác của cube trước khi được biến đổi bởi Model matrix). Ngoài ra tạo thêm một hàm getTransformedTriangles
-                    để trả về những tam giác đó sau khi bị biến đổi. Ở constructor thì nhận vào rotation ban đầu (dưới dạng 3 góc để dễ hiểu), áp dụng nó tạo 3 rotation matrix và 
+                    Tiếp theo, mình sẽ tạo một <code>Cube</code> để đại diện cho một khối lập phương có đầy đủ đặc tính vị trí, độ xoay (ma trận) và tỉ lệ trong không gian, mình sẽ chuyển hàm <code>makeCube</code> vào
+                    trong class này, đổi tên thành <code>generateInitialTriangles</code> (các tam giác của cube trước khi được biến đổi bởi Model matrix). Ngoài ra tạo thêm một hàm <code>getTransformedTriangles</code>
+                    để trả về những tam giác đó sau khi bị biến đổi. Ở <code>constructor</code> thì nhận vào rotation ban đầu (dưới dạng 3 góc để dễ hiểu), áp dụng nó tạo 3 rotation matrix và 
                     xoay ma trận đơn vị theo thứ tự \(XYZ\) .
                     <pre><code class="language-javascript">class Cube {
     constructor(pos, rotation, scale) {
@@ -408,7 +408,7 @@ Mat4x4.Identity.m[3][3] = 1;</code></pre>
     }
 }</code></pre>
 
-                    Class Triangle chưa có hàm clone (clone luôn đỉnh) và hàm mulMat4x4 nên mình thêm nó vào (nhân từng đỉnh cho ma trận):
+                    Class <code>Triangle</code> chưa có hàm <code>clone</code> (clone luôn đỉnh) và hàm <code>mulMat4x4</code> nên mình thêm nó vào (nhân từng đỉnh cho ma trận):
                     <pre><code class="language-javascript">class Triangle {
     ...
 
@@ -425,13 +425,13 @@ Mat4x4.Identity.m[3][3] = 1;</code></pre>
         }
     }
 }</code></pre>
-                    Tới khúc vẽ chính, mình sẽ tạo 2 cube, cube1 ở vị trí cũ nhưng xoay trục x 45 độ, cube2 lúc đầu mình tạo ở x=1 nhưng sau đó mình trừ đi 1.6, là cuối cùng
-                    nó sẽ ở x=-0.6, là sẽ ở bên trái màn hình.
+                    Tới khúc vẽ chính, mình sẽ tạo 2 cube, <code>cube1</code> ở vị trí cũ nhưng xoay trục x 45 độ, <code>cube2</code> lúc đầu mình tạo ở <code>x=1</code> nhưng sau đó mình trừ đi <code>1.6</code>, là cuối cùng
+                    nó sẽ ở <code>x=-0.6</code>, là sẽ ở bên trái màn hình.
                     <pre><code class="language-javascript">let cube1 = new Cube(new Vector3(0.7, -0.7, 3), new Vector3(45, 0, 0), new Vector3(1, 1, 1));
 let cube2 = new Cube(new Vector3(1, 0, 2.5), new Vector3(0, 0, 15), new Vector3(1, 0.7, 0.7));
 cube2.pos = Vector3.sub(cube2.pos, new Vector3(1.6, 0, 0));</code></pre>
 
-                    Sau đó mình gộp lại hết tam giác (đã được biến đổi) của 2 cube trong 1 mảng, và sau đó gọi vòng lặp for vẽ từng tam giác như cũ:
+                    Sau đó mình gộp lại hết tam giác (đã được biến đổi) của 2 cube trong 1 mảng, và sau đó gọi vòng lặp <code>for</code> vẽ từng tam giác như cũ:
                     <pre><code class="language-javascript">let allTris = [];
 allTris.push(...cube1.getTransformedTriangles());
 allTris.push(...cube2.getTransformedTriangles());

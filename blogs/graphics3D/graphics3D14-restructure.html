@@ -52,11 +52,11 @@
 					Ở <a href="https://github.com/hachihao792001/HanvasEngine">Hanvas Engine</a> mình đã tách các class ra thành các file js modules,
 					các class chung 1 "loại" sẽ nằm chung file, cụ thể:
 					<ul>
-						<li>math.js: Các class thuần toán học như Vector2, Vector3, Mat4x4, Quaternion, Plane (và vài class khác mình tạo thêm trong blog này)</li>
-						<li>graphics.js: Các class về đồ họa, chỉ có Color, Texture</li>
-						<li>mesh.js: Class Mesh và các class con Triangle, Cube, ObjMesh</li>
-						<li>engine.js: Các class liên quan tới game engine: Camera, GameObject, DirectionalLight, Rasterizer</li>
-						<li>index.js: các biến liên quan tới scene + game loop + mấy cái listener</li>
+						<li><code>math.js</code>: Các class thuần toán học như <code>Vector2</code>, <code>Vector3</code>, <code>Mat4x4</code>, <code>Quaternion</code>, <code>Plane</code> (và vài class khác mình tạo thêm trong blog này)</li>
+						<li><code>graphics.js</code>: Các class về đồ họa, chỉ có <code>Color</code>, <code>Texture</code></li>
+						<li><code>mesh.js</code>: Class <code>Mesh</code> và các class con <code>Triangle</code>, <code>Cube</code>, <code>ObjMesh</code></li>
+						<li><code>engine.js</code>: Các class liên quan tới game engine: <code>Camera</code>, <code>GameObject</code>, <code>DirectionalLight</code>, <code>Rasterizer</code></li>
+						<li><code>index.js</code>: các biến liên quan tới scene + game loop + mấy cái listener</li>
 					</ul>
 
 					Mục đích của phần này là xếp lại các class, sao cho những class chung 1 "loại" thì nằm kế nhau, sau đó phân cách các phần bằng 1 comment.<br/><br/>
@@ -65,7 +65,7 @@
                     <ul>
                         <li><code>edgePlanes</code>: 4 cái mặt phẳng để clip theo 4 cạnh màn hình, viết từ <a style="display: inline;" href="graphics3D7-view.html">blog 7</a>, và
                         từ <a style="display: inline;" href="graphics3D8-rasterizer.html">blog 8</a> tới giờ không ai gọi tới (vì rasterizer đã tự giới hạn trong bounding box rồi).</li>
-                        <li>Đoạn code dùng phím I, K, J, L, U, O để di chuyển point light: cái đó chỉ để test, không phải một phần của engine.</li>
+                        <li>Đoạn code dùng phím <code>I</code>, <code>K</code>, <code>J</code>, <code>L</code>, <code>U</code>, <code>O</code> để di chuyển point light: cái đó chỉ để test, không phải một phần của engine.</li>
                         <li>Đổi tên biến <code>canvas</code> thành <code>gameCanvas</code>, vì lát nữa trong
                         	<code>Texture</code> còn một cái <code>canvas</code> tạm nữa, hai cái trùng tên đọc rất dễ nhầm.</li>
                     </ul>
@@ -206,11 +206,11 @@ class Triangle extends MathTriangle {
 					bạn biết là những thứ này có thể được gom trong 1 class riêng là <code>Transform</code>, là tổng hợp những "Phép biến
 					hình" trước khi đưa nó qua view matrix (y hệt cách mình giải thích model matrix trong <a href="graphics3D4-model.html">blog 4</a>).<br/><br/>
 
-					Mà đã làm Transform rồi, thì mình cũng phải làm luôn hệ thống parent - child giống trong Unity: Parent di chuyển, xoay, phóng to thì child cũng phải
+					Mà đã làm <code>Transform</code> rồi, thì mình cũng phải làm luôn hệ thống parent - child giống trong Unity: Parent di chuyển, xoay, phóng to thì child cũng phải
 					di chuyển, xoay, phóng to theo.
 
 					<h3>a. Các biến, hàm cơ bản</h3>
-					Với mô tả như trên thì constructor của class Transform sẽ có dạng như sau:
+					Với mô tả như trên thì constructor của class <code>Transform</code> sẽ có dạng như sau:
                     <pre><code class="language-javascript">class Transform {
 	constructor(localPosition, localEulerAngles, localScale, name) {	// có name để dễ phân biệt
 		this.localPosition = localPosition;
@@ -229,7 +229,7 @@ class Triangle extends MathTriangle {
 	}
 	...
 }</code></pre>
-					Đầu tiên, lí do ta lưu local thay vì world là vì để đỡ phải tính lại position, rotation, scale của Transform hiện tại mỗi 
+					Đầu tiên, lí do ta lưu local thay vì world là vì để đỡ phải tính lại position, rotation, scale của <code>Transform</code> hiện tại mỗi 
 					lần parent của nó di chuyển. Từ local ta mới tính ngược lại world khi cần, ngoài ra thì ta cũng phải thêm hàm để set world rồi chuyển lại local:
                     <pre><code class="language-javascript">get position() {
 	if (this._parent == null) return this.localPosition;
@@ -259,9 +259,9 @@ set rotation(worldRotation) {
 // không có set lossyScale như Unity (có lí do), cho set vào localScale là đủ</code></pre>
 
                     Các hàm trên có xài hàm <code>transformPoint</code> và <code>inverseTransformPoint</code> nên ta phải tạo luôn.
-					Lúc mình học Unity, mình luôn nhớ hàm <a href="https://docs.unity3d.com/6000.6/Documentation/ScriptReference/Transform.TransformPoint.html">Transform.TransformPoint</a>
+					Lúc mình học Unity, mình luôn nhớ hàm <a href="https://docs.unity3d.com/6000.6/Documentation/ScriptReference/Transform.TransformPoint.html"><code>Transform.TransformPoint</code></a>
 					là "convert từ local sang world". Còn khi đã quen với engine này, thì bạn có thể hiểu nó là "hàm <code>getTransformedTriangles</code>, nhưng thay vì
-					tính với mọi tam giác trong GameObject, thì chỉ tính với 1 điểm".
+					tính với mọi tam giác trong <code>GameObject</code>, thì chỉ tính với 1 điểm".
 					Hàm <code>getTransformedTriangles</code> ta áp dụng thứ tự scale -> rotate -> translate, ở đây ta cũng làm vậy:
 
                     <pre><code class="language-javascript">transformPoint(point) {
@@ -281,17 +281,17 @@ inverseTransformPoint(point) {
 					(<code>_parent</code>), và thằng cha giữ danh sách con (<code>_children</code>). Nếu bạn gán tay
 					<code>a._parent = b</code> mà quên <code>b._children.push(a)</code> thì sẽ gặp vấn đề ngay.<br/><br/>
 					
-					Cho nên hai biến này chỉ được truy cập trong những hàm có liên quan tới quan hệ cha con giữa nhiều Transform,
+					Cho nên hai biến này chỉ được truy cập trong những hàm có liên quan tới quan hệ cha con giữa nhiều <code>Transform</code>,
 					và chỉ có hàm <code>setParent</code> là làm như vậy.<br/><br/>
 					
 					Hàm này có dạng <code>setParent(parent, worldPositionStays = true)</code>, <code>worldPositionStays</code>
-					nghĩa là "đổi cha nhưng Transform <b>đứng yên tại chỗ</b>". Hàm sẽ có ý tưởng cơ bản như sau:
+					nghĩa là "đổi cha nhưng <code>Transform</code> <b>đứng yên tại chỗ</b>". Hàm sẽ có ý tưởng cơ bản như sau:
 					<ol>
 						<li>Check nếu parent mới trùng parent cũ thì bỏ</li>
-						<li>Check nếu parent mới là hậu duệ của Transform hiện tại (gây vòng lặp vô tận) thì bỏ</li>
+						<li>Check nếu parent mới là hậu duệ của <code>Transform</code> hiện tại (gây vòng lặp vô tận) thì bỏ</li>
 						<li>Cache lại position, rotation, scale thế giới trước khi cập nhật parent</li>
-						<li>Gỡ Transform hiện tại khỏi parent cũ (nếu có)</li>
-						<li>Gắn vào parent mới (nhớ set luôn _children của parent)</li>
+						<li>Gỡ <code>Transform</code> hiện tại khỏi parent cũ (nếu có)</li>
+						<li>Gắn vào parent mới (nhớ set luôn <code>_children</code> của parent)</li>
 						<li>Nếu <code>worldPositionStays=true</code> thì trả lại position, rotation, scale cũ</li>
 					</ol>
 
@@ -335,11 +335,11 @@ inverseTransformPoint(point) {
 					<ul>
 						<li><b>Thằng con không xoay so với cha</b>: trục x của con trùng trục x của cha, nên khi cha scale x lên 2,
 							thằng con cũng scale x lên 2, kết quả là một hình chữ nhật 2x1.
-						<code>lossyScale</code> = (2, 1, 1), và 3 con số đó mô tả đúng y hình dạng thật.</li>
+						<code>lossyScale</code> = <code>(2, 1, 1)</code>, và 3 con số đó mô tả đúng y hình dạng thật.</li>
 						<li><b>Thằng con xoay 45° quanh trục Z so với cha</b>: Khi cha scale lên, nó bị giãn ra theo trục x của
-							cha và biến thành 1 hình thoi dẹt, 4 góc của nó không vuông góc nhau nữa, lossyScale thì cũng là (2, 1, 1).
+							cha và biến thành 1 hình thoi dẹt, 4 góc của nó không vuông góc nhau nữa, <code>lossyScale</code> thì cũng là <code>(2, 1, 1)</code>.
 							Tuy nhiên khi ta suy nghĩ một hình
-							vuông có lossyScale là (2, 1, 1), ta cũng chỉ nghĩ nó là một hình vuông được kéo dãn ra bình thường như hình
+							vuông có <code>lossyScale</code> là <code>(2, 1, 1)</code>, ta cũng chỉ nghĩ nó là một hình vuông được kéo dãn ra bình thường như hình
 							phải cùng, chứ không phải là 1 hình thoi dẹt.</li>
 					</ul>
 
@@ -488,13 +488,13 @@ inverseTransformDirection(direction) {
 	return this.rotation.inverseRotateVector(direction);
 }</code></pre>
 					Nếu bạn như mình hồi mới học Unity, hay bị lộn giữa 
-					<a href="https://docs.unity3d.com/6000.6/Documentation/ScriptReference/Transform.TransformPoint.html">TransformPoint</a> và 
-					<a href="https://docs.unity3d.com/6000.6/Documentation/ScriptReference/Transform.TransformDirection.html">TransformDirection</a>, 
-					thì như code bạn đã thấy, TransformDirection kệ position và scale của Transform, chỉ biến đổi theo rotation,
+					<a href="https://docs.unity3d.com/6000.6/Documentation/ScriptReference/Transform.TransformPoint.html"><code>TransformPoint</code></a> và 
+					<a href="https://docs.unity3d.com/6000.6/Documentation/ScriptReference/Transform.TransformDirection.html"><code>TransformDirection</code></a>, 
+					thì như code bạn đã thấy, <code>TransformDirection</code> kệ position và scale của <code>Transform</code>, chỉ biến đổi theo rotation,
 					vì thứ ta cần biến đổi chỉ là hướng (đại lượng vector).
 					
 					<h3>e. Sử dụng Transform khắp nơi</h3>
-                    Có được class Transform rồi, ta thế nó vào <code>Camera</code>:
+                    Có được class <code>Transform</code> rồi, ta thế nó vào <code>Camera</code>:
 
                     <pre style="max-height: 500px"><code class="language-javascript">class Camera {
 	static maxPitch = 89.9;
@@ -557,7 +557,7 @@ inverseTransformDirection(direction) {
 	}
 }</code></pre>
 
-					Còn <code>GameObject</code>, vì có hệ thống children, nên ta viết luôn 1 hàm để lấy hết tam giác đã biến đổi trong các children của GameObject,
+					Còn <code>GameObject</code>, vì có hệ thống children, nên ta viết luôn 1 hàm để lấy hết tam giác đã biến đổi trong các children của <code>GameObject</code>,
 					và đệ quy cho tới khi nào hết:
                     <pre><code class="language-javascript">getTransformedTrianglesWithChildren() {
 	let transformedTris = this.getTransformedTriangles();
@@ -568,7 +568,7 @@ inverseTransformDirection(direction) {
 	}
 	return transformedTris;
 }</code></pre>
-                    Class GameObject sau khi dùng Transform:
+                    Class <code>GameObject</code> sau khi dùng <code>Transform</code>:
 					<pre><code class="language-javascript">class GameObject {
 	static incrementingID = 0;
 
@@ -599,7 +599,7 @@ inverseTransformDirection(direction) {
                     <div class="htmlPreview" id="htmlPreview46" data-disabled="true"></div>
 
                     <h2>5. Rasterizer không đọc biến global</h2>
-                    Bên trong Rasterizer nó đang đọc thẳng <code>ctx</code> và <code>gameCanvas</code>. Với lại hàm
+                    Bên trong <code>Rasterizer</code> nó đang đọc thẳng <code>ctx</code> và <code>gameCanvas</code>. Với lại hàm
                     <code>processTriangles</code> bên trong thò ra lấy
                     <code>dirLight</code>, <code>pointLights</code>, <code>pointLightIntensity</code>,
                     <code>pointLightRange</code>, <code>useShadow</code>.<br/><br/>
@@ -608,7 +608,7 @@ inverseTransformDirection(direction) {
 					viết như vậy bạn sẽ không thể có hai cái rasterizer để vẽ ra hai canvas khác nhau khi cần. Và cũng không thể render
                     cùng một scene với bộ lighting khác nhau. Sửa thì khá dễ, chỉ là chuyển mấy thứ nó đọc lén thành tham số.<br/><br/>
 
-					Như vậy class Rasterizer trở thành (mình đổi tên <code>processTriangles</code> thành <code>rasterizerClipSpaceTriangles</code> cho đúng
+					Như vậy class <code>Rasterizer</code> trở thành (mình đổi tên <code>processTriangles</code> thành <code>rasterizerClipSpaceTriangles</code> cho đúng
 					mục đích và đối tượng của hàm):
                     <pre><code class="language-javascript">class Rasterizer {
 	constructor(canvasWidth, canvasHeight, ctx) {
@@ -645,13 +645,13 @@ inverseTransformDirection(direction) {
                     Hàm <code>update()</code> hiện tại dài 70 dòng, và làm những thứ sau: 	
 					<ol>
 						<li>Tính delta time, tính fps</li>
-						<li>Xử lí phím, update vị trí, rotation của mọi object trong thế giới (xoay dirLight)</li>
+						<li>Xử lí phím, update vị trí, rotation của mọi object trong thế giới (xoay <code>dirLight</code>)</li>
 						<li>Chuẩn bị các triangles của các object ở world space</li>
 						<li>Build shadow map</li>
 						<li>Đưa các triangles về view space, backface culling, near plane clipping</li>
 						<li>Sort tam giác</li>
 						<li>Đưa các triangles về clip space (nhân projection matrix và chia z)</li>
-						<li>Clear screen, đưa triangles cho rasteriezer xử lí và gọi drawCall</li>
+						<li>Clear screen, đưa triangles cho rasteriezer xử lí và gọi <code>drawCall</code></li>
 					</ol>
 					Khá nhiều thứ trong 1 hàm, cho nên ta sẽ tách từng bước ra thành từng hàm riêng cho dễ đọc (trừ cái đầu, vì nó liên quan trực tiếp tới
 					việc update):
@@ -811,7 +811,7 @@ static lerp(from, to, t) {
 static isClose(a, b, margin) {
 	return 1 - Math.abs(Quaternion.dot(a, b)) < margin;
 }</code></pre>
-					Một class Quad (tứ diện 3D) mới:
+					Một class <code>Quad</code> (tứ diện 3D) mới:
 					<pre style="max-height: 400px"><code class="language-javascript">class Quad extends Mesh {
 	constructor() {
 		super(Quad.generateInitialTriangles());

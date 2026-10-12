@@ -51,7 +51,7 @@
                         <li>Chuyện gì xảy ra khi cube quá gần màn hình?</li>
                     </ol>
 
-                    Chắc bạn cũng đã biết FOV (Field of view) là tầm nhìn của mắt người hay camera trong game, fov càng lớn, càng nhìn được rộng.
+                    Chắc bạn cũng đã biết FOV (Field of view) là tầm nhìn của mắt người hay camera trong game, <code>fov</code> càng lớn, càng nhìn được rộng.
                     Cụ thể hơn, trong game cũng như ngoài đời, mắt mình nhìn thế giới theo hình chóp cụt (frustum), 2
                     hình sau đại diện cho tầm nhìn của mình khi nhìn từ trên xuống và nhìn từ ngang qua:
                     <div align="center">
@@ -62,7 +62,7 @@
                     màn hình đến đáy frustum, và cũng để bạn nhớ vể giá trị chuẩn của màn hình.<br/><br/>
                     Đặt FOV là theta (\(θ\)) (hình 2), chia tam giác tầm nhìn thành 2 tam giác vuông, thấy rằng 
                     FOV càng lớn thì cạnh đối (\(opposite\)) càng lớn, và tọa độ màn hình (\(P\)) của
-                    các vật càng gần tâm màn hình hơn, mà như ta biết thì tâm màn hình chính là (0, 0), tức là
+                    các vật càng gần tâm màn hình hơn, mà như ta biết thì tâm màn hình chính là <code>(0, 0)</code>, tức là
                     tọa độ màn hình của vật sẽ càng nhỏ khi FOV càng lớn, suy ra tọa độ vật sẽ tỉ lệ nghịch với FOV và tỉ lệ nghịch
                     với cạnh đối: \(P \backsim \frac{1}{opposite}\). Đối với cạnh kề (\(adjacent\)) của 2 hình trên, đó chính là khoảng cách từ mắt đến khoảng
                     xa nhất mà ta có thể nhìn thấy được, có thể là bất kỳ hằng số nào, vì là hằng số nên ta cũng có thể suy ra rằng: \(P \backsim \frac{adjacent}{opposite}\).
@@ -78,7 +78,7 @@ vertices[i] = new Vector3(
     v.x * fovMultiplier * (canvas.height/2) + canvas.width / 2,
     -v.y * fovMultiplier * (canvas.height/2) + canvas.height / 2,
     1);</code></pre>
-                    Mình cũng dời cube ra xa thêm một chút, từ \(z = 2\) thành \(z = 3\), vì sau khi nhân fovMultiplier (khoảng 1,73 với FOV 60) cube sẽ to ra, dời ra xa thì nó sẽ lại có kích thước gần giống như trước:
+                    Mình cũng dời cube ra xa thêm một chút, từ \(z = 2\) thành \(z = 3\), vì sau khi nhân <code>fovMultiplier</code> (khoảng 1,73 với FOV 60) cube sẽ to ra, dời ra xa thì nó sẽ lại có kích thước gần giống như trước:
                     <pre><code class="language-javascript">let cube1 = makeCube(new Vector3(0.7, -0.7, 3), new Vector3(1, 1, 1));</code></pre>
                     Hiển thị như sau (bạn tự copy về thay đổi FOV để xem khác biệt nhé):
                     <div id="htmlPreview7" class="htmlPreview"></div><br/>
@@ -124,7 +124,7 @@ vertices[i] = new Vector3(
                     
                     Bây giờ, mình sẽ lùi lại một tí và quay về tiêu đề của blog này, Projection Matrix là gì? Trước hết, Projection chính là một phép biến đổi mà ta làm từ blog trước tới
                     giờ, chuyển các tọa độ trong không gian 3D thành tọa độ màn hình 2D. Nhưng trước Projection thì ta có phép biến đổi View, là chuyển đổi thế giới theo góc nhìn và vị trí
-                    của camera (từ blog trước tới giờ ta luôn mặc định camera ở (0, 0, 0)). Và trước View ta có có phép biến đổi Model, là thay đổi vị trí, độ xoay và kích thước của các
+                    của camera (từ blog trước tới giờ ta luôn mặc định camera ở <code>(0, 0, 0)</code>). Và trước View ta có có phép biến đổi Model, là thay đổi vị trí, độ xoay và kích thước của các
                     vật trong không gian 3D. Ba phép biến đổi này đều có thể chuyển thành ma trận và nhân (gộp) nhau thành một ma trận duy nhất, gọi là Model View Projection Matrix,
                     như vậy sẽ giảm phép tính phải tính đối với mọi đỉnh trong không gian 3D. Và ngoài ra việc sử dụng ma trận như vậy cũng thích hợp cho GPU, vì GPU giỏi tính
                     song song nhiều phép toán đơn giản cùng lúc, cho nên ma trận hay được sử dụng trong đồ họa máy tính. <br/><br/>
@@ -293,8 +293,8 @@ vertices[i] = new Vector3(
     }
 }
                     </code></pre>
-                    Ta cũng cần phải sửa lại class Vector3 vì vừa thêm một component mới là w. Lưu ý là nó vẫn là vector 3 chiều,
-                    w chỉ có tác dụng về mặt đại số, giúp ta tính toán dễ hơn, chứ không có nghĩa là nó là vector 4 chiều, vì vậy các hàm liên quan
+                    Ta cũng cần phải sửa lại class <code>Vector3</code> vì vừa thêm một component mới là <code>w</code>. Lưu ý là nó vẫn là vector 3 chiều,
+                    <code>w</code> chỉ có tác dụng về mặt đại số, giúp ta tính toán dễ hơn, chứ không có nghĩa là nó là vector 4 chiều, vì vậy các hàm liên quan
                     tới vector vẫn giữ nguyên. Ngoài ra ta phải thêm hàm nhân ma trận với vector.
                     <pre><code class="language-javascript">class Vector3 {
     constructor(x = 0, y = 0, z = 0, w = 1) {   //mặc định w = 1 để tránh chia cho 0
@@ -359,7 +359,7 @@ vertices[i] = new Vector3(
     }
 }</code></pre>
 
-                    Ở khúc render, ta tạo projection matrix theo tham số ta chọn, nhân từng đỉnh một với projection matrix, và chia cho z cũ (bây giờ là w),
+                    Ở khúc render, ta tạo projection matrix theo tham số ta chọn, nhân từng đỉnh một với projection matrix, và chia cho z cũ (bây giờ là <code>w</code>),
                     sau đó nhân cho kích thước canvas để render:
                     <pre><code class="language-javascript">let znear = 0.01, zfar = 1000;
 let projectionMatrix = Mat4x4.Projection(fov, canvas.height, canvas.width, znear, zfar);

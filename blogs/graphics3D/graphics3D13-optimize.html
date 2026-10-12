@@ -182,22 +182,22 @@ for (let i = 0; i < canvas.height; i++) {
 }</code></pre>
                     Mảng 2 chiều thì dễ đọc và hiểu, nhưng nó tệ ở mấy điểm:
                     <ul>
-                        <li><b>120,000 object Color.</b> Mỗi object trong Javascript không chỉ là 3 con số, nó còn có header, pointer tới hidden
+                        <li><b>120,000 object <code>Color</code>.</b> Mỗi object trong Javascript không chỉ là 3 con số, nó còn có header, pointer tới hidden
                             class... Và chúng nó nằm rải rác khắp nơi trong bộ nhớ.</li>
                         <li><b>Mảng của mảng nghĩa là đi 2 lần pointer.</b> <code>screenBuffer[y][x]</code> = đọc mảng ngoài lấy pointer
-                            tới mảng trong, rồi mới đọc phần tử, rồi lại đi tiếp tới object Color. CPU có cache, và cache thích dữ liệu
+                            tới mảng trong, rồi mới đọc phần tử, rồi lại đi tiếp tới object <code>Color</code>. CPU có cache, và cache thích dữ liệu
                             nằm liền nhau chứ không thích bị dắt đi lòng vòng như vậy.</li>
                         <li><b>Mảng không có kiểu <code>[]</code></b> thì javascript phải kiểm tra kiểu.</li>
-                        <li><b>Và tệ nhất:</b> cuối mỗi frame chúng ta copy toàn bộ 120,000 cái Color đó qua <code>imageData</code>
+                        <li><b>Và tệ nhất:</b> cuối mỗi frame chúng ta copy toàn bộ 120,000 cái <code>Color</code> đó qua <code>imageData</code>
                             bằng tay, tức là thêm một vòng lặp 120,000 lần nữa chỉ để ... copy.</li>
                     </ul>
-                    Giải pháp: dùng mảng 1 chiều có type. Với depthBuffer thì là 
-                    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array">Float64Array</a>, với screenBuffer thì là
-                    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray">Uint8ClampedArray</a> (cùng kiểu với
-                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/ImageData/data">imageData.data</a>). Thậm chí, bạn có thể trỏ thẳng <code>screenBuffer</code> tới
-                    <code>imageData.data</code>, chứ không cần copy qua lại làm gì, như vậy hàm drawCall thì chỉ cần 1 dòng <code>putImageData</code> duy nhất.
+                    Giải pháp: dùng mảng 1 chiều có type. Với <code>depthBuffer</code> thì là 
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array"><code>Float64Array</code></a>, với <code>screenBuffer</code> thì là
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray"><code>Uint8ClampedArray</code></a> (cùng kiểu với
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/ImageData/data"><code>imageData.data</code></a>). Thậm chí, bạn có thể trỏ thẳng <code>screenBuffer</code> tới
+                    <code>imageData.data</code>, chứ không cần copy qua lại làm gì, như vậy hàm <code>drawCall</code> thì chỉ cần 1 dòng <code>putImageData</code> duy nhất.
                     Lúc <code>clearScreen</code> ta chỉ cần dùng hàm 
-                    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/fill">fill</a> để thay thế hết giá trị trong 2 mảng.<br/><br/>
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/fill"><code>fill</code></a> để thay thế hết giá trị trong 2 mảng.<br/><br/>
 
                     Tuy nhiên, có 1 vấn đề nho nhỏ ở <code>clearScreen</code>. Nếu ở <code>clearScreen</code> bạn gọi <code>this.screenBuffer.fill(240)</code>, 
                     thì nhìn nó vẫn đúng, tuy nhiên bạn phải biết là bạn cũng set luôn channel alpha là 240 (mỗi phần tử trong <code>screenBuffer</code> là 1 channel màu),
@@ -206,7 +206,7 @@ for (let i = 0; i < canvas.height; i++) {
                     Thì ta tạo thêm một <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint32Array">Uint32Array</a> screenBuffer32</code>
                     trỏ vào cùng 1 địa chỉ với <code>imageData.data</code> (dùng <code>.buffer</code>).<br/>
                     Lí do:
-                    <code>imageData.data</code> có kiểu dữ liệu là <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray">Uint8ClampedArray</a>
+                    <code>imageData.data</code> có kiểu dữ liệu là <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray"><code>Uint8ClampedArray</code></a>
                     . Nghĩa là mỗi channel màu chỉ cần 8 bit/1 byte để lưu trữ, mỗi pixel thì có 4 channel màu, nên 1 pixel fit vừa 4 byte - một int 😳
                     Nên mỗi phần tử trong <code>screenBuffer32</code> đại diện cho 1 pixel, nhờ vậy <code>clearScreen</code> chỉ cần ghi 120,000 lần thay vì 480,000 lần, và
                     mình có thể tùy chỉnh alpha bằng cách truyền vào giá trị hex của 4 byte. Tuy nhiên bạn nên chú ý là máy tính đa số là little endian (bit lớn nhất ở cuối), 
@@ -234,7 +234,7 @@ for (let i = 0; i < canvas.height; i++) {
         ctx.putImageData(this.imageData, 0, 0);   // 1 dòng duy nhất, không copy đâu qua đâu hết
     }
 }</code></pre>
-					Đổi kiểu <code>screenBuffer</code> và <code>depthBuffer</code> thì ta phải đổi luôn cách sử dụng. Ở mỗi hàng pixel ta bắt đầu từ xmin của bbox, sau đó ++ lên ở
+					Đổi kiểu <code>screenBuffer</code> và <code>depthBuffer</code> thì ta phải đổi luôn cách sử dụng. Ở mỗi hàng pixel ta bắt đầu từ xmin của <code>bbox</code>, sau đó <code>++</code> lên ở
 					vòng for cột:
 					<pre><code class="language-javascript">processTriangles(tris) {
 	for (let y = bbox[2]; y <= bbox[3]; y++) {
@@ -305,7 +305,7 @@ Tổng      : 24.80 ms</code></pre>
 		}
 	}
 }</code></pre>
-					Trong hàm isInShadow:
+					Trong hàm <code>isInShadow</code>:
 					<pre><code class="language-javascript">isInShadow(pixelWorldPos, triWorldNormal) {
 	...
 
@@ -319,7 +319,7 @@ Tổng      : 24.80 ms</code></pre>
 					9 cấp phát động mỗi pixel 😳 mà bạn nên nhớ tam giác sau có trùng pixel thì pixel lại chạy lại lần nữa (nếu qua được depth test),
 					garbage collector sẽ khá vất vả. Nói thật thì như vậy nó khá dễ đọc, nhìn hiểu công thức toán học, nhìn đúng "hướng đối tượng". Tuy nhiên
 					với 1 chỗ mà gọi nhiều như vậy, ta nên hi sinh sự dễ đọc đó để
-					đổi lấy performance, ta sẽ thay mọi chỗ dùng Vector3, Vector2, ... thành dùng số thuần, biến const.<br/><br/>
+					đổi lấy performance, ta sẽ thay mọi chỗ dùng <code>Vector3</code>, <code>Vector2</code>, ... thành dùng số thuần, biến const.<br/><br/>
 
 					Ngoài ra, việc truy cập 1 property trong class cũng sẽ tốn performance tí (nó sẽ build up với mấy trăm nghìn pixel như vậy), điển hình
 					1 vài property: <code>this.screenBuffer</code>, <code>this.depthBuffer</code>, <code>canvas.width</code>, <code>canvas.height</code>,
@@ -432,7 +432,7 @@ const textureWidth = texture ? texture.width : 0, textureHeight = texture ? text
     edgeFunctionRow12 += edgeSlopeY12;
     edgeFunctionRow20 += edgeSlopeY20;
 }</code></pre>
-					<code>isInShadow</code> bây giờ nhận vào 6 số thay vì 2 Vector3:
+					<code>isInShadow</code> bây giờ nhận vào 6 số thay vì 2 <code>Vector3</code>:
 					<pre><code class="language-javascript">isInShadow(
 	pixelWorldPosX, pixelWorldPosY, pixelWorldPosZ,
 	triWorldNormalX, triWorldNormalY, triWorldNormalZ
@@ -790,7 +790,7 @@ visibleTris.sort((a, b) => a.viewDistanceSquared - b.viewDistanceSquared);</code
 	...
 }</code></pre>
 
-					Ngoài ra còn 1 chỗ nhỏ nhỏ: trong hàm getTransformedTriangles, trong vòng lặp ta tạo lại 2 ma trận scale và
+					Ngoài ra còn 1 chỗ nhỏ nhỏ: trong hàm <code>getTransformedTriangles</code>, trong vòng lặp ta tạo lại 2 ma trận scale và
 					translation mỗi lần => bốc nó ra ngoài:
 					<pre><code class="language-javascript">getTransformedTriangles() {
 	let transformedTris = [];
@@ -839,7 +839,7 @@ Tổng      : 10.60 ms</code></pre>
 						trong hàm, nhìn sẽ rất là rối.</li>
 						<li>Chuyển <code>shadowMap</code> thành mảng 1 chiều như <code>screenBuffer</code> và <code>depthBuffer</code>: 
 							Vì <code>shadowMap</code> là mảng 2 chiều số thực (không cần cấp phát động),
-							chứ không phải mảng 2 chiều object (Color), nên dù là mảng 2 chiều hay 1 chiều nó cũng không khác nhau là mấy.
+							chứ không phải mảng 2 chiều object (<code>Color</code>), nên dù là mảng 2 chiều hay 1 chiều nó cũng không khác nhau là mấy.
 						</li>
 					</ol>
 				<div id="graphics3D-nav-bottom"></div>

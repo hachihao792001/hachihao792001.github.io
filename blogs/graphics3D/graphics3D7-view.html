@@ -358,8 +358,8 @@
                     Nhìn vào view matrix, bạn cũng phần nào đoán được nó làm gì, khối 3x3 ở góc trái khi nhân với \(v\) nó sẽ ra tích vô hướng của \(v\) với \(r, u, f\), đồng nghĩa
                     "hình chiếu của \(v\) trên 3 trục mới \(r, u, f\)". Và 3 cái tích vô hướng với \(t\) là "cộng vào \(v\) một vector \(t'\) đã được biến đổi theo trục mới".<br/><br/>
 
-                    Có được View matrix rồi, ta bắt tay vào code thôi, ta sẽ làm luôn một hệ thống di chuyển camera như FPS, dùng chuột để nhìn qua lại, WASD để di chuyển, ngoài ra Space
-                    để bay lên và Shift để bay xuống. Đầu tiên ta hãy tạo một hàm tạo View matrix từ forward, up, right và t:
+                    Có được View matrix rồi, ta bắt tay vào code thôi, ta sẽ làm luôn một hệ thống di chuyển camera như FPS, dùng chuột để nhìn qua lại, <code>WASD</code> để di chuyển, ngoài ra <code>Space</code>
+                    để bay lên và <code>Shift</code> để bay xuống. Đầu tiên ta hãy tạo một hàm tạo View matrix từ forward, up, right và t:
                     <pre><code class="language-javascript">class Mat4x4 {
     ...
     static View(r, u, f, t) {
@@ -381,14 +381,14 @@
     }
     ...
 }</code></pre>
-                    Sau đó ta sẽ tạo một class đại diện cho camera, có thuộc tính vị trí và rotation của camera (cũng là một Quaternion), từ rotation này ta có thể suy ra
+                    Sau đó ta sẽ tạo một class đại diện cho camera, có thuộc tính vị trí và <code>rotation</code> của camera (cũng là một Quaternion), từ rotation này ta có thể suy ra
                     right, up, forward bất kỳ lúc nào, bằng cách áp dụng Quaternion rotation đó vào right, up, forward thế giới (đó cũng là lí do tại sao mình phải viết blog Quaternion trước
                     blog này, vì sử dụng euler angles cho camera sẽ rất là bủh lmao). Class camera này sẽ đảm nhiệm luôn việc xử lý input chuột và bàn phím để nhìn và di chuyển, bên ngoài chỉ có nhiệm vụ truyền
-                    thông tin input vào, và truyền luôn dt để cập nhật vị trí theo tốc độ thống nhất. Hàm updateRotation sẽ nhận vào tham số là sự thay đổi của vị trí con chuột so với
-                    frame trước (sẽ nói rõ hơn ở phần dưới): (mouseMovementX, mouseMovementY). Sử dụng mouseMovementX để quay theo trục up (qua trái qua phải), chuột qua phải thì ta muốn
-                    xoay camera theo cùng chiều kim đồng, tuy nhiên engine ta làm phép xoay theo ngược chiều kim đồng hồ, cho nên ta phải đổi dấu mouseMovementX. Với nhìn lên xuống, thì
-                    ta xoay theo trục right, cũng đổi dấu mouseMovementY với lí do tương tự. Hàm updateMovement nhận vào dt của frame hiện tại, và keyStates, là một map đánh dấu phím nào
-                    đang được nhấn trong frame hiện tại, dựa vào keystates để cộng trừ pos tương ứng.
+                    thông tin input vào, và truyền luôn <code>dt</code> để cập nhật vị trí theo tốc độ thống nhất. Hàm <code>updateRotation</code> sẽ nhận vào tham số là sự thay đổi của vị trí con chuột so với
+                    frame trước (sẽ nói rõ hơn ở phần dưới): <code>(mouseMovementX, mouseMovementY)</code>. Sử dụng <code>mouseMovementX</code> để quay theo trục up (qua trái qua phải), chuột qua phải thì ta muốn
+                    xoay camera theo cùng chiều kim đồng, tuy nhiên engine ta làm phép xoay theo ngược chiều kim đồng hồ, cho nên ta phải đổi dấu <code>mouseMovementX</code>. Với nhìn lên xuống, thì
+                    ta xoay theo trục right, cũng đổi dấu <code>mouseMovementY</code> với lí do tương tự. Hàm <code>updateMovement</code> nhận vào <code>dt</code> của frame hiện tại, và <code>keyStates</code>, là một map đánh dấu phím nào
+                    đang được nhấn trong frame hiện tại, dựa vào <code>keystates</code> để cộng trừ <code>pos</code> tương ứng.
                     <pre><code class="language-javascript">class Camera {
     constructor(pos, euler, speed, sensitivity) {
         this.pos = pos;
@@ -437,10 +437,10 @@
         return Mat4x4.View(right, up, forward, this.pos);
     }
 }</code></pre>
-                    Ở bên ngoài, ta tạo một object camera với speed là 2 và sensitivity là 0.2 (bạn có thể thử và điều chỉnh theo số bạn muốn):
+                    Ở bên ngoài, ta tạo một object camera với <code>speed</code> là 2 và <code>sensitivity</code> là 0.2 (bạn có thể thử và điều chỉnh theo số bạn muốn):
                     <pre><code class="language-javascript">let camera = new Camera(Vector3.zero, Vector3.zero, 2, 0.2);</code></pre>
-                    Trong hàm update, ở mỗi frame ta tính lại view matrix, sau đó nhân view matrix đó với từng đỉnh trước khi nhân projection matrix, nhớ bỏ
-                    biến cameraPos mà ta xài để thực hiện face culling và thay bằng camera.pos:
+                    Trong hàm <code>update</code>, ở mỗi frame ta tính lại view matrix, sau đó nhân view matrix đó với từng đỉnh trước khi nhân projection matrix, nhớ bỏ
+                    biến <code>cameraPos</code> mà ta xài để thực hiện face culling và thay bằng <code>camera.pos</code>:
                     <pre><code class="language-javascript">function update(time = performance.now()) {
     ...
     const viewMat = camera.getViewMatrix();
@@ -459,10 +459,10 @@
     }
 }</code></pre>
 
-                    Đối với di chuyển camera thì ta khai báo keyStates, đăng ký 2 event 
-                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event">keydown</a> và 
-                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/keyup_event">keyup</a> để nhận event nhấn phím xuống và thả phím ra,
-                    lấy phím đang nhấn bằng e.key và set thành true hoặc false tương ứng.
+                    Đối với di chuyển camera thì ta khai báo <code>keyStates</code>, đăng ký 2 event 
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event"><code>keydown</code></a> và 
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/keyup_event"><code>keyup</code></a> để nhận event nhấn phím xuống và thả phím ra,
+                    lấy phím đang nhấn bằng <code>e.key</code> và set thành <code>true</code> hoặc <code>false</code> tương ứng.
                     <pre><code class="language-javascript">let keyStates = {};	// đây là một map, không phải một mảng, nên xài {} thay vì []
 
 ...
@@ -473,7 +473,7 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => {
     keyStates[e.key] = false;
 });</code></pre>
-                    Ở hàm update thì gọi hàm updateMovement ở frame hiện tại (trước khi tính view matrix):
+                    Ở hàm <code>update</code> thì gọi hàm <code>updateMovement</code> ở frame hiện tại (trước khi tính view matrix):
                     <pre><code class="language-javascript">function update(time = performance.now()) {
                         
     ...
@@ -485,12 +485,12 @@ window.addEventListener('keyup', (e) => {
 
 }</code></pre>
                     Đối với xoay camera, trước tiên ta phải lock chuột lại ở vị trí chính giữa màn hình để cho cảm giác y hệt game FPS, ta check khi user
-                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/click_event">click</a> vào canvas thì gọi hàm 
-                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/requestPointerLock">requestPointerLock</a> để lock chuột và set
-                    unadjustedMovement thành true để bỏ mouse acceleration. Ta đăng ký thêm event <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/mousemove_event">mousemove</a>,
-                    nếu chuột đang được lock trong canvas thì lấy movementX và movementY từ e làm tham số để gọi updateRotation. 
-                    Khi ta di chuyển chuột thì movementX và movementY sẽ thay đổi tùy vào tốc độ ta di chuột (nếu
-                    bạn muốn xem cụ thể thì có thể console.log nó ra), còn khi chuột đứng yên thì nó cũng đứng yên. Lưu ý là ta không sử dụng xử lý deltaTime vì sự kiện mouseMove được
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/click_event"><code>click</code></a> vào canvas thì gọi hàm 
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/requestPointerLock"><code>requestPointerLock</code></a> để lock chuột và set
+                    <code>unadjustedMovement</code> thành <code>true</code> để bỏ mouse acceleration. Ta đăng ký thêm event <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/mousemove_event"><code>mousemove</code></a>,
+                    nếu chuột đang được lock trong canvas thì lấy <code>movementX</code> và <code>movementY</code> từ <code>e</code> làm tham số để gọi <code>updateRotation</code>. 
+                    Khi ta di chuyển chuột thì <code>movementX</code> và <code>movementY</code> sẽ thay đổi tùy vào tốc độ ta di chuột (nếu
+                    bạn muốn xem cụ thể thì có thể <code>console.log</code> nó ra), còn khi chuột đứng yên thì nó cũng đứng yên. Lưu ý là ta không sử dụng xử lý <code>deltaTime</code> vì sự kiện <code>mouseMove</code> được
                     gọi dựa vào con chuột được di chuyển bao nhiêu, nó sẽ khá giống nhau trên mọi thiết bị, cũng tùy vào phần cứng và setting của chuột.
 
                     <pre><code class="language-javascript">canvas.addEventListener("click", async () => {
@@ -531,9 +531,9 @@ canvas.addEventListener("mousemove", (e) => {
                     Về cái <code>currentPitch</code>: <code>forwardY</code> là thành phần y của <code>forward</code>, tức
                     là độ dài hình chiếu của <code>forward</code> lên trục y thế giới. Độ dài hình chiếu đó chính là sin
                     của góc hợp bởi vector đơn vị và mặt phẳng ngang (nhớ lại bản chất sin). Sin thì là đối / huyền =
-                    forwardY / độ dài vector, mà vector đơn vị thì độ dài là 1, nên sin góc = forwardY, suy ra góc =
-                    arcsin(forwardY). Cái <code>Math.max(-1, Math.min(1, ...))</code> bọc bên ngoài là vì sai số số thực
-                    có thể cho ra 1.0000000001, mà <code>Math.asin</code> của một số ngoài đoạn [-1, 1] thì trả về
+                    <code>forwardY</code> / độ dài vector, mà vector đơn vị thì độ dài là 1, nên sin góc = <code>forwardY</code>, suy ra góc =
+                    <code>arcsin(forwardY)</code>. Cái <code>Math.max(-1, Math.min(1, ...))</code> bọc bên ngoài là vì sai số số thực
+                    có thể cho ra <code>1.0000000001</code>, mà <code>Math.asin</code> của một số ngoài đoạn [-1, 1] thì trả về
                     <code>NaN</code><br/><br/>
 
                     Còn tại sao là 89.9 mà không phải 90: ở đúng 90 độ thì <code>forward</code> trùng khít với trục up
@@ -549,7 +549,7 @@ canvas.addEventListener("mousemove", (e) => {
                     </ol>
                     Đừng lo, 2 cái này không liên quan tới View matrix, ta đã xong với view matrix rồi 😳<br/><br/>
                     Vấn đề đầu tiên thật ra cũng đơn giản, đó là vì trước giờ ta chỉ vẽ viền của các tam giác chứ chưa hề tô màu cho nó, nên cái nào đứng trước cũng như vậy. Ta sẽ
-                    tô một màu xám xám cho các tam giác bằng hàm ctx.fill(), nhưng vẫn vẽ viền để thấy được wireframe của cube:
+                    tô một màu xám xám cho các tam giác bằng hàm <code>ctx.fill()</code>, nhưng vẫn vẽ viền để thấy được wireframe của cube:
                     <pre><code class="language-javascript">for (let tri of allTris) {
     if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.pos)) < 0) {
         ...
@@ -610,26 +610,26 @@ allTris.sort((a, b) => {
                     </ol>
 
                     Về việc cài đặt, ý tưởng chung là ta sẽ for qua 3 đỉnh của tam giác
-                    và check xem từng đỉnh có nằm trước near plane hay không, và add vào 2 mảng chứa các điểm nằm trước (frontPoints) và nằm sau (behindPoints), 
+                    và check xem từng đỉnh có nằm trước near plane hay không, và add vào 2 mảng chứa các điểm nằm trước (<code>frontPoints</code>) và nằm sau (<code>behindPoints</code>), 
                     rồi dựa vào độ dài 2 mảng để xét trường hợp.
                     Nếu nằm vào 2 trường hợp đầu thì khá dễ, trả về tam giác cũ hoặc không trả về gì.
                     Nếu nằm vào trường hợp 3 và 4 thì ta phải tìm thêm 2 giao điểm của 2 cạnh tam giác với mặt phẳng, và dựng các tam giác mới bằng các đỉnh cũ nằm trước near plane
                     và 2 giao điểm mới vừa tìm được, và phải dựng nó theo chiều kim đồng hồ.
                     <div align="center"><img style="max-height: 500px; max-width: 100vw;" src="images/graphics3D7/Clipping.png"/></div>
                     Hình này mình sẽ nói hơi vòng vo, nên bạn cần ngẫm thêm chút để hiểu 😅 Cái ta cần lưu ý là thứ tự ta đánh dấu 2 giao điểm, trong hình thì mình đánh dấu thứ tự giao điểm 
-                    theo thứ tự nối frontPoints với các behindPoints. Ví dụ với trường hợp frontPoints = [v0], behindPoints = [v1, v2], thì I1 = intersection(v0, v1), I2 = intersection(v0, v2),
-                    tương tự với 2 trường hợp còn lại. Đối với 2 trường hợp đầu, ta dựng tam giác với thứ tự đỉnh [frontPoints[0], I1, I2].
-                    Tuy nhiên, đối với trường hợp frontPoints = [v1], behindPoints = [v0, v2], thì bạn thấy I1 và I2 bị ngược lại, vì lúc này behindPoints đã bị đứt thứ tự, ta phải chỉnh lại thứ tự 
-                    cho đúng là [v2, v0] (v2 quay trở lại v0 theo chiều kim đồng hồ).<br/>
+                    theo thứ tự nối <code>frontPoints</code> với các <code>behindPoints</code>. Ví dụ với trường hợp <code>frontPoints = [v0]</code>, <code>behindPoints = [v1, v2]</code>, thì <code>I1 = intersection(v0, v1)</code>, <code>I2 = intersection(v0, v2)</code>,
+                    tương tự với 2 trường hợp còn lại. Đối với 2 trường hợp đầu, ta dựng tam giác với thứ tự đỉnh <code>[frontPoints[0], I1, I2]</code>.
+                    Tuy nhiên, đối với trường hợp <code>frontPoints = [v1]</code>, <code>behindPoints = [v0, v2]</code>, thì bạn thấy <code>I1</code> và <code>I2</code> bị ngược lại, vì lúc này <code>behindPoints</code> đã bị đứt thứ tự, ta phải chỉnh lại thứ tự 
+                    cho đúng là <code>[v2, v0]</code> (v2 quay trở lại v0 theo chiều kim đồng hồ).<br/>
                     <i>Javidx9 không hề nói tới vụ này và code của ổng cũng không có, mình đang nghi ngờ ổng đã code sai, video ổng vẫn
                     chạy đúng có thể vì chỉ gặp đúng 2 trường hợp đầu trong lúc clip tam giác, mình chưa clone code ổng về chạy thử nên chưa chắc chắn được.</i><br/><br/>
-                    Đối với trường hợp 4 cũng tương tự thôi, nhìn hình, ta dựng 2 tam giác mới theo thứ tự [frontPoints[0], frontPoints[1], I1] và [frontPoints[1], I2, I1]. Với
-                    trường hợp behindPoints = [v1] thì swap 2 frontPoints.
+                    Đối với trường hợp 4 cũng tương tự thôi, nhìn hình, ta dựng 2 tam giác mới theo thứ tự <code>[frontPoints[0], frontPoints[1], I1]</code> và <code>[frontPoints[1], I2, I1]</code>. Với
+                    trường hợp <code>behindPoints = [v1]</code> thì swap 2 <code>frontPoints</code>.
                     <div align="center"><img style="max-height: 500px; max-width: 100vw;" src="images/graphics3D7/Clipping2.png"/></div><br/><br/>
 
-                    Bây giờ ta sẽ bắt đầu code Clipping vào engine của chúng ta. Đầu tiên mình định nghĩa class Plane, constructor truyền vào vector pháp tuyến và một điểm bất kỳ
-                    trên plane (cũng là cách ta xác định một mặt phẳng trong toán học), dùng 2 cái đó ta có thể tính được D. Thêm hàm isPointInFrontOfPlane để check xem một điểm có nằm trước plane hay không,
-                    và hàm intersectWithLine để tìm giao điểm của một đoạn thẳng AB với plane, với cơ sở toán học như trên đã nói:
+                    Bây giờ ta sẽ bắt đầu code Clipping vào engine của chúng ta. Đầu tiên mình định nghĩa class <code>Plane</code>, <code>constructor</code> truyền vào vector pháp tuyến và một điểm bất kỳ
+                    trên plane (cũng là cách ta xác định một mặt phẳng trong toán học), dùng 2 cái đó ta có thể tính được D. Thêm hàm <code>isPointInFrontOfPlane</code> để check xem một điểm có nằm trước plane hay không,
+                    và hàm <code>intersectWithLine</code> để tìm giao điểm của một đoạn thẳng AB với plane, với cơ sở toán học như trên đã nói:
                     <pre><code class="language-javascript">class Plane {
     constructor(normal, P) {
         this.normal = normal.normalize();
@@ -650,7 +650,7 @@ allTris.sort((a, b) => {
     }
 }</code></pre>
 
-                    Trong class Triangle, ta thêm hàm cắt tam giác bằng plane và trả ra một list tam giác mới.
+                    Trong class <code>Triangle</code>, ta thêm hàm cắt tam giác bằng plane và trả ra một list tam giác mới.
                     <pre><code class="language-javascript">clipAgainstPlane(plane) {
     let outTris = [];
 
@@ -774,7 +774,7 @@ for (let tri of visibleTris) {
     ctx.beginPath();
     ...
 }</code></pre>
-                    Cài đặt hàm perspectiveDivide() của class Triangle:
+                    Cài đặt hàm <code>perspectiveDivide()</code> của class <code>Triangle</code>:
                     <pre><code class="language-javascript">perspectiveDivide() {
     for (let i = 0; i < this.vertices.length; i++) {
         this.vertices[i] = Vector3.div(this.vertices[i], this.vertices[i].w);
@@ -785,10 +785,10 @@ for (let tri of visibleTris) {
                     Full code:
                     <div class="htmlPreview" id="htmlPreview16"></div>
                     Bạn thấy là nó sẽ không bị "nhìn được đằng sau" nữa, và khi lại gần cube cũng không bị hiện các đường lạ lạ. Nếu bạn muốn nhìn rõ hơn near plane cắt cube ra sao
-                    thì bạn hãy tăng znear lên.<br/><br/>
+                    thì bạn hãy tăng <code>znear</code> lên.<br/><br/>
 
                     Nhưng clipping không dừng ở đây, thật ra ta cần phải clip các tam giác với 4 cạnh màn hình nữa, để tránh các tam giác quá gần màn hình trở nên quá bự, tốn
-                    nhiều thời gian để vẽ những phần bên ngoài canvas. Mà do ta dùng ctx.fill() của javascript nên tam giác bự cỡ nào thì ta cũng không thấy fps giảm, nhưng ở blog
+                    nhiều thời gian để vẽ những phần bên ngoài canvas. Mà do ta dùng <code>ctx.fill()</code> của javascript nên tam giác bự cỡ nào thì ta cũng không thấy fps giảm, nhưng ở blog
                     sau sẽ khác 😳 Ở blog này ta phải làm được việc clip 4 cạnh màn hình thì ta mới dễ thở ở blog sau được 🥵<br/><br/>
                     Về cài đặt thì cách đơn giản nhất là clip hết tam giác với 1 cạnh, lưu hết các tam giác cũ và mới vào 1 mảng, rồi dùng tiếp mảng đó để clip tiếp với cạnh tiếp theo,
                     cho đến khi hết cạnh. Cách này sẽ sinh ra các mảng rác, cách tốt hơn là sử dụng một queue, với mỗi plane, pop từng tam giác một ra để clip với plane đó xong add

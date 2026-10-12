@@ -48,7 +48,7 @@
                     Trước khi vẽ được 1 cục cube lên màn hình, ta cần có thông tin của cube đó trước,
                     là tập hợp tất cả các tam giác tạo nên nó. Ta đã làm được một phần việc này ở 
                     <a href="graphics3D1-setup.html#tamgiac">phần 2 của blog trước</a>, nhưng ta đang mặc định
-                    tâm của cube đó ở gốc tọa độ (0, 0, 0) và có kích thước là 1. Ta cần tạo một hàm để tạo ra cube ở
+                    tâm của cube đó ở gốc tọa độ <code>(0, 0, 0)</code> và có kích thước là 1. Ta cần tạo một hàm để tạo ra cube ở
                     vị trí và kích thước bất kỳ, hàm đó sẽ như sau (mình nghĩ là không cần giải thích):
                     <pre style="height: 400px;"><code class="language-javascript">function makeCube(center, size) {
     let halfSize = {x: size.x / 2, y: size.y / 2, z: size.z / 2};
@@ -120,7 +120,7 @@
 }</code></pre>
                     Tuy nhiên, hàm này khá khó đọc và hiểu (và cũng khó bảo trì về sau), vì sử dụng javascript object lung tung mà không rõ ràng chúng
                     là gì. Cho nên trước đó ta cần định nghĩa kiểu dữ liệu cho điểm và tam giác, trước tiên là điểm, mình đặt 
-                    tên là <i>Vector3</i> cho giống Unity, gồm các hàm cơ bản như cộng, trừ, nhân, chia, nhân vector,
+                    tên là <i><code>Vector3</code></i> cho giống Unity, gồm các hàm cơ bản như cộng, trừ, nhân, chia, nhân vector,
                     tích vô hướng, tích có hướng, tính độ dài và chuẩn hóa về vector đơn vị:
                     <pre><code class="language-javascript">class Vector3 {
     constructor(x = 0, y = 0, z = 0) {
@@ -180,7 +180,7 @@
         }
     }
 }</code></pre>
-                    Sau khi tạo được 2 class trên, ta có thể viết lại hàm makeCube ở trên như sau:
+                    Sau khi tạo được 2 class trên, ta có thể viết lại hàm <code>makeCube</code> ở trên như sau:
                     <pre style="height: 400px"><code class="language-javascript">function makeCube(center, size) {
     let halfSize = Vector3.div(size, 2);
     let tris = [];
@@ -251,10 +251,10 @@
 
     return tris;
 		}</code></pre>
-                    Có được hàm makeCube rồi, ta sẽ tiến hành vẽ, quay lại với canvas mà đã được setup ở <a href="graphics3D1-setup.html">phần 1</a>,
-                    ta tạo một cube ở vị trí (0, 0, 2) (chính giữa màn hình và cách màn hình 2 đơn vị) và có kích thước là (1, 1, 1):
+                    Có được hàm <code>makeCube</code> rồi, ta sẽ tiến hành vẽ, quay lại với canvas mà đã được setup ở <a href="graphics3D1-setup.html">phần 1</a>,
+                    ta tạo một cube ở vị trí <code>(0, 0, 2)</code> (chính giữa màn hình và cách màn hình 2 đơn vị) và có kích thước là <code>(1, 1, 1)</code>:
                     <pre><code class="language-javascript">let cube1 = makeCube(new Vector3(0, 0, 2), new Vector3(1, 1, 1));</code></pre>
-                    Sau đó đối với từng tam giác của cube1, ta sẽ vẽ 3 đường nối 3 đỉnh của nó lại với nhau, sử dụng các hàm của canvas 2D context:
+                    Sau đó đối với từng tam giác của <code>cube1</code>, ta sẽ vẽ 3 đường nối 3 đỉnh của nó lại với nhau, sử dụng các hàm của canvas 2D context:
                     <pre><code class="language-javascript">for (let tri of cube1) {
     vertices = tri.vertices;
     ctx.beginPath();
@@ -267,10 +267,10 @@
                     Kết quả ra như sau:
                     <div id="htmlPreview3" class="htmlPreview"></div>
                     Khoan đã, sao lại không có gì hết nhỉ? Thật ra là có, nếu bạn để ý bạn sẽ thấy một dấu chấm nhỏ ở
-                    góc trái trên của canvas, đó chính là cube1 của mình, nó nhỏ như vậy vì mình đang cố vẽ một hình lập phương
-                    kích thước 1 trong 1 canvas 400x300. Cho nên trước khi vẽ các tam giác, ta nên chuẩn hóa từng đỉnh của nó về
+                    góc trái trên của canvas, đó chính là <code>cube1</code> của mình, nó nhỏ như vậy vì mình đang cố vẽ một hình lập phương
+                    kích thước 1 trong 1 canvas <code>400x300</code>. Cho nên trước khi vẽ các tam giác, ta nên chuẩn hóa từng đỉnh của nó về
                     lại khoảng hợp lý của canvas. Nhưng trước đó, người ta thường chuẩn hóa nó về một môi trường "chuẩn", là người ta
-                    sẽ cho rằng tọa độ (0, 0) ở giữa màn hình và đi ra 1 đơn vị ở 4 phía (dù cho là hình chữ nhật), 
+                    sẽ cho rằng tọa độ <code>(0, 0)</code> ở giữa màn hình và đi ra 1 đơn vị ở 4 phía (dù cho là hình chữ nhật), 
                     sau đó mới nhân kích thước màn hình (hay ở trường hợp của mình là canvas). 4 phía đều đi ra 1 đơn vị như vậy 
                     sẽ rất thuận tiện trong các thao tác liên quan tới màn hình:
                     <div align="center">

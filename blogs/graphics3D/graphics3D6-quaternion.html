@@ -161,7 +161,7 @@
 \cos\frac{\gamma}{2}\sin\frac{\beta}{2}\sin\frac{\alpha}{2}
 \right)k
                     $$
-                    Như vậy ta đã có được mọi thứ ta cần, bắt đầu cài đặt 😳 Class Quaternion của chúng ta sẽ khá ngắn:
+                    Như vậy ta đã có được mọi thứ ta cần, bắt đầu cài đặt 😳 Class <code>Quaternion</code> của chúng ta sẽ khá ngắn:
                     <pre><code class="language-javascript">class Quaternion {
     constructor(a = 1, b = 0, c = 0, d = 0) {
         this.a = a;
@@ -227,7 +227,7 @@
                     Bây giờ cũng thế, nhưng thay vì lưu rotation matrix thì ta lưu một Quaternion, mỗi lần ta muốn xoay ta chỉ cần nhân thêm Quaternion xoay
                     đó vào trong Quaternion rotation đã có sẵn, rồi cuối mỗi frame cứ lấy Quaternion cuối cùng đó áp vào từng đỉnh.<br/><br/>
 
-                    Trước khi tiếp tục, có một thứ mà đáng lẽ mình phải làm lâu rồi, đó chính là tạo sẵn các Vector3 thường dùng như Unity để code được clean:
+                    Trước khi tiếp tục, có một thứ mà đáng lẽ mình phải làm lâu rồi, đó chính là tạo sẵn các <code>Vector3</code> thường dùng như Unity để code được clean:
                     <pre><code class="language-javascript">class Vector3 {
     ...
 
@@ -249,7 +249,7 @@ Vector3.up = new Vector3(0, 1, 0);
 Vector3.down = new Vector3(0, -1, 0);
 Vector3.forward = new Vector3(0, 0, 1);</code></pre> 
 
-                    Trước tiên ta thêm một hàm xoay theo Quaternion cho class Triangle (áp dụng xoay cho 3 đỉnh của nó):
+                    Trước tiên ta thêm một hàm xoay theo Quaternion cho class <code>Triangle</code> (áp dụng xoay cho 3 đỉnh của nó):
                     <pre><code class="language-javascript">class Triangle {
     ...
 
@@ -262,12 +262,12 @@ Vector3.forward = new Vector3(0, 0, 1);</code></pre>
     ...
 }</code></pre>
                     
-                    Ở class Cube, ta phải làm những thứ sau:
+                    Ở class <code>Cube</code>, ta phải làm những thứ sau:
                     <ul>
-                        <li>Bỏ 3 hàm rotate theo rotation matrix</li>
-                        <li>Thay đổi constructor để dùng Quaternion thay vì matrix, nhưng vẫn nhận tham số là euler angles để dễ hiểu, sử dụng euler angles đó để xây dựng Quaternion.</li>
-                        <li>Thêm một hàm rotate (cũng nhận tham số là euler angles), để áp phép xoay mới (nhân Quaternion) vào rotation.</li>
-                        <li>Thay đổi hàm getTransformedTriangles, thay vì nhân rotation matrix, ta áp dụng Quaternion rotation vào đỉnh hiện tại</li>
+                        <li>Bỏ 3 hàm <code>rotate</code> theo rotation matrix</li>
+                        <li>Thay đổi <code>constructor</code> để dùng Quaternion thay vì matrix, nhưng vẫn nhận tham số là euler angles để dễ hiểu, sử dụng euler angles đó để xây dựng Quaternion.</li>
+                        <li>Thêm một hàm <code>rotate</code> (cũng nhận tham số là euler angles), để áp phép xoay mới (nhân Quaternion) vào <code>rotation</code>.</li>
+                        <li>Thay đổi hàm <code>getTransformedTriangles</code>, thay vì nhân rotation matrix, ta áp dụng Quaternion rotation vào đỉnh hiện tại</li>
                     </ul>
                     <pre><code class="language-javascript">class Cube {
     constructor(pos, eulerAngles, scale) {
@@ -301,10 +301,10 @@ Vector3.forward = new Vector3(0, 0, 1);</code></pre>
     }
 }</code></pre>
 
-                    Cuối cùng, đối với 2 cube, ta dùng hàm rotate mới:
+                    Cuối cùng, đối với 2 cube, ta dùng hàm <code>rotate</code> mới:
                     <pre><code class="language-javascript">cube1.rotate(0, 50 * dt, 0);
 cube2.rotate(50 * dt, 0, 0);</code></pre>
-                    Full code, bạn có thể giữ lại 3 hàm rotation matrix và hàm nhân matrix ở class Mat4x4 nếu muốn, mình thì bỏ đi cho code bớt dài (cũng ko bớt mấy):
+                    Full code, bạn có thể giữ lại 3 hàm rotation matrix và hàm nhân matrix ở class <code>Mat4x4</code> nếu muốn, mình thì bỏ đi cho code bớt dài (cũng ko bớt mấy):
                     <div class="htmlPreview" id="htmlPreview13"></div>
                     Như vậy là bạn đã cài đặt được Quaternion vào engine của mình, nếu bạn muốn thì có thể đọc tiếp blog để xem cách chứng minh từ đầu tới cuối sao cho ra
                     được phép xoay 3D trong Quaternion.<br/><br/>

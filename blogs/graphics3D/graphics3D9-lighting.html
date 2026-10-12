@@ -49,7 +49,7 @@
                     Ánh sáng mà ta gặp nhiều nhất trong cuộc sống là ánh sáng mặt trời, vì mặt trời ở rất xa nên ta có thể xem mọi tia sáng đều song song với nhau, và 
                     khoảng cách tới mặt trời không thay đổi cường độ của nó là mấy. Nghĩa là độ sáng của một mặt phẳng chỉ dựa vào việc nó đang hướng đi đâu chứ không liên
                     quan tới khoảng cách, ánh sáng hoạt động theo kiểu này được gọi là Directional Light.<br/><br/>
-                    Implement cái này khá dễ, thậm chí không cần đụng tới Rasterizer, vì tam giác nào cũng sẽ chỉ có một màu duy nhất. Ta biết là khi một mặt phẳng hướng thẳng về phía
+                    Implement cái này khá dễ, thậm chí không cần đụng tới <code>Rasterizer</code>, vì tam giác nào cũng sẽ chỉ có một màu duy nhất. Ta biết là khi một mặt phẳng hướng thẳng về phía
                     mặt trời thì nó sẽ sáng nhất, hướng ngược lại thì nó sẽ tối nhất, như vậy ta chỉ cần tính tích vô hướng giữa pháp tuyến của mặt phẳng với hướng của ánh sáng
                     là sẽ ra được cường độ ánh sáng lên mặt phẳng đó 😳
                     Đầu tiên ta tạo một hướng chung chung cho ánh sáng:
@@ -72,7 +72,7 @@ for (let tri of objectTris) {
         visibleTris.push(...tri.clipAgainstPlane(nearPlane));
     }
 }</code></pre>
-                    Sẽ tốt hơn nếu ta có thể điều chỉnh được độ sáng 😳 Ta sẽ tạo một slider (input loại range) bên dưới chỗ ghi FPS, mặc định cho value là 1. Thêm kế bên nó 1 số ghi độ sáng hiện tại:
+                    Sẽ tốt hơn nếu ta có thể điều chỉnh được độ sáng 😳 Ta sẽ tạo một slider (<code>input</code> loại <code>range</code>) bên dưới chỗ ghi FPS, mặc định cho <code>value</code> là 1. Thêm kế bên nó 1 số ghi độ sáng hiện tại:
                     <pre><code class="language-html">&lt;div&gt;
     Directional light intensity:
     &lt;input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" /&gt;
@@ -89,7 +89,7 @@ lightDirIntensitySlider.addEventListener("input", () => {
     dirLightIntensity = parseFloat(lightDirIntensitySlider.value);
     lightDirIntensityText.textContent = dirLightIntensity.toFixed(2);
 });</code></pre>
-                    Trong hàm applyDirectionLight ta chỉ cần nhân thêm dirLightIntensity vào là xong:
+                    Trong hàm <code>applyDirectionLight</code> ta chỉ cần nhân thêm <code>dirLightIntensity</code> vào là xong:
                     <pre><code class="language-javascript">applyDirectionalLight(lightDir) {
     let dirLightDiffuse = (1 - (Vector3.dot(this.getNormal(), lightDir) + 1) / 2) * dirLightIntensity;
     this.color = new Color(this.color.r * dirLightDiffuse, this.color.g * dirLightDiffuse, this.color.b * dirLightDiffuse);
@@ -104,7 +104,7 @@ lightDirIntensitySlider.addEventListener("input", () => {
                     Nhưng trước khi làm gì liên quan tới nó, vì tính chất của point light là cường độ ánh sáng sẽ dựa vào khoảng cách, cho nên việc tính màu phải tính theo từng
                     pixel một, là ta sẽ phải xử lý ở rasterizer. Tuy nhiên, bạn cũng biết khi làm việc ánh sáng thì ta phải làm với tọa độ thế giới, cho nên ta phải lưu lại
                     tọa độ thế giới ban đầu trước khi áp dụng view matrix và những bước tiếp theo.<br/><br/>
-                    Cũng giống như việc lưu lại màu, ta cũng tạo tọa độ thế giới ở constructor, và copy nó ở hàm clone:
+                    Cũng giống như việc lưu lại màu, ta cũng tạo tọa độ thế giới ở <code>constructor</code>, và copy nó ở hàm <code>clone</code>:
                     <pre><code class="language-javascript">class Triangle {
     constructor(vertices = [], color = new Color(255, 255, 255)) {
         ...
@@ -123,9 +123,9 @@ lightDirIntensitySlider.addEventListener("input", () => {
     }
     ...
 }</code></pre>
-                    Tới hàm clipAgainstPlane thì nó sẽ hơi phức tạp chút, bạn biết là ta thực hiện clipping ở view space, nhưng khi ta tạo tam giác mới sau khi cắt tam giác cũ,
-                    ta cũng phải tạo worldVertices thích hợp cho các tam giác mới. Như vậy ta cũng phải nội suy worldVertices như cách ta nội suy vertices, vì vậy ta phải chỉnh sửa
-                    lại hàm plane.intersectWithLine, thay vì chỉ trả về giao điểm giữa plane và đoạn thẳng, ta trả về luôn giá trị t nội suy của giao điểm đó:
+                    Tới hàm <code>clipAgainstPlane</code> thì nó sẽ hơi phức tạp chút, bạn biết là ta thực hiện clipping ở view space, nhưng khi ta tạo tam giác mới sau khi cắt tam giác cũ,
+                    ta cũng phải tạo <code>worldVertices</code> thích hợp cho các tam giác mới. Như vậy ta cũng phải nội suy <code>worldVertices</code> như cách ta nội suy <code>vertices</code>, vì vậy ta phải chỉnh sửa
+                    lại hàm <code>plane.intersectWithLine</code>, thay vì chỉ trả về giao điểm giữa plane và đoạn thẳng, ta trả về luôn giá trị <code>t</code> nội suy của giao điểm đó:
                     <pre><code class="language-javascript">intersectWithLine(A, B) {
     let An = Vector3.dot(A, this.normal);
     let Bn = Vector3.dot(B, this.normal);
@@ -134,7 +134,7 @@ lightDirIntensitySlider.addEventListener("input", () => {
     let vectorAM = Vector3.mul(vectorAB, t);
     return [t, Vector3.add(A, vectorAM)];   // trả về dạng mảng vì javascript không có tuple
 }</code></pre>
-                    Thay vì viết lại công thức nội suy nhiều lần ở hàm clipAgainstPlane, mình tạo luôn hàm cho nó trong Vector3 (thật ra không cần nội suy w vì w chỉ được
+                    Thay vì viết lại công thức nội suy nhiều lần ở hàm <code>clipAgainstPlane</code>, mình tạo luôn hàm cho nó trong <code>Vector3</code> (thật ra không cần nội suy <code>w</code> vì <code>w</code> chỉ được
                     dùng sau khi ta nhân projection matrix, nhưng nội suy luôn cho an toàn):
                     <pre><code class="language-javascript">class Vector3 {
     ...
@@ -147,7 +147,7 @@ lightDirIntensitySlider.addEventListener("input", () => {
     }
     ...
 }</code></pre>
-                    Hàm clipAgainstPlane của chúng ta như sau (bắt đầu hơi dài rồi đấy 🥵):
+                    Hàm <code>clipAgainstPlane</code> của chúng ta như sau (bắt đầu hơi dài rồi đấy 🥵):
                     <pre><code class="language-javascript">clipAgainstPlane(plane) {
     ...
 
@@ -215,8 +215,8 @@ lightDirIntensitySlider.addEventListener("input", () => {
 
     return outTris;
 }</code></pre>
-                    Ta tạo thêm một hàm trong Triangle để copy giá trị của vertices sang worldVertices khi cần (cụ thể là sau khi nhân model matrix), và một hàm để tính
-                    vector pháp tuyến với worldVertices:
+                    Ta tạo thêm một hàm trong <code>Triangle</code> để copy giá trị của vertices sang <code>worldVertices</code> khi cần (cụ thể là sau khi nhân model matrix), và một hàm để tính
+                    vector pháp tuyến với <code>worldVertices</code>:
                     <pre><code class="language-javascript">class Triangle{
     ...
     updateWorldVertices() {
@@ -233,7 +233,7 @@ lightDirIntensitySlider.addEventListener("input", () => {
     }
     ...
 }</code></pre>
-                    Ta dùng hàm updateWorldVertices bên trong hàm getTransformedTriangles của Cube:
+                    Ta dùng hàm <code>updateWorldVertices</code> bên trong hàm <code>getTransformedTriangles</code> của <code>Cube</code>:
                     <pre><code class="language-javascript">getTransformedTriangles() {
     let transformedTris = [];
     for (let tri of this.tris) {
@@ -249,7 +249,7 @@ lightDirIntensitySlider.addEventListener("input", () => {
                     Thế là việc giữ được tọa độ thế giới đã xong, trước khi code gì liên quan tới point light, ta cần có một thứ đại diện cho point light đó, cho đơn giản
                     thì để nó thành 1 cube mới (vì engine của chúng ta chỉ có cube 😅).
                     <pre><code class="language-javascript">let lightCube = new Cube(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255));</code></pre>
-                    Ta cũng đẩy hết tam giác của nó vào objectTris ở đầu render pipeline, ngoài ra để cho sinh động thì ta thêm các phím để điều khiển nó xung quanh:
+                    Ta cũng đẩy hết tam giác của nó vào <code>objectTris</code> ở đầu render pipeline, ngoài ra để cho sinh động thì ta thêm các phím để điều khiển nó xung quanh:
                     <pre><code class="language-javascript">function update(time = performance.now()) {
     ...
 
@@ -296,7 +296,7 @@ pointLightIntensitySlider.addEventListener("input", () => {
                     nó thành \(\frac{1}{1+k*distance^2}\) trong đó \(k\) được gọi là "độ lan xa" của ánh sáng (càng nhỏ càng lan xa). Kết quả công thức này được gọi là attenuation - độ suy
                     giảm của ánh sáng.<br/><br/>
                     Vì ta vẫn muốn giữ Directional Light, nên ta cần cộng thêm ánh sáng của Point light vào Directional light, nên tốt nhất là ta xử lý luôn directional light
-                    ở rasterizer, như vậy ta xóa hàm applyDirectionalLight và chỗ gọi nó (trước khi nhân view matrix). Và hàm processTriangles sẽ trở thành như sau:
+                    ở rasterizer, như vậy ta xóa hàm <code>applyDirectionalLight</code> và chỗ gọi nó (trước khi nhân view matrix). Và hàm <code>processTriangles</code> sẽ trở thành như sau:
                     <pre><code class="language-javascript">processTriangles(tris) {
     for (let tri of tris) {
         ...
@@ -355,18 +355,18 @@ pointLightIntensitySlider.addEventListener("input", () => {
         }
     }
 }</code></pre>
-                    Kết quả (chỉnh directional light xuống để thấy rõ sự ảnh hưởng của point light, dùng i,k,j,l,u,o để di chuyển point light):
+                    Kết quả (chỉnh directional light xuống để thấy rõ sự ảnh hưởng của point light, dùng <code>i,k,j,l,u,o</code> để di chuyển point light):
                     <div class="htmlPreview" id="htmlPreview25"></div>
 
                     <h2>3. Xử lí nhiều point light</h2>
                     Một cái đèn thì hơi buồn, game thực tế thì lúc nào cũng có vài ba cái đèn trong 1 scene. Nhưng ta không phải chỉ thêm point light thêm là xong mà công thức
                     tính cũng nên đổi đổi chút.<br/><br/>
-                    Trước tiên, ta khai báo nhiều point light thành 1 mảng thay vì chỉ 1 lightCube:
+                    Trước tiên, ta khai báo nhiều point light thành 1 mảng thay vì chỉ 1 <code>lightCube</code>:
                     <pre><code class="language-javascript">let pointLights = [
     new Cube(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255)),
     new Cube(new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255))
 ];</code></pre>
-                    Chỗ điều khiển bằng phím i,k,j,l,u,o thì mình cho điều khiển cái đèn đầu tiên, chỗ vẽ thì giờ phải vẽ cả 2 cục cube đèn:
+                    Chỗ điều khiển bằng phím <code>i,k,j,l,u,o</code> thì mình cho điều khiển cái đèn đầu tiên, chỗ vẽ thì giờ phải vẽ cả 2 cục cube đèn:
                     <pre><code class="language-javascript">let controllingLight = pointLights[0];
 if (keyStates['i']) {
     controllingLight.pos.z += dt * 2;

@@ -53,7 +53,7 @@
                     slow motion trên máy chậm, và chạy như flash trên máy nhanh, điển hình là Dark souls remastered bị vấn đề này (bản cũ thì không bị). Ví dụ đơn giản với
                     vị trí của object, lý do xảy ra vấn đề trên là mọi frame bạn đều cộng 1 khoảng giống nhau, máy nhanh xử lý xong 1 frame trong 0.03s bạn cộng 2m, máy chậm
                     xử lý xong 1 frame trong 0.07s bạn cũng cộng 2m, thì tất nhiên là nó sẽ bị chạy chậm hơn trên máy chậm và nhanh hơn trên máy nhanh. Nếu ngày xưa bạn từng 
-                    làm game console bằng C++, bạn sẽ gặp qua vấn đề này khi cứ cộng khoảng y hệt mỗi vòng lặp while loop 😅.<br/><br/>
+                    làm game console bằng C++, bạn sẽ gặp qua vấn đề này khi cứ cộng khoảng y hệt mỗi vòng lặp <code>while</code> loop 😅.<br/><br/>
                     
                     Cách giải quyết vấn
                     đề này khá dễ, bạn chỉ cần đặt clock đếm xem frame trước xử lý xong trong bao lâu (khoảng thời gian này được gọi là delta time (\(\Delta t\))),
@@ -62,12 +62,12 @@
                     Như vậy sẽ giải quyết được vấn đề slow motion, nhưng bây giờ vị trí vật trên máy chậm sẽ bị giật giật, nhưng mà vẫn đảm bảo vật sẽ luôn ở chung vị trí với 
                     máy nhanh.<br/><br/>
 
-                    Để đếm thời gian trong javascript khá dễ, ta chỉ cần xài <a href="https://developer.mozilla.org/en-US/docs/Web/API/Performance/now">performance.now()</a>,
-                    là hàm đếm số mili giây từ kể từ <a href="https://developer.mozilla.org/en-US/docs/Web/API/Performance/timeOrigin">Performance.timeOrigin</a>.
+                    Để đếm thời gian trong javascript khá dễ, ta chỉ cần xài <a href="https://developer.mozilla.org/en-US/docs/Web/API/Performance/now"><code>performance.now()</code></a>,
+                    là hàm đếm số mili giây từ kể từ <a href="https://developer.mozilla.org/en-US/docs/Web/API/Performance/timeOrigin"><code>Performance.timeOrigin</code></a>.
                     Đối với loop frame thì sử dụng hàm 
-                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame">requestAnimationFrame()</a>, là hàm yêu cầu browser gọi một hàm
-                    callback trước lần vẽ kế tiếp, hàm callback đó phải có tham số đầu tiên là một biến đại diện cho số mili giây kể từ <a href="https://developer.mozilla.org/en-US/docs/Web/API/Performance/timeOrigin">timeOrigin</a>,
-                    chính là thứ mà ta vừa nói tới. Ta sẽ tạo một hàm update, và ở cuối hàm ta dùng requestAnimationFrame để gọi callback là chính nó 
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame"><code>requestAnimationFrame()</code></a>, là hàm yêu cầu browser gọi một hàm
+                    callback trước lần vẽ kế tiếp, hàm callback đó phải có tham số đầu tiên là một biến đại diện cho số mili giây kể từ <a href="https://developer.mozilla.org/en-US/docs/Web/API/Performance/timeOrigin"><code>timeOrigin</code></a>,
+                    chính là thứ mà ta vừa nói tới. Ta sẽ tạo một hàm <code>update</code>, và ở cuối hàm ta dùng <code>requestAnimationFrame</code> để gọi callback là chính nó 
                     (đừng lo, nó không phải đệ quy đâu nên không bị stack overflow). Code cụ thể như sau:
 
                     <pre><code class="language-javascript">let lastTime = performance.now();
@@ -84,7 +84,7 @@ function update(time = performance.now()) {
 
 update();   //gọi hàm để bắt đầu loop</code></pre>
                     
-                    Ở giữa hàm update đó ta sẽ để đoạn code thay đổi các thuộc tính của 2 cube (xoay 2 cube theo dt),
+                    Ở giữa hàm <code>update</code> đó ta sẽ để đoạn code thay đổi các thuộc tính của 2 cube (xoay 2 cube theo <code>dt</code>),
                     tập hợp các tam giác xong project và vẽ chúng. Nhưng trước khi vẽ, ta cần phải clear màn
                     hình để tránh vẽ chồng lặp lên nhau:
                     <pre><code class="language-javascript">let lastTime = performance.now();
@@ -112,9 +112,9 @@ update();</code></pre>
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview10"></div>
 
-                    Sẽ hay hơn nếu ta tính luôn fps nhỉ 😳 cũng khá đơn giản, chỉ cần vừa đếm số frame đã qua vừa đếm thời gian (bằng dt), khi thời gian cộng dồn đủ 1s thì cập nhật số frame
+                    Sẽ hay hơn nếu ta tính luôn fps nhỉ 😳 cũng khá đơn giản, chỉ cần vừa đếm số frame đã qua vừa đếm thời gian (bằng <code>dt</code>), khi thời gian cộng dồn đủ 1s thì cập nhật số frame
                     đã đếm được lên màn hình, xong reset lại cả hai là oke. Vì lúc reset ta gán thời gian về 0 chứ không trừ đi 1s, mỗi lần đếm sẽ dài hơn 1s một chút,
-                    nên ở màn hình 60Hz con số hiện ra thường là 61 chứ không phải đúng 60 (lần đầu còn đếm luôn frame đầu tiên có dt = 0):
+                    nên ở màn hình 60Hz con số hiện ra thường là 61 chứ không phải đúng 60 (lần đầu còn đếm luôn frame đầu tiên có <code>dt = 0</code>):
                     <pre><code class="language-html">&lt;h2 id="fps"&gt;FPS: 0&lt;/h2&gt;</code></pre>
                     <pre><code class="language-javascript">const fpsInfo = document.getElementById("fps");
 let frames = 0, fpsTimeCounter = 0;
@@ -149,8 +149,8 @@ function update(time = performance.now()) {
                     Đối với việc xét "ngược vùng" thì mình đã có nhắc tới chuyện này ở <a href="graphics3D1-setup.html">blog 1</a>, ta chỉ cần sử dụng tích vô hướng là ô kê, nếu
                     tích vô hướng < 0 thì nó sẽ "ngược vùng".<br/><br/>
 
-                    Hàm tính tích vô hướng (dot) và tích có hướng (cross) ta đã làm sẵn ở class Vector3. Đối với class Triangle ta sẽ thêm hàm tìm tâm getCenter và hàm tìm vector pháp tuyến
-                    getNormal:
+                    Hàm tính tích vô hướng (<code>dot</code>) và tích có hướng (<code>cross</code>) ta đã làm sẵn ở class <code>Vector3</code>. Đối với class <code>Triangle</code> ta sẽ thêm hàm tìm tâm <code>getCenter</code> và hàm tìm vector pháp tuyến
+                    <code>getNormal</code>:
                     <pre><code class="language-javascript">getCenter() {
     let x = (this.vertices[0].x + this.vertices[1].x + this.vertices[2].x) / 3.0;
     let y = (this.vertices[0].y + this.vertices[1].y + this.vertices[2].y) / 3.0;
