@@ -1,0 +1,50 @@
+--- "a/htmlPreviews\\htmlPreview3.html"
++++ "b/htmlPreviews\\htmlPreview4.html"
+@@ -18,17 +18,21 @@
+ 
+ 		const vertexShaderSource = `#version 300 es
+ in vec3 aPosition;
++in vec3 aColor;
++out vec4 vColor;
+ 
+ void main(){
+ 	gl_Position = vec4(aPosition, 1.0);
++	vColor = vec4(aColor, 1.0);
+ }`;
+ 		const fragmentShaderSource = `#version 300 es
+ precision highp float;
+ 
++in vec4 vColor;
+ out vec4 outColor;
+ 
+ void main(){
+-	outColor = vec4(1, 0, 0, 1);
++	outColor = vColor;
+ }`;
+ 		function compileShader(type, source) {
+ 			const shader = gl.createShader(type);
+@@ -52,9 +56,9 @@ void main(){
+ 		gl.useProgram(program);
+ 
+ 		const vertexData = new Float32Array([
+-			0, 0.5, 0,
+-			-0.5, -0.5, 0,
+-			0.5, -0.5, 0
++			0, 0.5, 0, 1, 0, 0,
++			-0.5, -0.5, 0, 0, 1, 0,
++			0.5, -0.5, 0, 0, 0, 1
+ 		]);
+ 
+ 		const vertexBuffer = gl.createBuffer();
+@@ -62,7 +66,10 @@ void main(){
+ 		gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
+ 		const aPosition = gl.getAttribLocation(program, "aPosition");
+ 		gl.enableVertexAttribArray(aPosition);
+-		gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 12, 0);
++		gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 24, 0);
++		const aColor = gl.getAttribLocation(program, "aColor");
++		gl.enableVertexAttribArray(aColor);
++		gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 24, 12);
+ 
+ 		gl.drawArrays(gl.TRIANGLES, 0, 3);
+ 

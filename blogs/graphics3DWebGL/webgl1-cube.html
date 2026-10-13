@@ -295,7 +295,31 @@ void main(){
 }</code></pre>
 					Fragment shader nhận <code>vColor</code> từ vertex shader, và set <code>outColor</code> bằng nó trong hàm main, chỉ đơn giản vậy thôi. Lúc này bạn
 					thắc mắc là vậy khúc nội suy xảy ra ở đâu? Câu trả lời là nó xảy ra ở giữa vertex shader và fragment shader, GPU biết cách map các đỉnh từ vertex shader
-					sang các pixel cho fragment shader. Như cách mà ta xài barycentric coordinates để map trong Software Rasterizer vậy.
+					sang các pixel cho fragment shader. Như cách mà ta xài barycentric coordinates để map trong Software Rasterizer vậy.<br/><br/>
+					Bước 3, thêm dữ liệu màu cho <code>vertexData</code>:
+					<pre><code class="language-javascript">const vertexData = new Float32Array([
+	0, 0.5, 0, 1, 0, 0,		// đỏ
+	-0.5, -0.5, 0, 0, 1, 0,	// xanh lá
+	0.5, -0.5, 0, 0, 0, 1	// xanh dương
+]);</code></pre>
+					Để mình over-analyze dữ liệu trên nhé:
+					<ol>
+						<li><code>vertexData</code> vẫn là mảng 1 chiều, xong dữ liệu của 1 vertex thì mới tới vertex tiếp theo</li>
+						<li>Mỗi vertex có 6 float component, là một vertex có 6 * 4 = 24 byte</li>
+						<li>Với mỗi vertex: attribute tọa độ là 3 float đầu, là dữ liệu của nó bắt đầu từ byte 0 của vertex.
+							Attribute màu là 3 float sau, là dữ liệu của nó bắt đầu từ byte 3*4=12 của vertex. 
+						</li>
+					</ol>
+					Do you see where I'm getting with this? Ý 2 và ý 3 chính là <code>stride</code> và <code>offset</code> trong hàm <code>vertexAttribPointer</code> 😳<br/><br/>
+					Như vậy đoạn code "đưa vertex buffer vào shader" sẽ như sau:
+					<pre><code class="language-javascript">const aPosition = gl.getAttribLocation(program, "aPosition");
+	gl.enableVertexAttribArray(aPosition);
+	gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 24, 0);		// <--------------------------
+	const aColor = gl.getAttribLocation(program, "aColor");
+	gl.enableVertexAttribArray(aColor);
+	gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 24, 12);			// <--------------------------</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id=htmlPreview4></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
