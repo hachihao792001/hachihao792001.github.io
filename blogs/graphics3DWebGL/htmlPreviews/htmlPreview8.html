@@ -230,8 +230,6 @@ void main(){
 		gl.enableVertexAttribArray(aColor);
 		gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 24, 12);
 
-
-
 		const elementBuffer = gl.createBuffer();
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
 		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
