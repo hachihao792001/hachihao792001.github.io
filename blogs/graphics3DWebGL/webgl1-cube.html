@@ -406,6 +406,7 @@ gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);</code></pre>
 					</ul>
 
 					Ngoài ra bạn cũng đang thấy mặt BACK (nó khá là xanh -> z cao) của chứ không phải mặt FRONT, vì index buffer ta để mặt BACK vẽ sau mặt FRONT.
+					Vấn đề này ở series cũ ta giải quyết bằng backface culling, sort tam giác và cách triệt để nhất là depth buffer, sẽ từ từ đụng tới trong blog này 😳.
 
 					<h2>6. Aspect ratio và Uniform</h2>
 					Như Hanvas Engine, clip space của WebGL cũng là một hình vuông, x và y đều chạy từ -1 tới 1, như hình này từ
@@ -457,6 +458,55 @@ gl.uniform1f(uAspect, gameCanvas.width / gameCanvas.height);		// set giá trị 
 					<div class="htmlPreview" id="htmlPreview6"></div>
 					Nó đã hình vuông rồi, nhưng do ta nhìn thẳng vào nó, khó nhìn ra góc cạnh, nên phải xoay nó tí.
 
+					<h2>7. Xoay cube bằng Quaternion</h2>
+					Thay vì xoay cube bằng cách cheat chọt gì đó thì mình bê nguyên class
+					<code>Vector3</code> và <code>Quaternion</code> từ bản cuối của series trước về, chỉ bỏ những hàm chưa dùng tới (như hàm nhân với ma trận,
+					vì bây giờ ta chưa có ma trận). Để xoay được cube thôi thì mình chỉ cần dùng 2 hàm này:
+					<ul>
+						<li><code>Quaternion.buildQuaternionEuler(eulerAngles)</code>: tạo Quaternion từ 3 góc Euler (đơn vị độ), xoay theo thứ tự x → y → z.</li>
+						<li><code>q.rotateVector(v)</code>: xoay vector <code>v</code> bằng Quaternion <code>q</code>, tức là tính \(qvq^*\).</li>
+					</ul>
+					Toàn bộ toán học đằng sau 2 hàm này vẫn dùng được nguyên xi, vì nó dựa trên hệ tọa độ tay trái: x sang phải, y lên trên, z hướng ra xa mình.
+					Clip space của WebGL cũng y như vậy (z càng lớn càng xa), nên không phải đổi dấu gì cả.<br/><br/>
+
+					Đổi <code>corners</code> thành mảng <code>Vector3</code>, xoay từng đỉnh, rồi dùng đỉnh đã xoay để dựng <code>vertexData</code>:
+					<pre><code class="language-javascript">const corners = [
+	new Vector3(-0.5, -0.5, -0.5),
+	new Vector3(0.5, -0.5, -0.5),
+	new Vector3(0.5, 0.5, -0.5),
+	new Vector3(-0.5, 0.5, -0.5),
+	new Vector3(-0.5, -0.5, 0.5),
+	new Vector3(0.5, -0.5, 0.5),
+	new Vector3(0.5, 0.5, 0.5),
+	new Vector3(-0.5, 0.5, 0.5),
+];
+...
+let q = Quaternion.buildQuaternionEuler(new Vector3(40, 50, 30));
+let rotatedCorners = [];
+for (let i = 0; i < corners.length; i++)
+	rotatedCorners.push(q.rotateVector(corners[i]));
+
+const vertexData = new Float32Array(corners.length * 6);
+for (let i = 0; i < corners.length; i++) {
+	vertexData[i * 6] = rotatedCorners[i].x;		// tọa độ lấy từ đỉnh đã xoay
+	vertexData[i * 6 + 1] = rotatedCorners[i].y;
+	vertexData[i * 6 + 2] = rotatedCorners[i].z;
+	vertexData[i * 6 + 3] = corners[i].x + 0.5;		// màu vẫn lấy từ đỉnh gốc
+	vertexData[i * 6 + 4] = corners[i].y + 0.5;
+	vertexData[i * 6 + 5] = corners[i].z + 0.5;
+}</code></pre>
+					Để ý là màu vẫn lấy từ <code>corners</code> gốc chứ không phải từ đỉnh đã xoay. Màu là dữ liệu của đỉnh,
+					nó phải đi theo đỉnh dù đỉnh có bị xoay đi đâu. Nếu ta có đầy đủ các class GameObject và model matrix các thứ như series trước thì không cần phải lo
+					tới việc này.<br/><br/>
+
+					Còn một điều nữa: việc xoay đang được làm trên CPU bằng Javascript. Đây không phải cách làm
+					đúng và hiệu quả khi làm việc với WebGL, nhưng tạm thời để vậy cho dễ hiểu, phần cuối blog mình sẽ nói lại.<br/><br/>
+
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview7"></div>
+
+					Phần này mình xoay cube để bạn thấy rõ còn 2 vấn đề ta cần giải quyết: depth buffer và perspective, sẽ được giải quyết ở phần sau.
+					
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
