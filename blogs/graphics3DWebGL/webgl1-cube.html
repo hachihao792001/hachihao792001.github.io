@@ -507,6 +507,99 @@ for (let i = 0; i < corners.length; i++) {
 
 					Phần này mình xoay cube để bạn thấy rõ còn 2 vấn đề ta cần giải quyết: depth buffer và perspective, sẽ được giải quyết ở phần sau.
 					
+					<h2>8. Perspective và Depth buffer</h2>
+					<h3>a. w và perspective divide</h3>
+					Ở phần 3a mình có nói số <code>1.0</code> ở cuối <code>gl_Position</code> là <code>w</code>, "để shader có thể perspective divide (sẽ nói sau)".
+					Bây giờ là lúc mình nói hê hê.<br/><br/>
+
+					Sau khi vertex shader chạy xong, GPU lấy <code>gl_Position</code> = (x, y, z, w) và <b>tự động chia x, y, z cho w</b>.
+					Từ đầu tới giờ w luôn bằng 1, nên phép chia này không làm gì cả.<br/><br/>
+
+					Nhớ lại ở blog #3 series trước: để có hiệu ứng "càng xa càng nhỏ" thì ta chia x, y cho z, và trong Projection matrix có hàng cuối là
+					<code>0, 0, 1, 0</code>, chính là để chép z vào w, rồi sau khi nhân ma trận thì tự chia cho w. Ở WebGL ta chỉ cần đưa z vào w,
+					còn việc chia thì GPU làm. Ngoài ra, những tam giác nằm một phần ngoài khoảng được vẽ cũng sẽ bị GPU tự cắt
+					(clipping, cái mà ta phải tự code ở <a href="/blogs/graphics3D/graphics3D7-view.html">blog #7</a>).<br/><br/>
+
+					Vì camera đang đứng ở gốc tọa độ, mà cube cũng đang ở gốc tọa độ (nửa cube nằm sau lưng camera), nên ta phải đẩy cube ra xa một chút:
+					<pre><code class="language-javascript">for (let i = 0; i < corners.length; i++) {
+	rotatedCorners.push(q.rotateVector(corners[i]));
+	rotatedCorners[i] = new Vector3(rotatedCorners[i].x, rotatedCorners[i].y, rotatedCorners[i].z + 2);		// <--------------------------
+}</code></pre>
+					<h3>b. \(z_{normalized}\) trong WebGL khác với series trước</h3>
+					Đây là chỗ khác biệt lớn nhất so với series trước, và cũng là chỗ dễ sai nhất nếu bạn bê nguyên công thức cũ qua.<br/><br/>
+
+					Ở blog #3 series trước, ta đưa z về khoảng [0; 1]: near plane thành 0, far plane thành 1, bằng công thức:
+					$$
+					z_{normalized} = \frac{z\frac{z_{far}}{z_{far}-z_{near}} - z_{near}\frac{z_{far}}{z_{far}-z_{near}}}{z}
+					$$
+					Khoảng [0; 1] là quy ước của Direct3D và Vulkan, còn OpenGL và WebGL thì dùng khoảng <b>[-1; 1]</b>: near plane phải thành -1, far plane thành 1.
+					Nếu bê nguyên công thức cũ qua thì vẫn vẽ được, nhưng sai ở 2 điểm:
+					<ul>
+						<li>Near plane bị đặt ở 0 chứ không phải -1. Những điểm có z nhỏ hơn \(z_{near}\) (cho ra giá trị âm sau khi chia) vẫn được vẽ, cho tới khi giá trị
+							chạm -1.</li>
+						<li>Một nửa khoảng [-1; 0] gần như bị bỏ phí, chỉ dành cho khúc giữa \(\frac{z_{near}}{2}\) và \(z_{near}\), làm giảm độ chính xác của depth buffer.</li>
+					</ul>
+
+					Để cập nhật công thức khá dễ, \(z_{normalized}\) nằm trong khoảng \([0; 1]\), nên ta chỉ cần lấy nó nhân 2 xong -1 là sẽ vào khoảng \([-1; 1]\):
+					$$
+					\begin{eqnarray} 
+					2*(\frac{z\frac{z_{far}}{z_{far}-z_{near}} - z_{near}\frac{z_{far}}{z_{far}-z_{near}}}{z})-1 \\
+					=\frac{2*z_{far}}{z_{far}-z_{near}} - \frac{2z_{near}z_{far}}{z_{far}-z_{near}} * \frac{1}{z}-1\\
+					= \frac{z_{far}+z_{near}}{z_{far}-z_{near}} -\frac{2z_{far}z_{near}}{z_{far}-z_{near}} * \frac{1}{z}
+					\end{eqnarray}
+					$$
+					Vì WebGL tự chia cho \(z\), nên ta nhân lại biểu thức trên với \(z\) rồi đưa cho WebGL:
+					$$
+					z*(\frac{z_{far}+z_{near}}{z_{far}-z_{near}} -\frac{2z_{far}z_{near}}{z_{far}-z_{near}} * \frac{1}{z}) = \frac{z_{far}+z_{near}}{z_{far}-z_{near}} * z - \frac{2z_{far}z_{near}}{z_{far}-z_{near}}
+					$$
+
+					Có được công thức rồi, giờ trong Vertex Shader ta tạo 2 uniform mới cho zNear và zFar:
+					<pre><code class="language-hlsl">#version 300 es
+in vec3 aPosition;
+in vec3 aColor;
+uniform float uZNear;		// <--------------------------
+uniform float uZFar;		// <--------------------------
+uniform float uAspect;
+out vec4 vColor;
+
+void main(){
+	float a = (uZFar + uZNear) / (uZFar - uZNear);
+	float b = -2.0 * uZFar * uZNear / (uZFar - uZNear);
+	gl_Position = vec4(aPosition.x / uAspect, aPosition.y, aPosition.z * a + b, aPosition.z);		// <--------------------------
+	vColor = vec4(aColor, 1.0);
+}</code></pre>
+					Phía JavaScript thì thêm 2 uniform mới, near plane là 0.01, far plane là 1000:
+					<pre><code class="language-javascript">const uZNear = gl.getUniformLocation(program, "uZNear");
+const uZFar = gl.getUniformLocation(program, "uZFar");
+gl.uniform1f(uZNear, 0.01);
+gl.uniform1f(uZFar, 1000);</code></pre>
+
+					Tính chất "càng gần càng thay đổi nhiều" của hàm hyperbol mà blog #3 nói tới thì vẫn giữ nguyên.
+
+					<h3>c. Depth test</h3>
+					Ở <a href="/blogs/graphics3D/graphics3D8-rasterizer.html">blog #8 series trước</a>, depth buffer là một mảng 2 chiều tự tạo, 
+					khởi tạo bằng <code>Infinity</code>, và mỗi pixel chỉ được vẽ khi
+					<code>z &lt; this.depthBuffer[y][x]</code>. Với WebGL thì canvas đã có sẵn depth buffer (mặc định khi tạo context), GPU cũng tự nội suy z cho từng
+					pixel giống như ta làm bằng barycentric coordinates, ta chỉ cần bật nó lên:
+					<pre><code class="language-javascript">gl.enable(gl.DEPTH_TEST);		// bật depth test, mặc định là tắt
+gl.depthFunc(gl.LESS);			// pixel mới được vẽ khi depth nhỏ hơn depth hiện tại
+
+gl.clearColor(0.9, 0.9, 0.9, 1);
+gl.clearDepth(1);				// giá trị dùng để clear depth buffer
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);		// clear cả color buffer lẫn depth buffer</code></pre>
+					<ul>
+						<li><code>gl.enable(gl.DEPTH_TEST)</code>: depth test mặc định là tắt, đó là lý do vì sao ở phần 5 và 7 tam giác sau cứ đè lên tam giác trước.</li>
+						<li><code>gl.depthFunc(gl.LESS)</code>: chính là cái <code>z &lt; this.depthBuffer[y][x]</code> ở blog #8. <code>gl.LESS</code> cũng là giá trị mặc định,
+							nhưng mình vẫn ghi ra cho rõ.</li>
+						<li><code>gl.clearDepth(1)</code>: tương đương với <code>Infinity</code> ở blog #8. Depth buffer chỉ chứa giá trị [0; 1], nên 1 là xa nhất.</li>
+						<li><code>gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)</code>: ở phần 2 mình có nói là có nhiều loại buffer và có thể clear cùng lúc, thì đây.
+							Mỗi loại buffer là 1 bit, OR lại với nhau là clear hết trong 1 lần gọi.</li>
+					</ul>
+
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview8"></div>
+					Lần này mới thật sự là 1 cục cube: có perspective, mặt sau bị mặt trước che đúng như mong đợi 😳
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

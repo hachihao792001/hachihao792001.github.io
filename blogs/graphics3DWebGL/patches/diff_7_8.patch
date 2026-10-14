@@ -1,0 +1,55 @@
+--- "a/htmlPreviews\\htmlPreview7.html"
++++ "b/htmlPreviews\\htmlPreview8.html"
+@@ -124,17 +124,26 @@
+ 		let gameCanvas = document.getElementById("gameCanvas");
+ 		let gl = gameCanvas.getContext("webgl2");
+ 
++		gl.enable(gl.DEPTH_TEST);
++		gl.depthFunc(gl.LESS);
++
+ 		gl.clearColor(0.9, 0.9, 0.9, 1);
+-		gl.clear(gl.COLOR_BUFFER_BIT);
++		gl.clearDepth(1);
++		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+ 
+ 		const vertexShaderSource = `#version 300 es
+ in vec3 aPosition;
+ in vec3 aColor;
++uniform float uZNear;
++uniform float uZFar;
+ uniform float uAspect;
+ out vec4 vColor;
+ 
+ void main(){
+-	gl_Position = vec4(aPosition.x / uAspect, aPosition.y, aPosition.z, 1.0);
++	float a = (uZFar + uZNear) / (uZFar - uZNear);
++	float b = -2.0 * uZFar * uZNear / (uZFar - uZNear);
++	gl_Position = vec4(aPosition.x / uAspect, aPosition.y, aPosition.z * a + b, aPosition.z);
++
+ 	vColor = vec4(aColor, 1.0);
+ }`;
+ 		const fragmentShaderSource = `#version 300 es
+@@ -168,7 +177,11 @@ void main(){
+ 		gl.useProgram(program);
+ 
+ 		const uAspect = gl.getUniformLocation(program, "uAspect");
++		const uZNear = gl.getUniformLocation(program, "uZNear");
++		const uZFar = gl.getUniformLocation(program, "uZFar");
+ 		gl.uniform1f(uAspect, gameCanvas.width / gameCanvas.height);
++		gl.uniform1f(uZNear, 0.01);
++		gl.uniform1f(uZFar, 1000);
+ 
+ 		const corners = [
+ 			new Vector3(-0.5, -0.5, -0.5),
+@@ -192,8 +205,10 @@ void main(){
+ 
+ 		let q = Quaternion.buildQuaternionEuler(new Vector3(40, 50, 30));
+ 		let rotatedCorners = [];
+-		for (let i = 0; i < corners.length; i++)
++		for (let i = 0; i < corners.length; i++) {
+ 			rotatedCorners.push(q.rotateVector(corners[i]));
++			rotatedCorners[i] = new Vector3(rotatedCorners[i].x, rotatedCorners[i].y, rotatedCorners[i].z + 2);
++		}
+ 
+ 		const vertexData = new Float32Array(corners.length * 6);
+ 		for (let i = 0; i < corners.length; i++) {
