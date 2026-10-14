@@ -407,6 +407,56 @@ gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);</code></pre>
 
 					Ngoài ra bạn cũng đang thấy mặt BACK (nó khá là xanh -> z cao) của chứ không phải mặt FRONT, vì index buffer ta để mặt BACK vẽ sau mặt FRONT.
 
+					<h2>6. Aspect ratio và Uniform</h2>
+					Như Hanvas Engine, clip space của WebGL cũng là một hình vuông, x và y đều chạy từ -1 tới 1, như hình này từ
+					<a href="/blogs/graphics3D/graphics3D2-cube.html">blog 2 của series graphics 3D</a>:
+					<div align="center">
+                        <img style="max-height: 300px; max-width: 100vw;" src="/blogs/graphics3D/images/graphics3D2/screen.png"/>
+                    </div>
+					WebGL sẽ tự động kéo hình vuông đó ra cho vừa toàn bộ canvas (400x300), nên hình vuông sẽ bị kéo giãn ra thành hình chữ nhật.
+					Chuyện này series trước đã gặp ở <a href="/blogs/graphics3D/graphics3D3-projection.html">blog 3</a>, cách sửa là nhân x với
+					<code>height / width</code>, hay nói cách khác là chia x cho aspect ratio <code>width / height</code>.<br/><br/>
+					
+					Nhưng ta không thể cứ nhân với tỉ lệ trên rồi xem như xong chuyện, vì việc nhân tỉ lệ này nằm ở cuối pipeline, khi xử lí với screen space,
+					nếu ta nhân thẳng trong lúc dựng <code>vertexData</code> thì về mặt ngữ cảnh ta đang thay đổi chính tọa độ của cube. Đúng chuẩn thì ta phải làm
+					việc này trong <code>Vertex Shader</code>.<br/><br/>
+					
+					Như vậy là ta phải truyền được aspect ratio cho vertex shader, tuy nhiên ta không thể chuyển bằng attribute được, vì đó là tính chất
+					của từng đỉnh, còn aspect ratio là thông tin dùng chung cho mọi đỉnh. Với vấn đề này ta sẽ sử dụng <code>uniform</code>, là global variable trong GPU
+					(hiểu nôm na như vậy).<br/><br/>
+					
+					Như vậy ta sẽ tạo một uniform để truyền aspect ratio:
+					<pre><code class="language-hlsl">#version 300 es
+in vec3 aPosition;
+in vec3 aColor;
+uniform float uAspect;		// <--------------------------
+out vec4 vColor;
+
+void main(){
+	gl_Position = vec4(aPosition.x / uAspect, aPosition.y, aPosition.z, 1.0);		// <--------------------------
+	vColor = vec4(aColor, 1.0);
+}</code></pre>
+					Phía JavaScript, cách lấy địa chỉ uniform khá giống attribute:
+					<pre><code class="language-javascript">const uAspect = gl.getUniformLocation(program, "uAspect");		// lấy địa chỉ của uniform uAspect
+gl.uniform1f(uAspect, gameCanvas.width / gameCanvas.height);		// set giá trị cho nó</code></pre>
+					<ul>
+						<li><code>uniform1f</code> nghĩa là set 1 số float. Tương tự có <code>uniform2f</code>, <code>uniform3f</code>, <code>uniform4f</code>
+							cho vec2, vec3, vec4, và <code>uniformMatrix4fv</code> cho ma trận 4x4 (chắc chắn sẽ dùng sau này).</li>
+						<li>Tính chất state: <code>uniform1f</code> không nhận program làm tham số, nó set uniform cho program <b>đang được dùng</b>. Nên 2 dòng trên phải
+							nằm sau <code>gl.useProgram(program)</code>, đặt trước thì WebGL sẽ báo lỗi.</li>
+						<li>Giá trị uniform được program giữ lại cho tới khi ta set giá trị khác, nên set 1 lần là đủ.</li>
+					</ul>
+
+					Ở blog #2 series trước, sau khi có tọa độ trong khoảng [-1; 1], ta còn phải tự nhân với nửa kích
+					thước canvas, cộng thêm nửa kích thước canvas để đưa vào giữa, và đổi dấu y vì canvas 2D có y hướng xuống. Ở WebGL thì không cần làm gì cả: sau
+					vertex shader, GPU tự chuyển [-1; 1] thành pixel (bước này gọi là viewport transform, chỉnh bằng
+					<a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/viewport"><code>gl.viewport</code></a>, mặc định là bằng kích thước
+					canvas lúc tạo context), và clip space của WebGL có y hướng lên, giống không gian 3D của ta, nên cũng không cần đổi dấu.<br/><br/>
+
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview6"></div>
+					Nó đã hình vuông rồi, nhưng do ta nhìn thẳng vào nó, khó nhìn ra góc cạnh, nên phải xoay nó tí.
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
