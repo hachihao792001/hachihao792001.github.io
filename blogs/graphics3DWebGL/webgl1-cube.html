@@ -33,6 +33,7 @@
     </style>
 
     <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <title>Chuyển Hanvas Engine thành WebGL</title>
 </head>
@@ -52,7 +53,7 @@
                     <h1>WebGL cơ bản</h1>
 
 					Trước khi đụng vào engine, blog này mình sẽ nói tới các khái niệm cơ bản của WebGL, vì nó khá là khó hiểu nếu bạn chưa từng đụng vào nó.
-					Cuối blog thì ta sẽ vẽ được 1 cục cube có màu được nội suy giữa các đỉnh 😳
+					Cuối blog thì ta sẽ vẽ được 1 cục cube có màu được nội suy giữa các đỉnh, có perspective, và xoay được 😳
 
 					<h2>1. WebGL là gì</h2>
 
@@ -66,7 +67,7 @@
 						<li>Chuyển từng tam giác trong từng GameObject từ object space thành world space</li>
 						<li>Dựng shadow map</li>
 						<li>Chuyển qua view space</li>
-						<li>Chuyển qua clip space, perspective divide/li>
+						<li>Chuyển qua clip space, perspective divide</li>
 						<li>Nhân x, y từ giá trị [-1, 1] ra kích thước canvas (screen space)</li>
 						<li>Với các pixel nằm trong tam giác: nội suy giá trị depth ở từng pixel theo barycentric coordinates (<a href="/blogs/graphics3D/graphics3D8-rasterizer.html">blog #8</a>)
 						và so sánh với depth buffer</li>
@@ -215,7 +216,7 @@ gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);		// chuyển dữ li
 					vào khe 1 lần duy nhất cho cả chương trình, ta sẽ chuẩn bị hết mọi thứ trước để nhét vào lúc đầu rồi bốc ra dùng, chứ không update khe liên tục.
 					Ngoài <code>gl.ARRAY_BUFFER</code> thì sẽ có những loại buffer khác, mình sẽ nói sau.<br/>
 					Về hàm <code>gl.bufferData</code>, nó
-					có tham số cuối là <code>gl.STATIC_DRAW</code>, nghĩa là ta sẽ chỉ vẽ nó 1 lần trong suốt quá trình chạy, ngoài ra còn những mode khác,
+					có tham số cuối là <code>gl.STATIC_DRAW</code>, nghĩa là ta chỉ nạp dữ liệu vào 1 lần rồi dùng nó để vẽ nhiều lần, ngoài ra còn những mode khác,
 					mình cũng sẽ nói sau.
 
 					<h3>d. Đưa Vertex buffer vào Shader</h3>
@@ -320,6 +321,92 @@ void main(){
 	gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 24, 12);			// <--------------------------</code></pre>
 					Kết quả:
 					<div class="htmlPreview" id=htmlPreview4></div>
+
+					<h2>5. Vẽ 1 cube</h2>
+					Như ta đã biết thì một cube có tổng cộng 12 tam giác. Nếu vẫn dùng <code>drawArrays</code> như phần trên, thì cứ 3 đỉnh liên tiếp trong
+					<code>vertexData</code> là 1 tam giác, nghĩa là ta phải liệt kê
+					12 * 3 = 36 đỉnh, trong khi cube chỉ có 8 đỉnh.<br/><br/>
+
+					WebGL có công cụ riêng cho vấn đề này, đó chính là index buffer. Cách người ta làm là tách ra làm 2 danh sách: <b>danh sách đỉnh</b>, 
+					mỗi đỉnh chỉ xuất hiện 1 lần, và <b>danh sách tam giác</b>, mỗi tam giác
+					chỉ là 3 con số, là index của 3 đỉnh của nó trong danh sách đỉnh.
+					Nếu bạn còn nhớ thì đây chính là cách file obj lưu các mặt (dòng <code>f 1/3/5 4/5/5 2/9/5</code>
+					ở blog #12), chỉ khác là ở đây index đếm từ 0. Danh sách thứ 2 này chính là <b>index buffer</b>.<br/><br/>
+
+					Danh sách đỉnh và danh sách tam giác của 1 cube ở giữa thế giới và có kích thước là 1:
+					<pre><code class="language-javascript">const corners = [
+	[-0.5, -0.5, -0.5],		// 0
+	[0.5, -0.5, -0.5],		// 1
+	[0.5, 0.5, -0.5],		// 2
+	[-0.5, 0.5, -0.5],		// 3
+	[-0.5, -0.5, 0.5],		// 4
+	[0.5, -0.5, 0.5],		// 5
+	[0.5, 0.5, 0.5],		// 6
+	[-0.5, 0.5, 0.5],		// 7
+];
+
+const triangles = new Uint16Array([
+	0, 3, 2, 0, 2, 1,		// FRONT  (z = -0.5)
+	5, 6, 7, 5, 7, 4,		// BACK   (z = 0.5)
+	4, 7, 3, 4, 3, 0,		// LEFT   (x = -0.5)
+	1, 2, 6, 1, 6, 5,		// RIGHT  (x = 0.5)
+	3, 7, 6, 3, 6, 2,		// TOP    (y = 0.5)
+	4, 0, 1, 4, 1, 5,		// BOTTOM (y = -0.5)
+]);</code></pre>
+					<ul>
+						<li>Mỗi hàng của <code>triangles</code> là 1 mặt, gồm 2 tam giác. Thứ tự đỉnh trong tam giác mình giữ đúng quy ước của series trước: cùng chiều kim
+							đồng hồ (<a href="/blogs/graphics3D/graphics3D1-setup.html">blog #1</a>). Hiện tại thứ tự này chưa ảnh hưởng gì,
+							nhưng nó sẽ quan trọng khi làm backface culling. Mình nói trước luôn là WebGL mặc định coi tam giác <b>ngược</b> chiều kim đồng hồ là mặt trước,
+							ngược với Hanvas Engine, tới lúc đó ta sẽ xử lý.</li>
+						<li><code>Uint16Array</code>: index là số nguyên 16-bit không dấu, thật ra dùng <code>Uint32Array</code> cũng được, nhưng số đỉnh chưa
+							tới mức đó nên 16 là đủ.</li>
+					</ul>
+
+					Từ <code>corners</code>, ta dựng lại <code>vertexData</code> với layout y như phần 4 (3 float tọa độ, 3 float màu => mỗi vertex 6 component):
+					<pre><code class="language-javascript">const vertexData = new Float32Array(corners.length * 6);
+for (let i = 0; i < corners.length; i++) {
+	vertexData[i * 6] = corners[i][0];
+	vertexData[i * 6 + 1] = corners[i][1];
+	vertexData[i * 6 + 2] = corners[i][2];
+	vertexData[i * 6 + 3] = corners[i][0] + 0.5;	// màu = tọa độ + 0.5
+	vertexData[i * 6 + 4] = corners[i][1] + 0.5;
+	vertexData[i * 6 + 5] = corners[i][2] + 0.5;
+}</code></pre>
+					Về màu thì mình hơi lười chọn màu cho 8 đỉnh, nên lấy luôn tọa độ cộng 0.5. Tọa độ nằm trong khoảng [-0.5; 0.5] nên cộng 0.5 sẽ ra đúng khoảng [0; 1].
+					Như vậy đỉnh (-0.5, -0.5, -0.5) màu đen, đỉnh (0.5, 0.5, 0.5) màu trắng, đỉnh (0.5, -0.5, -0.5) màu đỏ, v.v.
+					Một tác dụng phụ khá tiện là nhìn màu là biết đỉnh nào: kênh xanh dương (B) càng đậm thì đỉnh đó càng có z lớn.<br/><br/>
+
+					Tiếp theo là đưa index buffer vào WebGL. Ở phần 3c mình có nói <code>gl.ARRAY_BUFFER</code> là một cái "khe", và có những khe khác. Đây là khe thứ 2:
+					<code>gl.ELEMENT_ARRAY_BUFFER</code>, khe dành cho index. Cách đưa dữ liệu vào y hệt:
+					<pre><code class="language-javascript">const elementBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);</code></pre>
+					Không cần <code>vertexAttribPointer</code> gì cho nó cả, vì index không phải là attribute của shader, shader không hề biết tới index. Index chỉ dùng
+					để GPU biết lấy đỉnh nào ra cho vertex shader.<br/><br/>
+
+					Cuối cùng là đổi hàm vẽ từ <code>drawArrays</code> sang <code>drawElements</code>, hàm này sẽ đọc index từ khe <code>gl.ELEMENT_ARRAY_BUFFER</code>:
+					<pre><code class="language-javascript">gl.drawElements(gl.TRIANGLES, triangles.length, gl.UNSIGNED_SHORT, 0);</code></pre>
+					Tham số:
+					<pre><code class="language-javascript">gl.drawElements(
+	//loại primitive,
+	//số index (không phải số tam giác),
+	//kiểu của index (Uint16Array thì là gl.UNSIGNED_SHORT, Uint32Array thì là gl.UNSIGNED_INT),
+	//offset);</code></pre>
+					Chỗ dễ lộn là tham số cuối: ở <code>drawArrays</code>, tham số index bắt đầu đếm theo vertex, còn ở <code>drawElements</code> thì offset
+					lại tính theo <b>byte</b>. Ví dụ muốn bỏ qua mặt FRONT (6 index đầu) thì offset phải là 6 * 2 = 12, chứ không phải 6.<br/><br/>
+
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview5"></div>
+
+					Chúng ta đang bắt đầu tái hiện lại những lỗi mà ta gặp trong <a href="/blogs/graphics3D/graphics3D2-cube.html">blog 2 của series graphics 3D</a>.
+					Nếu bạn còn nhớ thì sẽ biết tại sao nó lại ra 1 hình chữ nhật phẳng:
+					<ul>
+						<li>Nó chưa tính theo aspect ratio</li>
+						<li>Nó chưa nhân với projection matrix</li>
+					</ul>
+
+					Ngoài ra bạn cũng đang thấy mặt BACK (nó khá là xanh -> z cao) của chứ không phải mặt FRONT, vì index buffer ta để mặt BACK vẽ sau mặt FRONT.
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
