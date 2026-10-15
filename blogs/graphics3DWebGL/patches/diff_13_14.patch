@@ -1,0 +1,57 @@
+--- "a/htmlPreviews\\htmlPreview13.html"
++++ "b/htmlPreviews\\htmlPreview14.html"
+@@ -145,6 +145,17 @@
+ 				return result;
+ 			}
+ 
++			static Projection(fov, h, w, zNear, zFar) {
++				let fovMultiplier = 1.0 / Math.tan(fov * 0.5 / 180.0 * Math.PI);
++				let matrix = new Mat4x4();
++				matrix.m[0][0] = h / w * fovMultiplier;
++				matrix.m[1][1] = fovMultiplier;
++				matrix.m[2][2] = (zFar + zNear) / (zFar - zNear);
++				matrix.m[2][3] = -2 * zFar * zNear / (zFar - zNear);
++				matrix.m[3][2] = 1.0;
++				return matrix;
++			}
++
+ 			static Translation(x, y, z) {
+ 				let matrix = new Mat4x4();
+ 				matrix.m[0][0] = 1;
+@@ -205,17 +216,12 @@
+ 		const vertexShaderSource = `#version 300 es
+ in vec3 aPosition;
+ in vec3 aColor;
+-uniform float uZNear;
+-uniform float uZFar;
+-uniform float uAspect;
+ uniform mat4 uModel;
++uniform mat4 uProjection;
+ out vec4 vColor;
+ 
+ void main(){
+-	float a = (uZFar + uZNear) / (uZFar - uZNear);
+-	float b = -2.0 * uZFar * uZNear / (uZFar - uZNear);
+-	vec4 worldPosition = uModel * vec4(aPosition, 1.0);
+-	gl_Position = vec4(worldPosition.x / uAspect, worldPosition.y, worldPosition.z * a + b, worldPosition.z);
++	gl_Position = uProjection * uModel * vec4(aPosition, 1.0);
+ 	vColor = vec4(aColor, 1.0);
+ }`;
+ 		const fragmentShaderSource = `#version 300 es
+@@ -248,13 +254,10 @@ void main(){
+ 		}
+ 		gl.useProgram(program);
+ 
+-		const uAspect = gl.getUniformLocation(program, "uAspect");
+-		const uZNear = gl.getUniformLocation(program, "uZNear");
+-		const uZFar = gl.getUniformLocation(program, "uZFar");
+-		gl.uniform1f(uAspect, gameCanvas.width / gameCanvas.height);
+-		gl.uniform1f(uZNear, 0.01);
+-		gl.uniform1f(uZFar, 1000);
+ 		const uModel = gl.getUniformLocation(program, "uModel");
++		const uProjection = gl.getUniformLocation(program, "uProjection");
++		const projectionMatrix = Mat4x4.Projection(60, gameCanvas.height, gameCanvas.width, 0.01, 1000);
++		gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
+ 
+ 		const corners = [
+ 			new Vector3(-0.5, -0.5, -0.5),
