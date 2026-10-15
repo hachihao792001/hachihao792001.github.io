@@ -627,6 +627,7 @@ function update(time = performance.now()) {
 	dt = (time - lastTime) / 1000;
 	lastTime = time;
 
+	// ---------------- mới ----------------
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 	let q = Quaternion.buildQuaternionEuler(new Vector3(40 * dt, -50 * dt, 30 * dt));
@@ -636,6 +637,7 @@ function update(time = performance.now()) {
 		updatingCorners.push(currentRotation.rotateVector(corners[i]));		// xoay đỉnh gốc thành đỉnh cho frame này
 		updatingCorners[i] = new Vector3(updatingCorners[i].x, updatingCorners[i].y, updatingCorners[i].z + 2);
 	}
+	// ---------------- mới ----------------
 	...
 
 	requestAnimationFrame(update);
@@ -668,6 +670,7 @@ function update(time = performance.now()) {
 		// màu giữ nguyên
 	}
 	gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertexData);	// dùng hàm bufferSubData để cập nhật buffer
+	// ---------------- mới ----------------
 	...
 
 	requestAnimationFrame(update);
@@ -701,8 +704,8 @@ gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);</code></pre>
 					Tất cả những thứ trên đều là state toàn cục của WebGL. Với 1 cube thì set 1 lần lúc đầu là xong, nhưng engine
 					của ta sẽ có nhiều GameObject, mỗi cái có buffer riêng, và trước mỗi lần vẽ ta sẽ phải set lại toàn bộ đống state đó cho đúng object đang vẽ.<br/><br/>
 
-					<b>Vertex Array Object</b> (VAO) là một object dùng để "ghi nhớ" đống state đó. Bind VAO, set mọi thứ 1 lần, sau đó mỗi lần muốn vẽ thì chỉ cần
-					bind lại VAO là toàn bộ state quay về.<br/><br/>
+					WebGL có <b>Vertex Array Object</b> (VAO) là một object dùng để "ghi nhớ" đống state đó. Bind VAO, set mọi thứ 1 lần, sau đó mỗi lần muốn vẽ thì chỉ cần
+					bind lại VAO là toàn bộ state quay về. Bạn có thể hiểu Vertex buffer (VBO) là để chứa dữ liệu thô, còn VAO là để chứa cách đọc dữ liệu đó.<br/><br/>
 
 					Sau đây là cách sử dụng VAO, đầu tiên ở ngoài hàm update ta làm như sau:
 					<pre><code class="language-javascript">const vertexBuffer = gl.createBuffer();
@@ -744,8 +747,10 @@ gl.bindVertexArray(null);						// unbind VAO, tránh lỡ tay sửa nó ở đâ
 	}
 	gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertexData);
 
+	// ---------------- mới ----------------
 	gl.bindVertexArray(vertexArray);										// bind lại VAO để vẽ
 	gl.drawElements(gl.TRIANGLES, triangles.length, gl.UNSIGNED_SHORT, 0);
+	// ---------------- mới ----------------
 	
 	requestAnimationFrame(update);
 }</code></pre>
@@ -765,6 +770,7 @@ gl.bindVertexArray(null);						// unbind VAO, tránh lỡ tay sửa nó ở đâ
 							chỉ vì từ đầu tới giờ chưa có ai bind buffer khác vào khe đó. Sau này có nhiều buffer thì phải <code>bindBuffer</code> lại trước khi
 							<code>bufferSubData</code>.</li>
 					</ul>
+
 					Còn từ phần 4 tới phần 8 không có VAO thì sao vẫn chạy? Đó là vì WebGL2 có sẵn một VAO mặc định, khi ta không bind VAO nào thì mọi state
 					được ghi vào cái mặc định đó. Với 1 cube thì VAO chưa thật sự cần, nhưng mình thêm vào bây giờ vì sau này chắc chắn sẽ cần, và nó là cách làm
 					chuẩn của WebGL2.<br/><br/>
@@ -777,6 +783,106 @@ gl.bindVertexArray(null);						// unbind VAO, tránh lỡ tay sửa nó ở đâ
 					thành nút thắt như series trước. Cách đúng là để vertex buffer đứng yên (quay lại <code>gl.STATIC_DRAW</code>), và chỉ gửi phép biến đổi
 					(Model, View, Projection matrix của blog #3, #4, #7) lên vertex shader qua uniform. Ta sẽ làm việc đó ở phần 12, sau khi có thêm 1 cube nữa.
 					
+					<h2>10. Thêm một cube nữa</h2>
+					Mục đích của việc thêm 1 cube là để bạn thấy được công dụng thật sự của VAO, vì mình thấy ví dụ trên vẫn chưa đủ thuyết phục.
+					Mình sẽ dựng lại đúng cảnh của <a href="/blogs/graphics3D/htmlPreviews/htmlPreview12.html">htmlPreview12</a> ở 
+					<a href="/blogs/graphics3D/graphics3D5-gameloop.html">blog #5</a>
+					series trước: 2 cube với vị trí, góc xoay, kích thước y hệt, cube 1 xoay quanh trục Y, cube 2 xoay quanh trục X.<br/><br/>
+
+					Đầu tiên là gom mọi thứ của 1 cube vào 1 class, như class <code>Cube</code> của series trước: vị trí, phép xoay (Quaternion), kích thước, và hàm
+					<code>rotate</code>. Khác ở chỗ bây giờ mỗi cube còn phải giữ đồ của WebGL: vertex data, vertex buffer và VAO của riêng nó.
+					<pre><code class="language-javascript">class Cube {
+	constructor(pos, eulerAngles, scale) {
+		this.pos = pos;
+		this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
+		this.scale = scale;
+
+		this.vertexData = new Float32Array(corners.length * 6);
+		for (let i = 0; i < corners.length; i++) {		// màu không đổi nên set 1 lần ở constructor
+			this.vertexData[i * 6 + 3] = corners[i].x + 0.5;
+			this.vertexData[i * 6 + 4] = corners[i].y + 0.5;
+			this.vertexData[i * 6 + 5] = corners[i].z + 0.5;
+		}
+
+		// tạo buffer của riêng nó cho dữ liệu đỉnh của riêng nó
+		this.vertexBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+		gl.bufferData(gl.ARRAY_BUFFER, this.vertexData, gl.DYNAMIC_DRAW);
+
+		this.vertexArray = gl.createVertexArray();		// mỗi cube 1 VAO
+		gl.bindVertexArray(this.vertexArray);
+		// aPosition và aColor vẫn là biến global ngoài class, 2 VAO dùng chung
+		gl.enableVertexAttribArray(aPosition);
+		gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 24, 0);
+		gl.enableVertexAttribArray(aColor);
+		gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 24, 12);
+		// elementBuffer cũng là biến global, 2 VAO dùng chung 1 index buffer
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+		gl.bindVertexArray(null);
+	}
+
+	rotate(eulerX, eulerY, eulerZ) {
+		let q = Quaternion.buildQuaternionEuler(new Vector3(eulerX, eulerY, eulerZ));
+		this.rotation = Quaternion.multiply(q, this.rotation);
+	}
+}</code></pre>
+					Bên ngoài class:
+					<pre><code class="language-javascript">const elementBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
+
+const aPosition = gl.getAttribLocation(program, "aPosition");
+const aColor = gl.getAttribLocation(program, "aColor");</code></pre>
+					Lúc này VAO mới bắt đầu có ý nghĩa như mình nói ở phần 9c: 2 cube là 2 vertex buffer, 2 VAO, mỗi VAO nhớ attribute của nó đọc từ buffer nào.
+					Index buffer thì 2 cube y hệt nhau, và 2 cube đều xài 1 vertex shader nên attribute cũng chung nên không để riêng cho từng class. Index buffer thì
+					phải bind nó trong lúc mỗi VAO đang được bind, vì như đã nói, VAO nhớ cả khe <code>gl.ELEMENT_ARRAY_BUFFER</code>.<br/><br/>
+
+					Hàm <code>draw</code> làm những gì mà hàm <code>update</code> ở phần 9 làm, nhưng cho 1 cube:
+					<pre><code class="language-javascript">draw() {
+	for (let i = 0; i < corners.length; i++) {
+		let v = Vector3.scale(corners[i], this.scale);		// scale
+		v = this.rotation.rotateVector(v);					// rồi xoay
+		v = Vector3.add(v, this.pos);						// rồi dời
+		this.vertexData[i * 6] = v.x;						// lúc này mới set tọa độ cho vertexData
+		this.vertexData[i * 6 + 1] = v.y;
+		this.vertexData[i * 6 + 2] = v.z;
+	}
+	gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);		// <--------------------------
+	gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.vertexData);
+
+	gl.bindVertexArray(this.vertexArray);
+	gl.drawElements(gl.TRIANGLES, triangles.length, gl.UNSIGNED_SHORT, 0);
+}</code></pre>
+					<ul>
+						<li>Thứ tự scale → xoay → dời giống hàm <code>getTransformedTriangles</code> của series trước.</li>
+						<li>Dòng có mũi tên chính là cái mà mình cảnh báo ở cuối phần 9c: bây giờ có 2 vertex buffer, khe <code>gl.ARRAY_BUFFER</code> đang chứa buffer
+							nào thì <code>bufferSubData</code> ghi vào buffer đó, nên phải bind đúng buffer của cube này trước khi ghi. Thiếu dòng này thì cube 1
+							sẽ ghi đè lên buffer của cube 2 (cái được bind sau cùng lúc khởi tạo).</li>
+					</ul>
+
+					Tạo 2 cube với đúng thông số của htmlPreview12 series trước, và <code>update</code> bây giờ chỉ còn xoay và vẽ:
+					<pre><code class="language-javascript">let cube1 = new Cube(new Vector3(0.7, -0.7, 3), new Vector3(45, 0, 0), new Vector3(1, 1, 1));
+let cube2 = new Cube(new Vector3(-0.6, 0, 2.5), new Vector3(0, 0, 15), new Vector3(1, 0.7, 0.7));
+...
+function update(time = performance.now()) {
+	dt = (time - lastTime) / 1000;
+	lastTime = time;
+
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+	cube1.rotate(0, 50 * dt, 0);
+	cube2.rotate(50 * dt, 0, 0);
+	cube1.draw();
+	cube2.draw();
+
+	requestAnimationFrame(update);
+}</code></pre>
+
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview10"></div>
+					Nếu bạn mở <a href="/blogs/graphics3D/htmlPreviews/htmlPreview12.html">htmlPreview12 của series trước</a> ra so thì sẽ thấy 2 cube 
+					của ta nhỏ hơn. Đó là vì ta vẫn chưa set FOV chuẩn cho nó.
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

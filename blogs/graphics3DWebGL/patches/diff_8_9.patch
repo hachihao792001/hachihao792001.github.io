@@ -1,21 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview8.html"
 +++ "b/htmlPreviews\\htmlPreview9.html"
-@@ -124,12 +124,10 @@
- 		let gameCanvas = document.getElementById("gameCanvas");
- 		let gl = gameCanvas.getContext("webgl2");
- 
--		gl.enable(gl.DEPTH_TEST);
--		gl.depthFunc(gl.LESS);
--
- 		gl.clearColor(0.9, 0.9, 0.9, 1);
- 		gl.clearDepth(1);
--		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-+		gl.enable(gl.DEPTH_TEST);
-+		gl.depthFunc(gl.LESS);
- 
- 		const vertexShaderSource = `#version 300 es
- in vec3 aPosition;
-@@ -202,18 +200,13 @@ void main(){
+@@ -203,18 +203,13 @@ void main(){
  			4, 0, 1, 4, 1, 5,
  		]);
  
@@ -25,7 +10,7 @@
 -			rotatedCorners.push(q.rotateVector(corners[i]));
 -			rotatedCorners[i] = new Vector3(rotatedCorners[i].x, rotatedCorners[i].y, rotatedCorners[i].z + 2);
 -		}
-+		let startRotation = Quaternion.buildQuaternionEuler(new Vector3(40, 50, 30));
++		let currentRotation = Quaternion.buildQuaternionEuler(new Vector3(40, 50, 30));
  
  		const vertexData = new Float32Array(corners.length * 6);
  		for (let i = 0; i < corners.length; i++) {
@@ -38,7 +23,7 @@
  			vertexData[i * 6 + 3] = corners[i].x + 0.5;
  			vertexData[i * 6 + 4] = corners[i].y + 0.5;
  			vertexData[i * 6 + 5] = corners[i].z + 0.5;
-@@ -221,7 +214,11 @@ void main(){
+@@ -222,7 +217,11 @@ void main(){
  
  		const vertexBuffer = gl.createBuffer();
  		gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -51,12 +36,7 @@
  		const aPosition = gl.getAttribLocation(program, "aPosition");
  		gl.enableVertexAttribArray(aPosition);
  		gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 24, 0);
-@@ -229,13 +226,41 @@ void main(){
- 		gl.enableVertexAttribArray(aColor);
- 		gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 24, 12);
- 
--
--
+@@ -233,8 +232,38 @@ void main(){
  		const elementBuffer = gl.createBuffer();
  		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
  		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
@@ -72,10 +52,10 @@
 +			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 +
 +			let q = Quaternion.buildQuaternionEuler(new Vector3(40 * dt, -50 * dt, 30 * dt));
-+			startRotation = Quaternion.multiply(q, startRotation);
++			currentRotation = Quaternion.multiply(q, currentRotation);
 +			let updatingCorners = [];
 +			for (let i = 0; i < corners.length; i++) {
-+				updatingCorners.push(startRotation.rotateVector(corners[i]));
++				updatingCorners.push(currentRotation.rotateVector(corners[i]));
 +				updatingCorners[i] = new Vector3(updatingCorners[i].x, updatingCorners[i].y, updatingCorners[i].z + 2);
 +			}
 +			for (let i = 0; i < corners.length; i++) {
