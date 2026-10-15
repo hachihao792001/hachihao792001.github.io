@@ -908,6 +908,152 @@ gl.frontFace(gl.CW);		// tam giác cùng chiều kim đồng hồ là mặt trư
 					<div class="htmlPreview" id="htmlPreview12"></div>
 					Kết quả nhìn y hệt phần 10, vì ta đã áp dụng depth buffer rồi nên mặt trước obviously sẽ che mặt sau, backface culling chỉ có công dụng về mặt performance.
 
+					<h2>12. Đưa phép biến đổi vào vertex shader</h2>
+					Như mình phải nói ở phần 9, việc xoay và di chuyển nằm ở Javascript là không đúng quy tắc khi sử dụng WebGL, ta phải đưa phần biến đổi GameObject
+					(model matrix) vào vertex shader.<br/><br/>
+					
+					Cụ thể:
+					<ul>
+						<li><b>Mesh</b> (8 đỉnh của cube trong object space) nằm trong <b>1</b> vertex buffer duy nhất. Set 1 lần và 2 cube dùng chung.</li>
+						<li><b>Phép biến đổi</b> của mỗi cube được gói thành 1 Model matrix (<a href="/blogs/graphics3D/graphics3D4-model.html">blog #4</a>),
+							gửi vào vertex shader qua 1 uniform, và vertex shader nhân nó với từng đỉnh.
+							Mỗi frame CPU chỉ phải gửi 16 con số cho mỗi cube, thay vì dữ liệu của tất cả đỉnh.</li>
+					</ul>
+
+					<h3>a. Mat4x4</h3>
+					Mình bê class <code>Mat4x4</code> của series trước về, với hàm <code>Multiply</code>, <code>Translation</code>, <code>Scale</code> giữ nguyên.
+					Tuy nhiên như thế chưa đủ, chúng ta cần phải làm thêm 2 thứ.<br/><br/>
+
+					<b>Thứ nhất</b>: ma trận xoay từ Quaternion. Series trước, từ blog #6 trở đi, ta xoay đỉnh bằng <code>rotateVector</code> (\(qvq^*\)) chứ không dùng
+					ma trận. Nhưng muốn gộp scale, rotation, position thành 1 ma trận thì phép xoay cũng phải là ma trận. Tuy nhiên thay vì sử dụng lại 3 ma trận xoay (bị lại gimbal
+					lock), thì ta sẽ viết hàm chuyển 1 Quaternion thành 1 ma trận.<br/><br/>
+
+					Thật ra cũng không có gì khó, ta sẽ dùng Quaterion đó để tìm ra 3 vector forward, up, right local (nhớ lại bản chất Quaternion). Sau đó bạn dùng 3 vector
+					đó để tạo ra ma trận y hệt cấu trúc của View Matrix (<a href="/blogs/graphics3D/graphics3D7-view.html">blog 7</a>), để khi nhân vector vào nó thành các 
+					tích vô hướng - là hình chiếu của vector đó trên hệ tọa độ mới - hệ tọa độ đã được xoay.<br/><br/>
+					Chứng minh lại từng bước sẽ làm blog này đã dài còn dài thêm =))) mình ghi luôn kết quả (at this point it should be trivial for you, I hope so):
+					$$
+					\begin{pmatrix} 
+					right.x & up.x & forward.x & 0\\
+					right.y & up.y & forward.y & 0\\
+					right.z & up.z & forward.z & 0\\
+					0 & 0 & 0 & 1
+					\end{pmatrix}
+					$$
+					Hàm sẽ như sau:
+					<pre><code class="language-javascript">class Mat4x4 {
+	...
+	static Rotation(q) {
+		const right = q.rotateVector(new Vector3(1, 0, 0));
+		const up = q.rotateVector(new Vector3(0, 1, 0));
+		const forward = q.rotateVector(new Vector3(0, 0, 1));
+
+		const result = new Mat4x4();
+		result.m[0][0] = right.x;
+		result.m[0][1] = up.x;
+		result.m[0][2] = forward.x;
+		result.m[1][0] = right.y;
+		result.m[1][1] = up.y;
+		result.m[1][2] = forward.y;
+		result.m[2][0] = right.z;
+		result.m[2][1] = up.z;
+		result.m[2][2] = forward.z;
+		result.m[3][3] = 1;
+
+		return result;
+	}
+	...
+}</code></pre><br/>
+
+					<b>Thứ hai</b>: Hàm chuyển ma trận thành dạng mà WebGL nhận.<br/>
+					Để truyền ma trận vào cho WebGL, ta sử dụng hàm <code>gl.uniformMatrix4fv</code> (4 nghĩa là ma trận vuông 4 dòng 4 cột), 
+					hàm này sẽ nhận vào 1 uniform mảng 1 chiều, nó chứa 1 ma trận column-major.<br/><br/>
+					Column-major nghĩa là gì? Mình giải thích luôn, Column-major hay Row-major miêu tả cách 1 ma trận được lưu trong mảng 1 chiều, ví dụ với ma trận sau:
+					$$
+					\begin{pmatrix}
+                    1 & 2 & 3 \\
+                    4 & 5 & 6 \\
+                    7 & 8 & 9
+                    \end{pmatrix}
+					$$
+					Với Row-major thì đơn giản nó chỉ là từ trái qua phải, từ trên xuống dưới:
+					$$
+					[1, 2, 3, 4, 5, 6, 7, 8, 9]
+					$$
+					Tuy nhiên với Column-major, thì nó sẽ đọc từ trên xuống dưới xong từ trái qua phải (đọc từng cột một):
+					$$
+					[1, 4, 7, 2, 5, 8, 3, 6, 9]
+					$$
+					Nó chỉ là như vậy thôi, và đây là hàm convert ma trận thành column-major:					
+					<pre><code class="language-javascript">class Mat4x4 {
+	...
+	toColumnMajor() {
+		let array = new Float32Array(16);
+		for (let c = 0; c < 4; c++)
+			for (let r = 0; r < 4; r++)
+				array[c * 4 + r] = this.m[r][c];
+		return array;
+	}
+	...
+}</code></pre>
+					Thật ra hàm <code>gl.uniformMatrix4fv</code> có tham số để nó tự chuyển vị giùm mình luôn (transpose), 
+					nhưng mình viết ra rõ ràng vậy để bạn hiểu. Và ngoài ra tham số này chỉ có trong WebGL2, WebGL1 không có.
+
+					<h3>b. Model matrix</h3>
+					Vì ta đã tách thông tin Mesh và phép biến đổi ra, nên thật ra bây giờ <code>Cube</code> không cần giữ buffer hay VAO gì nữa,
+					chỉ cần tính ra Model matrix:
+					<pre><code class="language-javascript">class Cube {
+	...
+	getModelMatrix() {
+		// ma trận ở phải nhất (sát vector nhất) được nhân trước với vector, tức là vẫn giữ thứ tự scale -> rotation -> position
+		let model = Mat4x4.Scale(this.scale.x, this.scale.y, this.scale.z);
+		model = Mat4x4.Multiply(Mat4x4.Rotation(this.rotation), model);
+		model = Mat4x4.Multiply(Mat4x4.Translation(this.pos.x, this.pos.y, this.pos.z), model);
+		return model;
+	}
+
+	draw() {
+		gl.uniformMatrix4fv(uModel, false, this.getModelMatrix().toColumnMajor());	// chả cần update buffer trước khi vẽ
+		gl.drawElements(gl.TRIANGLES, triangles.length, gl.UNSIGNED_SHORT, 0);
+	}
+	...
+}</code></pre>
+					Hàm <code>draw</code> lại là 1 ví dụ của state: <code>uniformMatrix4fv</code> set uniform cho program, và <code>drawElements</code> dùng giá trị
+					uniform <b>ở thời điểm nó được gọi</b>. Nên cube1 set ma trận của nó rồi vẽ, cube2 set ma trận khác rồi vẽ, 2 lần vẽ không ảnh hưởng nhau dù dùng
+					chung 1 uniform.<br/><br/>
+
+					Vertex shader nhận Model matrix và nhân với tọa độ đỉnh, phần còn lại giữ nguyên, chỉ thay <code>aPosition</code> bằng <code>worldPosition</code>:
+					<pre><code class="language-hlsl">uniform mat4 uModel;		// <--------------------------
+...
+void main(){
+	float a = (uZFar + uZNear) / (uZFar - uZNear);
+	float b = -2.0 * uZFar * uZNear / (uZFar - uZNear);
+	vec4 worldPosition = uModel * vec4(aPosition, 1.0);		// <--------------------------
+	gl_Position = vec4(worldPosition.x / uAspect, worldPosition.y, worldPosition.z * a + b, worldPosition.z);	// <--------------------------
+	vColor = vec4(aColor, 1.0);
+}</code></pre>
+					<code>mat4 * vec4</code> trong GLSL cũng là nhân ma trận với column vector, giống hệt hàm <code>mulMat4x4</code> của series trước.
+					Số <code>1.0</code> ở cuối <code>vec4(aPosition, 1.0)</code> là w = 1, để cột dời của ma trận có tác dụng (blog #4).<br/><br/>
+
+					Phía JavaScript thì quay về giống phần 9, nhưng đơn giản hơn: 1 <code>vertexData</code> chứa tọa độ gốc và màu, 1 vertex buffer, 1 VAO cho cả 2 cube.
+					Vertex buffer giờ không bao giờ đổi nữa nên quay về <code>gl.STATIC_DRAW</code>, và <code>bufferSubData</code> biến mất:
+					<pre><code class="language-javascript">const vertexBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);		// <--------------------------
+...
+function update(time = performance.now()) {
+	...
+	cube1.rotate(0, 50 * dt, 0);
+	cube2.rotate(50 * dt, 0, 0);
+
+	gl.bindVertexArray(vertexArray);		// 2 cube dùng chung 1 VAO
+	cube1.draw();
+	cube2.draw();
+	...
+}</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview13"></div>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
