@@ -1,0 +1,98 @@
+--- "a/htmlPreviews\\htmlPreview8.html"
++++ "b/htmlPreviews\\htmlPreview9.html"
+@@ -124,12 +124,10 @@
+ 		let gameCanvas = document.getElementById("gameCanvas");
+ 		let gl = gameCanvas.getContext("webgl2");
+ 
+-		gl.enable(gl.DEPTH_TEST);
+-		gl.depthFunc(gl.LESS);
+-
+ 		gl.clearColor(0.9, 0.9, 0.9, 1);
+ 		gl.clearDepth(1);
+-		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++		gl.enable(gl.DEPTH_TEST);
++		gl.depthFunc(gl.LESS);
+ 
+ 		const vertexShaderSource = `#version 300 es
+ in vec3 aPosition;
+@@ -202,18 +200,13 @@ void main(){
+ 			4, 0, 1, 4, 1, 5,
+ 		]);
+ 
+-		let q = Quaternion.buildQuaternionEuler(new Vector3(40, 50, 30));
+-		let rotatedCorners = [];
+-		for (let i = 0; i < corners.length; i++) {
+-			rotatedCorners.push(q.rotateVector(corners[i]));
+-			rotatedCorners[i] = new Vector3(rotatedCorners[i].x, rotatedCorners[i].y, rotatedCorners[i].z + 2);
+-		}
++		let startRotation = Quaternion.buildQuaternionEuler(new Vector3(40, 50, 30));
+ 
+ 		const vertexData = new Float32Array(corners.length * 6);
+ 		for (let i = 0; i < corners.length; i++) {
+-			vertexData[i * 6] = rotatedCorners[i].x;
+-			vertexData[i * 6 + 1] = rotatedCorners[i].y;
+-			vertexData[i * 6 + 2] = rotatedCorners[i].z;
++			vertexData[i * 6] = corners[i].x;
++			vertexData[i * 6 + 1] = corners[i].y;
++			vertexData[i * 6 + 2] = corners[i].z;
+ 			vertexData[i * 6 + 3] = corners[i].x + 0.5;
+ 			vertexData[i * 6 + 4] = corners[i].y + 0.5;
+ 			vertexData[i * 6 + 5] = corners[i].z + 0.5;
+@@ -221,7 +214,11 @@ void main(){
+ 
+ 		const vertexBuffer = gl.createBuffer();
+ 		gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+-		gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
++		gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.DYNAMIC_DRAW);
++
++		const vertexArray = gl.createVertexArray();
++		gl.bindVertexArray(vertexArray);
++
+ 		const aPosition = gl.getAttribLocation(program, "aPosition");
+ 		gl.enableVertexAttribArray(aPosition);
+ 		gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 24, 0);
+@@ -229,13 +226,41 @@ void main(){
+ 		gl.enableVertexAttribArray(aColor);
+ 		gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 24, 12);
+ 
+-
+-
+ 		const elementBuffer = gl.createBuffer();
+ 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+ 		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
++		gl.bindVertexArray(null);
++
++		let lastTime = performance.now();
++		let dt = 0;
++
++		function update(time = performance.now()) {
++			dt = (time - lastTime) / 1000;
++			lastTime = time;
++
++			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++
++			let q = Quaternion.buildQuaternionEuler(new Vector3(40 * dt, -50 * dt, 30 * dt));
++			startRotation = Quaternion.multiply(q, startRotation);
++			let updatingCorners = [];
++			for (let i = 0; i < corners.length; i++) {
++				updatingCorners.push(startRotation.rotateVector(corners[i]));
++				updatingCorners[i] = new Vector3(updatingCorners[i].x, updatingCorners[i].y, updatingCorners[i].z + 2);
++			}
++			for (let i = 0; i < corners.length; i++) {
++				vertexData[i * 6] = updatingCorners[i].x;
++				vertexData[i * 6 + 1] = updatingCorners[i].y;
++				vertexData[i * 6 + 2] = updatingCorners[i].z;
++			}
++			gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertexData);
++
++			gl.bindVertexArray(vertexArray);
++			gl.drawElements(gl.TRIANGLES, triangles.length, gl.UNSIGNED_SHORT, 0);
++
++			requestAnimationFrame(update);
++		}
+ 
+-		gl.drawElements(gl.TRIANGLES, triangles.length, gl.UNSIGNED_SHORT, 0);
++		requestAnimationFrame(update);
+ 
+ 	</script>
+ </body>

@@ -602,7 +602,7 @@ gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);		// clear cả color buffer
 
 					<h2>9. Cho cube xoay: game loop, bufferSubData và Vertex Array Object</h2>
 					<h3>a. Game loop</h3>
-					Cube đứng yên thì chán, nên phần này mình sẽ cho nó xoay theo thời gian, bằng game loop giống như 
+					Cube đứng yên thì khá chán, nên phần này mình sẽ cho nó xoay theo thời gian, bằng game loop giống như 
 					<a href="/blogs/graphics3D/graphics3D5-gameloop.html">blog #5</a> series trước:
 					hàm <code>update</code> tự gọi lại chính nó qua <code>requestAnimationFrame</code>, và tính <code>dt</code> để tốc độ xoay không phụ thuộc vào FPS.
 					<pre><code class="language-javascript">let lastTime = performance.now();
@@ -624,34 +624,59 @@ update();</code></pre>
 ...
 
 function update(time = performance.now()) {
-	...
+	dt = (time - lastTime) / 1000;
+	lastTime = time;
+
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
 	let q = Quaternion.buildQuaternionEuler(new Vector3(40 * dt, -50 * dt, 30 * dt));
 	currentRotation = Quaternion.multiply(q, currentRotation);		// cộng dồn phép xoay của frame này vào
 	let updatingCorners = [];
 	for (let i = 0; i < corners.length; i++) {
-		updatingCorners.push(currentRotation.rotateVector(corners[i]));		// luôn đỉnh gốc
+		updatingCorners.push(currentRotation.rotateVector(corners[i]));		// xoay đỉnh gốc thành đỉnh cho frame này
 		updatingCorners[i] = new Vector3(updatingCorners[i].x, updatingCorners[i].y, updatingCorners[i].z + 2);
 	}
 	...
+
+	requestAnimationFrame(update);
 }</code></pre>
 
 					Ngoài ra, <code>gl.clear</code> bây giờ phải gọi ở đầu mỗi frame, như <code>ctx.clearRect</code> ở series trước. Không clear depth buffer thì
 					depth của frame trước vẫn còn đó, và cube của frame này sẽ bị chính nó ở frame trước che mất.
 
 					<h3>b. Cập nhật vertex buffer mỗi frame: bufferSubData</h3>
-					Mỗi frame đỉnh có tọa độ mới, nên phải đưa tọa độ mới lên GPU. Màu thì không đổi, nên ta chỉ ghi lại 3 float đầu của mỗi đỉnh trong
-					<code>vertexData</code>, rồi đẩy cả mảng lên. Ta sẽ sử dụng hàm <code>gl.bufferSubData</code>:
-					<pre><code class="language-javascript">for (let i = 0; i < corners.length; i++) {
-	vertexData[i * 6] = updatingCorners[i].x;
-	vertexData[i * 6 + 1] = updatingCorners[i].y;
-	vertexData[i * 6 + 2] = updatingCorners[i].z;
-}
-gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertexData);</code></pre>
+					Mỗi frame đỉnh có tọa độ mới, nên phải đưa tọa độ mới lên GPU. Màu thì không đổi, nên ta chỉ update 3 float đầu của mỗi đỉnh trong
+					<code>vertexData</code>, rồi đẩy cả mảng vào GPU. Ta sẽ sử dụng hàm <code>gl.bufferSubData</code>:
+					<pre><code class="language-javascript">function update(time = performance.now()) {
+	dt = (time - lastTime) / 1000;
+	lastTime = time;
+
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+	let q = Quaternion.buildQuaternionEuler(new Vector3(40 * dt, -50 * dt, 30 * dt));
+	currentRotation = Quaternion.multiply(q, currentRotation);
+	let updatingCorners = [];
+	for (let i = 0; i < corners.length; i++) {
+		updatingCorners.push(currentRotation.rotateVector(corners[i]));
+		updatingCorners[i] = new Vector3(updatingCorners[i].x, updatingCorners[i].y, updatingCorners[i].z + 2);
+	}
+	// ---------------- mới ----------------
+	for (let i = 0; i < corners.length; i++) {
+		vertexData[i * 6] = updatingCorners[i].x;
+		vertexData[i * 6 + 1] = updatingCorners[i].y;
+		vertexData[i * 6 + 2] = updatingCorners[i].z;
+		// màu giữ nguyên
+	}
+	gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertexData);	// dùng hàm bufferSubData để cập nhật buffer
+	...
+
+	requestAnimationFrame(update);
+}</code></pre>
 					<code>bufferSubData(khe, offset, dữ liệu)</code> ghi dữ liệu vào vùng nhớ <b>đã có sẵn</b> của buffer đang nằm trong khe, bắt đầu từ offset (tính theo byte).
-					Còn <code>bufferData</code> thì cấp phát lại cả vùng nhớ rồi mới ghi, gọi mỗi frame thì sẽ khá bruh. Nên <code>bufferData</code> chỉ gọi 1 lần lúc đầu để
+					Ta không dùng <code>bufferData</code> vì nó cấp phát lại cả vùng nhớ rồi mới ghi, gọi mỗi frame thì sẽ khá bruh. Nên <code>bufferData</code> chỉ gọi 1 lần lúc đầu để
 					cấp phát, các frame sau dùng <code>bufferSubData</code>.<br/><br/>
 
-					Ở phần 3c mình có nói là sẽ nói về tham số cuối của <code>bufferData</code>, tham số đó là <b>usage hint</b>, nói cho
+					Mình sẽ nói luôn về tham số cuối của <code>bufferData</code>: tham số đó là <b>usage hint</b>, nói cho
 					driver biết ta định dùng buffer như thế nào để nó chọn chỗ đặt vùng nhớ cho hợp lý
 					(<a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/bufferData">MDN</a>):
 					<ul>
@@ -665,6 +690,93 @@ gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertexData);</code></pre>
 ...
 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);</code></pre>
 
+					<h3>c. Vertex Array Object</h3>
+					Những gì ta phải làm để vẽ, sau khi chuyển dữ liệu vào vertex buffer:
+					<ol>
+						<li>Lấy địa chỉ từng attribute một</li>
+						<li>Với mỗi attribute, gọi <code>enableVertexAttribArray</code> và <code>vertexAttribPointer</code> để truyền dữ liệu cho
+						attribute</li>
+						<li>Truyền dữ liệu cho index buffer để GPU biết lấy đỉnh theo thứ tự nào để vẽ các tam giác</li>
+					</ol>
+					Tất cả những thứ trên đều là state toàn cục của WebGL. Với 1 cube thì set 1 lần lúc đầu là xong, nhưng engine
+					của ta sẽ có nhiều GameObject, mỗi cái có buffer riêng, và trước mỗi lần vẽ ta sẽ phải set lại toàn bộ đống state đó cho đúng object đang vẽ.<br/><br/>
+
+					<b>Vertex Array Object</b> (VAO) là một object dùng để "ghi nhớ" đống state đó. Bind VAO, set mọi thứ 1 lần, sau đó mỗi lần muốn vẽ thì chỉ cần
+					bind lại VAO là toàn bộ state quay về.<br/><br/>
+
+					Sau đây là cách sử dụng VAO, đầu tiên ở ngoài hàm update ta làm như sau:
+					<pre><code class="language-javascript">const vertexBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.DYNAMIC_DRAW);
+
+const vertexArray = gl.createVertexArray();		// tạo VAO
+gl.bindVertexArray(vertexArray);				// bind VAO, từ đây mọi thay đổi state bên dưới được ghi vào VAO
+
+const aPosition = gl.getAttribLocation(program, "aPosition");
+gl.enableVertexAttribArray(aPosition);
+gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 24, 0);
+const aColor = gl.getAttribLocation(program, "aColor");
+gl.enableVertexAttribArray(aColor);
+gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 24, 12);
+
+const elementBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
+gl.bindVertexArray(null);						// unbind VAO, tránh lỡ tay sửa nó ở đâu đó sau này</code></pre>
+					Và trong <code>update</code> (đây là bản full của hàm <code>update</code> luôn):
+					<pre><code class="language-javascript">function update(time = performance.now()) {
+	dt = (time - lastTime) / 1000;
+	lastTime = time;
+
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+	let q = Quaternion.buildQuaternionEuler(new Vector3(40 * dt, -50 * dt, 30 * dt));
+	currentRotation = Quaternion.multiply(q, currentRotation);
+	let updatingCorners = [];
+	for (let i = 0; i < corners.length; i++) {
+		updatingCorners.push(currentRotation.rotateVector(corners[i]));
+		updatingCorners[i] = new Vector3(updatingCorners[i].x, updatingCorners[i].y, updatingCorners[i].z + 2);
+	}
+	for (let i = 0; i < corners.length; i++) {
+		vertexData[i * 6] = updatingCorners[i].x;
+		vertexData[i * 6 + 1] = updatingCorners[i].y;
+		vertexData[i * 6 + 2] = updatingCorners[i].z;
+	}
+	gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertexData);
+
+	gl.bindVertexArray(vertexArray);										// bind lại VAO để vẽ
+	gl.drawElements(gl.TRIANGLES, triangles.length, gl.UNSIGNED_SHORT, 0);
+	
+	requestAnimationFrame(update);
+}</code></pre>
+					Chỗ khó hiểu của VAO là nó ghi nhớ những gì, và <b>không</b> ghi nhớ những gì:
+					<ul>
+						<li>Nó ghi nhớ attribute nào được enable. Và với mỗi attribute, nó ghi nhớ: format (số component, kiểu, stride, offset) và <b>buffer nào đang nằm trong khe
+							<code>gl.ARRAY_BUFFER</code> lúc gọi <code>vertexAttribPointer</code></b>.</li>
+						<li>Nó ghi nhớ buffer nào đang nằm trong khe <code>gl.ELEMENT_ARRAY_BUFFER</code>.</li>
+						<li>Nó <b>không</b> ghi nhớ giùm dữ liệu cho khe <code>gl.ARRAY_BUFFER</code>.</li>
+					</ul>
+					Hệ quả là trong code trên:
+					<ul>
+						<li><code>vertexBuffer</code> được bind trước khi tạo VAO (hay sau cũng được), vì <code>vertexAttribPointer</code> chỉ cần biết lúc nó được gọi thì khe
+							<code>gl.ARRAY_BUFFER</code> đang chứa gì.</li>
+						<li><code>elementBuffer</code> thì bắt buộc phải bind <b>trong lúc</b> VAO đang được bind, nếu không thì VAO không biết tới nó.</li>
+						<li><code>bufferSubData</code> trong <code>update</code> ghi vào khe <code>gl.ARRAY_BUFFER</code>, và nó ghi đúng vào <code>vertexBuffer</code>
+							chỉ vì từ đầu tới giờ chưa có ai bind buffer khác vào khe đó. Sau này có nhiều buffer thì phải <code>bindBuffer</code> lại trước khi
+							<code>bufferSubData</code>.</li>
+					</ul>
+					Còn từ phần 4 tới phần 8 không có VAO thì sao vẫn chạy? Đó là vì WebGL2 có sẵn một VAO mặc định, khi ta không bind VAO nào thì mọi state
+					được ghi vào cái mặc định đó. Với 1 cube thì VAO chưa thật sự cần, nhưng mình thêm vào bây giờ vì sau này chắc chắn sẽ cần, và nó là cách làm
+					chuẩn của WebGL2.<br/><br/>
+
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview9"></div>
+
+					Cube xoay rồi. Tuy nhiên như mình nói ở phần 7, ta xoay 8 đỉnh bằng JavaScript (CPU) rồi đẩy lên GPU, trong khi vertex
+					shader sinh ra chính là để làm việc đó, nó sẽ xoay song song cho mọi đỉnh. Với 8 đỉnh thì không sao, nhưng với model vài chục nghìn đỉnh thì CPU sẽ lại
+					thành nút thắt như series trước. Cách đúng là để vertex buffer đứng yên (quay lại <code>gl.STATIC_DRAW</code>), và chỉ gửi phép biến đổi
+					(Model, View, Projection matrix của blog #3, #4, #7) lên vertex shader qua uniform. Ta sẽ làm việc đó ở phần 12, sau khi có thêm 1 cube nữa.
+					
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
