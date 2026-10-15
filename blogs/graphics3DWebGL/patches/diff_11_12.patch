@@ -1,0 +1,10 @@
+--- "a/htmlPreviews\\htmlPreview11.html"
++++ "b/htmlPreviews\\htmlPreview12.html"
+@@ -128,6 +128,7 @@
+ 		gl.depthFunc(gl.LESS);
+ 		gl.enable(gl.CULL_FACE);
+ 		gl.cullFace(gl.BACK);
++		gl.frontFace(gl.CW);
+ 
+ 		gl.clearColor(0.9, 0.9, 0.9, 1);
+ 		gl.clearDepth(1);

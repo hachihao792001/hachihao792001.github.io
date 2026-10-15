@@ -883,6 +883,31 @@ function update(time = performance.now()) {
 					Nếu bạn mở <a href="/blogs/graphics3D/htmlPreviews/htmlPreview12.html">htmlPreview12 của series trước</a> ra so thì sẽ thấy 2 cube 
 					của ta nhỏ hơn. Đó là vì ta vẫn chưa set FOV chuẩn cho nó.
 
+					<h2>11. Backface culling</h2>
+					<h3>a. Bật culling lên</h3>
+					Với Software Rasterizer thì với mỗi tam giác, ta tính pháp tuyến bằng tích có hướng, so với vector từ camera tới tâm tam giác,
+					nếu tam giác quay lưng về camera thì không vẽ.<br/><br/>
+					
+					Với WebGL thì ta chỉ cần bật nó lên bằng 2 dòng:
+					<pre><code class="language-javascript">gl.enable(gl.CULL_FACE);		// mặc định là tắt
+gl.cullFace(gl.BACK);			// bỏ mặt sau (mặc định cũng là gl.BACK)</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview11"></div>
+					Hmmmmm, ta đang thấy <b>bên trong</b> của 2 cube, mặt trước biến mất hết, chỉ còn lại mặt trong của những mặt phía sau. Nghĩa là WebGL đã cull ngược.<br/><br/>
+
+					Cái này do cái mà mình đã nói tới ở phần 5: WebGL mặc định coi 3 đỉnh tam giác là <b>ngược</b> chiều kim đồng hồ (giống OpenGL), còn series trước
+					thống nhất là <b>cùng</b> chiều kim đồng hồ.
+
+					<h3>b. Nói cho WebGL biết quy ước của ta</h3>
+					Có 2 cách sửa: đảo thứ tự đỉnh trong cả 36 index, hoặc nói cho WebGL biết là ta dùng quy ước ngược lại. Mình chọn cách thứ 2, vì nó chỉ là 1 dòng và
+					giữ được quy ước của series trước:
+					<pre><code class="language-javascript">gl.enable(gl.CULL_FACE);
+gl.cullFace(gl.BACK);
+gl.frontFace(gl.CW);		// tam giác cùng chiều kim đồng hồ là mặt trước</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview12"></div>
+					Kết quả nhìn y hệt phần 10, vì ta đã áp dụng depth buffer rồi nên mặt trước obviously sẽ che mặt sau, backface culling chỉ có công dụng về mặt performance.
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

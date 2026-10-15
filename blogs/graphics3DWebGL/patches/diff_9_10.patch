@@ -1,37 +1,11 @@
 --- "a/htmlPreviews\\htmlPreview9.html"
 +++ "b/htmlPreviews\\htmlPreview10.html"
-@@ -124,12 +124,10 @@
- 		let gameCanvas = document.getElementById("gameCanvas");
- 		let gl = gameCanvas.getContext("webgl2");
- 
--		gl.enable(gl.DEPTH_TEST);
--		gl.depthFunc(gl.LESS);
--
- 		gl.clearColor(0.9, 0.9, 0.9, 1);
- 		gl.clearDepth(1);
--		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-+		gl.enable(gl.DEPTH_TEST);
-+		gl.depthFunc(gl.LESS);
- 
- 		const vertexShaderSource = `#version 300 es
- in vec3 aPosition;
-@@ -143,7 +141,6 @@ void main(){
- 	float a = (uZFar + uZNear) / (uZFar - uZNear);
- 	float b = -2.0 * uZFar * uZNear / (uZFar - uZNear);
- 	gl_Position = vec4(aPosition.x / uAspect, aPosition.y, aPosition.z * a + b, aPosition.z);
--
- 	vColor = vec4(aColor, 1.0);
- }`;
- 		const fragmentShaderSource = `#version 300 es
-@@ -203,36 +200,64 @@ void main(){
+@@ -203,36 +203,64 @@ void main(){
  			4, 0, 1, 4, 1, 5,
  		]);
  
 -		let currentRotation = Quaternion.buildQuaternionEuler(new Vector3(40, 50, 30));
-+		const elementBuffer = gl.createBuffer();
-+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
-+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
- 
+-
 -		const vertexData = new Float32Array(corners.length * 6);
 -		for (let i = 0; i < corners.length; i++) {
 -			vertexData[i * 6] = corners[i].x;
@@ -41,12 +15,28 @@
 -			vertexData[i * 6 + 4] = corners[i].y + 0.5;
 -			vertexData[i * 6 + 5] = corners[i].z + 0.5;
 -		}
-+		const aPosition = gl.getAttribLocation(program, "aPosition");
-+		const aColor = gl.getAttribLocation(program, "aColor");
- 
+-
 -		const vertexBuffer = gl.createBuffer();
 -		gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 -		gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.DYNAMIC_DRAW);
+-
+-		const vertexArray = gl.createVertexArray();
+-		gl.bindVertexArray(vertexArray);
++		const elementBuffer = gl.createBuffer();
++		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
++		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
+ 
+ 		const aPosition = gl.getAttribLocation(program, "aPosition");
+-		gl.enableVertexAttribArray(aPosition);
+-		gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 24, 0);
+ 		const aColor = gl.getAttribLocation(program, "aColor");
+-		gl.enableVertexAttribArray(aColor);
+-		gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 24, 12);
+ 
+-		const elementBuffer = gl.createBuffer();
+-		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+-		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
+-		gl.bindVertexArray(null);
 +		class Cube {
 +			constructor(pos, eulerAngles, scale) {
 +				this.pos = pos;
@@ -73,20 +63,12 @@
 +				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
 +				gl.bindVertexArray(null);
 +			}
- 
--		const vertexArray = gl.createVertexArray();
--		gl.bindVertexArray(vertexArray);
++
 +			rotate(eulerX, eulerY, eulerZ) {
 +				let q = Quaternion.buildQuaternionEuler(new Vector3(eulerX, eulerY, eulerZ));
 +				this.rotation = Quaternion.multiply(q, this.rotation);
 +			}
- 
--		const aPosition = gl.getAttribLocation(program, "aPosition");
--		gl.enableVertexAttribArray(aPosition);
--		gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 24, 0);
--		const aColor = gl.getAttribLocation(program, "aColor");
--		gl.enableVertexAttribArray(aColor);
--		gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 24, 12);
++
 +			draw() {
 +				for (let i = 0; i < corners.length; i++) {
 +					let v = Vector3.scale(corners[i], this.scale);
@@ -103,17 +85,13 @@
 +				gl.drawElements(gl.TRIANGLES, triangles.length, gl.UNSIGNED_SHORT, 0);
 +			}
 +		}
- 
--		const elementBuffer = gl.createBuffer();
--		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
--		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
--		gl.bindVertexArray(null);
++
 +		let cube1 = new Cube(new Vector3(0.7, -0.7, 3), new Vector3(45, 0, 0), new Vector3(1, 1, 1));
 +		let cube2 = new Cube(new Vector3(-0.6, 0, 2.5), new Vector3(0, 0, 15), new Vector3(1, 0.7, 0.7));
  
  		let lastTime = performance.now();
  		let dt = 0;
-@@ -243,22 +268,10 @@ void main(){
+@@ -243,22 +271,10 @@ void main(){
  
  			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
  
