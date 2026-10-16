@@ -99,6 +99,7 @@ async function updateCardPreview() {
 		const cardPreviewDivId = cardPreviewDiv.id;
 		let htmlCode = await fetchHTMLCode(cardPreviewDivId);
 		htmlCode = htmlCode.replace("<h1>3D Engine</h1>", "");
+		htmlCode = htmlCode.replace("<h1>Hanvas Engine</h1>", "");
 		htmlCode = htmlCode.replace(
 			"</head>",
 			"<style>html,body{margin:0;overflow:hidden}canvas{display:block;max-width:100%;height:auto;margin:0 auto}</style></head>",

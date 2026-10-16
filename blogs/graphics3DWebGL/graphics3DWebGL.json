@@ -22,5 +22,11 @@
         "webTitle": "WebGL #3: Bắt đầu chuyển Hanvas Engine sang WebGL",
         "title": "WebGL #3: Bắt đầu chuyển Hanvas Engine sang WebGL",
         "route": "/blogs/graphics3DWebGL/webgl3-engine.html"
+    },
+    {
+        "id": "webgl4",
+        "webTitle": "WebGL #4: Texture",
+        "title": "WebGL #4: Texture",
+        "route": "/blogs/graphics3DWebGL/webgl4-texture.html"
     }
 ]

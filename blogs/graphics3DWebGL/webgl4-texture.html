@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="A post by Hà Chí Hào.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="../graphics3D/graphics3D.css">
+    <style>
+        .blog-content ul li a {
+            display: inline;
+            font-weight: inherit;
+            margin-bottom: 0;
+        }
+    </style>
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Chuyển Hanvas Engine thành WebGL</title>
+</head>
+
+<body data-graphics3D-id="webgl3">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Texture</h1>
+					Thêm texture vào WebGL thật ra khá dễ, quan trọng là cách mình cấu trúc code, bind state, vẽ khi nào thôi.<br/><br/>
+
+					Đây là class Texture ở Software Rasterizer của chúng ta:
+					<pre><code class="language-javascript">class Texture {
+	constructor(url = "") {
+		this.pixels = null;
+		this.width = 0;
+		this.height = 0;
+		if (url) this.load(url);
+	}
+
+	async load(url) {
+		const img = new Image();
+		img.crossOrigin = "anonymous";
+		img.src = url;
+		const loaded = new Promise((resolve) => {
+			img.onload = () => {
+				resolve();
+			};
+		});
+		await loaded;
+		const tempCanvas = document.createElement("canvas");
+		tempCanvas.width = img.width;
+		tempCanvas.height = img.height;
+		const tempCtx = (tempCanvas.getContext("2d"));
+		tempCtx.drawImage(img, 0, 0);
+		this.pixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
+		this.width = img.width;
+		this.height = img.height;
+	}
+}</code></pre>
+					Ta sẽ không xóa code nào trong class này hết, mà tiếp tục thêm vào nó, vì class này đúng là chỉ làm việc liên quan tới texture và các pixel của nó,
+					chứ không liên quan gì engine.<br/><br/>
+					Đầu tiên là ta truyền dữ liệu Texture cho WebGL, cụ thể, trong constructor ta tạo 1 texture mới trong GPU bằng hàm <code>gl.createTexture</code>:
+					<pre><code class="language-javascript">constructor(url = "", gl = null) {		// truyền gl vào để Texture xài
+	this.pixels = null;
+	this.width = 0;
+	this.height = 0;
+	this.gl = gl;							// <-----------------------
+	this.glTexture = gl.createTexture();	// <-----------------------
+	if (url) this.load(url);
+}</code></pre>
+					Trong hàm <code>load</code> ta sẽ truyền dữ liệu vào texture đó:
+					<pre><code class="language-javascript">async load(url) {
+	...
+
+	this.gl.bindTexture(gl.TEXTURE_2D, this.glTexture);
+	this.gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(this.pixels.buffer));
+
+	this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+	this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+}</code></pre>
+					Hàm <code>gl.bindTexture</code> thì nhìn quá quen thuộc r, còn <code>gl.TEXTURE_2D</code> chính là một "khe" mới mà ta chưa biết.
+					Còn hàm <code>gl.texImage2D</code> có tham số như sau:
+					<pre><code class="language-javascript">gl.texImage2D(
+	// khe,
+	// mipmap level, nếu bạn chơi game nhiều bạn sẽ biết thuật ngữ này, mipmap là việc lưu các version nhỏ hơn của 1 texture để tối ưu
+	// internal format, là format mà webgl lưu,
+	// width,
+	// height,
+	// có border hay không,
+	// format truyền vào,
+	// kiểu của buffer,
+	// các pixel kiểu Uint8Array, vì pixels của Texture là kiểu Uint8ClampedArray (kiểu từ getImageData trả về) nên phải convert)</code></pre>
+					Tiếp theo là 4 dòng <code>gl.texParameteri</code>, hàm <code>gl.texParameteri(khe, parameter, value)</code> set các parameter cho texture
+					hiện tại đang được bind, cụ thể:
+					<ul>
+						<li><code>gl.TEXTURE_MIN_FILTER</code>: Cách xử lí khi texture được render nhỏ hơn texture gốc. <code>gl.NEAREST</code>
+						nghĩa là lấy pixel gần nhất.</li>
+						<li><code>gl.TEXTURE_MAG_FILTER</code>: Tương tự như trên nhưng với texture render lớn hơn texture gốc</li>
+						<li><code>gl.TEXTURE_WRAP_S</code>: Cách xử lí khi lấy 1 pixel có <code>u</code> (tọa độ ngang) bên ngoài khoảng [0; 1]. <code>gl.CLAMP_TO_EDGE</code> nghĩa
+						là lấy màu y hệt cạnh của texture gốc.</li>
+						<li><code>gl.TEXTURE_WRAP_T</code>: Tương tự như trên nhưng với <code>v</code> (tọa độ dọc).</li>
+					</ul>
+					Ngoài ra còn nhiều cách xử lí các trường hợp trên, bạn có thể xem 
+					<a href="https://docs.unity3d.com/2018.1/Documentation/Manual/SL-SamplerStates.html">doc của Unity về vấn đề này</a>, trong trỏng có 2 hình dưới đây nhìn khá dễ hiểu:
+					<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; text-align: center;">
+						<figure style="margin: 0;">
+							<img style="max-height: 200px; border: 1px solid black; display: block" src="https://docs.unity3d.com/2018.1/Documentation/uploads/Main/SamplerStates1.jpg" alt="Texture filtering methods"/>
+							<figcaption><i>2 cách xử lí texture filter</i></figcaption>
+						</figure>
+						<figure style="margin: 0;">
+							<img style="max-height: 200px; border: 1px solid black; display: block" src="https://docs.unity3d.com/2018.1/Documentation/uploads/Main/SamplerStates2.png" alt="Texture wrapping and repeating methods"/>
+							<figcaption><i>Các cách xử lí wrap/repeat</i></figcaption>
+						</figure>
+					</div>
+
+					
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3DWebGL.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>
