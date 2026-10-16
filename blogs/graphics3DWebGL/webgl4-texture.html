@@ -140,7 +140,73 @@
 						</figure>
 					</div>
 
+					<h2>2. Đưa UV lên GPU</h2>
+					Đã đụng tới texture thì phải đụng tới UV, cho nên ta phải truyền thêm UV vào vertex shader. Ta cũng làm tương ứng như trước:
+					thêm uv vào vertex data, thêm attribute mới trong vertex shader, và truyền vào đúng stride, offset. Tọa độ là 3 float, giờ
+					thêm 2 float của uv nữa thì mỗi vertex có 5 float. 5 float là 20 byte, nên <code>aPosition</code> có stride
+					20 byte và offset 0; attribute mới <code>aUV</code> cũng có stride 20 byte nhưng offset 12 byte (sau 3 float tọa độ):
+					<pre><code class="language-javascript">class Mesh {
+	...
+
+	uploadToGPU() {
+		const vertexData = new Float32Array(this.tris.length * 15);	// 1 tam giác = 3 vertex * 5 float
+		for (let i = 0; i &lt; this.tris.length; i++) {
+			for (let j = 0; j &lt; 3; j++) {
+				const vertex = this.tris[i].vertices[j];
+				vertexData[i * 15 + j * 5] = vertex.x;
+				vertexData[i * 15 + j * 5 + 1] = vertex.y;
+				vertexData[i * 15 + j * 5 + 2] = vertex.z;
+				vertexData[i * 15 + j * 5 + 3] = this.tris[i].uv[j].u;		// <---------------
+				vertexData[i * 15 + j * 5 + 4] = this.tris[i].uv[j].v;		// <---------------
+			}
+		}
+		...
+
+		gl.enableVertexAttribArray(aPosition);
+		gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 20, 0);		// <---------------
+		gl.enableVertexAttribArray(aUV);									// <---------------
+		gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 20, 12);			// <---------------
+		...
+	}
+}</code></pre>
 					
+					Trong vertex shader, UV được nhận qua attribute rồi chuyển tiếp cho fragment shader:
+					<pre><code class="language-hlsl">...
+in vec2 aUV;		// <---------------
+out vec2 vUV;		// <---------------
+
+void main() {
+	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+	vUV = aUV;		// <---------------
+}</code></pre>
+					<pre><code class="language-hlsl">...
+in vec2 vUV;
+out vec4 outColor;
+
+void main(){
+	// sử dụng vUV thế nào phần dưới sẽ nói
+	outColor = vec4(color, 1.0);
+}</code></pre>
+
+					<h2>3. Lấy màu texture trong fragment shader</h2>
+					Fragment shader nhận vUV từ vertex shader, là UV đã được nội suy (và perspective correct) cho pixel hiện tại, việc của ta hiện tại chỉ là lấy
+					đúng pixel trong Texture ra để hiển thị. Để làm được điều đó, ta khai báo một <code>uniform</code> <code>sampler2D</code> để nhận texture,
+					rồi gọi hàm <code>texture</code> để lấy màu tại vUV:
+					<pre><code class="language-hlsl">uniform sampler2D uTexture;		// <---------------
+uniform bool uUseTexture;		// <---------------
+uniform vec3 uColor;
+in vec2 vUV;
+out vec4 outColor;
+
+void main() {
+	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;		// <---------------
+	outColor = vec4(color, 1.0);
+}</code></pre>
+					<code>uTexture</code> là sampler trỏ tới texture unit. Còn <code>uUseTexture</code> để bật tắt texture, dành cho trường hợp
+					GameObject không có texture, hoặc chưa load được texture. Nếu <code>uUseTexture</code> false thì fragment shader dùng
+					<code>uColor</code> như trước.
+
+					<div class="htmlPreview" id="htmlPreview24" data-disabled="true"></div>
 
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
