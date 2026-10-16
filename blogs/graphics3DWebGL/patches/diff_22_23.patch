@@ -1,0 +1,10 @@
+--- "a/htmlPreviews\\htmlPreview22.html"
++++ "b/htmlPreviews\\htmlPreview23.html"
+@@ -1270,6 +1270,7 @@ void main(){
+ 
+ 			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+ 			gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
++			gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
+ 		}
+ 
+ 		function readAndApplyResolutionInput() {

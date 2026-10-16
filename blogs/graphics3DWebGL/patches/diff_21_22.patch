@@ -1,0 +1,553 @@
+--- "a/htmlPreviews\\htmlPreview21.html"
++++ "b/htmlPreviews\\htmlPreview22.html"
+@@ -221,12 +221,6 @@
+ 
+ 	<script>
+ 		// ===== math.js =====
+-		class MathExtend {
+-			static edgeFunction(v0, v1, p) {
+-				return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
+-			}
+-		}
+-
+ 		class Vector2 {
+ 			constructor(u = 0, v = 0, w = 1) {
+ 				this.u = u;
+@@ -572,219 +566,6 @@
+ 			}
+ 		}
+ 
+-		class Plane {
+-			constructor(normal, P) {
+-				this.normal = normal.normalize();
+-				this.P = P;
+-				this.D = Vector3.dot(this.normal, this.P);
+-			}
+-
+-			isPointInFrontOfPlane(p) {
+-				return Vector3.dot(p, this.normal) >= this.D;
+-			}
+-
+-			intersectWithLine(A, B) {
+-				let An = Vector3.dot(A, this.normal);
+-				let Bn = Vector3.dot(B, this.normal);
+-				let vectorAB = Vector3.sub(B, A);
+-				let t = (this.D - An) / (Bn - An);
+-				let vectorAM = Vector3.mul(vectorAB, t);
+-				return [t, Vector3.add(A, vectorAM)];
+-			}
+-
+-			distanceToPoint(p) {
+-				return Vector3.dot(p, this.normal) - this.D;
+-			}
+-
+-			isIntersectingWithTris(tris) {
+-				for (let tri of tris) {
+-					if (tri.isIntersectingPlane(this)) return true;
+-				}
+-				return false;
+-			}
+-
+-			clipWithTris(tris) {
+-				let clippedTris = [];
+-				for (let tri of tris) {
+-					clippedTris.push(...tri.clipAgainstPlane(this));
+-				}
+-				return clippedTris;
+-			}
+-		}
+-
+-		class BoundingBox {
+-			constructor(minX, maxX, minY, maxY) {
+-				this.minX = minX;
+-				this.maxX = maxX;
+-				this.minY = minY;
+-				this.maxY = maxY;
+-			}
+-
+-			isValid() {
+-				return this.minX <= this.maxX && this.minY <= this.maxY;
+-			}
+-
+-			static union(bbox1, bbox2) {
+-				return new BoundingBox(
+-					Math.min(bbox1.minX, bbox2.minX),
+-					Math.max(bbox1.maxX, bbox2.maxX),
+-					Math.min(bbox1.minY, bbox2.minY),
+-					Math.max(bbox1.maxY, bbox2.maxY),
+-				);
+-			}
+-
+-			static intersect(bbox1, bbox2) {
+-				return new BoundingBox(
+-					Math.max(bbox1.minX, bbox2.minX),
+-					Math.min(bbox1.maxX, bbox2.maxX),
+-					Math.max(bbox1.minY, bbox2.minY),
+-					Math.min(bbox1.maxY, bbox2.maxY),
+-				);
+-			}
+-
+-			static isOverlap(bbox1, bbox2) {
+-				return (
+-					((bbox1.minX < bbox2.maxX && bbox1.maxX > bbox2.minX) || (bbox2.minX < bbox1.maxX && bbox2.maxX > bbox1.minX)) &&
+-					((bbox1.minY < bbox2.maxY && bbox1.maxY > bbox2.minY) || (bbox2.minY < bbox1.maxY && bbox2.maxY > bbox1.minY))
+-				);
+-			}
+-		}
+-
+-		class MathTriangle {
+-			constructor(vertices = []) {
+-				if (vertices.length == 0) {
+-					this.vertices = [];
+-					for (let i = 0; i < 3; i++) {
+-						this.vertices.push(new Vector3(0, 0, 0));
+-					}
+-				} else {
+-					this.vertices = vertices;
+-				}
+-
+-				this.signedDoubleArea = 0;
+-			}
+-
+-			clone() {
+-				let tri = new MathTriangle();
+-				for (let i = 0; i < this.vertices.length; i++) {
+-					tri.vertices[i] = this.vertices[i].clone();
+-				}
+-				return tri;
+-			}
+-
+-			mulMat4x4(m) {
+-				for (let v of this.vertices) {
+-					v.mulMat4x4(m);
+-				}
+-			}
+-
+-			rotate(q) {
+-				for (let i = 0; i < this.vertices.length; i++) {
+-					this.vertices[i] = q.rotateVector(this.vertices[i]);
+-				}
+-			}
+-
+-			getCenter() {
+-				let x = (this.vertices[0].x + this.vertices[1].x + this.vertices[2].x) / 3.0;
+-				let y = (this.vertices[0].y + this.vertices[1].y + this.vertices[2].y) / 3.0;
+-				let z = (this.vertices[0].z + this.vertices[1].z + this.vertices[2].z) / 3.0;
+-				return new Vector3(x, y, z);
+-			}
+-
+-			getNormal() {
+-				let v1 = Vector3.sub(this.vertices[0], this.vertices[1]);
+-				let v2 = Vector3.sub(this.vertices[1], this.vertices[2]);
+-				let normal = Vector3.cross(v1, v2);
+-				normal.normalize();
+-				return normal;
+-			}
+-
+-			perspectiveDivide() {
+-				for (let i = 0; i < this.vertices.length; i++) {
+-					let z = this.vertices[i].w;
+-					this.vertices[i] = Vector3.div(this.vertices[i], z);
+-				}
+-			}
+-
+-			isIntersectingPlane(plane) {
+-				for (let i = 0; i < this.vertices.length; i++) {
+-					let next = (i + 1) % this.vertices.length;
+-					let t = plane.intersectWithLine(this.vertices[i], this.vertices[next])[0];
+-					if (t >= 0 && t <= 1) return true;
+-				}
+-
+-				return false;
+-			}
+-
+-			clipAgainstPlane(plane) {
+-				let outTris = [];
+-
+-				let frontPoints = [];
+-				let behindPoints = [];
+-
+-				for (let i = 0; i < this.vertices.length; i++) {
+-					if (plane.isPointInFrontOfPlane(this.vertices[i])) {
+-						frontPoints.push(i);
+-					} else {
+-						behindPoints.push(i);
+-					}
+-				}
+-
+-				if (frontPoints.length == 3) {
+-					outTris.push(this.clone());
+-				} else if (frontPoints.length == 1 && behindPoints.length == 2) {
+-					if (behindPoints[0] == 0 && behindPoints[1] == 2) {
+-						behindPoints[0] = 2;
+-						behindPoints[1] = 0;
+-					}
+-
+-					let f = this.vertices[frontPoints[0]];
+-					let b0 = this.vertices[behindPoints[0]];
+-					let b1 = this.vertices[behindPoints[1]];
+-
+-					let [, intersection1] = plane.intersectWithLine(f, b0);
+-					let [, intersection2] = plane.intersectWithLine(f, b1);
+-
+-					outTris.push(new MathTriangle([f, intersection1, intersection2]));
+-				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
+-					if (frontPoints[0] == 0 && frontPoints[1] == 2) {
+-						frontPoints[0] = 2;
+-						frontPoints[1] = 0;
+-					}
+-
+-					let f0 = this.vertices[frontPoints[0]];
+-					let f1 = this.vertices[frontPoints[1]];
+-					let b = this.vertices[behindPoints[0]];
+-
+-					let [, intersection1] = plane.intersectWithLine(f0, b);
+-					let [, intersection2] = plane.intersectWithLine(f1, b);
+-
+-					outTris.push(new MathTriangle([f0, f1, intersection1]));
+-					outTris.push(new MathTriangle([f1.clone(), intersection2, intersection1.clone()]));
+-				}
+-
+-				return outTris;
+-			}
+-
+-			boundingBox(maxWidth, maxHeight) {
+-				let minX = Math.min(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
+-				let maxX = Math.max(this.vertices[0].x, this.vertices[1].x, this.vertices[2].x);
+-				let minY = Math.min(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
+-				let maxY = Math.max(this.vertices[0].y, this.vertices[1].y, this.vertices[2].y);
+-
+-				minX = Math.max(0, Math.trunc(minX));
+-				maxX = Math.min(maxWidth - 1, Math.trunc(maxX));
+-				minY = Math.max(0, Math.trunc(minY));
+-				maxY = Math.min(maxHeight - 1, Math.trunc(maxY));
+-
+-				return new BoundingBox(minX, maxX, minY, maxY);
+-			}
+-
+-			calculateSignedDoubleArea() {
+-				this.signedDoubleArea = MathExtend.edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
+-			}
+-		}
+-
+ 		// ===== graphics.js =====
+ 		class Color {
+ 			constructor(r, g, b) {
+@@ -1068,32 +849,6 @@
+ 				this.mesh = mesh;
+ 			}
+ 
+-			getTransformedTriangles() {
+-				let transformedTris = [];
+-				let scaleMat = this.transform.getScaleMatrix();
+-				let rotation = this.transform.rotation;
+-				let translationMat = this.transform.getTranslationMatrix();
+-				for (let tri of this.mesh.tris) {
+-					let transformedTri = tri.clone();
+-					transformedTri.mulMat4x4(scaleMat);
+-					transformedTri.rotate(rotation);
+-					transformedTri.mulMat4x4(translationMat);
+-					transformedTri.color = this.color;
+-					transformedTris.push(transformedTri);
+-				}
+-				return transformedTris;
+-			}
+-
+-			getTransformedTrianglesWithChildren() {
+-				let transformedTris = this.getTransformedTriangles();
+-				for (let child of this.transform.children) {
+-					if (child.gameObject != null) {
+-						transformedTris.push(...child.gameObject.getTransformedTrianglesWithChildren());
+-					}
+-				}
+-				return transformedTris;
+-			}
+-
+ 			draw() {
+ 				if (this.mesh.vertexCount == 0) return;
+ 				gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
+@@ -1112,218 +867,13 @@
+ 			}
+ 		}
+ 
+-		class Rasterizer {
+-			constructor(canvasWidth, canvasHeight, ctx) {
+-				this.ctx = ctx;
+-
+-				this.canvasWidth = canvasWidth;
+-				this.canvasHeight = canvasHeight;
+-
+-				this.imageData = this.ctx.createImageData(this.canvasWidth, this.canvasHeight);
+-				this.screenBuffer = this.imageData.data;
+-				this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);
+-				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
+-
+-				this.clearScreen();
+-			}
+-
+-			updateResolution(canvasWidth, canvasHeight) {
+-				this.canvasWidth = canvasWidth;
+-				this.canvasHeight = canvasHeight;
+-
+-				this.imageData = this.ctx.createImageData(this.canvasWidth, this.canvasHeight);
+-				this.screenBuffer = this.imageData.data;
+-				this.screenBuffer32 = new Uint32Array(this.imageData.data.buffer);
+-				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
+-
+-				this.clearScreen();
+-			}
+-
+-			clearScreen() {
+-				this.screenBuffer32.fill(0xfff0f0f0);
+-				this.depthBuffer.fill(Infinity);
+-			}
+-
+-			rasterizeClipSpaceTriangles(tris) {
+-				const screenBuffer = this.screenBuffer;
+-				const depthBuffer = this.depthBuffer;
+-				const canvasWidth = this.canvasWidth;
+-				const canvasHeight = this.canvasHeight;
+-
+-				for (let tri of tris) {
+-					let vertices = tri.vertices;
+-					for (let i = 0; i < vertices.length; i++) {
+-						vertices[i] = new Vector3(
+-							vertices[i].x * (canvasWidth / 2) + canvasWidth / 2,
+-							-vertices[i].y * (canvasHeight / 2) + canvasHeight / 2,
+-							vertices[i].z,
+-						);
+-					}
+-
+-					tri.calculateSignedDoubleArea();
+-					const signedDoubleArea = tri.signedDoubleArea;
+-
+-					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
+-
+-					let edgeFunctionRow01 = MathExtend.edgeFunction(tri.vertices[0], tri.vertices[1], new Vector3(bbox.minX, bbox.minY, 0));
+-					let edgeFunctionRow12 = MathExtend.edgeFunction(tri.vertices[1], tri.vertices[2], new Vector3(bbox.minX, bbox.minY, 0));
+-					let edgeFunctionRow20 = MathExtend.edgeFunction(tri.vertices[2], tri.vertices[0], new Vector3(bbox.minX, bbox.minY, 0));
+-
+-					const vertex0 = tri.vertices[0],
+-						vertex1 = tri.vertices[1],
+-						vertex2 = tri.vertices[2];
+-					const vertex0Z = vertex0.z,
+-						vertex1Z = vertex1.z,
+-						vertex2Z = vertex2.z;
+-
+-					const edgeSlopeX01 = vertex0.y - vertex1.y;
+-					const edgeSlopeX12 = vertex1.y - vertex2.y;
+-					const edgeSlopeX20 = vertex2.y - vertex0.y;
+-					const edgeSlopeY01 = vertex1.x - vertex0.x;
+-					const edgeSlopeY12 = vertex2.x - vertex1.x;
+-					const edgeSlopeY20 = vertex0.x - vertex2.x;
+-
+-					const triColor = tri.color;
+-
+-					for (let y = bbox.minY; y <= bbox.maxY; y++) {
+-						let edgeFunction01 = edgeFunctionRow01;
+-						let edgeFunction12 = edgeFunctionRow12;
+-						let edgeFunction20 = edgeFunctionRow20;
+-						let pixelIndex = y * canvasWidth + bbox.minX;
+-						for (let x = bbox.minX; x <= bbox.maxX; x++) {
+-							if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
+-								const baryCoord0 = edgeFunction12 / signedDoubleArea;
+-								const baryCoord1 = edgeFunction20 / signedDoubleArea;
+-								const baryCoord2 = edgeFunction01 / signedDoubleArea;
+-								const z = vertex0Z * baryCoord0 + vertex1Z * baryCoord1 + vertex2Z * baryCoord2;
+-
+-								if (z < depthBuffer[pixelIndex]) {
+-									depthBuffer[pixelIndex] = z;
+-
+-									const colorIndex = pixelIndex * 4;
+-									screenBuffer[colorIndex] = triColor.r;
+-									screenBuffer[colorIndex + 1] = triColor.g;
+-									screenBuffer[colorIndex + 2] = triColor.b;
+-								}
+-							}
+-							edgeFunction01 += edgeSlopeX01;
+-							edgeFunction12 += edgeSlopeX12;
+-							edgeFunction20 += edgeSlopeX20;
+-							pixelIndex++;
+-						}
+-						edgeFunctionRow01 += edgeSlopeY01;
+-						edgeFunctionRow12 += edgeSlopeY12;
+-						edgeFunctionRow20 += edgeSlopeY20;
+-					}
+-				}
+-			}
+-
+-			drawCall() {
+-				this.ctx.putImageData(this.imageData, 0, 0);
+-			}
+-		}
+-
+ 		// ===== mesh.js =====
+-		class Triangle extends MathTriangle {
++		class Triangle {
+ 			constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
+-				super(vertices);
+-
++				this.vertices = vertices;
+ 				this.uv = uv;
+-				this.viewDistanceSquared = 0;
+ 				this.color = color;
+ 			}
+-
+-			clone() {
+-				let tri = new Triangle();
+-				for (let i = 0; i < this.vertices.length; i++) {
+-					tri.vertices[i] = this.vertices[i].clone();
+-					tri.uv[i] = this.uv[i].clone();
+-				}
+-				tri.color = this.color;
+-				return tri;
+-			}
+-
+-			clipAgainstPlane(plane) {
+-				let outTris = [];
+-
+-				let frontPoints = [];
+-				let behindPoints = [];
+-
+-				for (let i = 0; i < this.vertices.length; i++) {
+-					if (plane.isPointInFrontOfPlane(this.vertices[i])) {
+-						frontPoints.push(i);
+-					} else {
+-						behindPoints.push(i);
+-					}
+-				}
+-
+-				if (frontPoints.length == 3) {
+-					outTris.push(this.clone());
+-				} else if (frontPoints.length == 1 && behindPoints.length == 2) {
+-					if (behindPoints[0] == 0 && behindPoints[1] == 2) {
+-						behindPoints[0] = 2;
+-						behindPoints[1] = 0;
+-					}
+-
+-					let f = this.vertices[frontPoints[0]];
+-					let b0 = this.vertices[behindPoints[0]];
+-					let b1 = this.vertices[behindPoints[1]];
+-
+-					let [t1, intersection1] = plane.intersectWithLine(f, b0);
+-					let [t2, intersection2] = plane.intersectWithLine(f, b1);
+-
+-					let outTri = new Triangle();
+-					outTri.vertices[0] = f;
+-					outTri.vertices[1] = intersection1;
+-					outTri.vertices[2] = intersection2;
+-					outTri.uv[0] = this.uv[frontPoints[0]];
+-					outTri.uv[1] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
+-					outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
+-					outTri.color = this.color;
+-					outTris.push(outTri);
+-				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
+-					if (frontPoints[0] == 0 && frontPoints[1] == 2) {
+-						frontPoints[0] = 2;
+-						frontPoints[1] = 0;
+-					}
+-
+-					let f0 = this.vertices[frontPoints[0]];
+-					let f1 = this.vertices[frontPoints[1]];
+-					let b = this.vertices[behindPoints[0]];
+-
+-					let [t1, intersection1] = plane.intersectWithLine(f0, b);
+-					let [t2, intersection2] = plane.intersectWithLine(f1, b);
+-
+-					let outTri1 = new Triangle();
+-					outTri1.vertices[0] = f0;
+-					outTri1.vertices[1] = f1;
+-					outTri1.vertices[2] = intersection1;
+-					outTri1.uv[0] = this.uv[frontPoints[0]];
+-					outTri1.uv[1] = this.uv[frontPoints[1]];
+-					outTri1.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
+-					outTri1.color = this.color;
+-					outTris.push(outTri1);
+-
+-					let outTri2 = new Triangle();
+-					outTri2.vertices[0] = f1.clone();
+-					outTri2.vertices[1] = intersection2;
+-					outTri2.vertices[2] = intersection1.clone();
+-					outTri2.uv[0] = this.uv[frontPoints[1]].clone();
+-					outTri2.uv[1] = Vector2.lerp(this.uv[frontPoints[1]], this.uv[behindPoints[0]], t2);
+-					outTri2.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
+-					outTri2.color = this.color;
+-					outTris.push(outTri2);
+-				}
+-
+-				return outTris;
+-			}
+-
+-			perspectiveDivide() {
+-				for (let i = 0; i < this.vertices.length; i++) {
+-					this.uv[i] = Vector2.div(this.uv[i], this.vertices[i].w);
+-				}
+-				super.perspectiveDivide();
+-			}
+ 		}
+ 
+ 		class Mesh {
+@@ -1626,7 +1176,6 @@ void main(){
+ 		let projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+ 		gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
+ 		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 5, 0.2);
+-		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
+ 		let keyStates = {};
+ 
+ 		const renderDiv = (document.getElementById("render"));
+@@ -1678,55 +1227,6 @@ void main(){
+ 			}
+ 		}
+ 
+-		function gameObjectToWorldSpaceTriangles() {
+-			let objectTris = [];
+-			objectTris.push(...ground.getTransformedTrianglesWithChildren());
+-			for (let light of pointLights) {
+-				objectTris.push(...light.getTransformedTrianglesWithChildren());
+-			}
+-			objectTris.push(...woodTower.getTransformedTrianglesWithChildren());
+-
+-			return objectTris;
+-		}
+-
+-		function worldSpaceToViewSpace(objectTris) {
+-			const viewMat = camera.getViewMatrix();
+-
+-			let visibleTris = [];
+-			for (let tri of objectTris) {
+-				if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.transform.position)) < 0) {
+-					tri.mulMat4x4(viewMat);
+-					visibleTris.push(...tri.clipAgainstPlane(nearPlane));
+-				}
+-			}
+-
+-			return visibleTris;
+-		}
+-
+-		function sortNearestFirst(visibleTris) {
+-			for (let tri of visibleTris) {
+-				const vertices = tri.vertices;
+-				const centerX = (vertices[0].x + vertices[1].x + vertices[2].x) / 3;
+-				const centerY = (vertices[0].y + vertices[1].y + vertices[2].y) / 3;
+-				const centerZ = (vertices[0].z + vertices[1].z + vertices[2].z) / 3;
+-				tri.viewDistanceSquared = centerX * centerX + centerY * centerY + centerZ * centerZ;
+-			}
+-			visibleTris.sort((a, b) => a.viewDistanceSquared - b.viewDistanceSquared);
+-		}
+-
+-		function viewSpaceToClipSpace(visibleTris) {
+-			for (let tri of visibleTris) {
+-				tri.mulMat4x4(projectionMatrix);
+-				tri.perspectiveDivide();
+-			}
+-		}
+-
+-		function rasterize(visibleTris) {
+-			rasterizer.clearScreen();
+-			rasterizer.rasterizeClipSpaceTriangles(visibleTris);
+-			rasterizer.drawCall();
+-		}
+-
+ 		function render() {
+ 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+ 			gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());

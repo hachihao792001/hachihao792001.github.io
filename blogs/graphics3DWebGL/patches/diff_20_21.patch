@@ -1,0 +1,241 @@
+--- "a/htmlPreviews\\htmlPreview20.html"
++++ "b/htmlPreviews\\htmlPreview21.html"
+@@ -375,8 +375,8 @@
+ 				let matrix = new Mat4x4();
+ 				matrix.m[0][0] = (h / w) * fovMultiplier;
+ 				matrix.m[1][1] = fovMultiplier;
+-				matrix.m[2][2] = zFar / (zFar - zNear);
+-				matrix.m[2][3] = (-zNear * zFar) / (zFar - zNear);
++				matrix.m[2][2] = (zFar + zNear) / (zFar - zNear);
++				matrix.m[2][3] = (-2 * zFar * zNear) / (zFar - zNear);
+ 				matrix.m[3][2] = 1.0;
+ 				return matrix;
+ 			}
+@@ -425,6 +425,43 @@
+ 				matrix.m[3][3] = 1;
+ 				return matrix;
+ 			}
++
++			static Multiply(m1, m2) {
++				let result = new Mat4x4();
++				for (let r = 0; r < 4; r++) {
++					for (let c = 0; c < 4; c++) {
++						result.m[r][c] = m1.m[r][0] * m2.m[0][c] + m1.m[r][1] * m2.m[1][c] + m1.m[r][2] * m2.m[2][c] + m1.m[r][3] * m2.m[3][c];
++					}
++				}
++				return result;
++			}
++
++			static Rotation(q) {
++				const a = q.a,
++					b = q.b,
++					c = q.c,
++					d = q.d;
++				let matrix = new Mat4x4();
++				matrix.m[0][0] = 1 - 2 * (c * c + d * d);
++				matrix.m[0][1] = 2 * (b * c - a * d);
++				matrix.m[0][2] = 2 * (b * d + a * c);
++				matrix.m[1][0] = 2 * (b * c + a * d);
++				matrix.m[1][1] = 1 - 2 * (b * b + d * d);
++				matrix.m[1][2] = 2 * (c * d - a * b);
++				matrix.m[2][0] = 2 * (b * d - a * c);
++				matrix.m[2][1] = 2 * (c * d + a * b);
++				matrix.m[2][2] = 1 - 2 * (b * b + c * c);
++				matrix.m[3][3] = 1;
++				return matrix;
++			}
++
++			toColumnMajor() {
++				let array = new Float32Array(16);
++				for (let c = 0; c < 4; c++)
++					for (let r = 0; r < 4; r++)
++						array[c * 4 + r] = this.m[r][c];
++				return array;
++			}
+ 		}
+ 
+ 		class Quaternion {
+@@ -939,6 +976,11 @@
+ 				return Mat4x4.Translation(position.x, position.y, position.z);
+ 			}
+ 
++			getModelMatrix() {
++				let model = Mat4x4.Multiply(Mat4x4.Rotation(this.rotation), this.getScaleMatrix());
++				return Mat4x4.Multiply(this.getTranslationMatrix(), model);
++			}
++
+ 			getViewMatrix() {
+ 				return Mat4x4.ViewFromPosRot(this.position, this.rotation);
+ 			}
+@@ -1051,6 +1093,23 @@
+ 				}
+ 				return transformedTris;
+ 			}
++
++			draw() {
++				if (this.mesh.vertexCount == 0) return;
++				gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
++				gl.uniform3f(uColor, this.color.r / 255, this.color.g / 255, this.color.b / 255);
++				gl.bindVertexArray(this.mesh.vertexArray);
++				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
++			}
++
++			drawWithChildren() {
++				this.draw();
++				for (let child of this.transform.children) {
++					if (child.gameObject != null) {
++						child.gameObject.drawWithChildren();
++					}
++				}
++			}
+ 		}
+ 
+ 		class Rasterizer {
+@@ -1270,6 +1329,9 @@
+ 		class Mesh {
+ 			constructor(tris = []) {
+ 				this.tris = tris;
++				this.vertexCount = 0;
++				this.vertexArray = null;
++				this.uploadToGPU();
+ 			}
+ 
+ 			setTriangles(tris, color = new Color(255, 255, 255)) {
+@@ -1283,6 +1345,31 @@
+ 						),
+ 					);
+ 				}
++				this.uploadToGPU();
++			}
++
++			uploadToGPU() {
++				if (this.tris.length == 0) return;
++
++				const vertexData = new Float32Array(this.tris.length * 9);
++				for (let i = 0; i < this.tris.length; i++) {
++					for (let j = 0; j < 3; j++) {
++						const vertex = this.tris[i].vertices[j];
++						vertexData[i * 9 + j * 3] = vertex.x;
++						vertexData[i * 9 + j * 3 + 1] = vertex.y;
++						vertexData[i * 9 + j * 3 + 2] = vertex.z;
++					}
++				}
++				this.vertexCount = this.tris.length * 3;
++
++				this.vertexArray = gl.createVertexArray();
++				gl.bindVertexArray(this.vertexArray);
++				const vertexBuffer = gl.createBuffer();
++				gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
++				gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
++				gl.enableVertexAttribArray(aPosition);
++				gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 12, 0);
++				gl.bindVertexArray(null);
+ 			}
+ 		}
+ 
+@@ -1481,12 +1568,63 @@
+ 
+ 		// ===== index.js =====
+ 		const gameCanvas = (document.getElementById("gameCanvas"));
+-		const ctx = (gameCanvas.getContext("2d"));
+-		const rasterizer = new Rasterizer(gameCanvas.width, gameCanvas.height, ctx);
++		const gl = (gameCanvas.getContext("webgl2"));
++
++		const vertexShaderSource = `#version 300 es
++in vec3 aPosition;
++uniform mat4 uModel;
++uniform mat4 uView;
++uniform mat4 uProjection;
++
++void main(){
++	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
++}`;
++		const fragmentShaderSource = `#version 300 es
++precision highp float;
++
++uniform vec3 uColor;
++out vec4 outColor;
++
++void main(){
++	outColor = vec4(uColor, 1.0);
++}`;
++		function compileShader(type, source) {
++			const shader = gl.createShader(type);
++			gl.shaderSource(shader, source);
++			gl.compileShader(shader);
++			if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
++				const log = gl.getShaderInfoLog(shader);
++				gl.deleteShader(shader);
++				throw new Error("Shader compile error: " + log);
++			}
++			return shader;
++		}
++
++		const program = gl.createProgram();
++		gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexShaderSource));
++		gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource));
++		gl.linkProgram(program);
++		if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
++			throw new Error("Program link error: " + gl.getProgramInfoLog(program));
++		}
++		gl.useProgram(program);
++
++		const aPosition = gl.getAttribLocation(program, "aPosition");
++		const uModel = gl.getUniformLocation(program, "uModel");
++		const uView = gl.getUniformLocation(program, "uView");
++		const uProjection = gl.getUniformLocation(program, "uProjection");
++		const uColor = gl.getUniformLocation(program, "uColor");
++
++		gl.enable(gl.DEPTH_TEST);
++		gl.enable(gl.CULL_FACE);
++		gl.frontFace(gl.CW);
++		gl.clearColor(240 / 255, 240 / 255, 240 / 255, 1);
++
+ 		const fov = 60;
+ 		let znear = 0.01,
+ 			zfar = 1000;
+ 		let projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
++		gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
+ 		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 5, 0.2);
+ 		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
+ 		let keyStates = {};
+@@ -1589,6 +1727,17 @@
+ 			rasterizer.drawCall();
+ 		}
+ 
++		function render() {
++			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++			gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());
++
++			ground.drawWithChildren();
++			for (let light of pointLights) {
++				light.drawWithChildren();
++			}
++			woodTower.drawWithChildren();
++		}
++
+ 		function update(time = performance.now()) {
+ 			dt = (time - lastTime) / 1000;
+ 			lastTime = time;
+@@ -1602,11 +1751,7 @@
+ 			}
+ 
+ 			updateGameObjectTransforms();
+-			let objectTris = gameObjectToWorldSpaceTriangles();
+-			let visibleTris = worldSpaceToViewSpace(objectTris);
+-			sortNearestFirst(visibleTris);
+-			viewSpaceToClipSpace(visibleTris);
+-			rasterize(visibleTris);
++			render();
+ 
+ 			requestAnimationFrame(update);
+ 		}
+@@ -1624,7 +1769,7 @@
+ 			gameCanvas.height = canvasRenderHeight;
+ 
+ 			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+-			rasterizer.updateResolution(gameCanvas.width, gameCanvas.height);
++			gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
+ 		}
+ 
+ 		function readAndApplyResolutionInput() {

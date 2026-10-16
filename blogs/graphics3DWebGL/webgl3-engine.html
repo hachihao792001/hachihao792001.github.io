@@ -153,6 +153,276 @@ rasterize(visibleTris);									// vòng lặp pixel: depth buffer, ánh sáng, 
 					chỉ dùng cho crosshair nên cũng bỏ luôn.
 					<div class="htmlPreview" id="htmlPreview20" data-disabled="true"></div>
 					
+					<h2>3. Chuyển sang WebGL</h2>
+					Engine bây giờ chỉ còn: GameObject, Transform, Mesh (Cube và ObjMesh), Camera, và software rasterizer. It's time to convert it to WebGL 😳
+
+					<h3>a. Context, shader, program</h3>
+					Đổi context, rồi thêm shader và program y như blog 1:
+					<pre><code class="language-javascript">const gameCanvas = (document.getElementById("gameCanvas"));
+const gl = (gameCanvas.getContext("webgl2"));		// <--------------------------
+
+const vertexShaderSource = `#version 300 es
+in vec3 aPosition;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProjection;
+
+void main(){
+	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+}`;
+const fragmentShaderSource = `#version 300 es
+precision highp float;
+
+uniform vec3 uColor;
+out vec4 outColor;
+
+void main(){
+	outColor = vec4(uColor, 1.0);
+}`;
+...</code></pre>
+					<ul>
+						<li>Vertex shader bây giờ có đủ cả 3 ma trận Model, View, Projection, đúng như dòng cuối của blog 2: chỉ còn thiếu View matrix ở giữa, giờ đã có.</li>
+						<li>Màu của 1 GameObject thì mọi pixel của nó đều như nhau, nên mình để nó là 1 uniform <code>uColor</code> nằm trong <b>fragment shader</b>.
+							Uniform không chỉ dành cho vertex shader, shader nào khai báo thì shader đó đọc được.</li>
+						<li>Chỉ có 1 attribute <code>aPosition</code>, vì không có ánh sáng hay texture thì đỉnh chưa cần gì khác.</li>
+					</ul>
+					Ta cũng bật thêm depth test, backface culling và set màu clear screen:
+					<pre><code class="language-javascript">gl.enable(gl.DEPTH_TEST);
+gl.enable(gl.CULL_FACE);
+gl.frontFace(gl.CW);		// quy ước cùng chiều kim đồng hồ của series trước (blog 2, phần 11)
+gl.clearColor(240 / 255, 240 / 255, 240 / 255, 1);		// bằng màu 0xfff0f0f0 mà clearScreen() dùng</code></pre>
+
+					<h3>b. Ma trận</h3>
+					<code>Mat4x4.Projection</code> của series trước đưa z về [0; 1], mà như ta biết ở blog 2 là WebGL nhận vào [-1; 1].
+					Nên ta copy hàm <code>Mat4x4.Projection</code> mà ta đã sửa ở blog trước vào:
+					<pre><code class="language-javascript">class Mat4x4 {
+	...
+
+	static Projection(fov, h, w, zNear, zFar) {
+		let fovMultiplier = 1.0 / Math.tan(((fov * 0.5) / 180.0) * Math.PI);
+		let matrix = new Mat4x4();
+		matrix.m[0][0] = (h / w) * fovMultiplier;
+		matrix.m[1][1] = fovMultiplier;
+		matrix.m[2][2] = (zFar + zNear) / (zFar - zNear);			// series trước: zFar / (zFar - zNear)
+		matrix.m[2][3] = (-2 * zFar * zNear) / (zFar - zNear);		// series trước: -zNear * zFar / (zFar - zNear)
+		matrix.m[3][2] = 1.0;
+		return matrix;
+	}
+	...
+}</code></pre>
+					Mình thêm lại 3 hàm của blog 2: <code>Multiply</code>, <code>Rotation(q)</code> và <code>toColumnMajor</code>:
+					<pre style="max-height: 400px"><code class="language-javascript">static Multiply(m1, m2) {
+	let result = new Mat4x4();
+	for (let r = 0; r < 4; r++) {
+		for (let c = 0; c < 4; c++) {
+			result.m[r][c] = m1.m[r][0] * m2.m[0][c] + m1.m[r][1] * m2.m[1][c] + m1.m[r][2] * m2.m[2][c] + m1.m[r][3] * m2.m[3][c];
+		}
+	}
+	return result;
+}
+
+static Rotation(q) {
+	const right = q.rotateVector(new Vector3(1, 0, 0));
+	const up = q.rotateVector(new Vector3(0, 1, 0));
+	const forward = q.rotateVector(new Vector3(0, 0, 1));
+
+	const result = new Mat4x4();
+	result.m[0][0] = right.x;
+	result.m[0][1] = up.x;
+	result.m[0][2] = forward.x;
+	result.m[1][0] = right.y;
+	result.m[1][1] = up.y;
+	result.m[1][2] = forward.y;
+	result.m[2][0] = right.z;
+	result.m[2][1] = up.z;
+	result.m[2][2] = forward.z;
+	result.m[3][3] = 1;
+
+	return result;
+}
+
+toColumnMajor() {
+	let array = new Float32Array(16);
+	for (let c = 0; c < 4; c++)
+		for (let r = 0; r < 4; r++)
+			array[c * 4 + r] = this.m[r][c];
+	return array;
+}</code></pre>
+					
+					Có chúng thì
+					<code>Transform</code> tính được Model matrix:
+					<pre><code class="language-javascript">getModelMatrix() {
+	let model = Mat4x4.Multiply(Mat4x4.Rotation(this.rotation), this.getScaleMatrix());
+	return Mat4x4.Multiply(this.getTranslationMatrix(), model);
+}</code></pre>
+					Thứ tự scale → rotation → position y hệt <code>getTransformedTriangles</code> của <code>GameObject</code>, và vì <code>getScaleMatrix</code>,
+					<code>rotation</code>, <code>getTranslationMatrix</code> đều dùng giá trị ở world space (<code>lossyScale</code>, rotation đã nhân với cha,
+					position đã đi qua cha), nên hệ thống cha con vẫn hoạt động như cũ.<br/><br/>
+
+					Còn View matrix thì không cần làm gì: <code>camera.getViewMatrix()</code> đã có sẵn từ 
+					<a href="/blogs/graphics3D/graphics3D7-view.html">blog #7 series trước</a>, trước giờ nó được nhân vào từng tam
+					giác trên CPU, bây giờ chỉ cần gửi nó lên shader.
+
+					<h3>c. Đưa mesh vào GPU</h3>
+					Mỗi Mesh có 1 vertex buffer và 1 VAO của riêng nó, mình viết riêng 1 hàm <code>uploadToGPU</code> để đưa dữ liệu của nó vào GPU.
+					Hàm này sẽ được gọi ở constructor để nó có sẵn dữ liệu GPU, và hàm <code>setTriangles</code> để nó cập nhật dữ liệu:
+					<pre style="max-height: 500px"><code class="language-javascript">class Mesh {
+	constructor(tris = []) {
+		this.tris = tris;
+		this.vertexCount = 0;
+		this.vertexArray = null;
+		this.uploadToGPU();		// <-----------------------
+	}
+
+	setTriangles(tris, color = new Color(255, 255, 255)) {
+		this.tris = [];
+		for (let tri of tris) {
+			this.tris.push(
+				new Triangle(
+					[tri.vertices[0].clone(), tri.vertices[1].clone(), tri.vertices[2].clone()],
+					[tri.uv[0].clone(), tri.uv[1].clone(), tri.uv[2].clone()],
+					color,
+				),
+			);
+		}
+		this.uploadToGPU();		// <-----------------------
+	}
+	
+	uploadToGPU() {
+		if (this.tris.length == 0) return;
+
+		const vertexData = new Float32Array(this.tris.length * 9);		// mỗi tam giác 3 đỉnh, mỗi đỉnh 3 float
+		for (let i = 0; i < this.tris.length; i++) {
+			for (let j = 0; j < 3; j++) {
+				const vertex = this.tris[i].vertices[j];
+				vertexData[i * 9 + j * 3] = vertex.x;
+				vertexData[i * 9 + j * 3 + 1] = vertex.y;
+				vertexData[i * 9 + j * 3 + 2] = vertex.z;
+			}
+		}
+		this.vertexCount = this.tris.length * 3;
+
+		this.vertexArray = gl.createVertexArray();
+		gl.bindVertexArray(this.vertexArray);
+
+		const vertexBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+		gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
+
+		gl.enableVertexAttribArray(aPosition);
+		gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 12, 0);
+
+		gl.bindVertexArray(null);
+	}
+}</code></pre>
+					Lần này mình dùng <code>drawArrays</code> chứ không dùng index buffer như blog 1. Mesh của engine là một danh sách tam giác, mỗi tam giác 3 đỉnh
+					riêng, nên chưa có index để dùng. Gom các đỉnh trùng nhau lại thành index buffer là việc tối ưu để sau.<br/><br/>
+
+					Ngoài ra, <code>cubeMesh</code> được ground và 2 cube point light dùng chung, nên chỉ có 1 VAO cho cả 3, giống phần 12 của blog 2: 
+					cùng 1 VAO, mỗi lần vẽ đổi <code>uModel</code>.
+
+					<h3>d. GameObject tự vẽ chính nó</h3>
+					<code>GameObject</code> có thêm 2 hàm, thay cho <code>getTransformedTriangles</code> và <code>getTransformedTrianglesWithChildren</code>:
+					<pre><code class="language-javascript">class GameObject {
+	...
+
+	draw() {
+		if (this.mesh.vertexCount == 0) return;		// ObjMesh chưa tải xong
+		gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());		// truyền model matrix
+		gl.uniform3f(uColor, this.color.r / 255, this.color.g / 255, this.color.b / 255);			// truyền màu
+		gl.bindVertexArray(this.mesh.vertexArray);
+		gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
+	}
+
+	drawWithChildren() {
+		this.draw();
+		for (let child of this.transform.children) {
+			if (child.gameObject != null) {
+				child.gameObject.drawWithChildren();
+			}
+		}
+	}
+}</code></pre>
+					<h3>e. Đưa projection, view matrix vào và hàm render cuối</h3>
+					Ở engine cũ, có 2 chỗ mà tính projection matrix: lúc khởi tạo, và lúc đổi resolution. Bây giờ ta chỉ cần thêm 1 hàm để truyền projection
+					matrix đó vào GPU:
+					<pre><code class="language-javascript">let projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());		// <------------------------
+
+...
+
+function updateRenderResolution() {
+	gameCanvas.width = canvasRenderWidth;
+	gameCanvas.height = canvasRenderHeight;
+
+	projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+	gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());	// <------------------------
+}</code></pre>
+
+					Có hết mọi thứ rồi, đây chính là hàm render cuối của chúng ta, hàm này truyền luôn view matrix vào GPU:
+					<pre><code class="language-javascript">function render() {
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());	// truyền view matrix vào GPU
+
+	ground.drawWithChildren();
+	for (let light of pointLights) {
+		light.drawWithChildren();
+	}
+	woodTower.drawWithChildren();
+}</code></pre>
+					6 dòng gọi hàm trong <code>update</code> được thay bằng:
+					<pre><code class="language-javascript">updateGameObjectTransforms();
+render();</code></pre>
+
+					So với pipeline ở phần 1, những việc sau bây giờ do GPU làm, ta không phải viết dòng nào:
+					<ul>
+						<li>Chuyển đỉnh từ object space sang world, view, clip space: vertex shader nhân 3 ma trận.</li>
+						<li>Backface culling: <code>gl.CULL_FACE</code>, thay cho cái tích vô hướng trong <code>worldSpaceToViewSpace</code>.</li>
+						<li>Cắt tam giác theo near plane (<code>clipAgainstPlane</code> của <a href="/blogs/graphics3D/graphics3D7-view.html">blog #7 series trước</a>): 
+							GPU tự clip.</li>
+						<li>Perspective divide và nhân ra kích thước canvas (kèm đổi dấu y).</li>
+						<li>Toàn bộ vòng lặp pixel: bounding box, edge function, nội suy z, depth buffer.</li>
+					</ul>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview21" data-disabled="true"></div>
+					Bản này y hệt bản trên, chỉ là nó đang xài WebGL thay vì là Software Rasterizer 😳 Tuy nhiên có 1 lỗi: khi bạn đổi resolution,
+					nó sẽ giống như những gì ta thấy đang bị cắt, cái này mình sẽ sửa ở phần 5.
+
+					<h2>4. Xóa những thứ GPU đã làm thay</h2>
+					Ở bản trên, class <code>Rasterizer</code> vẫn còn nằm trong file, chỉ là không ai gọi tới nữa. Mình cố tình để vậy để diff của phần 3 nhìn gọn gọn.
+					Phần này mình sẽ xóa: <code>Rasterizer</code>, <code>MathTriangle</code>, <code>Plane</code>, <code>BoundingBox</code>, <code>MathExtend</code>,
+					<code>clipAgainstPlane</code> và <code>perspectiveDivide</code> của <code>Triangle</code>, <code>getTransformedTriangles</code> của
+					<code>GameObject</code>, <code>nearPlane</code>, và 5 hàm pipeline cũ.<br/><br/>
+
+					<code>Triangle</code> bây giờ chỉ còn là dữ liệu, cũng chả cần Math với chả Math :))))):
+					<pre><code class="language-javascript">class Triangle {
+	constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
+		this.vertices = vertices;
+		this.uv = uv;
+		this.color = color;
+	}
+}</code></pre>
+					Kết quả (xem diff):
+					<div class="htmlPreview" id="htmlPreview22" data-disabled="true"></div>
+
+					<h2>5. Đổi resolution và gl.viewport</h2>
+					Ở blog 1 phần 6 mình có nói <code>gl.viewport</code> mặc định bằng kích thước canvas <b>lúc tạo context</b>. Chữ "lúc tạo context" là chỗ quan trọng:
+					đổi <code>gameCanvas.width</code> sau đó thì drawing buffer đổi theo, nhưng viewport thì không. Ví dụ mình đổi resolution thành 300x225,
+					thì canvas đổi thành 300x255, nhưng WebGL vẫn đang render ra 600x450. GPU vẫn kéo [-1; 1] ra 600x450 pixel,
+					nên chỉ có phần nằm trong 300x225 pixel đầu tiên (tính từ góc dưới trái, vì trục y của WebGL hướng lên) là hiện ra.<br/><br/>
+
+					Sửa bằng 1 dòng trong <code>updateRenderResolution</code>:
+					<pre><code class="language-javascript">function updateRenderResolution() {
+	gameCanvas.width = canvasRenderWidth;
+	gameCanvas.height = canvasRenderHeight;
+
+	projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+	gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
+	gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);		// <--------------------------
+}</code></pre>
+					Ở software rasterizer, việc này nằm trong <code>rasterizer.updateResolution</code>, nó cấp phát lại screen buffer và depth buffer.
+					Với WebGL thì 2 buffer đó do trình duyệt cấp phát lại khi canvas đổi kích thước, phần của ta chỉ còn viewport.
+					<div class="htmlPreview" id="htmlPreview23"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
