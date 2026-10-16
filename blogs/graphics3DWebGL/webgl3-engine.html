@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="A post by Hà Chí Hào.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="../graphics3D/graphics3D.css">
+    <style>
+        .blog-content ul li a {
+            display: inline;
+            font-weight: inherit;
+            margin-bottom: 0;
+        }
+    </style>
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Chuyển Hanvas Engine thành WebGL</title>
+</head>
+
+<body data-graphics3D-id="webgl3">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Bắt đầu chuyển Hanvas Engine sang WebGL</h1>
+
+					Sau 2 blog WebGL "cơ bản", ta đã biết đủ các thứ để có thể vẽ được nhiều vật thể bằng GPU: 
+					vertex buffer, index buffer, VAO, uniform, dùng ma trận trong vertex shader,
+					depth test, face culling. Blog này mình sẽ dùng đúng chừng đó kiến thức để chuyển bản cuối cùng của series trước, 
+					<a href="/blogs/graphics3D/htmlPreviews/htmlPreview53.html">htmlPreview53</a> ở
+					<a href="/blogs/graphics3D/graphics3D15-qualityoflife.html">blog #15</a>, sang WebGL.<br/><br/>
+
+					Trước hết thì engine đó có khá nhiều thứ mà ta <b>chưa biết làm trên GPU</b>: chế độ ASCII, shadow, texture, ánh sáng. Cho nên 
+					mình làm theo 2 giai đoạn:
+					<ol>
+						<li><b>Dọn dẹp</b>: Xóa hết những thứ trên, nhưng vẫn là Software Rasterizer.</li>
+						<li><b>Chuyển</b>: Khi engine chỉ còn những thứ ta biết làm, mới từ từ convert sang WebGL.</li>
+					</ol>
+					Như vậy thì khi bạn xem Diff của các version nó sẽ clean hơn. Những thứ bị xóa sẽ quay lại ở các blog sau, mỗi thứ 1 blog, 
+					giống thứ tự của series trước.<br/><br/>
+
+					Vì blog này có khá nhiều htmlPreview, mà phần lớn là software rasterizer chạy bằng CPU, nên mình để mặc định là disable hết.
+					Ấn Enable để chạy bản bạn muốn xem.
+
+					<h2>1. Điểm xuất phát</h2>
+					htmlPreview đầu tiên của blog này chính là htmlPreview53 của series trước:
+					<div class="htmlPreview" id="htmlPreview15" data-disabled="true" data-no-diff="true"></div>
+					Nhắc lại một chút, mỗi frame hàm <code>update</code> của nó làm những việc sau:
+					<pre><code class="language-javascript">updateGameObjectTransforms();							// cập nhật transform của các object (camera, ánh sáng, ...)
+let objectTris = gameObjectToWorldSpaceTriangles();		// object space -> world space
+buildShadowMap(objectTris);								// vẽ shadow map
+let visibleTris = worldSpaceToViewSpace(objectTris);	// backface culling, chuyển sang view space, near plane clipping
+sortNearestFirst(visibleTris);							// sort tam giác gần trước xa sau
+viewSpaceToClipSpace(visibleTris);						// projection, perspective divide
+rasterize(visibleTris);									// vòng lặp pixel: depth buffer, ánh sáng, texture, shadow</code></pre>
+
+					<h2>2. Dọn dẹp</h2>
+					<h3>a. Bỏ ASCII</h3>
+					Vì engine cũ là Software Rasterizer nên ta có full quyền điều khiển từng pixel, nên chế độ ASCII chỉ đơn giản là lấy màu của từng pixel trong <code>imageData</code> 
+					rồi đổi thành ký tự. Với WebGL thì màu của pixel nằm trên GPU, muốn đọc về CPU phải dùng hàm riêng. 
+					Nên ta tạm thời bỏ nó, bỏ những thứ sau: checkbox ASCII, ô chỉnh ASCII resolution, tag <code>asciiParagraph</code>, nút
+					"look around (ASCII)", nhánh ASCII trong <code>drawCall</code>, và hàm <code>grayScale01</code> của <code>Color</code> (chỉ ASCII dùng).<br/><br/>
+					Xem diff:
+					<div class="htmlPreview" id="htmlPreview16" data-disabled="true"></div>
+
+					<h3>b. Bỏ shadow</h3>
+					Việc build shadow map là một lần render riêng từ góc nhìn của đèn. Sounds complicated on GPU, nên ta bỏ luôn, bỏ các thứ sau: 
+					các hằng số <code>shadowMapSize</code>, <code>shadowBias</code>, <code>shadowMapDistance</code>, phần shadow trong
+					<code>DirectionalLight</code> (<code>buildShadowMap</code>, <code>isInShadow</code>, view/projection matrix của đèn), <code>Mat4x4.Orthographic</code>
+					và <code>Camera.getFrustumCenter</code> (chỉ shadow dùng), <code>shadowFactor</code> trong vòng lặp pixel, và checkbox Shadow.
+					<div class="htmlPreview" id="htmlPreview17" data-disabled="true"></div>
+
+					<h3>c. Bỏ texture</h3>
+					Bỏ: class <code>Texture</code>, 2 texture mà ta xài, tham số
+					<code>texture</code> của <code>GameObject</code>, và đoạn lấy màu từ texture trong vòng lặp pixel. Màu của pixel bây giờ là màu của tam giác nhân với ánh sáng.<br/><br/>
+
+					Mình vẫn giữ UV trong dữ liệu của mesh (<code>Triangle.uv</code>, phần đọc <code>vt</code> trong file obj). Nó chỉ là dữ liệu, và sau này ở blog
+					texture ta cũng sẽ cần lại nó.<br/><br/>
+
+					<div class="htmlPreview" id="htmlPreview18" data-disabled="true"></div>
+
+					<h3>d. Bỏ ánh sáng</h3>
+					Muốn tính ánh sáng trên GPU thì shader phải có pháp tuyến và vị trí thế giới
+					của từng pixel, thật ra làm luôn cũng được, nhưng mình dành cho nó 1 blog riêng cho nó gọn.
+					Bỏ những thứ sau: <code>DirectionalLight</code>, <code>ambientLight</code>, <code>maxActiveLights</code>, 4 thanh trượt
+					ánh sáng, đoạn xoay đèn trong <code>updateGameObjectTransforms</code>, và toàn bộ phần tính ánh sáng trong vòng lặp pixel.<br/><br/>
+
+					Kéo theo đó là những thứ chỉ tồn tại để phục vụ ánh sáng: <code>Triangle.worldVertices</code> (vị trí thế giới của 3 đỉnh, dùng để nội suy vị trí
+					thế giới của pixel), <code>getWorldNormal</code>, <code>getPointLightsThatCanAffectTri</code>, <code>MathExtend.hypotSquare</code>.
+					Vòng lặp pixel bây giờ chỉ còn depth test và ghi màu:
+					<pre><code class="language-javascript">if (z < depthBuffer[pixelIndex]) {
+	depthBuffer[pixelIndex] = z;
+
+	const colorIndex = pixelIndex * 4;
+	screenBuffer[colorIndex] = triColor.r;
+	screenBuffer[colorIndex + 1] = triColor.g;
+	screenBuffer[colorIndex + 2] = triColor.b;
+}</code></pre>
+					2 cục cube nhỏ đánh dấu vị trí point light thì mình giữ lại, chúng chỉ là GameObject bình thường.
+					<div class="htmlPreview" id="htmlPreview19" data-disabled="true"></div>
+
+					<h3>e. Đem crosshair ra HTML</h3>
+					Còn 1 thứ cuối cùng: cái crosshair ở giữa màn hình được vẽ bằng <code>ctx.fillRect</code> sau khi <code>putImageData</code>. Tuy nhiên hàm đó chỉ dành
+					cho canvas có contex <code>"2d"</code>, còn canvas bây giờ đã thành <code>"webgl2"</code>. Thay vì chuyển crosshair thành 1 quad nằm trước camera,
+					thì ta chuyển nó thành 1 tag <code>div</code> nằm đè lên giữa canvas luôn:
+					<pre><code class="language-html">&lt;canvas id=&quot;gameCanvas&quot; width=&quot;600&quot; height=&quot;450&quot; style=&quot;border: 2px solid #aaa; background: #fff&quot;&gt;&lt;/canvas&gt;
+&lt;div id=&quot;crosshair&quot;&gt;&lt;/div&gt;</code></pre>
+					<pre><code class="language-css">#render {
+	position: relative;
+	display: inline-block;
+}
+
+#crosshair {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 3px;
+	height: 3px;
+	transform: translate(-50%, -50%);
+	background: #fff;
+	border: 1px solid rgba(0, 0, 0, 0.6);
+	pointer-events: none;		/* để click vẫn rơi xuống canvas (pointer lock) */
+}</code></pre>
+					Kích thước 3px trắng, border 1px là đúng cái ô 5x5 + 3x3 của bản cũ. <code>screenCenterX</code>, <code>screenCenterY</code> của <code>Rasterizer</code>
+					chỉ dùng cho crosshair nên cũng bỏ luôn.
+					<div class="htmlPreview" id="htmlPreview20" data-disabled="true"></div>
+					
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3DWebGL.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

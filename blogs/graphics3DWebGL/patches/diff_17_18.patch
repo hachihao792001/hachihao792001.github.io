@@ -1,0 +1,184 @@
+--- "a/htmlPreviews\\htmlPreview17.html"
++++ "b/htmlPreviews\\htmlPreview18.html"
+@@ -779,35 +779,6 @@
+ 			}
+ 		}
+ 
+-		class Texture {
+-			constructor(url = "") {
+-				this.pixels = null;
+-				this.width = 0;
+-				this.height = 0;
+-				if (url) this.load(url);
+-			}
+-
+-			async load(url) {
+-				const img = new Image();
+-				img.crossOrigin = "anonymous";
+-				img.src = url;
+-				const loaded = new Promise((resolve) => {
+-					img.onload = () => {
+-						resolve();
+-					};
+-				});
+-				await loaded;
+-				const tempCanvas = document.createElement("canvas");
+-				tempCanvas.width = img.width;
+-				tempCanvas.height = img.height;
+-				const tempCtx = (tempCanvas.getContext("2d"));
+-				tempCtx.drawImage(img, 0, 0);
+-				this.pixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
+-				this.width = img.width;
+-				this.height = img.height;
+-			}
+-		}
+-
+ 		// ===== engine.js =====
+ 		let maxActiveLights = 16;
+ 		let ambientLight = 0.2;
+@@ -1065,14 +1036,13 @@
+ 		class GameObject {
+ 			static incrementingID = 0;
+ 
+-			constructor(pos, eulerAngles, scale, color, mesh, texture = null, name = "") {
++			constructor(pos, eulerAngles, scale, color, mesh, name = "") {
+ 				this.id = GameObject.incrementingID++;
+ 				this.name = name || `GameObject ${this.id}`;
+ 				this.transform = new Transform(pos, eulerAngles, scale, this.name);
+ 				this.transform.gameObject = this;
+ 				this.color = color;
+ 				this.mesh = mesh;
+-				this.texture = texture;
+ 			}
+ 
+ 			getTransformedTriangles() {
+@@ -1087,7 +1057,6 @@
+ 					transformedTri.mulMat4x4(translationMat);
+ 					transformedTri.updateWorldVertices();
+ 					transformedTri.color = this.color;
+-					transformedTri.texture = this.texture;
+ 					transformedTris.push(transformedTri);
+ 				}
+ 				return transformedTris;
+@@ -1199,12 +1168,6 @@
+ 					const uv0 = tri.uv[0],
+ 						uv1 = tri.uv[1],
+ 						uv2 = tri.uv[2];
+-					const uv0U = uv0.u,
+-						uv1U = uv1.u,
+-						uv2U = uv2.u;
+-					const uv0V = uv0.v,
+-						uv1V = uv1.v,
+-						uv2V = uv2.v;
+ 					const uv0W = uv0.w,
+ 						uv1W = uv1.w,
+ 						uv2W = uv2.w;
+@@ -1226,10 +1189,6 @@
+ 					const activeLightCount = pointLightIntensity > 0 ? tri.getPointLightsThatCanAffectTri(pointLightRange, pointLights, activeLights) : 0;
+ 
+ 					const triColor = tri.color;
+-					const texture = tri.texture;
+-					const texturePixels = texture ? texture.pixels : null;
+-					const textureWidth = texture ? texture.width : 0,
+-						textureHeight = texture ? texture.height : 0;
+ 
+ 					for (let y = bbox.minY; y <= bbox.maxY; y++) {
+ 						let edgeFunction01 = edgeFunctionRow01;
+@@ -1277,24 +1236,10 @@
+ 
+ 									const lightIntensity = Math.max(ambientLight, dirLightDiffuse + totalPointLightDiffuse);
+ 
+-									let texR = triColor.r,
+-										texG = triColor.g,
+-										texB = triColor.b;
+-									if (texturePixels) {
+-										const pixelU = (uv0U * baryCoord0 + uv1U * baryCoord1 + uv2U * baryCoord2) / pixelInvZ;
+-										const pixelV = (uv0V * baryCoord0 + uv1V * baryCoord1 + uv2V * baryCoord2) / pixelInvZ;
+-										const texX = Math.floor(pixelU * (textureWidth - 1));
+-										const texY = Math.floor(pixelV * (textureHeight - 1));
+-										const texIndex = (texY * textureWidth + texX) * 4;
+-										texR = texturePixels[texIndex];
+-										texG = texturePixels[texIndex + 1];
+-										texB = texturePixels[texIndex + 2];
+-									}
+-
+ 									const colorIndex = pixelIndex * 4;
+-									screenBuffer[colorIndex] = Math.min(255, texR * lightIntensity);
+-									screenBuffer[colorIndex + 1] = Math.min(255, texG * lightIntensity);
+-									screenBuffer[colorIndex + 2] = Math.min(255, texB * lightIntensity);
++									screenBuffer[colorIndex] = Math.min(255, triColor.r * lightIntensity);
++									screenBuffer[colorIndex + 1] = Math.min(255, triColor.g * lightIntensity);
++									screenBuffer[colorIndex + 2] = Math.min(255, triColor.b * lightIntensity);
+ 								}
+ 							}
+ 							edgeFunction01 += edgeSlopeX01;
+@@ -1323,7 +1268,6 @@
+ 				this.viewDistanceSquared = 0;
+ 				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
+ 				this.color = color;
+-				this.texture = null;
+ 			}
+ 
+ 			clone() {
+@@ -1334,7 +1278,6 @@
+ 					tri.uv[i] = this.uv[i].clone();
+ 				}
+ 				tri.color = this.color;
+-				tri.texture = this.texture;
+ 				return tri;
+ 			}
+ 
+@@ -1378,7 +1321,6 @@
+ 					outTri.uv[1] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
+ 					outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
+ 					outTri.color = this.color;
+-					outTri.texture = this.texture;
+ 					outTris.push(outTri);
+ 				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
+ 					if (frontPoints[0] == 0 && frontPoints[1] == 2) {
+@@ -1404,7 +1346,6 @@
+ 					outTri1.uv[1] = this.uv[frontPoints[1]];
+ 					outTri1.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
+ 					outTri1.color = this.color;
+-					outTri1.texture = this.texture;
+ 					outTris.push(outTri1);
+ 
+ 					let outTri2 = new Triangle();
+@@ -1418,7 +1359,6 @@
+ 					outTri2.uv[1] = Vector2.lerp(this.uv[frontPoints[1]], this.uv[behindPoints[0]], t2);
+ 					outTri2.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
+ 					outTri2.color = this.color;
+-					outTri2.texture = this.texture;
+ 					outTris.push(outTri2);
+ 				}
+ 
+@@ -1753,13 +1693,6 @@
+ 		const pointLightRangeText = (document.getElementById("pointRangeText"));
+ 		let pointLightRange = parseFloat(pointLightRangeSlider.value);
+ 
+-		let brickTexture = new Texture(
+-			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
+-		);
+-		let woodTexture = new Texture(
+-			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/Wood_Tower_Col.jpg",
+-		);
+-
+ 		let cubeMesh = new Cube();
+ 		let woodTower = new GameObject(
+ 			new Vector3(0, -0.17, 0),
+@@ -1767,12 +1700,11 @@
+ 			new Vector3(1, 1, 1),
+ 			new Color(255, 255, 255),
+ 			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj"),
+-			woodTexture,
+ 		);
+-		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
++		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh);
+ 		let pointLights = [
+-			new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 1"),
+-			new GameObject(new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 2"),
++			new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, "Point light 1"),
++			new GameObject(new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, "Point light 2"),
+ 		];
+ 
+ 		let lastTime = performance.now();

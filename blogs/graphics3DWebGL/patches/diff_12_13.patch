@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview12.html"
 +++ "b/htmlPreviews\\htmlPreview13.html"
-@@ -121,32 +121,101 @@
+@@ -121,6 +121,80 @@
  			}
  		}
  
@@ -50,19 +50,23 @@
 +			}
 +
 +			static Rotation(q) {
-+				const a = q.a, b = q.b, c = q.c, d = q.d;
-+				let matrix = new Mat4x4();
-+				matrix.m[0][0] = 1 - 2 * (c * c + d * d);
-+				matrix.m[0][1] = 2 * (b * c - a * d);
-+				matrix.m[0][2] = 2 * (b * d + a * c);
-+				matrix.m[1][0] = 2 * (b * c + a * d);
-+				matrix.m[1][1] = 1 - 2 * (b * b + d * d);
-+				matrix.m[1][2] = 2 * (c * d - a * b);
-+				matrix.m[2][0] = 2 * (b * d - a * c);
-+				matrix.m[2][1] = 2 * (c * d + a * b);
-+				matrix.m[2][2] = 1 - 2 * (b * b + c * c);
-+				matrix.m[3][3] = 1;
-+				return matrix;
++				const right = q.rotateVector(new Vector3(1, 0, 0));
++				const up = q.rotateVector(new Vector3(0, 1, 0));
++				const forward = q.rotateVector(new Vector3(0, 0, 1));
++
++				const result = new Mat4x4();
++				result.m[0][0] = right.x;
++				result.m[0][1] = up.x;
++				result.m[0][2] = forward.x;
++				result.m[1][0] = right.y;
++				result.m[1][1] = up.y;
++				result.m[1][2] = forward.y;
++				result.m[2][0] = right.z;
++				result.m[2][1] = up.z;
++				result.m[2][2] = forward.z;
++				result.m[3][3] = 1;
++
++				return result;
 +			}
 +
 +			toColumnMajor() {
@@ -77,21 +81,7 @@
  		let gameCanvas = document.getElementById("gameCanvas");
  		let gl = gameCanvas.getContext("webgl2");
  
-+		gl.clearColor(0.9, 0.9, 0.9, 1);
-+		gl.clearDepth(1);
- 		gl.enable(gl.DEPTH_TEST);
- 		gl.depthFunc(gl.LESS);
- 		gl.enable(gl.CULL_FACE);
- 		gl.cullFace(gl.BACK);
- 		gl.frontFace(gl.CW);
- 
--		gl.clearColor(0.9, 0.9, 0.9, 1);
--		gl.clearDepth(1);
--		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
--
- 		const vertexShaderSource = `#version 300 es
- in vec3 aPosition;
- in vec3 aColor;
+@@ -140,13 +214,14 @@ in vec3 aColor;
  uniform float uZNear;
  uniform float uZFar;
  uniform float uAspect;
@@ -108,7 +98,7 @@
  	vColor = vec4(aColor, 1.0);
  }`;
  		const fragmentShaderSource = `#version 300 es
-@@ -185,6 +254,7 @@ void main(){
+@@ -185,6 +260,7 @@ void main(){
  		gl.uniform1f(uAspect, gameCanvas.width / gameCanvas.height);
  		gl.uniform1f(uZNear, 0.01);
  		gl.uniform1f(uZFar, 1000);
@@ -116,7 +106,7 @@
  
  		const corners = [
  			new Vector3(-0.5, -0.5, -0.5),
-@@ -206,38 +276,40 @@ void main(){
+@@ -206,38 +282,40 @@ void main(){
  			4, 0, 1, 4, 1, 5,
  		]);
  
@@ -180,7 +170,7 @@
  			}
  
  			rotate(eulerX, eulerY, eulerZ) {
-@@ -245,19 +317,15 @@ void main(){
+@@ -245,19 +323,15 @@ void main(){
  				this.rotation = Quaternion.multiply(q, this.rotation);
  			}
  
@@ -208,7 +198,7 @@
  				gl.drawElements(gl.TRIANGLES, triangles.length, gl.UNSIGNED_SHORT, 0);
  			}
  		}
-@@ -276,6 +344,8 @@ void main(){
+@@ -276,6 +350,8 @@ void main(){
  
  			cube1.rotate(0, 50 * dt, 0);
  			cube2.rotate(50 * dt, 0, 0);

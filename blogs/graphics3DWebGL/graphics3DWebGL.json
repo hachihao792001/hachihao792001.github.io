@@ -16,5 +16,11 @@
         "webTitle": "WebGL #2: WebGL cơ bản  (phần 2)",
         "title": "WebGL #2: WebGL cơ bản (phần 2)",
         "route": "/blogs/graphics3DWebGL/webgl2-basic2.html"
+    },
+    {
+        "id": "webgl3",
+        "webTitle": "WebGL #3: Bắt đầu chuyển Hanvas Engine sang WebGL",
+        "title": "WebGL #3: Bắt đầu chuyển Hanvas Engine sang WebGL",
+        "route": "/blogs/graphics3DWebGL/webgl3-engine.html"
     }
 ]
