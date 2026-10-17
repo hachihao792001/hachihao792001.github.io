@@ -28,5 +28,11 @@
         "webTitle": "WebGL #4: Texture",
         "title": "WebGL #4: Texture",
         "route": "/blogs/graphics3DWebGL/webgl4-texture.html"
+    },
+    {
+        "id": "webgl5",
+        "webTitle": "WebGL #5: Lighting",
+        "title": "WebGL #5: Lighting",
+        "route": "/blogs/graphics3DWebGL/webgl5-lighting.html"
     }
 ]
