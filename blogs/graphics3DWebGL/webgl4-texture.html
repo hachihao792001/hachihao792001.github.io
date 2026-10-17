@@ -83,7 +83,9 @@
 	}
 }</code></pre>
 					Ta sẽ không xóa code nào trong class này hết, mà tiếp tục thêm vào nó, vì class này đúng là chỉ làm việc liên quan tới texture và các pixel của nó,
-					chứ không liên quan gì engine.<br/><br/>
+					chứ không liên quan gì engine.
+
+					<h2>1. Truyền dữ liệu Texture cho WebGL</h2>
 					Đầu tiên là ta truyền dữ liệu Texture cho WebGL, cụ thể, trong constructor ta tạo 1 texture mới trong GPU bằng hàm <code>gl.createTexture</code>:
 					<pre><code class="language-javascript">constructor(url = "", gl = null) {		// truyền gl vào để Texture xài
 	this.pixels = null;
@@ -187,6 +189,8 @@ void main(){
 	// sử dụng vUV thế nào phần dưới sẽ nói
 	outColor = vec4(color, 1.0);
 }</code></pre>
+					Có attribute <code>aUV</code> mới nên ta khai báo thêm biến chứa địa chỉ của nó:
+					<pre><code class="language-javascript">const aUV = gl.getAttribLocation(program, "aUV");</code></pre>
 
 					<h2>3. Lấy màu texture trong fragment shader</h2>
 					Fragment shader nhận vUV từ vertex shader, là UV đã được nội suy (và perspective correct) cho pixel hiện tại, việc của ta hiện tại chỉ là lấy
@@ -202,10 +206,75 @@ void main() {
 	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;		// <---------------
 	outColor = vec4(color, 1.0);
 }</code></pre>
-					<code>uTexture</code> là sampler trỏ tới texture unit. Còn <code>uUseTexture</code> để bật tắt texture, dành cho trường hợp
+					Bạn không truyền 1 mảng pixel cho <code>sampler2D uTexture</code>, mà truyền 1 số đại diện cho <code>texture unit</code> mà nó sẽ đọc từ,
+					cái này sẽ rõ ở phần sau.
+					Còn <code>uUseTexture</code> để bật tắt texture, dành cho trường hợp
 					GameObject không có texture, hoặc chưa load được texture. Nếu <code>uUseTexture</code> false thì fragment shader dùng
 					<code>uColor</code> như trước.
 
+					<h2>4. Bind texture khi vẽ object</h2>
+					Ở class GameObject, ta thêm lại tham số <code>texture</code>
+					<pre class="language-javascript"><code>class GameObject {
+	constructor(pos, eulerAngles, scale, color, mesh, texture = null, name = "") {
+		...
+		this.texture = texture;
+	}
+</code></pre>
+					Sau đó, chỗ quan trọng là ở hàm draw: nếu texture null (không có texture hoặc chưa load được texture), thì <code>uUseTexture</code>
+					false và fragment shader sẽ dùng <code>uColor</code>. Nếu texture không null, thì <code>uUseTexture</code>
+					true và fragment shader dùng <code>uTexture</code> để đọc từ texture unit 0.
+					<pre class="language-javascript"><code>class GameObject {
+	draw(){
+		if (this.mesh.vertexCount == 0) return;
+		gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
+		
+		// --------------- mới ---------------
+		if (this.texture) {
+			gl.activeTexture(gl.TEXTURE0);								// kích hoạt texture unit 0
+			gl.uniform1i(uTexture, 0);									// Gán giá trị 0 cho uTexture, nghĩa là shader sẽ lấy từ texture unit 0
+			gl.bindTexture(gl.TEXTURE_2D, this.texture.glTexture);		// bind glTexture vào khe TEXTURE_2D của texture unit đang active (unit 0)
+		}
+		gl.uniform1i(uUseTexture, this.texture ? 1 : 0);				// truyền uUseTexture dựa vào việc texture có null hay không
+		// -------------- mới ----------------
+		gl.uniform3f(uColor, this.color.r / 255, this.color.g / 255, this.color.b / 255);
+
+		gl.bindVertexArray(this.mesh.vertexArray);
+		gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
+	}						
+}</code></pre>
+					Chỗ này có hai bước bind khác nhau: <code>activeTexture</code> chọn unit mà sampler sẽ đọc, còn
+					<code>bindTexture</code> gắn texture GPU vào đúng unit đó. <code>uniform1i(uTexture, 0)</code> truyền số
+					<code>0</code> cho sampler (tương ứng <code>TEXTURE0</code>), chứ không truyền trực tiếp texture object (ta đã truyền từ lúc load texture rồi).<br/><br/>
+					
+					Xong phần khó rồi, bây giờ ta tạo các biến global lưu địa chỉ của 2 uniform mới:
+					<pre><code class="language-javascript">const uTexture = gl.getUniformLocation(program, "uTexture");
+const uUseTexture = gl.getUniformLocation(program, "uUseTexture");</code></pre>
+
+					Cuối cùng, ta đem lại 2 texture cũ về và truyền nó vào <code>GameObject</code>:
+					<pre><code class="language-javascript">const brickTexture = new Texture(
+	"../graphics3D/images/textures/brick.jpg",
+	gl	// nhớ truyền gl
+);
+const woodTexture = new Texture(
+	"../graphics3D/images/textures/Wood_Tower_Col.jpg",
+	gl	// nhớ truyền gl
+);
+
+let woodTower = new GameObject(
+	new Vector3(0, -0.17, 0),
+	Vector3.zero,
+	new Vector3(1, 1, 1),
+	new Color(255, 255, 255),
+	new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj"),
+	woodTexture	// <----------------
+);
+let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);	// <----------------
+let pointLights = [
+	new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 1"),		// không có texture
+	new GameObject(new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 2"),		// không có texture
+];</code></pre>
+
+					Kết quả:
 					<div class="htmlPreview" id="htmlPreview24" data-disabled="true"></div>
 
                     <div id="graphics3D-nav-bottom"></div>
