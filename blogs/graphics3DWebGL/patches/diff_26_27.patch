@@ -1,0 +1,62 @@
+--- "a/htmlPreviews\\htmlPreview26.html"
++++ "b/htmlPreviews\\htmlPreview27.html"
+@@ -214,6 +214,20 @@
+ 				<span id="dirRotateSpeedText" class="slider-value">10</span>
+ 			</span>
+ 		</div>
++		<div class="controlRow">
++			<label class="controlLabel" for="pointIntensity">Point light intensity:</label>
++			<span>
++				<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
++				<span id="pointIntensityText" class="slider-value">1.0</span>
++			</span>
++		</div>
++		<div class="controlRow">
++			<label class="controlLabel" for="pointRange">Point light range:</label>
++			<span>
++				<input type="range" id="pointRange" min="0" max="60" step="1" value="14" />
++				<span id="pointRangeText" class="slider-value">14</span>
++			</span>
++		</div>
+ 	</div>
+ 
+ 	<div id="helpPopup" style="display: none">
+@@ -944,7 +958,6 @@
+ 				this.vertices = vertices;
+ 				this.uv = uv;
+ 				this.color = color;
+-				this.normal = Vector3.forward.clone();
+ 
+ 				this.updateNormal();
+ 			}
+@@ -1323,6 +1336,13 @@ void main(){
+ 		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
+ 		let dirLightRotateSpeed = parseFloat(lightDirRotateSpeedSlider.value);
+ 
++		const pointLightIntensitySlider = (document.getElementById("pointIntensity"));
++		const pointLightIntensityText = (document.getElementById("pointIntensityText"));
++		let pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
++		const pointLightRangeSlider = (document.getElementById("pointRange"));
++		const pointLightRangeText = (document.getElementById("pointRangeText"));
++		let pointLightRange = parseFloat(pointLightRangeSlider.value);
++
+ 		let brickTexture = new Texture(
+ 			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
+ 			gl
+@@ -1403,6 +1423,16 @@ void main(){
+ 			lightDirRotateSpeedText.textContent = dirLightRotateSpeed.toFixed(2);
+ 		});
+ 
++		pointLightIntensitySlider.addEventListener("input", () => {
++			pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
++			pointLightIntensityText.textContent = pointLightIntensity.toFixed(2);
++		});
++
++		pointLightRangeSlider.addEventListener("input", () => {
++			pointLightRange = parseFloat(pointLightRangeSlider.value);
++			pointLightRangeText.textContent = pointLightRange.toFixed(0);
++		});
++
+ 		function readResolution(input, min, max, current) {
+ 			let value = parseInt(input.value);
+ 			if (isNaN(value)) return current;

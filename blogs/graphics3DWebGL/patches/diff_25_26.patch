@@ -1,0 +1,135 @@
+--- "a/htmlPreviews\\htmlPreview25.html"
++++ "b/htmlPreviews\\htmlPreview26.html"
+@@ -905,7 +905,8 @@
+ 
+ 			draw() {
+ 				if (this.mesh.vertexCount == 0) return;
+-				gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
++				const modelMatrix = this.transform.getModelMatrix();
++				gl.uniformMatrix4fv(uModel, false, modelMatrix.toColumnMajor());
+ 
+ 				if (this.texture) {
+ 					gl.activeTexture(gl.TEXTURE0);
+@@ -914,6 +915,8 @@
+ 				}
+ 				gl.uniform1i(uUseTexture, this.texture ? 1 : 0);
+ 				gl.uniform3f(uColor, this.color.r / 255, this.color.g / 255, this.color.b / 255);
++				gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
++				gl.uniform1f(uDirLightIntensity, dirLight.intensity);
+ 
+ 				gl.bindVertexArray(this.mesh.vertexArray);
+ 				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
+@@ -941,6 +944,15 @@
+ 				this.vertices = vertices;
+ 				this.uv = uv;
+ 				this.color = color;
++				this.normal = Vector3.forward.clone();
++
++				this.updateNormal();
++			}
++
++			updateNormal() {
++				let edge1 = Vector3.sub(this.vertices[0], this.vertices[1]);
++				let edge2 = Vector3.sub(this.vertices[1], this.vertices[2]);
++				this.normal = Vector3.cross(edge1, edge2).normalize();
+ 			}
+ 		}
+ 
+@@ -969,15 +981,18 @@
+ 			uploadToGPU() {
+ 				if (this.tris.length == 0) return;
+ 
+-				const vertexData = new Float32Array(this.tris.length * 15);
++				const vertexData = new Float32Array(this.tris.length * 24);
+ 				for (let i = 0; i < this.tris.length; i++) {
+ 					for (let j = 0; j < 3; j++) {
+ 						const vertex = this.tris[i].vertices[j];
+-						vertexData[i * 15 + j * 5] = vertex.x;
+-						vertexData[i * 15 + j * 5 + 1] = vertex.y;
+-						vertexData[i * 15 + j * 5 + 2] = vertex.z;
+-						vertexData[i * 15 + j * 5 + 3] = this.tris[i].uv[j].u;
+-						vertexData[i * 15 + j * 5 + 4] = this.tris[i].uv[j].v;
++						vertexData[i * 24 + j * 8] = vertex.x;
++						vertexData[i * 24 + j * 8 + 1] = vertex.y;
++						vertexData[i * 24 + j * 8 + 2] = vertex.z;
++						vertexData[i * 24 + j * 8 + 3] = this.tris[i].uv[j].u;
++						vertexData[i * 24 + j * 8 + 4] = this.tris[i].uv[j].v;
++						vertexData[i * 24 + j * 8 + 5] = this.tris[i].normal.x;
++						vertexData[i * 24 + j * 8 + 6] = this.tris[i].normal.y;
++						vertexData[i * 24 + j * 8 + 7] = this.tris[i].normal.z;
+ 					}
+ 				}
+ 				this.vertexCount = this.tris.length * 3;
+@@ -988,9 +1003,11 @@
+ 				gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+ 				gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
+ 				gl.enableVertexAttribArray(aPosition);
+-				gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 20, 0);
++				gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 32, 0);
+ 				gl.enableVertexAttribArray(aUV);
+-				gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 20, 12);
++				gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 32, 12);
++				gl.enableVertexAttribArray(aNormal);
++				gl.vertexAttribPointer(aNormal, 3, gl.FLOAT, false, 32, 20);
+ 				gl.bindVertexArray(null);
+ 			}
+ 		}
+@@ -1198,11 +1215,14 @@ uniform mat4 uView;
+ uniform mat4 uProjection;
+ in vec3 aPosition;
+ in vec2 aUV;
++in vec3 aNormal;
+ out vec2 vUV;
++out vec3 vWorldNormal;
+ 
+ void main(){
+ 	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+ 	vUV = aUV;
++	vWorldNormal = (uModel * vec4(aNormal, 0.0)).xyz;
+ }`;
+ 		const fragmentShaderSource = `#version 300 es
+ precision highp float;
+@@ -1210,12 +1230,17 @@ precision highp float;
+ uniform sampler2D uTexture;
+ uniform bool uUseTexture;
+ uniform vec3 uColor;
++uniform vec3 uDirLightDir;
++uniform float uDirLightIntensity;
+ in vec2 vUV;
++in vec3 vWorldNormal;
+ out vec4 outColor;
+ 
+ void main(){
++	vec3 worldNormal = normalize(vWorldNormal);
+ 	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
+-	outColor = vec4(color, 1.0);
++	float dirLightDiffuse = (1.0 - (dot(worldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
++	outColor = vec4(color * dirLightDiffuse, 1.0);
+ }`;
+ 		function compileShader(type, source) {
+ 			const shader = gl.createShader(type);
+@@ -1240,12 +1265,16 @@ void main(){
+ 
+ 		const aPosition = gl.getAttribLocation(program, "aPosition");
+ 		const aUV = gl.getAttribLocation(program, "aUV");
++		const aNormal = gl.getAttribLocation(program, "aNormal");
+ 		const uModel = gl.getUniformLocation(program, "uModel");
++		const uNormalMatrix = gl.getUniformLocation(program, "uNormalMatrix");
+ 		const uView = gl.getUniformLocation(program, "uView");
+ 		const uProjection = gl.getUniformLocation(program, "uProjection");
+ 		const uTexture = gl.getUniformLocation(program, "uTexture");
+ 		const uUseTexture = gl.getUniformLocation(program, "uUseTexture");
+ 		const uColor = gl.getUniformLocation(program, "uColor");
++		const uDirLightDir = gl.getUniformLocation(program, "uDirLightDir");
++		const uDirLightIntensity = gl.getUniformLocation(program, "uDirLightIntensity");
+ 
+ 		gl.enable(gl.DEPTH_TEST);
+ 		gl.enable(gl.CULL_FACE);
+@@ -1330,6 +1359,7 @@ void main(){
+ 			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
+ 			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
+ 			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
++			dirLight.dir.normalize();
+ 		}
+ 
+ 		function render() {

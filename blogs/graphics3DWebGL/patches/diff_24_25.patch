@@ -1,0 +1,80 @@
+--- "a/htmlPreviews\\htmlPreview24.html"
++++ "b/htmlPreviews\\htmlPreview25.html"
+@@ -200,6 +200,20 @@
+ 				<input id="canvasResHeight" value="450" size="4" />
+ 			</span>
+ 		</div>
++		<div class="controlRow">
++			<label class="controlLabel" for="dirIntensity">Directional light intensity:</label>
++			<span>
++				<input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" />
++				<span id="dirIntensityText" class="slider-value">1.0</span>
++			</span>
++		</div>
++		<div class="controlRow">
++			<label class="controlLabel" for="dirRotateSpeed">Directional light rotate speed:</label>
++			<span>
++				<input type="range" id="dirRotateSpeed" min="0" max="50" step="0.1" value="10" />
++				<span id="dirRotateSpeedText" class="slider-value">10</span>
++			</span>
++		</div>
+ 	</div>
+ 
+ 	<div id="helpPopup" style="display: none">
+@@ -915,6 +929,12 @@
+ 			}
+ 		}
+ 
++		class DirectionalLight {
++			constructor(dir, intensity) {
++				this.dir = dir.normalize();
++				this.intensity = intensity;
++			}
++		}
+ 		// ===== mesh.js =====
+ 		class Triangle {
+ 			constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
+@@ -1265,6 +1285,15 @@ void main(){
+ 		let lookInput = { x: 0, y: 0 };
+ 		let lookSpeed = 450;
+ 
++		const lightDirIntensitySlider = (document.getElementById("dirIntensity"));
++		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
++		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
++		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
++		let dirLightDefaultDir = new Vector3(-1, -1, -1);
++		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
++		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
++		let dirLightRotateSpeed = parseFloat(lightDirRotateSpeedSlider.value);
++
+ 		let brickTexture = new Texture(
+ 			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
+ 			gl
+@@ -1297,6 +1326,10 @@ void main(){
+ 			if (lookInput.x != 0 || lookInput.y != 0) {
+ 				camera.updateRotation(lookInput.x * dt * lookSpeed, lookInput.y * dt * lookSpeed);
+ 			}
++
++			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
++			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
++			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
+ 		}
+ 
+ 		function render() {
+@@ -1330,6 +1363,16 @@ void main(){
+ 
+ 		update();
+ 
++		lightDirIntensitySlider.addEventListener("input", () => {
++			dirLight.intensity = parseFloat(lightDirIntensitySlider.value);
++			lightDirIntensityText.textContent = dirLight.intensity.toFixed(2);
++		});
++
++		lightDirRotateSpeedSlider.addEventListener("input", () => {
++			dirLightRotateSpeed = parseFloat(lightDirRotateSpeedSlider.value);
++			lightDirRotateSpeedText.textContent = dirLightRotateSpeed.toFixed(2);
++		});
++
+ 		function readResolution(input, min, max, current) {
+ 			let value = parseInt(input.value);
+ 			if (isNaN(value)) return current;

@@ -6,7 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="description" content="A post by Hà Chí Hào.">
+    <meta name="description" content="Tìm hiểu cách tính ánh sáng directional và point trong WebGL, truyền normal qua shader và xử lí normal matrix.">
     <meta name="theme-color" content="#20799b">
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
@@ -51,7 +51,47 @@
                 <div class="blog-content col-12 col-lg-10" id="main">
                     <div id="graphics3D-nav-top"></div>
                     <h1>Lighting</h1>
-					
+
+					Tầm này thì chắc bạn cũng hình dùng được cách thêm lại lighting vào engine. Ta chỉ cần đưa pháp tuyến và
+					các tham số cần thiết vào cho vertex shader là ô kê, tuy nhiên sẽ có 1 vấn đề nho nhỏ.
+
+					<h2>1. Directional light</h2>
+
+                    Ta thêm lại class DirectionalLight (chưa có shadow) và các HTML element liên quan tới directional light vào:
+                    <div class="htmlPreview" id="htmlPreview25"></div>
+
+                    <h3>a. Đưa pháp tuyến vào GPU</h3>
+                    Về pháp tuyến của mỗi tam giác, thay vì tính lại bằng tích có hướng mỗi frame. Thì ta sẽ tính ngay pháp tuyến cho mọi
+					tam giác ngay từ Mesh, lưu nó cho từng đỉnh, và ở vertex shader ta cũng nhân pháp tuyến với model matrix giống tọa độ.<br/><br/>
+
+					Trước tiên là thêm một biến <code>normal</code> cho tam giác, và hàm để cập nhật nó:
+					<pre><code>class Triangle {
+	constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
+		this.vertices = vertices;
+		this.uv = uv;
+		this.color = color;
+		this.normal = Vector3.forward.clone();	// <----------------------------
+
+		this.updateNormal();					// <----------------------------
+	}
+
+	updateNormal() {
+		let edge1 = Vector3.sub(this.vertices[0], this.vertices[1]);
+		let edge2 = Vector3.sub(this.vertices[1], this.vertices[2]);
+		this.normal = Vector3.cross(edge1, edge2).normalize();
+	}
+}</code></pre>
+					<i>Ở series cũ, class <code>Triangle</code> có hàm <code>getWorldNormal</code> để tính lại normal thế giới mỗi frame. Ta phải
+					nói cụ thể nó là normal thế giới vì dữ liệu đỉnh của tam giác thay đổi theo pipeline, cần giữ được normal thế giới lúc đầu để tính
+					toán liên quan tới lighting.</i><br/><br/>
+
+					Một <code>normal</code> này của <code>Triangle</code> sẽ được dùng chung cho cả 3 đỉnh. Tới lúc này đáng lẽ ta nên tạo 1 class <code>Vertex</code>
+					riêng luôn vì đỉnh bắt đầu có nhiều dữ liệu, nhưng mình để sau.<br/><br/>
+
+					Một cái bạn nên biết là 1 đỉnh có thể có nhiều pháp tuyến, hay nói đúng hơn các đỉnh có thể có chung tọa độ nhưng sẽ khác pháp tuyến, vì nó
+					thuộc tam giác khác nhau. Đây là lí do ta không thể sử dụng Index buffer, vì đỉnh của tam giác khác nhau thì dữ liệu khác nhau, dù có chung
+					tọa độ.<br/><br/>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
