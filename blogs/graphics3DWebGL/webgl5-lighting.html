@@ -57,15 +57,16 @@
 
 					<h2>1. Directional light</h2>
 
-                    Ta thêm lại class DirectionalLight (chưa có shadow) và các HTML element liên quan tới directional light vào:
+                    Ta thêm lại class DirectionalLight (chưa có shadow), các biến global và các HTML element liên quan tới directional light vào:
                     <div class="htmlPreview" id="htmlPreview25"></div>
 
                     <h3>a. Đưa pháp tuyến vào GPU</h3>
-                    Về pháp tuyến của mỗi tam giác, thay vì tính lại bằng tích có hướng mỗi frame. Thì ta sẽ tính ngay pháp tuyến cho mọi
-					tam giác ngay từ Mesh, lưu nó cho từng đỉnh, và ở vertex shader ta cũng nhân pháp tuyến với model matrix giống tọa độ.<br/><br/>
+                    Về pháp tuyến của mỗi tam giác, thay vì tính lại bằng tích có hướng thế giới mỗi frame (series cũ ta có hàm <code>getWorldNormal</code>).
+					Thì ta sẽ tính ngay pháp tuyến cho mọi
+					tam giác ngay từ Mesh (object space), lưu nó cho từng đỉnh, và gửi nó vào vertex shader chung với mấy dữ liệu khác.<br/><br/>
 
 					Trước tiên là thêm một biến <code>normal</code> cho tam giác, và hàm để cập nhật nó:
-					<pre><code>class Triangle {
+					<pre><code class="language-javascript">class Triangle {
 	constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
 		this.vertices = vertices;
 		this.uv = uv;
@@ -81,16 +82,108 @@
 		this.normal = Vector3.cross(edge1, edge2).normalize();
 	}
 }</code></pre>
-					<i>Ở series cũ, class <code>Triangle</code> có hàm <code>getWorldNormal</code> để tính lại normal thế giới mỗi frame. Ta phải
-					nói cụ thể nó là normal thế giới vì dữ liệu đỉnh của tam giác thay đổi theo pipeline, cần giữ được normal thế giới lúc đầu để tính
-					toán liên quan tới lighting.</i><br/><br/>
 
 					Một <code>normal</code> này của <code>Triangle</code> sẽ được dùng chung cho cả 3 đỉnh. Tới lúc này đáng lẽ ta nên tạo 1 class <code>Vertex</code>
-					riêng luôn vì đỉnh bắt đầu có nhiều dữ liệu, nhưng mình để sau.<br/><br/>
+					riêng luôn vì đỉnh có nhiều dữ liệu rồi, nhưng cái này mình để sau.<br/><br/>
 
-					Một cái bạn nên biết là 1 đỉnh có thể có nhiều pháp tuyến, hay nói đúng hơn các đỉnh có thể có chung tọa độ nhưng sẽ khác pháp tuyến, vì nó
-					thuộc tam giác khác nhau. Đây là lí do ta không thể sử dụng Index buffer, vì đỉnh của tam giác khác nhau thì dữ liệu khác nhau, dù có chung
+					Một cái bạn nên biết là các đỉnh ở cùng 1 tọa độ, sẽ có pháp tuyến khác nhau, vì nó thuộc tam giác khác nhau.
+					Đây là lí do ta không thể sử dụng Index buffer, vì đỉnh của tam giác khác nhau thì dữ liệu khác nhau, cho dù chúng có chung
 					tọa độ.<br/><br/>
+
+					Vì đỉnh đã có dữ liệu normal rồi nên vertex shader cũng nhận vào 1 attribute <code>aNormal</code>. Vì attribute này là ở object space,
+					nên trong vertex shader nó cũng phải nhân với model matrix như tọa độ. Tuy nhiên khi nhân với model matrix, thay vì để <code>w = 1</code>
+					như tọa độ, thì ta để <code>w = 0</code>. Để mình giải thích.<br/><br/>
+					
+					Mục đích của việc set <code>w = 1</code> là để khi nhân ma trận ta có thể thực hiện phép cộng với cột thứ tư của ma trận, trick
+					này ta có xài với translation matrix:
+					$$
+                        \begin{pmatrix}
+                        1 & 0 & 0 & t_{x}\\
+                        0 & 1 & 0 & t_{y}\\
+                        0 & 0 & 1 & t_{z}\\
+                        0 & 0 & 0 & 1
+                        \end{pmatrix}
+                    $$
+					Vì pháp tuyến là một vector, nó không có tọa độ, cho nên ta phải bỏ đi translation matrix, bằng cách bỏ đi việc cộng cột 4 => set <code>w = 0</code>.<br/><br/>
+
+					Như vậy vertex shader sẽ như sau:
+					<pre><code class="language-hlsl">...
+in vec3 aNormal;		// <---------------------
+...
+out vec3 vWorldNormal;	// <---------------------
+
+void main(){
+	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+	vUV = aUV;
+	vWorldNormal = normalize((uModel * vec4(aNormal, 0.0)).xyz);		// hàm normalize để chuẩn hóa pháp tuyến về vector đơn vị
+}</code></pre>
+					Fragment shader mình sẽ nói sau, ở phần tính ánh sáng 😳.<br/><br/>
+
+                    Như vậy ở hàm <code>Mesh.uploadToGPU</code> ta phải thêm 3 float của normal vào trong dữ liệu đỉnh. Mỗi vertex bây giờ có 8 float (32 byte): 3 cho position,
+                    2 cho UV và 3 cho normal. Vì vậy <code>stride</code> là 32 byte; offset của UV vẫn là 12 byte, còn normal là 20 byte. Mỗi tam giác thì có 24 float:
+                    <pre><code class="language-javascript">class Mesh {
+	...
+	uploadToGPU() {
+		if (this.tris.length == 0) return;
+
+		const vertexData = new Float32Array(this.tris.length * 24);
+		for (let i = 0; i < this.tris.length; i++) {
+			for (let j = 0; j < 3; j++) {
+				const vertex = this.tris[i].vertices[j];
+				vertexData[i * 24 + j * 8] = vertex.x;
+				vertexData[i * 24 + j * 8 + 1] = vertex.y;
+				vertexData[i * 24 + j * 8 + 2] = vertex.z;
+				vertexData[i * 24 + j * 8 + 3] = this.tris[i].uv[j].u;
+				vertexData[i * 24 + j * 8 + 4] = this.tris[i].uv[j].v;
+				vertexData[i * 24 + j * 8 + 5] = this.tris[i].normal.x;
+				vertexData[i * 24 + j * 8 + 6] = this.tris[i].normal.y;
+				vertexData[i * 24 + j * 8 + 7] = this.tris[i].normal.z;
+			}
+		}
+		...
+		gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 32, 0);
+		gl.enableVertexAttribArray(aUV);
+		gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 32, 12);
+		gl.enableVertexAttribArray(aNormal);
+		gl.vertexAttribPointer(aNormal, 3, gl.FLOAT, false, 32, 20);
+		...
+	}
+}</code></pre>
+					Nhớ thêm khai báo:
+					<pre><code class="language-javascript">const aNormal = gl.getAttribLocation(program, "aNormal");</code></pre>
+
+                    <h3>b. Tính directional light</h2>
+					Directional light cần 2 thứ để tính: hướng và cường độ, như vậy ta chỉ cần truyền thêm chúng vào:
+					<pre><code class="language-javascript">const uDirLightDir = gl.getUniformLocation(program, "uDirLightDir");
+const uDirLightIntensity = gl.getUniformLocation(program, "uDirLightIntensity");</code></pre>
+					<pre><code class="language-javascript">class GameObject {
+	...
+	draw(){
+		...
+		gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
+		gl.uniform1f(uDirLightIntensity, dirLight.intensity);
+		...
+	}
+	...
+}</code></pre>
+					Cuối cùng, phần tính ánh sáng sẽ nằm ở fragment shader. Đây là dòng tính diffuse của directional light trong series trước:
+					<pre><code class="language-javascript">const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;</code></pre>
+					Và nó cũng sẽ y hệt trong đây (fragment shader) 😳:
+					<pre><code class="language-hlsl">...
+uniform vec3 uDirLightDir;				// <---------------------
+uniform float uDirLightIntensity;		// <---------------------
+in vec2 vUV;
+in vec3 vWorldNormal;					// <---------------------
+out vec4 outColor;
+
+void main(){
+	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
+	float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;		// <---------------------
+	outColor = vec4(color * dirLightDiffuse, 1.0);															// <---------------------
+}</code></pre>
+                    Kết quả (kéo tốc độ xoay nhanh hơn để thấy rõ):
+					<div class="htmlPreview" id="htmlPreview26"></div>
+
 
                     <div id="graphics3D-nav-bottom"></div>
                 </div>

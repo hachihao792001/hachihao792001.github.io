@@ -905,8 +905,7 @@
 
 			draw() {
 				if (this.mesh.vertexCount == 0) return;
-				const modelMatrix = this.transform.getModelMatrix();
-				gl.uniformMatrix4fv(uModel, false, modelMatrix.toColumnMajor());
+				gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
 
 				if (this.texture) {
 					gl.activeTexture(gl.TEXTURE0);
@@ -1222,7 +1221,7 @@ out vec3 vWorldNormal;
 void main(){
 	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
 	vUV = aUV;
-	vWorldNormal = (uModel * vec4(aNormal, 0.0)).xyz;
+	vWorldNormal = normalize((uModel * vec4(aNormal, 0.0)).xyz);
 }`;
 		const fragmentShaderSource = `#version 300 es
 precision highp float;
@@ -1237,9 +1236,8 @@ in vec3 vWorldNormal;
 out vec4 outColor;
 
 void main(){
-	vec3 worldNormal = normalize(vWorldNormal);
 	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
-	float dirLightDiffuse = (1.0 - (dot(worldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
+	float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
 	outColor = vec4(color * dirLightDiffuse, 1.0);
 }`;
 		function compileShader(type, source) {
@@ -1267,7 +1265,6 @@ void main(){
 		const aUV = gl.getAttribLocation(program, "aUV");
 		const aNormal = gl.getAttribLocation(program, "aNormal");
 		const uModel = gl.getUniformLocation(program, "uModel");
-		const uNormalMatrix = gl.getUniformLocation(program, "uNormalMatrix");
 		const uView = gl.getUniformLocation(program, "uView");
 		const uProjection = gl.getUniformLocation(program, "uProjection");
 		const uTexture = gl.getUniformLocation(program, "uTexture");
