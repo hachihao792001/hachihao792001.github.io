@@ -203,29 +203,29 @@
 		<div class="controlRow">
 			<label class="controlLabel" for="dirIntensity">Directional light intensity:</label>
 			<span>
-				<input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="0" />
-				<span id="dirIntensityText" class="slider-value">0</span>
+				<input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" />
+				<span id="dirIntensityText" class="slider-value">1.0</span>
 			</span>
 		</div>
 		<div class="controlRow">
 			<label class="controlLabel" for="dirRotateSpeed">Directional light rotate speed:</label>
 			<span>
-				<input type="range" id="dirRotateSpeed" min="0" max="50" step="0.1" value="0" />
-				<span id="dirRotateSpeedText" class="slider-value">0</span>
+				<input type="range" id="dirRotateSpeed" min="0" max="50" step="0.1" value="10" />
+				<span id="dirRotateSpeedText" class="slider-value">10</span>
 			</span>
 		</div>
 		<div class="controlRow">
 			<label class="controlLabel" for="pointIntensity">Point light intensity:</label>
 			<span>
-				<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="5" />
-				<span id="pointIntensityText" class="slider-value">5.0</span>
+				<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
+				<span id="pointIntensityText" class="slider-value">1.0</span>
 			</span>
 		</div>
 		<div class="controlRow">
 			<label class="controlLabel" for="pointRange">Point light range:</label>
 			<span>
-				<input type="range" id="pointRange" min="0" max="60" step="1" value="20" />
-				<span id="pointRangeText" class="slider-value">20</span>
+				<input type="range" id="pointRange" min="0" max="60" step="1" value="14" />
+				<span id="pointRangeText" class="slider-value">14</span>
 			</span>
 		</div>
 	</div>
@@ -931,7 +931,6 @@
 				gl.uniform3f(uColor, this.color.r / 255, this.color.g / 255, this.color.b / 255);
 				gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
 				gl.uniform1f(uDirLightIntensity, dirLight.intensity);
-				gl.uniform1f(uAmbientLight, 0.1);
 
 				gl.bindVertexArray(this.mesh.vertexArray);
 				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
@@ -1223,8 +1222,6 @@
 		const gameCanvas = (document.getElementById("gameCanvas"));
 		const gl = (gameCanvas.getContext("webgl2"));
 
-		let maxActiveLights = 16;
-
 		const vertexShaderSource = `#version 300 es
 uniform mat4 uModel;
 uniform mat4 uView;
@@ -1233,15 +1230,12 @@ in vec3 aPosition;
 in vec2 aUV;
 in vec3 aNormal;
 out vec2 vUV;
-out vec3 vWorldPosition;
 out vec3 vWorldNormal;
 
 void main(){
-	vec4 worldPosition  = uModel * vec4(aPosition, 1.0); 
-	gl_Position = uProjection * uView * worldPosition;
+	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
 	vUV = aUV;
 	vWorldNormal = (uModel * vec4(aNormal, 0.0)).xyz;
-	vWorldPosition = worldPosition.xyz;
 }`;
 		const fragmentShaderSource = `#version 300 es
 precision highp float;
@@ -1251,46 +1245,15 @@ uniform bool uUseTexture;
 uniform vec3 uColor;
 uniform vec3 uDirLightDir;
 uniform float uDirLightIntensity;
-uniform float uAmbientLight;
-
-uniform vec3 uPointLightPositions[${maxActiveLights}];
-uniform int uPointLightCount;
-uniform float uPointLightIntensity;
-uniform float uPointLightRange;
-
 in vec2 vUV;
 in vec3 vWorldNormal;
-in vec3 vWorldPosition;
 out vec4 outColor;
 
 void main(){
 	vec3 worldNormal = normalize(vWorldNormal);
 	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
-
 	float dirLightDiffuse = (1.0 - (dot(worldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
-
-	float pointLightRangeSquare = uPointLightRange * uPointLightRange;
-	float totalPointLightDiffuse = 0.0;
-	for (int i = 0; i < uPointLightCount; i++) {
-		vec3 pointLightVec = uPointLightPositions[i] - vWorldPosition;
-		if (dot(worldNormal, pointLightVec) <= 0.0) continue;
-
-		float distanceFromPixelToPointLight2 = dot(pointLightVec, pointLightVec);
-		if (distanceFromPixelToPointLight2 >= pointLightRangeSquare) continue;
-
-		float distance = sqrt(distanceFromPixelToPointLight2);
-		float dotValue = dot(worldNormal, pointLightVec) / distance;
-		float currentPointLightDiffuse = (1.0 + dotValue) / 2.0;
-		float pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRangeSquare;
-		float inverseSquareDistance = 1.0 / (1.0 + 0.02 * distanceFromPixelToPointLight2);
-		float attenuation = (1.0 - pointLightDistanceRatio) * inverseSquareDistance;
-		totalPointLightDiffuse += currentPointLightDiffuse * attenuation;
-	}
-	totalPointLightDiffuse *= uPointLightIntensity;
-
-	float lightIntensity = max(uAmbientLight, dirLightDiffuse + totalPointLightDiffuse);
-
-	outColor = vec4(min(color * lightIntensity, vec3(1.0)), 1.0);
+	outColor = vec4(color * dirLightDiffuse, 1.0);
 }`;
 		function compileShader(type, source) {
 			const shader = gl.createShader(type);
@@ -1325,11 +1288,6 @@ void main(){
 		const uColor = gl.getUniformLocation(program, "uColor");
 		const uDirLightDir = gl.getUniformLocation(program, "uDirLightDir");
 		const uDirLightIntensity = gl.getUniformLocation(program, "uDirLightIntensity");
-		const uAmbientLight = gl.getUniformLocation(program, "uAmbientLight");
-		const uPointLightPositions = gl.getUniformLocation(program, "uPointLightPositions");
-		const uPointLightCount = gl.getUniformLocation(program, "uPointLightCount");
-		const uPointLightIntensity = gl.getUniformLocation(program, "uPointLightIntensity");
-		const uPointLightRange = gl.getUniformLocation(program, "uPointLightRange");
 
 		gl.enable(gl.DEPTH_TEST);
 		gl.enable(gl.CULL_FACE);
@@ -1396,9 +1354,9 @@ void main(){
 
 		let cubeMesh = new Cube();
 		let woodTower = new GameObject(
-			new Vector3(0, 2, 0),
-			new Vector3(0, 0, 45),
-			new Vector3(5, 1, 1),
+			new Vector3(0, -0.17, 0),
+			Vector3.zero,
+			new Vector3(1, 1, 1),
 			new Color(255, 255, 255),
 			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj"),
 			woodTexture
@@ -1427,19 +1385,6 @@ void main(){
 		function render() {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());
-
-			const pointLightData = new Float32Array(maxActiveLights * 3);
-			const pointLightCount = Math.min(pointLights.length, maxActiveLights);
-			for (let i = 0; i < pointLightCount; i++) {
-				const lightPos = pointLights[i].transform.position;
-				pointLightData[i * 3] = lightPos.x;
-				pointLightData[i * 3 + 1] = lightPos.y;
-				pointLightData[i * 3 + 2] = lightPos.z;
-			}
-			gl.uniform3fv(uPointLightPositions, pointLightData);
-			gl.uniform1i(uPointLightCount, pointLightCount);
-			gl.uniform1f(uPointLightIntensity, pointLightIntensity);
-			gl.uniform1f(uPointLightRange, pointLightRange);
 
 			ground.drawWithChildren();
 			for (let light of pointLights) {

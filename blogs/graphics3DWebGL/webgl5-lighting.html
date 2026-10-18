@@ -184,6 +184,117 @@ void main(){
                     Kết quả (kéo tốc độ xoay nhanh hơn để thấy rõ):
 					<div class="htmlPreview" id="htmlPreview26"></div>
 
+					<h3>c. Lỗi khi object có mặt xiêng không được scale đồng đều</h3>
+					Nghe tiêu đề thì có vẻ phức tạp, nên mình sẽ cho bạn xem một demo để hiểu vấn đề. Demo dưới đây có tòa tháp được xoay 45 độ, kéo giãn
+					5 lần theo chiều x. Mình cho camera ngay bên trong tòa tháp nhìn vào mấy thanh xéo xéo, 
+					làm directional light sáng nhất, ngừng xoay và chiếu theo hướng (-1, 0, 0) (xem diff):
+					<div class="htmlPreview" id="htmlPreview27"></div>
+
+					Thoạt nhìn thì không có gì đặc biệt, tuy nhiên nếu bạn nhìn kỹ và suy nghĩ lại,
+					nếu directional light chiếu từ hướng (-1, 0, 0) thì đáng lẽ phần trên của
+					mấy thanh này nó phải sáng hơn nữa, điều này nghĩa là pháp tuyến của chúng ta có vấn đề.<br/><br/>
+
+					Như tiêu đề, nguyên nhân điều này xảy ra là do tòa tháp của chúng ta có mặt xiêng, và ta đang scale nó không đồng đều (5, 1, 1).
+					Nguyên nhân tại sao thì bạn xem gif dưới đây:
+					<div align="center">
+						<img style="max-height:300px" src="images/webgl5/ScaleNormal.gif" alt="Scale pháp tuyến bằng model matrix">
+					</div>
+					Bạn thấy là khi pháp tuyến được scale chung với object, thì nó bị "dẹt" chung với object. Khi object bị dẹt như vậy thì pháp tuyến phải thẳng
+					đứng như vector xanh lá trong hình mới đúng. Như vậy, dùng model matrix để biến đổi pháp tuyến là sai, ta phải dùng 1 biến thể gì đó của model matrix,
+					ta sẽ gọi nó là normal matrix. Buckle up because it's math time again.<br/><br/>
+
+					Với một tam giác, gọi \(t\) là một vector bất kỳ nằm trên mặt phẳng tam giác. Gọi \(M\) là model matrix,
+					và \(t'\) là \(t\) sau khi được biến đổi bởi \(M\), nghĩa là:
+					$$
+					t' = Mt
+					$$
+					Ta gọi vector pháp tuyến là \(n\), như vậy \(n.t = 0\). Tuy nhiên tích vô hướng cũng có 1 cách biểu diễn khác, đó là xem \(n\) và
+					\(t\) là 2 ma trận 3 dòng 1 cột, thì chuyển vị của ma trận \(n\) nhân với ma trận \(t\) cũng bằng 0:
+					$$
+					n^T t = 
+					(
+                    n_x,
+                    n_y,
+                    n_z
+                    )
+					\begin{pmatrix}
+                    t_x \\
+                    t_y \\
+                    t_z
+                    \end{pmatrix}
+					= (n_x * t_x + n_y * t_y + n_z * t_z) = (0)
+					$$
+					<i style="font-size: small;">Chuyển vị ma trận đơn giản chỉ là biến dòng thành cột và cột thành dòng, tìm google thêm để xem ví dụ nếu bạn chưa biết</i><br/><br/>
+					Ta gọi \(n'\) là vector pháp tuyến sau khi biến đổi, ta mong muốn là sau khi biến đổi, thì tích vô hướng \(n'.t'\) vẫn bằng 0, hoặc
+					\(n'^T t' = (0)\).<br/>
+					Gọi ma trận mà ta cần tìm (normal matrix) là \(N\), nghĩa là \(Nn = n'\). Như vậy ta có:
+					$$
+					n'^T t' = (Nn)^T (Mt) = n^T N^T M t
+					$$
+					<i style="font-size: small;">Tính chất của chuyển vị: \((AB)^T = B^T A^T\)</i><br/><br/>
+					Ta biết \(n^T t = (0)\), tức là nếu \(N^T M = I\) (ma trận đơn vị) thì biểu phương trình trên sẽ đúng. Như vậy:
+					$$
+					\begin{eqnarray}
+					N^T M = I \\ 
+					\Rightarrow N^T = M^{-1} \\
+					\Rightarrow N = (M^{-1})^T
+					\end{eqnarray}
+					$$
+					Ta đã tìm được normal matrix \(N\) 😳 Nó chính là chuyển vị của nghịch đảo của model matrix \(M\). Nhưng mà thật ra chuyển vị
+					trước hay nghịch đảo trước cũng ra cùng kết quả (cái này bạn google thêm nếu muốn tìm hiểu) nên mình sẽ gọi là nghịch đảo chuyển vị cho nó thuận miệng.<br/><br/>
+					Tuy nhiên có 1 vấn đề là engine ta chưa hỗ trợ nghịch đảo ma trận và chuyển vị ma trận, thêm hàm vào thì làm nó phức tạp thêm, cho nên ta sẽ tìm thử
+					xem nghịch đảo chuyển vị của model matrix sẽ ra gì 😳 <br/><br/>
+
+					Gọi translation matrix là \(T\), rotation matrix là \(R\), scale matrix là \(S\), ta có:
+					$$
+					\begin{eqnarray}
+					M = TRS \\
+					\Rightarrow M^{-1} = (TRS)^{-1} = T^{-1} R^{-1} S^{-1} \\
+					\Rightarrow (M^{-1})^T = ( T^{-1} R^{-1} S^{-1})^T = (S^{-1})^T (R^{-1})^T (T^{-1})^T
+					\end{eqnarray}
+					$$
+					Tuy nhiên bạn nhớ là ta có bỏ translation matrix ra ngoài vì pháp tuyến là vector, nên bây giờ:
+					$$
+					N = (M^{-1})^T = (S^{-1})^T (R^{-1})^T
+					$$
+					Ta sẽ xử lí từng cái, đầu tiên với scale matrix, nó có dạng:
+					$$
+                        \begin{pmatrix}
+                        s_{x} & 0 & 0\\
+                        0 & s_{y} & 0\\
+                        0 & 0 & s_{z}\\
+                        \end{pmatrix}
+                    $$
+					Đây là một <a href="https://en.wikipedia.org/wiki/Diagonal_matrix">ma trận chéo</a>. Chuyển vị của một ma trận chéo thì bằng chính nó,
+					còn khi ta nghịch đảo một ma trận chéo thì ta nghịch đảo hết mấy phần tử trong nó, như vậy:
+					$$
+					(S^{-1})^T = 
+					\begin{pmatrix}
+					\frac{1}{s_{x}} & 0 & 0\\
+					0 & \frac{1}{s_{y}} & 0\\
+					0 & 0 & \frac{1}{s_{z}}\\
+					\end{pmatrix}
+					$$
+					Tiếp theo với rotation matrix, nó được tạo thành từ 3 rotation matrix ở 3 trục riêng (thứ tự XYZ theo mình quy ước):
+					$$
+					R = \begin{pmatrix}
+                        1 & 0 & 0\\
+                        0 & cos{θ} & sin{θ} \\
+                        0 & -\sin{θ} & \cos{θ} \\
+                        \end{pmatrix}
+						
+						\begin{pmatrix}
+                        cos{θ} & 0 & -sin{θ}\\
+                        0 & 1 & 0 \\
+                        \sin{θ} & 0 & \cos{θ} \\
+                        \end{pmatrix}
+						
+						\begin{pmatrix}
+                        cos{θ} & sin{θ} & 0\\
+                        -\sin{θ} & \cos{θ} & 0 \\
+                        0 & 0 & 1 \\
+                        \end{pmatrix}
+					$$
 
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
