@@ -445,22 +445,23 @@
 			}
 
 			static Rotation(q) {
-				const a = q.a,
-					b = q.b,
-					c = q.c,
-					d = q.d;
-				let matrix = new Mat4x4();
-				matrix.m[0][0] = 1 - 2 * (c * c + d * d);
-				matrix.m[0][1] = 2 * (b * c - a * d);
-				matrix.m[0][2] = 2 * (b * d + a * c);
-				matrix.m[1][0] = 2 * (b * c + a * d);
-				matrix.m[1][1] = 1 - 2 * (b * b + d * d);
-				matrix.m[1][2] = 2 * (c * d - a * b);
-				matrix.m[2][0] = 2 * (b * d - a * c);
-				matrix.m[2][1] = 2 * (c * d + a * b);
-				matrix.m[2][2] = 1 - 2 * (b * b + c * c);
-				matrix.m[3][3] = 1;
-				return matrix;
+				const right = q.rotateVector(new Vector3(1, 0, 0));
+				const up = q.rotateVector(new Vector3(0, 1, 0));
+				const forward = q.rotateVector(new Vector3(0, 0, 1));
+
+				const result = new Mat4x4();
+				result.m[0][0] = right.x;
+				result.m[0][1] = up.x;
+				result.m[0][2] = forward.x;
+				result.m[1][0] = right.y;
+				result.m[1][1] = up.y;
+				result.m[1][2] = forward.y;
+				result.m[2][0] = right.z;
+				result.m[2][1] = up.z;
+				result.m[2][2] = forward.z;
+				result.m[3][3] = 1;
+
+				return result;
 			}
 
 			toColumnMajor() {
@@ -914,8 +915,6 @@
 				}
 				gl.uniform1i(uUseTexture, this.texture ? 1 : 0);
 				gl.uniform3f(uColor, this.color.r / 255, this.color.g / 255, this.color.b / 255);
-				gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
-				gl.uniform1f(uDirLightIntensity, dirLight.intensity);
 
 				gl.bindVertexArray(this.mesh.vertexArray);
 				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
@@ -1362,6 +1361,9 @@ void main(){
 		function render() {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());
+
+			gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
+			gl.uniform1f(uDirLightIntensity, dirLight.intensity);
 
 			ground.drawWithChildren();
 			for (let light of pointLights) {

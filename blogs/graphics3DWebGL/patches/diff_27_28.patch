@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview27.html"
 +++ "b/htmlPreviews\\htmlPreview28.html"
-@@ -815,6 +815,14 @@
+@@ -816,6 +816,14 @@
  				return Mat4x4.Multiply(this.getTranslationMatrix(), model);
  			}
  
@@ -15,7 +15,7 @@
  			getViewMatrix() {
  				return Mat4x4.ViewFromPosRot(this.position, this.rotation);
  			}
-@@ -906,6 +914,7 @@
+@@ -907,6 +915,7 @@
  			draw() {
  				if (this.mesh.vertexCount == 0) return;
  				gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
@@ -23,7 +23,7 @@
  
  				if (this.texture) {
  					gl.activeTexture(gl.TEXTURE0);
-@@ -1210,6 +1219,7 @@
+@@ -1209,6 +1218,7 @@
  
  		const vertexShaderSource = `#version 300 es
  uniform mat4 uModel;
@@ -31,7 +31,7 @@
  uniform mat4 uView;
  uniform mat4 uProjection;
  in vec3 aPosition;
-@@ -1221,7 +1231,7 @@ out vec3 vWorldNormal;
+@@ -1220,7 +1230,7 @@ out vec3 vWorldNormal;
  void main(){
  	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
  	vUV = aUV;
@@ -40,7 +40,7 @@
  }`;
  		const fragmentShaderSource = `#version 300 es
  precision highp float;
-@@ -1265,6 +1275,7 @@ void main(){
+@@ -1264,6 +1274,7 @@ void main(){
  		const aUV = gl.getAttribLocation(program, "aUV");
  		const aNormal = gl.getAttribLocation(program, "aNormal");
  		const uModel = gl.getUniformLocation(program, "uModel");

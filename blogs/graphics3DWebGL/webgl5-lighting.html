@@ -52,8 +52,8 @@
                     <div id="graphics3D-nav-top"></div>
                     <h1>Lighting</h1>
 
-					Tầm này thì chắc bạn cũng hình dùng được cách thêm lại lighting vào engine. Ta chỉ cần đưa pháp tuyến và
-					các tham số cần thiết vào cho vertex shader là ô kê, tuy nhiên sẽ có 1 vấn đề nho nhỏ.
+					Tầm này thì chắc bạn cũng hình dung được cách thêm lại lighting vào engine. Ta chỉ cần đưa pháp tuyến và
+					các tham số cần thiết vào cho shader là ô kê, tuy nhiên sẽ có 1 vấn đề "nho nhỏ".
 
 					<h2>1. Directional light</h2>
 
@@ -83,12 +83,12 @@
 	}
 }</code></pre>
 
-					Một <code>normal</code> này của <code>Triangle</code> sẽ được dùng chung cho cả 3 đỉnh. Tới lúc này đáng lẽ ta nên tạo 1 class <code>Vertex</code>
-					riêng luôn vì đỉnh có nhiều dữ liệu rồi, nhưng cái này mình để sau.<br/><br/>
+					Một <code>normal</code> này của <code>Triangle</code> sẽ được dùng chung cho cả 3 đỉnh. Đỉnh bây giờ có khá nhiều dữ liệu rồi (tọa độ, UV, pháp tuyến),
+					đáng lẽ có thể gom lại thành 1 class <code>Vertex</code> riêng, nhưng trong series này mình vẫn giữ cách lưu theo tam giác cho đơn giản.<br/><br/>
 
 					Một cái bạn nên biết là các đỉnh ở cùng 1 tọa độ, sẽ có pháp tuyến khác nhau, vì nó thuộc tam giác khác nhau.
-					Đây là lí do ta không thể sử dụng Index buffer, vì đỉnh của tam giác khác nhau thì dữ liệu khác nhau, cho dù chúng có chung
-					tọa độ.<br/><br/>
+					Vì vậy dù có dùng Index buffer, ta cũng không gộp được mấy đỉnh này lại thành 1 (ví dụ 1 góc của khối lập phương thuộc 3 mặt, nên vẫn phải là
+					3 đỉnh), vì đỉnh của tam giác khác nhau thì dữ liệu khác nhau, cho dù chúng có chung tọa độ.<br/><br/>
 
 					Vì đỉnh đã có dữ liệu normal rồi nên vertex shader cũng nhận vào 1 attribute <code>aNormal</code>. Vì attribute này là ở object space,
 					nên trong vertex shader nó cũng phải nhân với model matrix như tọa độ. Tuy nhiên khi nhân với model matrix, thay vì để <code>w = 1</code>
@@ -152,20 +152,22 @@ void main(){
 					Nhớ thêm khai báo:
 					<pre><code class="language-javascript">const aNormal = gl.getAttribLocation(program, "aNormal");</code></pre>
 
-                    <h3>b. Tính directional light</h2>
+                    <h3>b. Tính directional light</h3>
 					Directional light cần 2 thứ để tính: hướng và cường độ, như vậy ta chỉ cần truyền thêm chúng vào:
 					<pre><code class="language-javascript">const uDirLightDir = gl.getUniformLocation(program, "uDirLightDir");
 const uDirLightIntensity = gl.getUniformLocation(program, "uDirLightIntensity");</code></pre>
-					<pre><code class="language-javascript">class GameObject {
+					Hướng và cường độ của đèn là thông tin của cả scene, không đổi theo từng object, nên thay vì truyền trong <code>draw</code> của từng
+					<code>GameObject</code>, mình truyền nó 1 lần mỗi frame trong hàm <code>render</code>, trước khi vẽ:
+					<pre><code class="language-javascript">function render() {
 	...
-	draw(){
-		...
-		gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
-		gl.uniform1f(uDirLightIntensity, dirLight.intensity);
-		...
-	}
+	gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
+	gl.uniform1f(uDirLightIntensity, dirLight.intensity);
+
+	ground.drawWithChildren();
 	...
 }</code></pre>
+					Ngoài ra sau khi xoay hướng của directional light mỗi frame, mình gọi thêm <code>dirLight.dir.normalize()</code> để chắc chắn nó luôn là
+					vector đơn vị, vì công thức bên dưới dùng tích vô hướng.<br/><br/>
 					Cuối cùng, phần tính ánh sáng sẽ nằm ở fragment shader. Đây là dòng tính diffuse của directional light trong series trước:
 					<pre><code class="language-javascript">const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;</code></pre>
 					Và nó cũng sẽ y hệt trong đây (fragment shader) 😳:
@@ -184,17 +186,17 @@ void main(){
                     Kết quả (kéo tốc độ xoay nhanh hơn để thấy rõ):
 					<div class="htmlPreview" id="htmlPreview26"></div>
 
-					<h3>c. Lỗi khi object có mặt xiêng không được scale đồng đều</h3>
+					<h3>c. Lỗi khi object có mặt xiên không được scale đồng đều</h3>
 					Nghe tiêu đề thì có vẻ phức tạp, nên mình sẽ cho bạn xem một demo để hiểu vấn đề. Demo dưới đây có tòa tháp được xoay 45 độ, kéo giãn
 					5 lần theo chiều x. Mình cho camera ngay bên trong tòa tháp nhìn vào mấy thanh xéo xéo, 
 					làm directional light sáng nhất, ngừng xoay và chiếu theo hướng (-1, 0, 0) (xem diff):
 					<div class="htmlPreview" id="htmlPreview27"></div>
 
 					Thoạt nhìn thì không có gì đặc biệt, tuy nhiên nếu bạn nhìn kỹ và suy nghĩ lại,
-					nếu directional light chiếu từ hướng (-1, 0, 0) thì đáng lẽ phần trên của
+					nếu directional light chiếu theo hướng (-1, 0, 0) thì đáng lẽ phần trên của
 					mấy thanh này nó phải sáng hơn nữa, điều này nghĩa là pháp tuyến của chúng ta có vấn đề.<br/><br/>
 
-					Như tiêu đề, nguyên nhân điều này xảy ra là do tòa tháp của chúng ta có mặt xiêng, và ta đang scale nó không đồng đều (5, 1, 1).
+					Như tiêu đề, nguyên nhân điều này xảy ra là do tòa tháp của chúng ta có mặt xiên, và ta đang scale nó không đồng đều (5, 1, 1).
 					Nguyên nhân tại sao thì bạn xem gif dưới đây:
 					<div align="center">
 						<img style="max-height:300px" src="images/webgl5/ScaleNormal.gif" alt="Scale pháp tuyến bằng model matrix">
@@ -276,30 +278,32 @@ void main(){
 					0 & 0 & \frac{1}{s_{z}}\\
 					\end{pmatrix}
 					$$
-					Tiếp theo với rotation matrix, nó được tạo thành từ 3 rotation matrix ở 3 trục riêng (thứ tự XYZ theo mình quy ước):
+					Tiếp theo với rotation matrix, nó được tạo thành từ 3 rotation matrix ở 3 trục riêng, mỗi cái có góc riêng của nó. Engine xoay quanh trục x trước,
+					rồi y, rồi z, mà ma trận nằm bên phải được áp dụng trước, nên:
 					$$
-					R = R_x R_y R_z = \begin{pmatrix}
-                        1 & 0 & 0\\
-                        0 & cos{θ} & sin{θ} \\
-                        0 & -\sin{θ} & \cos{θ} \\
-                        \end{pmatrix}
-						
-						\begin{pmatrix}
-                        cos{θ} & 0 & -sin{θ}\\
-                        0 & 1 & 0 \\
-                        \sin{θ} & 0 & \cos{θ} \\
-                        \end{pmatrix}
-						
-						\begin{pmatrix}
-                        cos{θ} & sin{θ} & 0\\
-                        -\sin{θ} & \cos{θ} & 0 \\
+					R = R_z R_y R_x = \begin{pmatrix}
+                        \cos{θ_z} & \sin{θ_z} & 0\\
+                        -\sin{θ_z} & \cos{θ_z} & 0 \\
                         0 & 0 & 1 \\
+                        \end{pmatrix}
+
+						\begin{pmatrix}
+                        \cos{θ_y} & 0 & -\sin{θ_y}\\
+                        0 & 1 & 0 \\
+                        \sin{θ_y} & 0 & \cos{θ_y} \\
+                        \end{pmatrix}
+
+						\begin{pmatrix}
+                        1 & 0 & 0\\
+                        0 & \cos{θ_x} & \sin{θ_x} \\
+                        0 & -\sin{θ_x} & \cos{θ_x} \\
                         \end{pmatrix}
 					$$
 
 					Tìm nghịch đảo chuyển vị của 3 ma trận trên có lẽ hơi khổ, hên cho ta là các rotation matrix là các
 					<a href="https://en.wikipedia.org/wiki/Orthogonal_matrix">ma trận trực giao (orthogonal matrix)</a>. Ma trận trực giao là ma trận
-					mà các vector cột vuông góc với nhau và các vector hàng cũng vuông góc với nhau. Mình thử với ma trận xoay theo trục x:
+					mà các vector cột đều có độ dài 1 và vuông góc với nhau từng đôi một (các vector hàng cũng vậy). Mình thử với ma trận xoay theo trục x.
+					Độ dài thì dễ thấy: cột đầu là (1, 0, 0), hai cột còn lại có độ dài \(\sqrt{\cos^2{θ_x} + \sin^2{θ_x}} = 1\). Còn vuông góc thì:
 					$$
 					\begin{pmatrix}
 					1\\
@@ -309,8 +313,8 @@ void main(){
 					.
 					\begin{pmatrix}
 					0\\
-					\cos{θ}\\
-					-\sin{θ}
+					\cos{θ_x}\\
+					-\sin{θ_x}
 					\end{pmatrix}
 					=
 					0
@@ -325,8 +329,8 @@ void main(){
 					.
 					\begin{pmatrix}
 					0\\
-					\sin{θ}\\
-					\cos{θ}
+					\sin{θ_x}\\
+					\cos{θ_x}
 					\end{pmatrix}
 					=
 					0
@@ -335,14 +339,14 @@ void main(){
 					$$
 					\begin{pmatrix}
 					0\\
-					cos{θ}\\
-					-\sin{θ}
+					\cos{θ_x}\\
+					-\sin{θ_x}
 					\end{pmatrix}
 					.
 					\begin{pmatrix}
 					0\\
-					\sin{θ}\\
-					\cos{θ}
+					\sin{θ_x}\\
+					\cos{θ_x}
 					\end{pmatrix}
 					=
 					0
@@ -350,7 +354,7 @@ void main(){
 					Như vậy nó đúng là một ma trận trực giao. Ma trận trực giao thì có 1 tính chất khá hay, đó chính là nghịch đảo của ma trận cũng chính là
 					chuyển vị của ma trận (tìm google nếu bạn muốn xem chứng minh) 😳 Tức là ta có:
 					$$
-					(R^{-1})^T = (R_x^{-1})^T (R_y^{-1})^T (R_z^{-1})^T = (R_x^T)^T (R_y^T)^T (R_z^T)^T = R_x R_y R_z = R
+					(R^{-1})^T = (R_x^{-1} R_y^{-1} R_z^{-1})^T = (R_z^{-1})^T (R_y^{-1})^T (R_x^{-1})^T = (R_z^T)^T (R_y^T)^T (R_x^T)^T = R_z R_y R_x = R
 					$$
 					Như vậy nghịch đảo chuyển vị của rotation matrix bằng chính nó 😳<br/><br/>
 
@@ -410,7 +414,7 @@ void main(){
 					
 					Thật ra làm point light cũng không còn gì phức tạp, ta chỉ cần truyền cho shader các thứ cần thiết, rồi cho nó tính theo công thức
 					cũ thôi. Các thứ cần thiết đó là: tọa độ thế giới, vị trí các point light, độ sáng point light và range, ngoài ra ta truyền vào ambient light
-					để tính luôn.<br/><br/>
+					để tính luôn. Ambient light bên series trước mình để 0.2, ở đây mình giảm xuống 0.1 cho chỗ tối nhìn tối hơn một chút.<br/><br/>
 					
 					Cái duy nhất cần để ý là vị trí các point light là một mảng, khi truyền vào ta sẽ dùng hàm <code>gl.uniform3fv</code> và trong shader
 					cũng phải cho nó nhận vào 1 mảng, như sau:
@@ -508,8 +512,9 @@ const uPointLightPositions = gl.getUniformLocation(program, "uPointLightPosition
 const uPointLightCount = gl.getUniformLocation(program, "uPointLightCount");
 const uPointLightIntensity = gl.getUniformLocation(program, "uPointLightIntensity");
 const uPointLightRange = gl.getUniformLocation(program, "uPointLightRange");</code></pre>
-					Bình thường thì chỗ "truyền thông tin cho shader" sẽ nằm ở hàm <code>draw</code> của <code>GameObject</code>, tuy nhiên do ánh sáng là thông
-					tin toàn scene nên phải để bên ngoài nó, cụ thể là trong hàm <code>render</code>
+					Giống directional light ở phần 1, point light là thông tin toàn scene, không đổi theo từng object, nên mình cũng truyền nó trong hàm
+					<code>render</code>, 1 lần mỗi frame. Số point light tối đa phải khớp với kích thước mảng trong shader:
+					<pre><code class="language-javascript">let maxActiveLights = 16;</code></pre>
 					<pre><code class="language-javascript">function render() {
 	...
 

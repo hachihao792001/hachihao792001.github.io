@@ -35,7 +35,7 @@
     <script src="/js/prism.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-    <title>Chuyển Hanvas Engine thành WebGL</title>
+    <title>WebGL #3: Bắt đầu chuyển Hanvas Engine sang WebGL</title>
 </head>
 
 <body data-graphics3D-id="webgl3">
@@ -64,8 +64,9 @@
 						<li><b>Dọn dẹp</b>: Xóa hết những thứ trên, nhưng vẫn là Software Rasterizer.</li>
 						<li><b>Chuyển</b>: Khi engine chỉ còn những thứ ta biết làm, mới từ từ convert sang WebGL.</li>
 					</ol>
-					Như vậy thì khi bạn xem Diff của các version nó sẽ clean hơn. Những thứ bị xóa sẽ quay lại ở các blog sau, mỗi thứ 1 blog, 
-					giống thứ tự của series trước.<br/><br/>
+					Như vậy thì khi bạn xem Diff của các version nó sẽ clean hơn. Texture, ánh sáng và shadow sẽ quay lại ở các blog sau, mỗi thứ 1 blog,
+					theo thứ tự <a href="/blogs/graphics3DWebGL/webgl4-texture.html">texture</a> → <a href="/blogs/graphics3DWebGL/webgl5-lighting.html">ánh sáng</a>
+					→ <a href="/blogs/graphics3DWebGL/webgl6-shadow.html">shadow</a> (series trước thì ánh sáng đi trước texture).<br/><br/>
 
 					Vì blog này có khá nhiều htmlPreview, mà phần lớn là software rasterizer chạy bằng CPU, nên mình để mặc định là disable hết.
 					Ấn Enable để chạy bản bạn muốn xem.
@@ -129,13 +130,20 @@ rasterize(visibleTris);									// vòng lặp pixel: depth buffer, ánh sáng, 
 
 					<h3>e. Đem crosshair ra HTML</h3>
 					Còn 1 thứ cuối cùng: cái crosshair ở giữa màn hình được vẽ bằng <code>ctx.fillRect</code> sau khi <code>putImageData</code>. Tuy nhiên hàm đó chỉ dành
-					cho canvas có contex <code>"2d"</code>, còn canvas bây giờ đã thành <code>"webgl2"</code>. Thay vì chuyển crosshair thành 1 quad nằm trước camera,
-					thì ta chuyển nó thành 1 tag <code>div</code> nằm đè lên giữa canvas luôn:
-					<pre><code class="language-html">&lt;canvas id=&quot;gameCanvas&quot; width=&quot;600&quot; height=&quot;450&quot; style=&quot;border: 2px solid #aaa; background: #fff&quot;&gt;&lt;/canvas&gt;
-&lt;div id=&quot;crosshair&quot;&gt;&lt;/div&gt;</code></pre>
+					cho canvas có context <code>"2d"</code>, còn canvas bây giờ đã thành <code>"webgl2"</code>. Thay vì chuyển crosshair thành 1 quad nằm trước camera,
+					thì ta chuyển nó thành 1 tag <code>div</code> nằm đè lên giữa canvas luôn, đặt chung trong <code>div#render</code> đang bọc canvas:
+					<pre><code class="language-html">&lt;div id=&quot;render&quot;&gt;
+	&lt;canvas id=&quot;gameCanvas&quot; width=&quot;600&quot; height=&quot;450&quot; style=&quot;border: 2px solid #aaa; background: #fff&quot;&gt;&lt;/canvas&gt;
+	&lt;div id=&quot;crosshair&quot;&gt;&lt;/div&gt;
+&lt;/div&gt;</code></pre>
 					<pre><code class="language-css">#render {
-	position: relative;
-	display: inline-block;
+	position: relative;		/* để crosshair absolute theo khung này */
+	display: inline-block;	/* khung ôm vừa canvas */
+}
+
+#gameCanvas {
+	display: block;			/* canvas inline sẽ dư 1 khoảng ở dưới, làm crosshair lệch khỏi tâm */
+	...
 }
 
 #crosshair {
@@ -193,7 +201,7 @@ gl.frontFace(gl.CW);		// quy ước cùng chiều kim đồng hồ của series 
 gl.clearColor(240 / 255, 240 / 255, 240 / 255, 1);		// bằng màu 0xfff0f0f0 mà clearScreen() dùng</code></pre>
 
 					<h3>b. Ma trận</h3>
-					<code>Mat4x4.Projection</code> của series trước đưa z về [0; 1], mà như ta biết ở blog 2 là WebGL nhận vào [-1; 1].
+					<code>Mat4x4.Projection</code> của series trước đưa z về [0; 1], mà như ta biết ở <a href="/blogs/graphics3DWebGL/webgl1-basic.html">blog 1 phần 8b</a> là WebGL nhận vào [-1; 1].
 					Nên ta copy hàm <code>Mat4x4.Projection</code> mà ta đã sửa ở blog trước vào:
 					<pre><code class="language-javascript">class Mat4x4 {
 	...
@@ -316,7 +324,8 @@ toColumnMajor() {
 	}
 }</code></pre>
 					Lần này mình dùng <code>drawArrays</code> chứ không dùng index buffer như blog 1. Mesh của engine là một danh sách tam giác, mỗi tam giác 3 đỉnh
-					riêng, nên chưa có index để dùng. Gom các đỉnh trùng nhau lại thành index buffer là việc tối ưu để sau.<br/><br/>
+					riêng, nên chưa có index để dùng. Gom các đỉnh trùng vị trí lại thành index buffer thì được, nhưng series này không làm: từ blog 4, blog 5 trở đi
+					mỗi đỉnh còn mang uv và normal riêng theo từng mặt, nên 2 đỉnh trùng vị trí của 2 mặt khác nhau vẫn không gộp được.<br/><br/>
 
 					Ngoài ra, <code>cubeMesh</code> được ground và 2 cube point light dùng chung, nên chỉ có 1 VAO cho cả 3, giống phần 12 của blog 2: 
 					cùng 1 VAO, mỗi lần vẽ đổi <code>uModel</code>.
@@ -380,7 +389,7 @@ render();</code></pre>
 						<li>Backface culling: <code>gl.CULL_FACE</code>, thay cho cái tích vô hướng trong <code>worldSpaceToViewSpace</code>.</li>
 						<li>Cắt tam giác theo near plane (<code>clipAgainstPlane</code> của <a href="/blogs/graphics3D/graphics3D7-view.html">blog #7 series trước</a>): 
 							GPU tự clip.</li>
-						<li>Perspective divide và nhân ra kích thước canvas (kèm đổi dấu y).</li>
+						<li>Perspective divide và nhân ra kích thước canvas. Bước đổi dấu y của bản cũ thì bỏ luôn, vì như blog 1 phần 6, y của WebGL vốn đã hướng lên.</li>
 						<li>Toàn bộ vòng lặp pixel: bounding box, edge function, nội suy z, depth buffer.</li>
 					</ul>
 					Kết quả:
@@ -391,8 +400,8 @@ render();</code></pre>
 					<h2>4. Xóa những thứ GPU đã làm thay</h2>
 					Ở bản trên, class <code>Rasterizer</code> vẫn còn nằm trong file, chỉ là không ai gọi tới nữa. Mình cố tình để vậy để diff của phần 3 nhìn gọn gọn.
 					Phần này mình sẽ xóa: <code>Rasterizer</code>, <code>MathTriangle</code>, <code>Plane</code>, <code>BoundingBox</code>, <code>MathExtend</code>,
-					<code>clipAgainstPlane</code> và <code>perspectiveDivide</code> của <code>Triangle</code>, <code>getTransformedTriangles</code> của
-					<code>GameObject</code>, <code>nearPlane</code>, và 5 hàm pipeline cũ.<br/><br/>
+					<code>clipAgainstPlane</code>, <code>perspectiveDivide</code> và <code>clone</code> của <code>Triangle</code>, <code>getTransformedTriangles</code> và
+					<code>getTransformedTrianglesWithChildren</code> của <code>GameObject</code>, <code>nearPlane</code>, và 5 hàm pipeline cũ.<br/><br/>
 
 					<code>Triangle</code> bây giờ chỉ còn là dữ liệu, cũng chả cần Math với chả Math :))))):
 					<pre><code class="language-javascript">class Triangle {
@@ -408,7 +417,7 @@ render();</code></pre>
 					<h2>5. Đổi resolution và gl.viewport</h2>
 					Ở blog 1 phần 6 mình có nói <code>gl.viewport</code> mặc định bằng kích thước canvas <b>lúc tạo context</b>. Chữ "lúc tạo context" là chỗ quan trọng:
 					đổi <code>gameCanvas.width</code> sau đó thì drawing buffer đổi theo, nhưng viewport thì không. Ví dụ mình đổi resolution thành 300x225,
-					thì canvas đổi thành 300x255, nhưng WebGL vẫn đang render ra 600x450. GPU vẫn kéo [-1; 1] ra 600x450 pixel,
+					thì canvas đổi thành 300x225, nhưng WebGL vẫn đang render ra 600x450. GPU vẫn kéo [-1; 1] ra 600x450 pixel,
 					nên chỉ có phần nằm trong 300x225 pixel đầu tiên (tính từ góc dưới trái, vì trục y của WebGL hướng lên) là hiện ra.<br/><br/>
 
 					Sửa bằng 1 dòng trong <code>updateRenderResolution</code>:
@@ -422,7 +431,7 @@ render();</code></pre>
 }</code></pre>
 					Ở software rasterizer, việc này nằm trong <code>rasterizer.updateResolution</code>, nó cấp phát lại screen buffer và depth buffer.
 					Với WebGL thì 2 buffer đó do trình duyệt cấp phát lại khi canvas đổi kích thước, phần của ta chỉ còn viewport.
-					<div class="htmlPreview" id="htmlPreview23"></div>
+					<div class="htmlPreview" id="htmlPreview23" data-disabled="true"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

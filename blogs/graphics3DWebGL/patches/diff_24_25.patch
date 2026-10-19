@@ -21,7 +21,7 @@
  	</div>
  
  	<div id="helpPopup" style="display: none">
-@@ -915,6 +929,12 @@
+@@ -916,6 +930,12 @@
  			}
  		}
  
@@ -34,7 +34,7 @@
  		// ===== mesh.js =====
  		class Triangle {
  			constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
-@@ -1265,6 +1285,15 @@ void main(){
+@@ -1266,6 +1286,15 @@ void main(){
  		let lookInput = { x: 0, y: 0 };
  		let lookSpeed = 450;
  
@@ -50,7 +50,7 @@
  		let brickTexture = new Texture(
  			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
  			gl
-@@ -1297,6 +1326,10 @@ void main(){
+@@ -1298,6 +1327,10 @@ void main(){
  			if (lookInput.x != 0 || lookInput.y != 0) {
  				camera.updateRotation(lookInput.x * dt * lookSpeed, lookInput.y * dt * lookSpeed);
  			}
@@ -61,7 +61,7 @@
  		}
  
  		function render() {
-@@ -1330,6 +1363,16 @@ void main(){
+@@ -1331,6 +1364,16 @@ void main(){
  
  		update();
  

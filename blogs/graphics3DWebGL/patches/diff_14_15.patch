@@ -544,7 +544,7 @@
  				);
  			}
  
-@@ -114,249 +557,1711 @@
+@@ -114,253 +557,1711 @@
  			rotateVector(v) {
  				const qVec = new Quaternion(0, v.x, v.y, v.z);
  				const res = Quaternion.multiply(Quaternion.multiply(this, qVec), this.conjugate());
@@ -735,26 +735,25 @@
  			}
  
 -			static Rotation(q) {
--				const a = q.a, b = q.b, c = q.c, d = q.d;
--				let matrix = new Mat4x4();
--				matrix.m[0][0] = 1 - 2 * (c * c + d * d);
--				matrix.m[0][1] = 2 * (b * c - a * d);
--				matrix.m[0][2] = 2 * (b * d + a * c);
--				matrix.m[1][0] = 2 * (b * c + a * d);
--				matrix.m[1][1] = 1 - 2 * (b * b + d * d);
--				matrix.m[1][2] = 2 * (c * d - a * b);
--				matrix.m[2][0] = 2 * (b * d - a * c);
--				matrix.m[2][1] = 2 * (c * d + a * b);
--				matrix.m[2][2] = 1 - 2 * (b * b + c * c);
--				matrix.m[3][3] = 1;
--				return matrix;
-+			getCenter() {
-+				let x = (this.vertices[0].x + this.vertices[1].x + this.vertices[2].x) / 3.0;
-+				let y = (this.vertices[0].y + this.vertices[1].y + this.vertices[2].y) / 3.0;
-+				let z = (this.vertices[0].z + this.vertices[1].z + this.vertices[2].z) / 3.0;
-+				return new Vector3(x, y, z);
- 			}
- 
+-				const right = q.rotateVector(new Vector3(1, 0, 0));
+-				const up = q.rotateVector(new Vector3(0, 1, 0));
+-				const forward = q.rotateVector(new Vector3(0, 0, 1));
+-
+-				const result = new Mat4x4();
+-				result.m[0][0] = right.x;
+-				result.m[0][1] = up.x;
+-				result.m[0][2] = forward.x;
+-				result.m[1][0] = right.y;
+-				result.m[1][1] = up.y;
+-				result.m[1][2] = forward.y;
+-				result.m[2][0] = right.z;
+-				result.m[2][1] = up.z;
+-				result.m[2][2] = forward.z;
+-				result.m[3][3] = 1;
+-
+-				return result;
+-			}
+-
 -			toColumnMajor() {
 -				let array = new Float32Array(16);
 -				for (let c = 0; c < 4; c++)
@@ -831,12 +830,11 @@
 -			new Vector3(0.5, 0.5, 0.5),
 -			new Vector3(-0.5, 0.5, 0.5),
 -		];
-+			getNormal() {
-+				let v1 = Vector3.sub(this.vertices[0], this.vertices[1]);
-+				let v2 = Vector3.sub(this.vertices[1], this.vertices[2]);
-+				let normal = Vector3.cross(v1, v2);
-+				normal.normalize();
-+				return normal;
++			getCenter() {
++				let x = (this.vertices[0].x + this.vertices[1].x + this.vertices[2].x) / 3.0;
++				let y = (this.vertices[0].y + this.vertices[1].y + this.vertices[2].y) / 3.0;
++				let z = (this.vertices[0].z + this.vertices[1].z + this.vertices[2].z) / 3.0;
++				return new Vector3(x, y, z);
 +			}
  
 -		const triangles = new Uint16Array([
@@ -882,16 +880,24 @@
 -				this.pos = pos;
 -				this.rotation = Quaternion.buildQuaternionEuler(eulerAngles);
 -				this.scale = scale;
-+			perspectiveDivide() {
-+				for (let i = 0; i < this.vertices.length; i++) {
-+					let z = this.vertices[i].w;
-+					this.vertices[i] = Vector3.div(this.vertices[i], z);
-+				}
++			getNormal() {
++				let v1 = Vector3.sub(this.vertices[0], this.vertices[1]);
++				let v2 = Vector3.sub(this.vertices[1], this.vertices[2]);
++				let normal = Vector3.cross(v1, v2);
++				normal.normalize();
++				return normal;
  			}
  
 -			rotate(eulerX, eulerY, eulerZ) {
 -				let q = Quaternion.buildQuaternionEuler(new Vector3(eulerX, eulerY, eulerZ));
 -				this.rotation = Quaternion.multiply(q, this.rotation);
++			perspectiveDivide() {
++				for (let i = 0; i < this.vertices.length; i++) {
++					let z = this.vertices[i].w;
++					this.vertices[i] = Vector3.div(this.vertices[i], z);
++				}
++			}
++
 +			isIntersectingPlane(plane) {
 +				for (let i = 0; i < this.vertices.length; i++) {
 +					let next = (i + 1) % this.vertices.length;

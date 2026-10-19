@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview22.html"
 +++ "b/htmlPreviews\\htmlPreview23.html"
-@@ -1270,6 +1270,7 @@ void main(){
+@@ -1271,6 +1271,7 @@ void main(){
  
  			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
  			gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());

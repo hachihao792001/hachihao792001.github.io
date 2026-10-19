@@ -35,7 +35,7 @@
     <script src="/js/prism.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-    <title>Chuyển Hanvas Engine thành WebGL</title>
+    <title>WebGL #4: Texture</title>
 </head>
 
 <body data-graphics3D-id="webgl4">
@@ -115,7 +115,7 @@
 	// internal format, là format mà webgl lưu,
 	// width,
 	// height,
-	// có border hay không,
+	// border, trong WebGL tham số này bắt buộc là 0 (WebGL không hỗ trợ border, cái này là tàn dư từ OpenGL),
 	// format truyền vào,
 	// kiểu của buffer,
 	// các pixel kiểu Uint8Array, vì pixels của Texture là kiểu Uint8ClampedArray (kiểu từ getImageData trả về) nên phải convert)</code></pre>
@@ -187,7 +187,7 @@ out vec4 outColor;
 
 void main(){
 	// sử dụng vUV thế nào phần dưới sẽ nói
-	outColor = vec4(color, 1.0);
+	outColor = vec4(uColor, 1.0);
 }</code></pre>
 					Có attribute <code>aUV</code> mới nên ta khai báo thêm biến chứa địa chỉ của nó:
 					<pre><code class="language-javascript">const aUV = gl.getAttribLocation(program, "aUV");</code></pre>
@@ -209,7 +209,7 @@ void main() {
 					Bạn không truyền 1 mảng pixel cho <code>sampler2D uTexture</code>, mà truyền 1 số đại diện cho <code>texture unit</code> mà nó sẽ đọc từ,
 					cái này sẽ rõ ở phần sau.
 					Còn <code>uUseTexture</code> để bật tắt texture, dành cho trường hợp
-					GameObject không có texture, hoặc chưa load được texture. Nếu <code>uUseTexture</code> false thì fragment shader dùng
+					GameObject không có texture. Nếu <code>uUseTexture</code> false thì fragment shader dùng
 					<code>uColor</code> như trước.
 
 					<h2>4. Bind texture khi vẽ object</h2>
@@ -219,10 +219,16 @@ void main() {
 		...
 		this.texture = texture;
 	}
-</code></pre>
-					Sau đó, chỗ quan trọng là ở hàm draw: nếu texture null (không có texture hoặc chưa load được texture), thì <code>uUseTexture</code>
+	...
+}</code></pre>
+					Sau đó, chỗ quan trọng là ở hàm draw: nếu texture null (GameObject không có texture), thì <code>uUseTexture</code>
 					false và fragment shader sẽ dùng <code>uColor</code>. Nếu texture không null, thì <code>uUseTexture</code>
-					true và fragment shader dùng <code>uTexture</code> để đọc từ texture unit 0.
+					true và fragment shader dùng <code>uTexture</code> để đọc từ texture unit 0.<br/><br/>
+
+					Lưu ý là texture <b>chưa load xong</b> thì không null: object <code>Texture</code> và <code>glTexture</code> đã được tạo
+					ngay trong constructor, chỉ là chưa có dữ liệu. Lúc đó <code>uUseTexture</code> vẫn true, và WebGL đọc một texture
+					chưa có dữ liệu (incomplete texture) thì trả về màu đen <code>(0, 0, 0, 1)</code>. Nên trong vài khung hình đầu, cái tháp
+					và mặt đất sẽ đen thui cho tới khi ảnh tải xong, chứ không hiện <code>uColor</code>.
 					<pre class="language-javascript"><code>class GameObject {
 	draw(){
 		if (this.mesh.vertexCount == 0) return;
@@ -230,7 +236,7 @@ void main() {
 		
 		// --------------- mới ---------------
 		if (this.texture) {
-			gl.activeTexture(gl.TEXTURE0);								// kích hoạt texture unit 0
+			gl.activeTexture(gl.TEXTURE0);								// chọn texture unit 0 để bindTexture bên dưới tác động lên
 			gl.uniform1i(uTexture, 0);									// Gán giá trị 0 cho uTexture, nghĩa là shader sẽ lấy từ texture unit 0
 			gl.bindTexture(gl.TEXTURE_2D, this.texture.glTexture);		// bind glTexture vào khe TEXTURE_2D của texture unit đang active (unit 0)
 		}
@@ -242,9 +248,10 @@ void main() {
 		gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
 	}						
 }</code></pre>
-					Chỗ này có hai bước bind khác nhau: <code>activeTexture</code> chọn unit mà sampler sẽ đọc, còn
-					<code>bindTexture</code> gắn texture GPU vào đúng unit đó. <code>uniform1i(uTexture, 0)</code> truyền số
-					<code>0</code> cho sampler (tương ứng <code>TEXTURE0</code>), chứ không truyền trực tiếp texture object (ta đã truyền từ lúc load texture rồi).<br/><br/>
+					Chỗ này có ba bước khác nhau: <code>activeTexture</code> chọn unit mà các lệnh <code>bindTexture</code> sau đó sẽ tác động lên,
+					<code>bindTexture</code> gắn texture GPU vào đúng unit đó, còn <code>uniform1i(uTexture, 0)</code> mới là thứ quyết định
+					sampler trong shader đọc từ unit nào: nó truyền số <code>0</code> cho sampler (tương ứng <code>TEXTURE0</code>), chứ không
+					truyền trực tiếp texture object (dữ liệu texture ta đã truyền từ lúc load rồi).<br/><br/>
 					
 					Xong phần khó rồi, bây giờ ta tạo các biến global lưu địa chỉ của 2 uniform mới:
 					<pre><code class="language-javascript">const uTexture = gl.getUniformLocation(program, "uTexture");
@@ -252,11 +259,11 @@ const uUseTexture = gl.getUniformLocation(program, "uUseTexture");</code></pre>
 
 					Cuối cùng, ta đem lại 2 texture cũ về và truyền nó vào <code>GameObject</code>:
 					<pre><code class="language-javascript">const brickTexture = new Texture(
-	"../graphics3D/images/textures/brick.jpg",
+	"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
 	gl	// nhớ truyền gl
 );
 const woodTexture = new Texture(
-	"../graphics3D/images/textures/Wood_Tower_Col.jpg",
+	"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/Wood_Tower_Col.jpg",
 	gl	// nhớ truyền gl
 );
 

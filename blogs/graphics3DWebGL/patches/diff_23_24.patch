@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview23.html"
 +++ "b/htmlPreviews\\htmlPreview24.html"
-@@ -581,6 +581,45 @@
+@@ -582,6 +582,45 @@
  			}
  		}
  
@@ -46,7 +46,7 @@
  		// ===== engine.js =====
  		class Transform {
  			constructor(localPosition = Vector3.zero.clone(), localEulerAngles = Vector3.zero.clone(), localScale = Vector3.one.clone(), name = "Transform") {
-@@ -840,19 +879,28 @@
+@@ -841,19 +880,28 @@
  		class GameObject {
  			static incrementingID = 0;
  
@@ -76,7 +76,7 @@
  				gl.bindVertexArray(this.mesh.vertexArray);
  				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
  			}
-@@ -901,13 +949,15 @@
+@@ -902,13 +950,15 @@
  			uploadToGPU() {
  				if (this.tris.length == 0) return;
  
@@ -96,7 +96,7 @@
  					}
  				}
  				this.vertexCount = this.tris.length * 3;
-@@ -918,7 +968,9 @@
+@@ -919,7 +969,9 @@
  				gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
  				gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
  				gl.enableVertexAttribArray(aPosition);
@@ -107,7 +107,7 @@
  				gl.bindVertexArray(null);
  			}
  		}
-@@ -1121,22 +1173,29 @@
+@@ -1122,22 +1174,29 @@
  		const gl = (gameCanvas.getContext("webgl2"));
  
  		const vertexShaderSource = `#version 300 es
@@ -139,7 +139,7 @@
  }`;
  		function compileShader(type, source) {
  			const shader = gl.createShader(type);
-@@ -1160,9 +1219,12 @@ void main(){
+@@ -1161,9 +1220,12 @@ void main(){
  		gl.useProgram(program);
  
  		const aPosition = gl.getAttribLocation(program, "aPosition");
@@ -152,7 +152,7 @@
  		const uColor = gl.getUniformLocation(program, "uColor");
  
  		gl.enable(gl.DEPTH_TEST);
-@@ -1203,6 +1265,15 @@ void main(){
+@@ -1204,6 +1266,15 @@ void main(){
  		let lookInput = { x: 0, y: 0 };
  		let lookSpeed = 450;
  
@@ -168,7 +168,7 @@
  		let cubeMesh = new Cube();
  		let woodTower = new GameObject(
  			new Vector3(0, -0.17, 0),
-@@ -1210,11 +1281,12 @@ void main(){
+@@ -1211,11 +1282,12 @@ void main(){
  			new Vector3(1, 1, 1),
  			new Color(255, 255, 255),
  			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj"),

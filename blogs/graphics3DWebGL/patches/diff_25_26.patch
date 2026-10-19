@@ -1,15 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview25.html"
 +++ "b/htmlPreviews\\htmlPreview26.html"
-@@ -914,6 +914,8 @@
- 				}
- 				gl.uniform1i(uUseTexture, this.texture ? 1 : 0);
- 				gl.uniform3f(uColor, this.color.r / 255, this.color.g / 255, this.color.b / 255);
-+				gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
-+				gl.uniform1f(uDirLightIntensity, dirLight.intensity);
- 
- 				gl.bindVertexArray(this.mesh.vertexArray);
- 				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
-@@ -941,6 +943,15 @@
+@@ -942,6 +942,15 @@
  				this.vertices = vertices;
  				this.uv = uv;
  				this.color = color;
@@ -25,7 +16,7 @@
  			}
  		}
  
-@@ -969,15 +980,18 @@
+@@ -970,15 +979,18 @@
  			uploadToGPU() {
  				if (this.tris.length == 0) return;
  
@@ -50,7 +41,7 @@
  					}
  				}
  				this.vertexCount = this.tris.length * 3;
-@@ -988,9 +1002,11 @@
+@@ -989,9 +1001,11 @@
  				gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
  				gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
  				gl.enableVertexAttribArray(aPosition);
@@ -64,7 +55,7 @@
  				gl.bindVertexArray(null);
  			}
  		}
-@@ -1198,11 +1214,14 @@ uniform mat4 uView;
+@@ -1199,11 +1213,14 @@ uniform mat4 uView;
  uniform mat4 uProjection;
  in vec3 aPosition;
  in vec2 aUV;
@@ -79,7 +70,7 @@
  }`;
  		const fragmentShaderSource = `#version 300 es
  precision highp float;
-@@ -1210,12 +1229,16 @@ precision highp float;
+@@ -1211,12 +1228,16 @@ precision highp float;
  uniform sampler2D uTexture;
  uniform bool uUseTexture;
  uniform vec3 uColor;
@@ -97,7 +88,7 @@
  }`;
  		function compileShader(type, source) {
  			const shader = gl.createShader(type);
-@@ -1240,12 +1263,15 @@ void main(){
+@@ -1241,12 +1262,15 @@ void main(){
  
  		const aPosition = gl.getAttribLocation(program, "aPosition");
  		const aUV = gl.getAttribLocation(program, "aUV");
@@ -113,7 +104,7 @@
  
  		gl.enable(gl.DEPTH_TEST);
  		gl.enable(gl.CULL_FACE);
-@@ -1330,6 +1356,7 @@ void main(){
+@@ -1331,12 +1355,16 @@ void main(){
  			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
  			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
  			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
@@ -121,3 +112,12 @@
  		}
  
  		function render() {
+ 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+ 			gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());
+ 
++			gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
++			gl.uniform1f(uDirLightIntensity, dirLight.intensity);
++
+ 			ground.drawWithChildren();
+ 			for (let light of pointLights) {
+ 				light.drawWithChildren();

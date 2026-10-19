@@ -7,13 +7,13 @@
     },
     {
         "id": "webgl1",
-        "webTitle": "WebGL #1: WebGL cơ bản  (phần 1)",
+        "webTitle": "WebGL #1: WebGL cơ bản (phần 1)",
         "title": "WebGL #1: WebGL cơ bản (phần 1)",
         "route": "/blogs/graphics3DWebGL/webgl1-basic.html"
     },
     {
         "id": "webgl2",
-        "webTitle": "WebGL #2: WebGL cơ bản  (phần 2)",
+        "webTitle": "WebGL #2: WebGL cơ bản (phần 2)",
         "title": "WebGL #2: WebGL cơ bản (phần 2)",
         "route": "/blogs/graphics3DWebGL/webgl2-basic2.html"
     },

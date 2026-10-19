@@ -13,47 +13,7 @@
  		class Vector2 {
  			constructor(u = 0, v = 0, w = 1) {
  				this.u = u;
-@@ -437,23 +431,22 @@
- 			}
- 
- 			static Rotation(q) {
--				const right = q.rotateVector(new Vector3(1, 0, 0));
--				const up = q.rotateVector(new Vector3(0, 1, 0));
--				const forward = q.rotateVector(new Vector3(0, 0, 1));
--
--				const result = new Mat4x4();
--				result.m[0][0] = right.x;
--				result.m[0][1] = up.x;
--				result.m[0][2] = forward.x;
--				result.m[1][0] = right.y;
--				result.m[1][1] = up.y;
--				result.m[1][2] = forward.y;
--				result.m[2][0] = right.z;
--				result.m[2][1] = up.z;
--				result.m[2][2] = forward.z;
--				result.m[3][3] = 1;
--
--				return result;
-+				const a = q.a,
-+					b = q.b,
-+					c = q.c,
-+					d = q.d;
-+				let matrix = new Mat4x4();
-+				matrix.m[0][0] = 1 - 2 * (c * c + d * d);
-+				matrix.m[0][1] = 2 * (b * c - a * d);
-+				matrix.m[0][2] = 2 * (b * d + a * c);
-+				matrix.m[1][0] = 2 * (b * c + a * d);
-+				matrix.m[1][1] = 1 - 2 * (b * b + d * d);
-+				matrix.m[1][2] = 2 * (c * d - a * b);
-+				matrix.m[2][0] = 2 * (b * d - a * c);
-+				matrix.m[2][1] = 2 * (c * d + a * b);
-+				matrix.m[2][2] = 1 - 2 * (b * b + c * c);
-+				matrix.m[3][3] = 1;
-+				return matrix;
- 			}
- 
- 			toColumnMajor() {
-@@ -573,219 +566,6 @@
+@@ -573,219 +567,6 @@
  			}
  		}
  
@@ -273,7 +233,7 @@
  		// ===== graphics.js =====
  		class Color {
  			constructor(r, g, b) {
-@@ -1069,32 +849,6 @@
+@@ -1069,32 +850,6 @@
  				this.mesh = mesh;
  			}
  
@@ -306,7 +266,7 @@
  			draw() {
  				if (this.mesh.vertexCount == 0) return;
  				gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
-@@ -1113,218 +867,13 @@
+@@ -1113,218 +868,13 @@
  			}
  		}
  
@@ -527,7 +487,7 @@
  		}
  
  		class Mesh {
-@@ -1627,7 +1176,6 @@ void main(){
+@@ -1627,7 +1177,6 @@ void main(){
  		let projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
  		gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
  		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 5, 0.2);
@@ -535,7 +495,7 @@
  		let keyStates = {};
  
  		const renderDiv = (document.getElementById("render"));
-@@ -1679,55 +1227,6 @@ void main(){
+@@ -1679,55 +1228,6 @@ void main(){
  			}
  		}
  

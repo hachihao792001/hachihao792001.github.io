@@ -35,7 +35,7 @@
     <script src="/js/prism.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-    <title>Chuyển Hanvas Engine thành WebGL</title>
+    <title>WebGL #1: WebGL cơ bản (phần 1)</title>
 </head>
 
 <body data-graphics3D-id="webgl1">
@@ -69,7 +69,7 @@
 						<li>Chuyển qua view space</li>
 						<li>Chuyển qua clip space, perspective divide</li>
 						<li>Nhân x, y từ giá trị [-1, 1] ra kích thước canvas (screen space)</li>
-						<li>Với các pixel nằm trong tam giác: nội suy giá trị depth ở từng pixel theo barycentric coordinates (<a href="/blogs/graphics3D/graphics3D8-rasterizer.html">blog #8</a>)
+						<li>Với các pixel nằm trong tam giác: nội suy giá trị depth ở từng pixel theo barycentric coordinates (<a href="/blogs/graphics3D/graphics3D8-rasterizer.html">blog #8 series trước</a>)
 						và so sánh với depth buffer</li>
 						<li>Nội suy uv để lấy pixel trên texture cho đúng</li>
 						<li>Nội suy vị trí thế giới của pixel để tính point light, shadow</li>
@@ -77,11 +77,11 @@
 
 					Những thứ trên sẽ được thực hiện trong các <code>Shader</code> trong GPU. <code>Shader</code> là các chương trình nhỏ viết bằng
 					ngôn ngữ <a href="https://registry.khronos.org/OpenGL/specs/es/3.0/GLSL_ES_Specification_3.00.pdf">GLSL</a> chạy trong GPU, chúng được
-					GPU chạy song song nên có thể làm việc với hàng nghìn pixel cùng lúc. Có những shader ngầm và những shader mà ta có thể điều chỉnh được,
-					phổ biến nhất là <code>Vertex shader</code> và <code>Fragment shader</code>:
+					GPU chạy song song nên có thể làm việc với hàng nghìn pixel cùng lúc. WebGL2 chỉ cho ta viết 2 loại shader là <code>Vertex shader</code>
+					và <code>Fragment shader</code> (OpenGL có thêm geometry, tessellation, compute shader, nhưng WebGL không có):
 
 					<ul>
-						<li><b>Vertex shader</b>: Nhận vào 1 đỉnh trong thế giới, và trả ra vị trí của đỉnh đó trong clip space.</li>
+						<li><b>Vertex shader</b>: Nhận vào dữ liệu của 1 đỉnh, và trả ra vị trí của đỉnh đó trong clip space.</li>
 						<li><b>Fragment shader</b>: Chạy một lần cho mỗi pixel trong mỗi tam giác, và trả ra màu của pixel đó.</li>
 					</ul>
 
@@ -128,7 +128,8 @@ void main() {
 						<li><code>#version 300 es</code>: bắt buộc phải là dòng đầu tiên của shader, dòng này cho biết ta đang sử dụng GLSL bản mới của WebGL2.</li>
 						<li><code>in vec3 aPosition</code>: khai báo 1 <b>attribute</b>, <code>in</code> nghĩa là đây là 1 tham số đầu vào,
 							<code>vec3</code> là kiểu (Vector3), <code>aPosition</code> là tên của attribute (chữ a đầu tên là viết tắt của attribute, theo quy ước).
-							Cái này chính là tọa độ đỉnh trong world space mà ta cần phải đưa vertex shader, nhiệm vụ của vertex shader là chuyển nó thành clip space trong hàm main.</li>
+							Cái này chính là tọa độ đỉnh mà ta cần phải đưa vertex shader, nhiệm vụ của vertex shader là chuyển nó thành clip space trong hàm main.
+							Hiện tại ta chưa có phép biến đổi nào nên tọa độ này dùng thẳng luôn.</li>
 						<li>Trong hàm main, <code>gl_Position</code> chính là đầu ra của shader (vị trí đỉnh trong clip space).
 						Ta chưa biết làm gì nên dùng luôn <code>aPosition</code> để truyền vào, nhưng vì <code>gl_Position</code> là <code>vec4</code> nên cần thêm
 						1 số <code>1.0</code> ở sau. Số này chính là <code>w</code>, để shader có thể perspective divide (sẽ nói sau).</li>
@@ -147,9 +148,10 @@ void main() {
 							một instruction, <code>highp</code> là độ chính xác float 32-bit, còn <code>float</code> là ... kiểu float. Nếu muốn tìm hiểu thêm thì 
 							bạn có thể Google, hỏi AI, chứ mình nghĩ hiểu như vậy là đủ.</li>
 						<li><code>out vec4 outColor</code>: biến đầu ra của Fragment shader, chỉ vậy thôi. Tuy nhiên bạn có thể sẽ thắc mắc là tại sao Vertex shader không
-						cần khai báo biến đầu ra, mà mặc định có sẵn <code>gl_Position</code>, còn Fragment shader thì phải khai báo. Đó là tại vì Fragment shader
-						có thể xuất ra nhiều output, bạn có thể dùng output để đưa lên màn hình luôn, hoặc để vào 1 Texture, hoặc cho nó trải qua một quá trình khác.
-						Còn Vertex shader mặc định là chỉ có 1 chỗ cho nó xuất, output của nó là đầu vào của Fragment shader.</li>
+						cần khai báo biến đầu ra, mà mặc định có sẵn <code>gl_Position</code>, còn Fragment shader thì phải khai báo. Đó là tại vì GLSL bản cũ
+						(của WebGL1) thì fragment shader có biến <code>gl_FragColor</code> có sẵn, nhưng GLSL ES 3.00 đã bỏ nó, bắt ta tự khai báo biến <code>out</code>.
+						Còn <code>gl_Position</code> thì vẫn được giữ, vì GPU cần nó cho các bước tự động phía sau (cắt tam giác, chia w, đổi ra pixel).
+						Vertex shader cũng có thể có thêm output do ta tự khai báo, phần 4 sẽ thấy.</li>
 						<li>Vì <code>outColor</code> là biến đầu ra nên trong hàm main ta set màu cuối cùng vào nó. Set tạm cho nó 1 màu đỏ trước.</li>
 					</ul><br/>
 
@@ -167,7 +169,7 @@ precision highp float;
 out vec4 outColor;
 
 void main() {
-	outColor = vec4(0, 0, 1, 1.0);
+	outColor = vec4(1, 0, 0, 1.0);
 }`;</code></pre>
 					Có được source Shader rồi, thì ta phải compile nó (nó cũng là 1 chương trình). Vì có 2 shader nên mình viết 1 hàm để gọi chung:
 					<pre><code class="language-javascript">function compileShader(type, source) {
@@ -189,7 +191,7 @@ void main() {
 					<pre><code class="language-javascript">const program = gl.createProgram();						// hàm createProgram để tạo program
 gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexShaderSource));			// tạo, compile vertex shader và gắn nó vào program
 gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource));		// tạo, compile fragment shader và gắn nó vào program
-gl.linkProgram(program);																// link program vào trình duyệt
+gl.linkProgram(program);																// link 2 shader thành 1 program hoàn chỉnh (nối out của vertex shader với in của fragment shader)
 if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {									// check lỗi program như check lỗi shader
 	throw new Error("Program link error: " + gl.getProgramInfoLog(program));
 }
@@ -225,7 +227,7 @@ gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);		// chuyển dữ li
 					Tuy nhiên, shader sẽ không thể magically hiểu 1 mảng 1 chiều có 9 phần tử có ý nghĩa là gì, mà mình phải nói cho nó ý nghĩa,
 					bằng hàm <code>vertexAttribPointer</code>, cụ thể như sau:
 					<pre><code class="language-javascript">const aPosition = gl.getAttribLocation(program, "aPosition");	// lấy địa chỉ của attribute aPosition
-gl.enableVertexAttribArray(aPosition);			// phải có dòng này
+gl.enableVertexAttribArray(aPosition);			// bật attribute lên, không có dòng này thì shader không đọc từ buffer
 gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 12, 0);		// hàm nói cho program biết ý nghĩa của vertexBuffer</code></pre> 
 
 					Các tham số của <code>vertexAttribPointer</code>:
@@ -237,8 +239,10 @@ gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 12, 0);		// hàm nói cho 
 	//stride: kích thước của 1 vertex (byte),
 	//offset: vị trí bắt đầu của attribute này);</code></pre>
 					Chắc bạn sẽ có nhiều thắc mắc. Với mình lúc đầu học, thì thắc mắc lớn nhất của mình là: 3 dòng này sao không có dòng nào nhắc tới 
-					<code>gl.ARRAY_BUFFER</code> thế nhỉ. Thật ra không cần nhắc tới đâu, vì mặc định <code>gl.enableVertexAttribArray</code> và
-					<code>gl.vertexAttribPointer</code> sẽ luôn làm việc với <code>gl.ARRAY_BUFFER</code>. Những loại buffer khác (điển hình là
+					<code>gl.ARRAY_BUFFER</code> thế nhỉ. Thật ra là có nhắc, nhưng nhắc ngầm: lúc gọi <code>gl.vertexAttribPointer</code>, WebGL sẽ ghi nhớ
+					buffer đang nằm trong khe <code>gl.ARRAY_BUFFER</code> ngay lúc đó (ở đây là <code>vertexBuffer</code>), và lúc vẽ thì attribute đọc từ buffer
+					đã ghi nhớ đó, chứ không nhìn lại khe nữa. Nên sau dòng này bạn có bind buffer khác vào <code>gl.ARRAY_BUFFER</code> thì <code>aPosition</code>
+					vẫn đọc từ <code>vertexBuffer</code>. Còn <code>gl.enableVertexAttribArray</code> thì chỉ bật attribute lên, không đụng tới buffer nào. Những loại buffer khác (điển hình là
 					<code>gl.ELEMENT_ARRAY_BUFFER</code>, sẽ nói tới sau) cũng sẽ có những hàm dành riêng cho nó. Tuy nhiên bạn phải hiểu là buffer loại nào
 					cũng là dữ liệu thuần, quan trọng là ta sử dụng nó thế nào, và biết hàm nào làm việc với "khe" nào.<br/><br/>
 
@@ -281,7 +285,7 @@ void main(){
 	vColor = vec4(aColor, 1.0);		// <--------------------------
 }</code></pre>
 					Ta thêm attribute đầu vào <code>aColor</code> để nhận dữ liệu màu từ Javascript. Nhưng vertex shader sẽ không làm được gì với nó,
-					chỉ có thể chuyển nó cho Fragment shader, bằng cách tạo một attribute đầu ra <code>vColor</code> và set cho nó ở hàm main (v là viết tắt
+					chỉ có thể chuyển nó cho Fragment shader, bằng cách tạo một biến đầu ra <code>vColor</code> và set cho nó ở hàm main (v là viết tắt
 					của Varying, nghĩa là nó sẽ thay đổi theo từng pixel). Thật ra <code>aColor</code> có thể là <code>vec4</code> cũng được nhưng để đơn giản
 					thì mình dùng <code>vec3</code> thôi.<br/><br/>
 					Fragment shader:
@@ -320,7 +324,7 @@ void main(){
 	gl.enableVertexAttribArray(aColor);
 	gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 24, 12);			// <--------------------------</code></pre>
 					Kết quả:
-					<div class="htmlPreview" id=htmlPreview4></div>
+					<div class="htmlPreview" id="htmlPreview4"></div>
 
 					<h2>5. Vẽ 1 cube</h2>
 					Như ta đã biết thì một cube có tổng cộng 12 tam giác. Nếu vẫn dùng <code>drawArrays</code> như phần trên, thì cứ 3 đỉnh liên tiếp trong
@@ -331,7 +335,7 @@ void main(){
 					mỗi đỉnh chỉ xuất hiện 1 lần, và <b>danh sách tam giác</b>, mỗi tam giác
 					chỉ là 3 con số, là index của 3 đỉnh của nó trong danh sách đỉnh.
 					Nếu bạn còn nhớ thì đây chính là cách file obj lưu các mặt (dòng <code>f 1/3/5 4/5/5 2/9/5</code>
-					ở blog #12), chỉ khác là ở đây index đếm từ 0. Danh sách thứ 2 này chính là <b>index buffer</b>.<br/><br/>
+					ở blog #12 series trước), chỉ khác là ở đây index đếm từ 0. Danh sách thứ 2 này chính là <b>index buffer</b>.<br/><br/>
 
 					Danh sách đỉnh và danh sách tam giác của 1 cube ở giữa thế giới và có kích thước là 1:
 					<pre><code class="language-javascript">const corners = [
@@ -355,7 +359,7 @@ const triangles = new Uint16Array([
 ]);</code></pre>
 					<ul>
 						<li>Mỗi hàng của <code>triangles</code> là 1 mặt, gồm 2 tam giác. Thứ tự đỉnh trong tam giác mình giữ đúng quy ước của series trước: cùng chiều kim
-							đồng hồ (<a href="/blogs/graphics3D/graphics3D1-setup.html">blog #1</a>). Hiện tại thứ tự này chưa ảnh hưởng gì,
+							đồng hồ (<a href="/blogs/graphics3D/graphics3D1-setup.html">blog #1 series trước</a>). Hiện tại thứ tự này chưa ảnh hưởng gì,
 							nhưng nó sẽ quan trọng khi làm backface culling. Mình nói trước luôn là WebGL mặc định coi tam giác <b>ngược</b> chiều kim đồng hồ là mặt trước,
 							ngược với Hanvas Engine, tới lúc đó ta sẽ xử lý.</li>
 						<li><code>Uint16Array</code>: index là số nguyên 16-bit không dấu, thật ra dùng <code>Uint32Array</code> cũng được, nhưng số đỉnh chưa
@@ -406,16 +410,17 @@ gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);</code></pre>
 					</ul>
 
 					Ngoài ra bạn cũng đang thấy mặt BACK (nó khá là xanh -> z cao) của chứ không phải mặt FRONT, vì index buffer ta để mặt BACK vẽ sau mặt FRONT.
-					Vấn đề này ở series cũ ta giải quyết bằng backface culling, sort tam giác và cách triệt để nhất là depth buffer, sẽ từ từ đụng tới trong blog này 😳.
+					Vấn đề này ở series cũ ta giải quyết bằng backface culling, sort tam giác và cách triệt để nhất là depth buffer. Ở WebGL thì depth buffer sẽ có ở cuối
+					blog này (phần 8c), backface culling ở <a href="webgl2-basic2.html">blog sau</a>, còn sort tam giác thì không cần nữa vì depth buffer đã lo luôn 😳.
 
 					<h2>6. Aspect ratio và Uniform</h2>
-					Như Hanvas Engine, clip space của WebGL cũng là một hình vuông, x và y đều chạy từ -1 tới 1, như hình này từ
+					Như Hanvas Engine, không gian sau khi chia w của WebGL (gọi là NDC, normalized device coordinates) cũng là một hình vuông, x và y đều chạy từ -1 tới 1, như hình này từ
 					<a href="/blogs/graphics3D/graphics3D2-cube.html">blog 2 của series graphics 3D</a>:
 					<div align="center">
                         <img style="max-height: 300px; max-width: 100vw;" src="/blogs/graphics3D/images/graphics3D2/screen.png"/>
                     </div>
 					WebGL sẽ tự động kéo hình vuông đó ra cho vừa toàn bộ canvas (400x300), nên hình vuông sẽ bị kéo giãn ra thành hình chữ nhật.
-					Chuyện này series trước đã gặp ở <a href="/blogs/graphics3D/graphics3D3-projection.html">blog 3</a>, cách sửa là nhân x với
+					Chuyện này series trước đã gặp ở <a href="/blogs/graphics3D/graphics3D2-cube.html">blog 2</a>, cách sửa là nhân x với
 					<code>height / width</code>, hay nói cách khác là chia x cho aspect ratio <code>width / height</code>.<br/><br/>
 					
 					Nhưng ta không thể cứ nhân với tỉ lệ trên rồi xem như xong chuyện, vì việc nhân tỉ lệ này nằm ở cuối pipeline, khi xử lí với screen space,
@@ -443,8 +448,9 @@ gl.uniform1f(uAspect, gameCanvas.width / gameCanvas.height);		// set giá trị 
 					<ul>
 						<li><code>uniform1f</code> nghĩa là set 1 số float. Tương tự có <code>uniform2f</code>, <code>uniform3f</code>, <code>uniform4f</code>
 							cho vec2, vec3, vec4, và <code>uniformMatrix4fv</code> cho ma trận 4x4 (chắc chắn sẽ dùng sau này).</li>
-						<li>Tính chất state: <code>uniform1f</code> không nhận program làm tham số, nó set uniform cho program <b>đang được dùng</b>. Nên 2 dòng trên phải
-							nằm sau <code>gl.useProgram(program)</code>, đặt trước thì WebGL sẽ báo lỗi.</li>
+						<li>Tính chất state: <code>getUniformLocation</code> nhận program làm tham số nên gọi lúc nào cũng được, nhưng <code>uniform1f</code> thì không,
+							nó set uniform cho program <b>đang được dùng</b>. Nên dòng <code>uniform1f</code> phải nằm sau <code>gl.useProgram(program)</code>, đặt trước thì
+							uniform không được set, và <code>gl.getError()</code> sẽ trả về <code>INVALID_OPERATION</code>.</li>
 						<li>Giá trị uniform được program giữ lại cho tới khi ta set giá trị khác, nên set 1 lần là đủ.</li>
 					</ul>
 
@@ -452,7 +458,7 @@ gl.uniform1f(uAspect, gameCanvas.width / gameCanvas.height);		// set giá trị 
 					thước canvas, cộng thêm nửa kích thước canvas để đưa vào giữa, và đổi dấu y vì canvas 2D có y hướng xuống. Ở WebGL thì không cần làm gì cả: sau
 					vertex shader, GPU tự chuyển [-1; 1] thành pixel (bước này gọi là viewport transform, chỉnh bằng
 					<a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/viewport"><code>gl.viewport</code></a>, mặc định là bằng kích thước
-					canvas lúc tạo context), và clip space của WebGL có y hướng lên, giống không gian 3D của ta, nên cũng không cần đổi dấu.<br/><br/>
+					canvas lúc tạo context), và NDC của WebGL có y hướng lên, giống không gian 3D của ta, nên cũng không cần đổi dấu.<br/><br/>
 
 					Kết quả:
 					<div class="htmlPreview" id="htmlPreview6"></div>
@@ -467,7 +473,7 @@ gl.uniform1f(uAspect, gameCanvas.width / gameCanvas.height);		// set giá trị 
 						<li><code>q.rotateVector(v)</code>: xoay vector <code>v</code> bằng Quaternion <code>q</code>, tức là tính \(qvq^*\).</li>
 					</ul>
 					Toàn bộ toán học đằng sau 2 hàm này vẫn dùng được nguyên xi, vì nó dựa trên hệ tọa độ tay trái: x sang phải, y lên trên, z hướng ra xa mình.
-					Clip space của WebGL cũng y như vậy (z càng lớn càng xa), nên không phải đổi dấu gì cả.<br/><br/>
+					NDC của WebGL cũng y như vậy (z càng lớn càng xa), nên không phải đổi dấu gì cả.<br/><br/>
 
 					Đổi <code>corners</code> thành mảng <code>Vector3</code>, xoay từng đỉnh, rồi dùng đỉnh đã xoay để dựng <code>vertexData</code>:
 					<pre><code class="language-javascript">const corners = [
@@ -500,7 +506,7 @@ for (let i = 0; i < corners.length; i++) {
 					tới việc này.<br/><br/>
 
 					Còn một điều nữa: việc xoay đang được làm trên CPU bằng Javascript. Đây không phải cách làm
-					đúng và hiệu quả khi làm việc với WebGL, nhưng tạm thời để vậy cho dễ hiểu, phần cuối blog mình sẽ nói lại.<br/><br/>
+					đúng và hiệu quả khi làm việc với WebGL, nhưng tạm thời để vậy cho dễ hiểu, mình sẽ nói lại ở <a href="webgl2-basic2.html">blog sau</a> (phần 12).<br/><br/>
 
 					Kết quả:
 					<div class="htmlPreview" id="htmlPreview7"></div>
@@ -518,7 +524,7 @@ for (let i = 0; i < corners.length; i++) {
 					Nhớ lại ở blog #3 series trước: để có hiệu ứng "càng xa càng nhỏ" thì ta chia x, y cho z, và trong Projection matrix có hàng cuối là
 					<code>0, 0, 1, 0</code>, chính là để chép z vào w, rồi sau khi nhân ma trận thì tự chia cho w. Ở WebGL ta chỉ cần đưa z vào w,
 					còn việc chia thì GPU làm. Ngoài ra, những tam giác nằm một phần ngoài khoảng được vẽ cũng sẽ bị GPU tự cắt
-					(clipping, cái mà ta phải tự code ở <a href="/blogs/graphics3D/graphics3D7-view.html">blog #7</a>).<br/><br/>
+					(clipping, cái mà ta phải tự code ở <a href="/blogs/graphics3D/graphics3D7-view.html">blog #7 series trước</a>).<br/><br/>
 
 					Vì camera đang đứng ở gốc tọa độ, mà cube cũng đang ở gốc tọa độ (nửa cube nằm sau lưng camera), nên ta phải đẩy cube ra xa một chút:
 					<pre><code class="language-javascript">for (let i = 0; i < corners.length; i++) {
@@ -548,7 +554,7 @@ for (let i = 0; i < corners.length; i++) {
 					= \frac{z_{far}+z_{near}}{z_{far}-z_{near}} -\frac{2z_{far}z_{near}}{z_{far}-z_{near}} * \frac{1}{z}
 					\end{eqnarray}
 					$$
-					Vì WebGL tự chia cho \(z\), nên ta nhân lại biểu thức trên với \(z\) rồi đưa cho WebGL:
+					Vì WebGL tự chia cho \(w\), mà ta sẽ đặt \(w = z\), nên ta nhân lại biểu thức trên với \(z\) rồi đưa cho WebGL:
 					$$
 					z*(\frac{z_{far}+z_{near}}{z_{far}-z_{near}} -\frac{2z_{far}z_{near}}{z_{far}-z_{near}} * \frac{1}{z}) = \frac{z_{far}+z_{near}}{z_{far}-z_{near}} * z - \frac{2z_{far}z_{near}}{z_{far}-z_{near}}
 					$$
@@ -574,7 +580,7 @@ const uZFar = gl.getUniformLocation(program, "uZFar");
 gl.uniform1f(uZNear, 0.01);
 gl.uniform1f(uZFar, 1000);</code></pre>
 
-					Tính chất "càng gần càng thay đổi nhiều" của hàm hyperbol mà blog #3 nói tới thì vẫn giữ nguyên.
+					Tính chất "càng gần càng thay đổi nhiều" của hàm hyperbol mà blog #3 series trước nói tới thì vẫn giữ nguyên.
 
 					<h3>c. Depth test</h3>
 					Ở <a href="/blogs/graphics3D/graphics3D8-rasterizer.html">blog #8 series trước</a>, depth buffer là một mảng 2 chiều tự tạo, 
@@ -589,9 +595,12 @@ gl.clearDepth(1);				// giá trị dùng để clear depth buffer
 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);		// clear cả color buffer lẫn depth buffer</code></pre>
 					<ul>
 						<li><code>gl.enable(gl.DEPTH_TEST)</code>: depth test mặc định là tắt, đó là lý do vì sao ở phần 5 và 7 tam giác sau cứ đè lên tam giác trước.</li>
-						<li><code>gl.depthFunc(gl.LESS)</code>: chính là cái <code>z &lt; this.depthBuffer[y][x]</code> ở blog #8. <code>gl.LESS</code> cũng là giá trị mặc định,
+						<li><code>gl.depthFunc(gl.LESS)</code>: chính là cái <code>z &lt; this.depthBuffer[y][x]</code> ở blog #8 series trước. <code>gl.LESS</code> cũng là giá trị mặc định,
 							nhưng mình vẫn ghi ra cho rõ.</li>
-						<li><code>gl.clearDepth(1)</code>: tương đương với <code>Infinity</code> ở blog #8. Depth buffer chỉ chứa giá trị [0; 1], nên 1 là xa nhất.</li>
+						<li><code>gl.clearDepth(1)</code>: tương đương với <code>Infinity</code> ở blog #8 series trước. Depth buffer chỉ chứa giá trị [0; 1], nên 1 là xa nhất.
+							Còn \(z_{normalized}\) ở phần 8b nằm trong [-1; 1] thì sao? Trước khi ghi vào depth buffer, GPU tự map [-1; 1] về [0; 1]
+							(chỉnh bằng <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/depthRange"><code>gl.depthRange</code></a>,
+							mặc định là 0 tới 1): near plane thành 0, far plane thành 1.</li>
 						<li><code>gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)</code>: ở phần 2 mình có nói là có nhiều loại buffer và có thể clear cùng lúc, thì đây.
 							Mỗi loại buffer là 1 bit, OR lại với nhau là clear hết trong 1 lần gọi.</li>
 					</ul>
