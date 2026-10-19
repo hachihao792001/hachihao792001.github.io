@@ -347,8 +347,8 @@ void main(){
 					=
 					0
 					$$
-					Như vậy nó đúng là một ma trận trực giao. Ma trận trực giao thì có 1 tính chất khá hay, đó chính là chuyển vị của ma trận cũng chính
-					là nghịch đảo của ma trận 😳 Tức là ta có:
+					Như vậy nó đúng là một ma trận trực giao. Ma trận trực giao thì có 1 tính chất khá hay, đó chính là nghịch đảo của ma trận cũng chính là
+					chuyển vị của ma trận (tìm google nếu bạn muốn xem chứng minh) 😳 Tức là ta có:
 					$$
 					(R^{-1})^T = (R_x^{-1})^T (R_y^{-1})^T (R_z^{-1})^T = (R_x^T)^T (R_y^T)^T (R_z^T)^T = R_x R_y R_z = R
 					$$
@@ -400,8 +400,137 @@ void main(){
 					<div class="htmlPreview" id="htmlPreview28"></div>
 					Các thanh đó đã được chiếu sáng đúng, chiếu theo hướng (-1, 0, 0) nó phải như vậy 😳<br/><br/>
 
-					Có lẽ bạn đang thắc mắc tại sao bên Software Rasterizer không gặp vấn đề này. Đó là vì ta tính lại pháp tuyến mỗi frame, sau khi 
+					Có lẽ bạn đang thắc mắc tại sao bên Software Rasterizer không gặp vấn đề này. Đó là vì ở software rasterizer, ta tính lại pháp tuyến mỗi frame sau khi 
 					đã có world space. Còn bên đây ta tính pháp tuyến từ object space, và cố chuyển nó qua world space.
+					
+					<h2>2. Point light</h2>
+					
+					Trước khi làm gì liên quan tới point light, mình reset lại các thứ về lại ban đầu, và đồng thời thêm lại các HTML elements liên quan (Xem diff):
+					<div class="htmlPreview" id="htmlPreview29"></div>
+					
+					Thật ra làm point light cũng không còn gì phức tạp, ta chỉ cần truyền cho shader các thứ cần thiết, rồi cho nó tính theo công thức
+					cũ thôi. Các thứ cần thiết đó là: tọa độ thế giới, vị trí các point light, độ sáng point light và range, ngoài ra ta truyền vào ambient light
+					để tính luôn.<br/><br/>
+					
+					Cái duy nhất cần để ý là vị trí các point light là một mảng, khi truyền vào ta sẽ dùng hàm <code>gl.uniform3fv</code> và trong shader
+					cũng phải cho nó nhận vào 1 mảng, như sau:
+					<pre><code class="language-hlsl">uniform vec3 uPointLightPositions[16];</code></pre>
+					Như vậy fragment shader sẽ như sau:
+					<pre style="max-height: 500px"><code class="language-hlsl">#version 300 es
+precision highp float;
+
+uniform sampler2D uTexture;
+uniform bool uUseTexture;
+uniform vec3 uColor;
+uniform vec3 uDirLightDir;
+uniform float uDirLightIntensity;
+uniform float uAmbientLight;					// <---------------------
+
+uniform vec3 uPointLightPositions[16];			// <---------------------
+uniform int uPointLightCount;					// <---------------------
+uniform float uPointLightIntensity;				// <---------------------
+uniform float uPointLightRange;					// <---------------------
+
+in vec2 vUV;
+in vec3 vWorldNormal;
+in vec3 vWorldPosition;							// <---------------------
+out vec4 outColor;
+
+void main(){
+	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
+	float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
+
+	// ------------------ mới ------------------
+	float pointLightRangeSquare = uPointLightRange * uPointLightRange;
+	float totalPointLightDiffuse = 0.0;
+	for (int i = 0; i < uPointLightCount; i++) {
+		vec3 pointLightVec = uPointLightPositions[i] - vWorldPosition;
+		if (dot(vWorldNormal, pointLightVec) <= 0.0) continue;			// check đèn nằm sau tam giác
+
+		float distanceFromPixelToPointLight2 = dot(pointLightVec, pointLightVec);
+		if (distanceFromPixelToPointLight2 >= pointLightRangeSquare) continue;
+
+		float distance = sqrt(distanceFromPixelToPointLight2);
+		float dotValue = dot(vWorldNormal, pointLightVec) / distance;
+		float currentPointLightDiffuse = (1.0 + dotValue) / 2.0;
+		float pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRangeSquare;
+		float inverseSquareDistance = 1.0 / (1.0 + 0.02 * distanceFromPixelToPointLight2);
+		float attenuation = (1.0 - pointLightDistanceRatio) * inverseSquareDistance;
+		totalPointLightDiffuse += currentPointLightDiffuse * attenuation;
+	}
+	totalPointLightDiffuse *= uPointLightIntensity;
+
+	float lightIntensity = max(uAmbientLight, dirLightDiffuse + totalPointLightDiffuse);
+
+	outColor = vec4(min(color * lightIntensity, vec3(1.0)), 1.0);
+}</code></pre>
+					Để làm reference, đây chính là đoạn code tính tổng độ sáng point light trong series trước:
+					<pre><code class="language-javascript">let totalPointLightDiffuse = 0;
+	for (let i = 0; i < activeLightCount; i++) {
+		const lightPos = activeLights[i];
+		const pointLightVecX = lightPos.x - pixelWorldX;
+		const pointLightVecY = lightPos.y - pixelWorldY;
+		const pointLightVecZ = lightPos.z - pixelWorldZ;
+		const distanceFromPixelToPointLight2 =
+			pointLightVecX * pointLightVecX + pointLightVecY * pointLightVecY + pointLightVecZ * pointLightVecZ;
+		if (distanceFromPixelToPointLight2 >= pointLightRangeSquare) continue;
+
+		const distance = Math.sqrt(distanceFromPixelToPointLight2);
+		const dot = (worldNormalX * pointLightVecX + worldNormalY * pointLightVecY + worldNormalZ * pointLightVecZ) / distance;
+		const currentPointLightDiffuse = (1 + dot) / 2;
+		const pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRangeSquare;
+		const inverseSquareDistance = 1 / (1 + 0.02 * distanceFromPixelToPointLight2);
+		const attenuation = (1 - pointLightDistanceRatio) * inverseSquareDistance;
+		totalPointLightDiffuse += currentPointLightDiffuse * attenuation;
+	}
+	totalPointLightDiffuse *= pointLightIntensity;</code></pre>
+					Gần như là y hệt, chỉ khác một chỗ: ở fragment shader nó có thêm cái check nếu point light đằng sau tam giác thì bỏ.
+					Vụ này bên series trước ta làm trước khi vào vòng lặp pixel,
+					ở hàm <code>getPointLightsThatCanAffectTri</code>, ngoài ra hàm <code>getPointLightsThatCanAffectTri</code> còn bỏ những point light không với
+					tới tam giác nữa. Ở bên WebGL ta không làm như vậy, là vì world space đang nằm ở vertex shader, nếu implement cái đó sẽ khá là phức tạp, và
+					performance thật ra không mang lại bao nhiêu vì mọi thứ đã nằm trên GPU.<br/><br/>
+
+					Ở vertex shader thì ta chỉ truyền tọa độ thế giới cho fragment shader là xong:
+					<pre><code class="language-hlsl">...
+out vec3 vWorldPosition;		// <------------------
+out vec3 vWorldNormal;
+
+void main(){
+	vec4 worldPosition  = uModel * vec4(aPosition, 1.0); 	// bóc worldPosition ra để truyền
+	gl_Position = uProjection * uView * worldPosition;		// sửa lại
+	vUV = aUV;
+	vWorldNormal = normalize((uNormalMatrix * vec4(aNormal, 0.0)).xyz);
+	vWorldPosition = worldPosition.xyz;						// <------------------
+}</code></pre>
+					Tới bên ngoài, đầu tiên là khai báo các biến địa chỉ uniform:
+					<pre><code class="language-javascript">const uAmbientLight = gl.getUniformLocation(program, "uAmbientLight");
+const uPointLightPositions = gl.getUniformLocation(program, "uPointLightPositions");
+const uPointLightCount = gl.getUniformLocation(program, "uPointLightCount");
+const uPointLightIntensity = gl.getUniformLocation(program, "uPointLightIntensity");
+const uPointLightRange = gl.getUniformLocation(program, "uPointLightRange");</code></pre>
+					Bình thường thì chỗ "truyền thông tin cho shader" sẽ nằm ở hàm <code>draw</code> của <code>GameObject</code>, tuy nhiên do ánh sáng là thông
+					tin toàn scene nên phải để bên ngoài nó, cụ thể là trong hàm <code>render</code>
+					<pre><code class="language-javascript">function render() {
+	...
+
+	const pointLightData = new Float32Array(maxActiveLights * 3);
+	const pointLightCount = Math.min(pointLights.length, maxActiveLights);
+	for (let i = 0; i < pointLightCount; i++) {
+		const lightPos = pointLights[i].transform.position;
+		pointLightData[i * 3] = lightPos.x;
+		pointLightData[i * 3 + 1] = lightPos.y;
+		pointLightData[i * 3 + 2] = lightPos.z;
+	}
+	gl.uniform3fv(uPointLightPositions, pointLightData);		// dùng gl.uniform3fv để chuyển mảng, mỗi phần tử có 3 float
+	gl.uniform1i(uPointLightCount, pointLightCount);
+	gl.uniform1f(uPointLightIntensity, pointLightIntensity);
+	gl.uniform1f(uPointLightRange, pointLightRange);
+	gl.uniform1f(uAmbientLight, 0.1);
+
+	...
+}</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview30"></div>
 					
 					<div id="graphics3D-nav-bottom"></div>
                 </div>

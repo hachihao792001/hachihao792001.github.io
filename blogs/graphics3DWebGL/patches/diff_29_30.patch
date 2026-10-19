@@ -1,23 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview29.html"
 +++ "b/htmlPreviews\\htmlPreview30.html"
-@@ -931,6 +931,7 @@
- 				gl.uniform3f(uColor, this.color.r / 255, this.color.g / 255, this.color.b / 255);
- 				gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
- 				gl.uniform1f(uDirLightIntensity, dirLight.intensity);
-+				gl.uniform1f(uAmbientLight, 0.1);
- 
- 				gl.bindVertexArray(this.mesh.vertexArray);
- 				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
-@@ -1222,6 +1223,8 @@
- 		const gameCanvas = (document.getElementById("gameCanvas"));
- 		const gl = (gameCanvas.getContext("webgl2"));
- 
-+		let maxActiveLights = 16;
-+
- 		const vertexShaderSource = `#version 300 es
- uniform mat4 uModel;
- uniform mat4 uView;
-@@ -1230,12 +1233,15 @@ in vec3 aPosition;
+@@ -1240,12 +1240,15 @@ in vec3 aPosition;
  in vec2 aUV;
  in vec3 aNormal;
  out vec2 vUV;
@@ -29,18 +12,18 @@
 +	vec4 worldPosition  = uModel * vec4(aPosition, 1.0); 
 +	gl_Position = uProjection * uView * worldPosition;
  	vUV = aUV;
- 	vWorldNormal = (uModel * vec4(aNormal, 0.0)).xyz;
+ 	vWorldNormal = normalize((uNormalMatrix * vec4(aNormal, 0.0)).xyz);
 +	vWorldPosition = worldPosition.xyz;
  }`;
  		const fragmentShaderSource = `#version 300 es
  precision highp float;
-@@ -1245,15 +1251,46 @@ uniform bool uUseTexture;
+@@ -1255,14 +1258,44 @@ uniform bool uUseTexture;
  uniform vec3 uColor;
  uniform vec3 uDirLightDir;
  uniform float uDirLightIntensity;
 +uniform float uAmbientLight;
 +
-+uniform vec3 uPointLightPositions[${maxActiveLights}];
++uniform vec3 uPointLightPositions[16];
 +uniform int uPointLightCount;
 +uniform float uPointLightIntensity;
 +uniform float uPointLightRange;
@@ -51,23 +34,21 @@
  out vec4 outColor;
  
  void main(){
- 	vec3 worldNormal = normalize(vWorldNormal);
  	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
-+
- 	float dirLightDiffuse = (1.0 - (dot(worldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
+ 	float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
 -	outColor = vec4(color * dirLightDiffuse, 1.0);
 +
 +	float pointLightRangeSquare = uPointLightRange * uPointLightRange;
 +	float totalPointLightDiffuse = 0.0;
 +	for (int i = 0; i < uPointLightCount; i++) {
 +		vec3 pointLightVec = uPointLightPositions[i] - vWorldPosition;
-+		if (dot(worldNormal, pointLightVec) <= 0.0) continue;
++		if (dot(vWorldNormal, pointLightVec) <= 0.0) continue;
 +
 +		float distanceFromPixelToPointLight2 = dot(pointLightVec, pointLightVec);
 +		if (distanceFromPixelToPointLight2 >= pointLightRangeSquare) continue;
 +
 +		float distance = sqrt(distanceFromPixelToPointLight2);
-+		float dotValue = dot(worldNormal, pointLightVec) / distance;
++		float dotValue = dot(vWorldNormal, pointLightVec) / distance;
 +		float currentPointLightDiffuse = (1.0 + dotValue) / 2.0;
 +		float pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRangeSquare;
 +		float inverseSquareDistance = 1.0 / (1.0 + 0.02 * distanceFromPixelToPointLight2);
@@ -82,7 +63,7 @@
  }`;
  		function compileShader(type, source) {
  			const shader = gl.createShader(type);
-@@ -1288,6 +1325,11 @@ void main(){
+@@ -1297,6 +1330,11 @@ void main(){
  		const uColor = gl.getUniformLocation(program, "uColor");
  		const uDirLightDir = gl.getUniformLocation(program, "uDirLightDir");
  		const uDirLightIntensity = gl.getUniformLocation(program, "uDirLightIntensity");
@@ -94,7 +75,15 @@
  
  		gl.enable(gl.DEPTH_TEST);
  		gl.enable(gl.CULL_FACE);
-@@ -1386,6 +1428,19 @@ void main(){
+@@ -1351,6 +1389,7 @@ void main(){
+ 		const pointLightRangeSlider = (document.getElementById("pointRange"));
+ 		const pointLightRangeText = (document.getElementById("pointRangeText"));
+ 		let pointLightRange = parseFloat(pointLightRangeSlider.value);
++		let maxActiveLights = 16;
+ 
+ 		let brickTexture = new Texture(
+ 			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
+@@ -1395,6 +1434,20 @@ void main(){
  			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
  			gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());
  
@@ -110,6 +99,7 @@
 +			gl.uniform1i(uPointLightCount, pointLightCount);
 +			gl.uniform1f(uPointLightIntensity, pointLightIntensity);
 +			gl.uniform1f(uPointLightRange, pointLightRange);
++			gl.uniform1f(uAmbientLight, 0.1);
 +
  			ground.drawWithChildren();
  			for (let light of pointLights) {
