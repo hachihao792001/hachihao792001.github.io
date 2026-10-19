@@ -34,5 +34,11 @@
         "webTitle": "WebGL #5: Lighting",
         "title": "WebGL #5: Lighting",
         "route": "/blogs/graphics3DWebGL/webgl5-lighting.html"
+    },
+    {
+        "id": "webgl6",
+        "webTitle": "WebGL #6: Shadow",
+        "title": "WebGL #6: Shadow",
+        "route": "/blogs/graphics3DWebGL/webgl6-shadow.html"
     }
 ]
