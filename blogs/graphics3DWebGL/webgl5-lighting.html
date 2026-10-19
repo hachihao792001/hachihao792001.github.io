@@ -240,8 +240,9 @@ void main(){
 					\Rightarrow N = (M^{-1})^T
 					\end{eqnarray}
 					$$
-					Ta đã tìm được normal matrix \(N\) 😳 Nó chính là chuyển vị của nghịch đảo của model matrix \(M\). Nhưng mà thật ra chuyển vị
-					trước hay nghịch đảo trước cũng ra cùng kết quả (cái này bạn google thêm nếu muốn tìm hiểu) nên mình sẽ gọi là nghịch đảo chuyển vị cho nó thuận miệng.<br/><br/>
+					Ta đã tìm được normal matrix \(N\) 😳 Nó chính là chuyển vị của nghịch đảo của model matrix \(M\) (bạn cũng tìm google thêm nếu muốn tìm hiểu nghịch đảo ma trận).
+					Nhưng mà thật ra chuyển vị
+					trước hay nghịch đảo trước cũng ra cùng kết quả (also google) nên mình sẽ gọi là nghịch đảo chuyển vị cho nó thuận miệng.<br/><br/>
 					Tuy nhiên có 1 vấn đề là engine ta chưa hỗ trợ nghịch đảo ma trận và chuyển vị ma trận, thêm hàm vào thì làm nó phức tạp thêm, cho nên ta sẽ tìm thử
 					xem nghịch đảo chuyển vị của model matrix sẽ ra gì 😳 <br/><br/>
 
@@ -249,13 +250,13 @@ void main(){
 					$$
 					\begin{eqnarray}
 					M = TRS \\
-					\Rightarrow M^{-1} = (TRS)^{-1} = T^{-1} R^{-1} S^{-1} \\
-					\Rightarrow (M^{-1})^T = ( T^{-1} R^{-1} S^{-1})^T = (S^{-1})^T (R^{-1})^T (T^{-1})^T
+					\Rightarrow M^{-1} = (TRS)^{-1} = S^{-1} R^{-1} T^{-1}   \\
+					\Rightarrow (M^{-1})^T = ( S^{-1} R^{-1} T^{-1} )^T = (T^{-1})^T (R^{-1})^T (S^{-1})^T 
 					\end{eqnarray}
 					$$
 					Tuy nhiên bạn nhớ là ta có bỏ translation matrix ra ngoài vì pháp tuyến là vector, nên bây giờ:
 					$$
-					N = (M^{-1})^T = (S^{-1})^T (R^{-1})^T
+					N = (M^{-1})^T = (R^{-1})^T (S^{-1})^T
 					$$
 					Ta sẽ xử lí từng cái, đầu tiên với scale matrix, nó có dạng:
 					$$
@@ -277,7 +278,7 @@ void main(){
 					$$
 					Tiếp theo với rotation matrix, nó được tạo thành từ 3 rotation matrix ở 3 trục riêng (thứ tự XYZ theo mình quy ước):
 					$$
-					R = \begin{pmatrix}
+					R = R_x R_y R_z = \begin{pmatrix}
                         1 & 0 & 0\\
                         0 & cos{θ} & sin{θ} \\
                         0 & -\sin{θ} & \cos{θ} \\
@@ -296,7 +297,113 @@ void main(){
                         \end{pmatrix}
 					$$
 
-                    <div id="graphics3D-nav-bottom"></div>
+					Tìm nghịch đảo chuyển vị của 3 ma trận trên có lẽ hơi khổ, hên cho ta là các rotation matrix là các
+					<a href="https://en.wikipedia.org/wiki/Orthogonal_matrix">ma trận trực giao (orthogonal matrix)</a>. Ma trận trực giao là ma trận
+					mà các vector cột vuông góc với nhau và các vector hàng cũng vuông góc với nhau. Mình thử với ma trận xoay theo trục x:
+					$$
+					\begin{pmatrix}
+					1\\
+					0\\
+					0
+					\end{pmatrix}
+					.
+					\begin{pmatrix}
+					0\\
+					\cos{θ}\\
+					-\sin{θ}
+					\end{pmatrix}
+					=
+					0
+					$$
+
+					$$
+					\begin{pmatrix}
+					1\\
+					0\\
+					0
+					\end{pmatrix}
+					.
+					\begin{pmatrix}
+					0\\
+					\sin{θ}\\
+					\cos{θ}
+					\end{pmatrix}
+					=
+					0
+					$$
+
+					$$
+					\begin{pmatrix}
+					0\\
+					cos{θ}\\
+					-\sin{θ}
+					\end{pmatrix}
+					.
+					\begin{pmatrix}
+					0\\
+					\sin{θ}\\
+					\cos{θ}
+					\end{pmatrix}
+					=
+					0
+					$$
+					Như vậy nó đúng là một ma trận trực giao. Ma trận trực giao thì có 1 tính chất khá hay, đó chính là chuyển vị của ma trận cũng chính
+					là nghịch đảo của ma trận 😳 Tức là ta có:
+					$$
+					(R^{-1})^T = (R_x^{-1})^T (R_y^{-1})^T (R_z^{-1})^T = (R_x^T)^T (R_y^T)^T (R_z^T)^T = R_x R_y R_z = R
+					$$
+					Như vậy nghịch đảo chuyển vị của rotation matrix bằng chính nó 😳<br/><br/>
+
+					Như vậy, normal matrix có dạng:
+					$$
+					N = R * \begin{pmatrix}
+					\frac{1}{s_{x}} & 0 & 0\\
+					0 & \frac{1}{s_{y}} & 0\\
+					0 & 0 & \frac{1}{s_{z}}\\
+					\end{pmatrix}
+					$$
+					Nhìn thì cũng có lí, object càng dẹt ra thì normal phải càng thẳng đứng.<br/><br/>
+
+					Math time đã hết, bây giờ ta sẽ implement normal matrix vào engine. Đầu tiên là hàm tính nó, để trong class <code>Transform</code>:
+					<pre><code class="language-javascript">class Transform {
+	...
+	getNormalMatrix() {
+		let scale = this.lossyScale;
+		return Mat4x4.Multiply(
+			Mat4x4.Rotation(this.rotation),
+			Mat4x4.Scale(1 / scale.x, 1 / scale.y, 1 / scale.z),
+		);
+	}
+	...
+}</code></pre>
+					Tiếp theo là nhận và sử dụng nó trong vertex shader:
+					<pre><code class="language-hlsl">...
+uniform mat4 uNormalMatrix;
+...
+
+void main(){
+	...
+	vWorldNormal = normalize((uNormalMatrix * vec4(aNormal, 0.0)).xyz);
+}</code></pre>
+					Và ở ngoài truyền vào:
+					<pre><code class="language-javascript">const uNormalMatrix = gl.getUniformLocation(program, "uNormalMatrix");</code></pre>
+					<pre><code class="language-javascript">class GameObject {
+	...
+	draw() {
+		...
+		gl.uniformMatrix4fv(uNormalMatrix, false, this.transform.getNormalMatrix().toColumnMajor());
+		...
+	}
+	...
+}</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview28"></div>
+					Các thanh đó đã được chiếu sáng đúng, chiếu theo hướng (-1, 0, 0) nó phải như vậy 😳<br/><br/>
+
+					Có lẽ bạn đang thắc mắc tại sao bên Software Rasterizer không gặp vấn đề này. Đó là vì ta tính lại pháp tuyến mỗi frame, sau khi 
+					đã có world space. Còn bên đây ta tính pháp tuyến từ object space, và cố chuyển nó qua world space.
+					
+					<div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
         </div>

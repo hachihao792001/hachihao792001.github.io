@@ -1,14 +1,11 @@
 --- "a/htmlPreviews\\htmlPreview27.html"
 +++ "b/htmlPreviews\\htmlPreview28.html"
-@@ -815,6 +815,17 @@
+@@ -815,6 +815,14 @@
  				return Mat4x4.Multiply(this.getTranslationMatrix(), model);
  			}
  
 +			getNormalMatrix() {
 +				let scale = this.lossyScale;
-+				if (scale.x === 0 || scale.y === 0 || scale.z === 0) {
-+					throw new Error("Cannot compute a normal matrix for zero scale");
-+				}
 +				return Mat4x4.Multiply(
 +					Mat4x4.Rotation(this.rotation),
 +					Mat4x4.Scale(1 / scale.x, 1 / scale.y, 1 / scale.z),
@@ -18,15 +15,15 @@
  			getViewMatrix() {
  				return Mat4x4.ViewFromPosRot(this.position, this.rotation);
  			}
-@@ -907,6 +918,7 @@
+@@ -906,6 +914,7 @@
+ 			draw() {
  				if (this.mesh.vertexCount == 0) return;
- 				const modelMatrix = this.transform.getModelMatrix();
- 				gl.uniformMatrix4fv(uModel, false, modelMatrix.toColumnMajor());
+ 				gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
 +				gl.uniformMatrix4fv(uNormalMatrix, false, this.transform.getNormalMatrix().toColumnMajor());
  
  				if (this.texture) {
  					gl.activeTexture(gl.TEXTURE0);
-@@ -1211,6 +1223,7 @@
+@@ -1210,6 +1219,7 @@
  
  		const vertexShaderSource = `#version 300 es
  uniform mat4 uModel;
@@ -34,7 +31,7 @@
  uniform mat4 uView;
  uniform mat4 uProjection;
  in vec3 aPosition;
-@@ -1222,7 +1235,7 @@ out vec3 vWorldNormal;
+@@ -1221,7 +1231,7 @@ out vec3 vWorldNormal;
  void main(){
  	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
  	vUV = aUV;
@@ -43,3 +40,11 @@
  }`;
  		const fragmentShaderSource = `#version 300 es
  precision highp float;
+@@ -1265,6 +1275,7 @@ void main(){
+ 		const aUV = gl.getAttribLocation(program, "aUV");
+ 		const aNormal = gl.getAttribLocation(program, "aNormal");
+ 		const uModel = gl.getUniformLocation(program, "uModel");
++		const uNormalMatrix = gl.getUniformLocation(program, "uNormalMatrix");
+ 		const uView = gl.getUniformLocation(program, "uView");
+ 		const uProjection = gl.getUniformLocation(program, "uProjection");
+ 		const uTexture = gl.getUniformLocation(program, "uTexture");

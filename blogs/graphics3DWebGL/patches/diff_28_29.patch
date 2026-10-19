@@ -34,15 +34,12 @@
  			</span>
  		</div>
  	</div>
-@@ -815,17 +829,6 @@
+@@ -815,14 +829,6 @@
  				return Mat4x4.Multiply(this.getTranslationMatrix(), model);
  			}
  
 -			getNormalMatrix() {
 -				let scale = this.lossyScale;
--				if (scale.x === 0 || scale.y === 0 || scale.z === 0) {
--					throw new Error("Cannot compute a normal matrix for zero scale");
--				}
 -				return Mat4x4.Multiply(
 -					Mat4x4.Rotation(this.rotation),
 -					Mat4x4.Scale(1 / scale.x, 1 / scale.y, 1 / scale.z),
@@ -52,15 +49,18 @@
  			getViewMatrix() {
  				return Mat4x4.ViewFromPosRot(this.position, this.rotation);
  			}
-@@ -918,7 +921,6 @@
+@@ -913,8 +919,8 @@
+ 
+ 			draw() {
  				if (this.mesh.vertexCount == 0) return;
- 				const modelMatrix = this.transform.getModelMatrix();
- 				gl.uniformMatrix4fv(uModel, false, modelMatrix.toColumnMajor());
+-				gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
 -				gl.uniformMatrix4fv(uNormalMatrix, false, this.transform.getNormalMatrix().toColumnMajor());
++				const modelMatrix = this.transform.getModelMatrix();
++				gl.uniformMatrix4fv(uModel, false, modelMatrix.toColumnMajor());
  
  				if (this.texture) {
  					gl.activeTexture(gl.TEXTURE0);
-@@ -956,7 +958,6 @@
+@@ -952,7 +958,6 @@
  				this.vertices = vertices;
  				this.uv = uv;
  				this.color = color;
@@ -68,7 +68,7 @@
  
  				this.updateNormal();
  			}
-@@ -1223,7 +1224,6 @@
+@@ -1219,7 +1224,6 @@
  
  		const vertexShaderSource = `#version 300 es
  uniform mat4 uModel;
@@ -76,7 +76,7 @@
  uniform mat4 uView;
  uniform mat4 uProjection;
  in vec3 aPosition;
-@@ -1235,7 +1235,7 @@ out vec3 vWorldNormal;
+@@ -1231,7 +1235,7 @@ out vec3 vWorldNormal;
  void main(){
  	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
  	vUV = aUV;
@@ -85,7 +85,7 @@
  }`;
  		const fragmentShaderSource = `#version 300 es
  precision highp float;
-@@ -1250,8 +1250,9 @@ in vec3 vWorldNormal;
+@@ -1246,8 +1250,9 @@ in vec3 vWorldNormal;
  out vec4 outColor;
  
  void main(){
@@ -96,7 +96,7 @@
  	outColor = vec4(color * dirLightDiffuse, 1.0);
  }`;
  		function compileShader(type, source) {
-@@ -1298,7 +1299,7 @@ void main(){
+@@ -1294,7 +1299,7 @@ void main(){
  			zfar = 1000;
  		let projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
  		gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
@@ -105,7 +105,7 @@
  		let keyStates = {};
  
  		const renderDiv = (document.getElementById("render"));
-@@ -1330,11 +1331,18 @@ void main(){
+@@ -1326,11 +1331,18 @@ void main(){
  		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
  		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
  		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
@@ -125,7 +125,7 @@
  		let brickTexture = new Texture(
  			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
  			gl
-@@ -1346,9 +1354,9 @@ void main(){
+@@ -1342,9 +1354,9 @@ void main(){
  
  		let cubeMesh = new Cube();
  		let woodTower = new GameObject(
@@ -138,7 +138,7 @@
  			new Color(255, 255, 255),
  			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj"),
  			woodTexture
-@@ -1415,6 +1423,16 @@ void main(){
+@@ -1411,6 +1423,16 @@ void main(){
  			lightDirRotateSpeedText.textContent = dirLightRotateSpeed.toFixed(2);
  		});
  
