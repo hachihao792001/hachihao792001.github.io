@@ -52,6 +52,33 @@
                     <div id="graphics3D-nav-top"></div>
                     <h1>Shadow</h1>
 
+                    Ở <a href="/blogs/graphics3D/graphics3D11-shadow.html">blog #11 của series trước</a> ta đã làm shadow mapping bằng CPU, và ở
+                    <a href="/blogs/graphics3D/graphics3D13-optimize.html">blog #13 series trước</a> ta đo được riêng khúc build shadow map đã ăn khoảng 12.5 ms mỗi frame,
+                    gần bằng nửa thời gian của cả frame, tối ưu hết sức trong blog đó thì vẫn còn khoảng 3.4 ms. Cuối blog #11 mình còn nói một câu là point light phải dựng tới 6 shadow map,
+                    nên "mô phỏng một cách mượt mà chỉ làm được trên GPU". Giờ ta đang ở trên GPU rồi, nên blog này ta vừa làm lại shadow cho directional light, vừa làm luôn
+                    shadow cho point light mà series trước bỏ dở 😳.<br/><br/>
+
+                    Nhắc lại ý tưởng của shadow mapping một chút, phòng khi bạn chưa đọc series trước:
+                    <ul>
+                        <li>Render cả scene thêm một lần nữa, nhưng dưới góc nhìn của nguồn sáng, và chỉ giữ lại depth buffer. Cái depth buffer đó gọi là <b>shadow map</b>,
+                            mỗi pixel của nó cho biết "từ đèn nhìn theo hướng này thì vật gần nhất cách bao xa".</li>
+                        <li>Lúc render bình thường, với mỗi pixel ta đưa tọa độ thế giới của nó qua render pipeline của đèn, rồi so độ sâu của nó với độ sâu lưu trong shadow map.
+                            Nếu nó sâu hơn, nghĩa là có thứ gì đó nằm giữa nó và đèn, tức là nó nằm trong bóng.</li>
+                    </ul>
+					Bên GPU thì cũng y hệt như vậy, quan trọng là ta sẽ làm nó ở đâu.
+
+                    <h2>1. Directional light</h2>
+
+                    <h3>a. Build view và projection matrix cho camera nguồn sáng</h3>
+					Việc copy code qua khá là straightforward, có 2 thứ ta cần để ý:
+					<ul>
+						<li>Sửa lại Orthographic projection matrix cũng đưa z về khoảng [-1; 1] thay vì là [0; 1]</li>
+						<li>Ở demo cuối series trước, trong hàm <code>buildViewAndProjectionMatrix</code> ta set frustum center là gốc tọa độ (cho đẹp). Trong khi ta để
+							nguồn sáng cách gốc tọa độ <code>shadowMapDistance</code> và <code>zFar</code> của nó cũng là <code>shadowMapDistance</code>. Như vậy, far plane
+							sẽ cắt ngay gốc tọa độ, ở series trước thì không sao vì ta không quan tâm tới far plane (mình làm thiếu), nhưng WebGL thì sẽ cắt. Cho nên ta phải
+							để ý điều này.</li>
+					</ul>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
