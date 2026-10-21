@@ -56,8 +56,18 @@
                     Có lẽ khi đã tới đây rồi thì não bạn đã quen mọi thứ phải là perspective và z có nhiều ý nghĩa, nhưng orthographic chả liên quan gì mấy thứ kia, một điểm
                     khi đã trải qua view matrix, thì nếu tọa độ view space của nó là x=9, y=10, thì tọa độ của nó trên clip space cũng là x=9, y=10 😳 Ta chỉ cần lo tới việc
                     là clip space bự bao nhiêu (x, y bằng bao nhiêu thì ra khỏi màn hình), rồi sau đó cứ lấy clip space đó nhân cho kích thước canvas là okela. Ở trường
-                    hợp đơn giản nhất, ta muốn clip space là hình vuông có cạnh là <code>size</code>, ta chỉ cần lấy \(x_{clip} = \frac{x*2}{size}, y_{clip} = \frac{y*2}{size}, z_{clip} = \frac{z}{z_{far}-z_{near}} - \frac{z_{near}}{z_{far}-z_{near}}\)
-                    (nhớ là x, y nằm trong khoảng [-1; 1], còn z nằm trong khoảng [0; 1]). Như vậy, Orthographic projection matrix sẽ là:
+                    hợp đơn giản nhất, ta muốn clip space là hình vuông có cạnh là <code>size</code>, ta chỉ cần lấy \(x_{clip} = \frac{x*2}{size}, y_{clip} = \frac{y*2}{size}\)
+                    (nhớ là x, y nằm trong khoảng [-1; 1]).<br/><br/>
+                    Còn z thì nằm trong khoảng [0; 1], cái này ta dựng từ đầu luôn. Một hàng của matrix chỉ làm được nhân rồi cộng, cho nên \(z_{clip}\) chỉ có thể có dạng
+                    \(z_{clip} = a + bz\) (\(b\) nằm ở cột z, còn \(a\) nằm ở cột cuối, nhân với thành phần \(w = 1\) của điểm). Ta muốn \(z_{near}\) thành 0 và \(z_{far}\) thành 1,
+                    vậy là có 2 phương trình:
+                    \[
+                        a + bz_{near} = 0, \quad a + bz_{far} = 1
+                    \]
+                    Lấy phương trình sau trừ phương trình trước thì \(a\) mất đi, còn lại \(b(z_{far} - z_{near}) = 1\), tức là \(b = \frac{1}{z_{far}-z_{near}}\), thế ngược lại vào
+                    phương trình đầu là ra \(a = -\frac{z_{near}}{z_{far}-z_{near}}\). Gom lại thì \(z_{clip} = \frac{z - z_{near}}{z_{far}-z_{near}}\), ý nghĩa công thức thì chỉ
+                    đơn giản là lùi frustum về 0 rồi chia cho độ dài khoảng \([z_{near}; z_{far}]\).<br/>
+                    Như vậy, Orthographic projection matrix sẽ là:
                     \[
                         \begin{bmatrix}
                             \frac{2}{size} & 0 & 0 & 0 \\
