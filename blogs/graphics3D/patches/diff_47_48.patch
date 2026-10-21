@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview47.html"
 +++ "b/htmlPreviews\\htmlPreview48.html"
-@@ -1622,27 +1622,14 @@
+@@ -1621,27 +1621,14 @@
  		let lastTime = performance.now();
  		let dt = 0;
  
@@ -31,7 +31,7 @@
  			let objectTris = [];
  			objectTris.push(...ground.getTransformedTrianglesWithChildren());
  			for (let light of pointLights) {
-@@ -1650,10 +1637,18 @@
+@@ -1649,10 +1636,18 @@
  			}
  			objectTris.push(...woodTower.getTransformedTrianglesWithChildren());
  
@@ -50,7 +50,7 @@
  
  			let visibleTris = [];
  			for (let tri of objectTris) {
-@@ -1663,6 +1658,10 @@
+@@ -1662,6 +1657,10 @@
  				}
  			}
  
@@ -61,7 +61,7 @@
  			for (let tri of visibleTris) {
  				const vertices = tri.vertices;
  				const centerX = (vertices[0].x + vertices[1].x + vertices[2].x) / 3;
-@@ -1671,14 +1670,40 @@
+@@ -1670,14 +1669,40 @@
  				tri.viewDistanceSquared = centerX * centerX + centerY * centerY + centerZ * centerZ;
  			}
  			visibleTris.sort((a, b) => a.viewDistanceSquared - b.viewDistanceSquared);

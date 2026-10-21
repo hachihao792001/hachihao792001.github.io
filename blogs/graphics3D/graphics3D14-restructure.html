@@ -504,13 +504,12 @@ inverseTransformDirection(direction) {
 		this.sensitivity = sensitivity;
 	}
 
-	// truyền vào zNear, zFar thay vì lấy từ global
-	getFrustumCenter(zNear, zFar, customZFar = -1) {
+	// truyền vào zNear, zFar thay vì lấy từ global, muốn frustum ngắn hơn (như shadowMapDistance) thì truyền zFar đó vào luôn, không cần customZFar nữa
+	getFrustumCenter(zNear, zFar) {
 		let forward = this.transform.getForward();		// <-----------------------
 
 		let near = Vector3.add(this.transform.position, Vector3.mul(forward, zNear));			// <-----------------------
-		if (customZFar == -1) customZFar = zFar;
-		let far = Vector3.add(this.transform.position, Vector3.mul(forward, customZFar));		// <-----------------------
+		let far = Vector3.add(this.transform.position, Vector3.mul(forward, zFar));				// <-----------------------
 		return Vector3.div(Vector3.add(near, far), 2);
 	}
 

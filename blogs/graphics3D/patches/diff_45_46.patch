@@ -93,7 +93,7 @@
  		}
  
  		class Plane {
-@@ -503,27 +568,225 @@
+@@ -503,27 +568,224 @@
  		let shadowBias = 0.0015;
  		let shadowMapDistance = 16;
  
@@ -310,15 +310,14 @@
  
 -			getFrustumCenter(customZFar = -1) {
 -				let forward = this.rotation.rotateVector(Vector3.forward);
-+			getFrustumCenter(zNear, zFar, customZFar = -1) {
++			getFrustumCenter(zNear, zFar) {
 +				let forward = this.transform.getForward();
  
 -				let near = Vector3.add(this.pos, Vector3.mul(forward, znear));
 -				if (customZFar == -1) customZFar = zfar;
 -				let far = Vector3.add(this.pos, Vector3.mul(forward, customZFar));
 +				let near = Vector3.add(this.transform.position, Vector3.mul(forward, zNear));
-+				if (customZFar == -1) customZFar = zFar;
-+				let far = Vector3.add(this.transform.position, Vector3.mul(forward, customZFar));
++				let far = Vector3.add(this.transform.position, Vector3.mul(forward, zFar));
  				return Vector3.div(Vector3.add(near, far), 2);
  			}
  
@@ -328,7 +327,7 @@
  
  				let additionalPitchAngle = -mouseMovementY * this.sensitivity;
  				let forwardY = Math.max(-1, Math.min(1, afterYawRotation.rotateVector(Vector3.forward).y));
-@@ -531,64 +794,61 @@
+@@ -531,64 +793,61 @@
  				additionalPitchAngle = Math.max(-Camera.maxPitch - currentPitch, Math.min(Camera.maxPitch - currentPitch, additionalPitchAngle));
  
  				let right = afterYawRotation.rotateVector(Vector3.right);
@@ -415,7 +414,7 @@
  					transformedTri.mulMat4x4(translationMat);
  					transformedTri.updateWorldVertices();
  					transformedTri.color = this.color;
-@@ -597,6 +857,16 @@
+@@ -597,6 +856,16 @@
  				}
  				return transformedTris;
  			}
@@ -432,16 +431,16 @@
  		}
  
  		class DirectionalLight {
-@@ -620,7 +890,7 @@
+@@ -620,7 +889,7 @@
  				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
  				let right = Vector3.cross(up, this.dir).normalize();
  				up = Vector3.cross(this.dir, right).normalize();
 -				//let frustumCenter = camera.getFrustumCenter(shadowMapDistance);
-+				//let frustumCenter = camera.getFrustumCenter(znear, zfar, shadowMapDistance);
++				//let frustumCenter = camera.getFrustumCenter(znear, shadowMapDistance);
  				let frustumCenter = Vector3.zero;
  				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
  				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
-@@ -1089,7 +1359,7 @@
+@@ -1089,7 +1358,7 @@
  
  				let count = 0;
  				for (let i = 0; i < pointLights.length; i++) {
@@ -450,7 +449,7 @@
  
  					const toLightX = lightPos.x - triWorldCenterX;
  					const toLightY = lightPos.y - triWorldCenterY;
-@@ -1371,11 +1641,11 @@
+@@ -1371,11 +1640,11 @@
  			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
  
  			let objectTris = [];
@@ -465,7 +464,7 @@
  
  			if (useShadow) {
  				dirLight.buildViewAndProjectionMatrix();
-@@ -1384,7 +1654,7 @@
+@@ -1384,7 +1653,7 @@
  
  			let visibleTris = [];
  			for (let tri of objectTris) {

@@ -142,7 +142,7 @@
  				const tempCanvas = document.createElement("canvas");
  				tempCanvas.width = img.width;
  				tempCanvas.height = img.height;
-@@ -1385,7 +1448,7 @@
+@@ -1384,7 +1447,7 @@
  				this.tris = tris;
  			}
  
@@ -151,7 +151,7 @@
  				this.tris = [];
  				for (let tri of tris) {
  					this.tris.push(
-@@ -1399,6 +1462,35 @@
+@@ -1398,6 +1461,35 @@
  			}
  		}
  
@@ -187,7 +187,7 @@
  		class Cube extends Mesh {
  			constructor() {
  				super(Cube.generateInitialTriangles());
-@@ -1554,7 +1646,7 @@
+@@ -1553,7 +1645,7 @@
  							triVertices.push(vertexCoord);
  							triUVs.push(vertexUV);
  						}

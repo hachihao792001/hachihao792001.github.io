@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview46.html"
 +++ "b/htmlPreviews\\htmlPreview47.html"
-@@ -1018,12 +1018,15 @@
+@@ -1017,12 +1017,15 @@
  		}
  
  		class Rasterizer {
@@ -19,7 +19,7 @@
  
  				this.clearScreen();
  			}
-@@ -1033,11 +1036,11 @@
+@@ -1032,11 +1035,11 @@
  				this.depthBuffer.fill(Infinity);
  			}
  
@@ -34,7 +34,7 @@
  				const activeLights = new Array(maxActiveLights);
  
  				for (let tri of tris) {
-@@ -1199,7 +1202,7 @@
+@@ -1198,7 +1201,7 @@
  			}
  
  			drawCall() {
@@ -43,7 +43,7 @@
  			}
  		}
  
-@@ -1563,7 +1566,7 @@
+@@ -1562,7 +1565,7 @@
  		// ===== index.js =====
  		const gameCanvas = (document.getElementById("gameCanvas"));
  		const ctx = (gameCanvas.getContext("2d"));
@@ -52,7 +52,7 @@
  		const fov = 60;
  		let znear = 0.01,
  			zfar = 1000;
-@@ -1674,7 +1677,7 @@
+@@ -1673,7 +1676,7 @@
  				tri.perspectiveDivide();
  			}
  
