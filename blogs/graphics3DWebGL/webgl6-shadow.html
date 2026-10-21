@@ -135,6 +135,42 @@
 	...	
 }</code></pre>
 
+					Thay vì như series trước, là tạo một canvas khác để debug góc nhìn từ nguồn sáng.
+                    Mình sẽ thêm một checkbox <code>View from light</code> để đổi qua đổi lại giữa góc nhìn player và góc nhìn nguồn sáng:
+					<pre><code class="language-html">&lt;div class=&quot;controlRow&quot;&gt;
+	&lt;label class=&quot;controlLabel&quot; for=&quot;viewFromLight&quot;&gt;View from light:&lt;/label&gt;
+	&lt;span&gt;&lt;input type=&quot;checkbox&quot; id=&quot;viewFromLight&quot; /&gt;&lt;/span&gt;
+&lt;/div&gt;</code></pre>
+					<pre><code class="language-javascript">const viewFromLightCheckbox = (document.getElementById("viewFromLight"));
+let viewFromLight = false;
+
+...
+
+viewFromLightCheckbox.addEventListener("change", () => {
+	viewFromLight = viewFromLightCheckbox.checked;
+	viewFromLightCheckbox.blur();
+});</code></pre>
+					Để đổi góc nhìn thì đơn giản ta chỉ cần đổi projection và view matrix. Và ta sẽ đổi nó trong hàm
+					<code>render</code>:
+                    <pre><code class="language-javascript">
+function render() {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    dirLight.buildViewAndProjectionMatrix();
+    if (viewFromLight) {
+        gl.uniformMatrix4fv(uView, false, dirLight.viewMatrix.toColumnMajor());
+        gl.uniformMatrix4fv(uProjection, false, dirLight.projectionMatrix.toColumnMajor());
+    } else {
+        gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());
+        gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
+    }
+    ...
+}</code></pre>
+                    Kết quả (bấm vào checkbox <code>View from light</code>):
+                    <div class="htmlPreview" id="htmlPreview31"></div>
+                    Hình hơi bị kéo ngang ra vì canvas là 4:3 còn hộp orthographic của ta là hình vuông,
+                    nhưng không sao, shadow map của ta sẽ là texture vuông nên nó sẽ không bị như vậy.
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
