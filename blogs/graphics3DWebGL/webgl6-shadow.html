@@ -70,14 +70,70 @@
                     <h2>1. Directional light</h2>
 
                     <h3>a. Build view và projection matrix cho camera nguồn sáng</h3>
-					Việc copy code qua khá là straightforward, có 2 thứ ta cần để ý:
+					Việc copy code qua khá là straightforward, tuy nhiên có 2 thứ ta cần để ý:
 					<ul>
 						<li>Sửa lại Orthographic projection matrix cũng đưa z về khoảng [-1; 1] thay vì là [0; 1]</li>
-						<li>Ở demo cuối series trước, trong hàm <code>buildViewAndProjectionMatrix</code> ta set frustum center là gốc tọa độ (cho đẹp). Trong khi ta để
+						<li>Ở demo cuối series trước, trong hàm <code>buildViewAndProjectionMatrix</code>, ta set frustum center là gốc tọa độ (cho đẹp), trong khi ta để
 							nguồn sáng cách gốc tọa độ <code>shadowMapDistance</code> và <code>zFar</code> của nó cũng là <code>shadowMapDistance</code>. Như vậy, far plane
 							sẽ cắt ngay gốc tọa độ, ở series trước thì không sao vì ta không quan tâm tới far plane (mình làm thiếu), nhưng WebGL thì sẽ cắt. Cho nên ta phải
-							để ý điều này.</li>
+							xử lí điều này.</li>
 					</ul>
+					
+					Đầu tiên là sửa Orthographic projection matrix, ở series trước thì z nằm trong khoảng [0; 1], bằng công thức sau:
+					$$
+					z_{ndc} = \frac{z - z_{near}}{z_{far}-z_{near}}
+					$$
+					Chuyển nó thành [-1; 1] thì ta cũng nhân 2 rồi -1:
+                    $$
+                    z_{ndc} = \frac{2(z - z_{near})}{z_{far} - z_{near}} - 1 = \frac{2}{z_{far} - z_{near}} z - \frac{z_{far} + z_{near}}{z_{far} - z_{near}}
+                    $$
+                    Hệ số của \(z\) và hằng số ở cuối chính là 2 ô <code>m[2][2]</code> và <code>m[2][3]</code> của ma trận:
+                    <pre><code class="language-javascript">class Mat4x4 {
+    ...
+    static Orthographic(size, zNear, zFar) {
+        let matrix = new Mat4x4();
+        matrix.m[0][0] = 2.0 / size;
+        matrix.m[1][1] = 2.0 / size;
+        matrix.m[2][2] = 2.0 / (zFar - zNear);                  // series trước: 1 / (zFar - zNear)
+        matrix.m[2][3] = -(zFar + zNear) / (zFar - zNear);      // series trước: -zNear / (zFar - zNear)
+        matrix.m[3][3] = 1.0;
+        return matrix;
+    }
+    ...
+}</code></pre>
+                    Có được Projection matrix rồi, view matrix thì cũng y hệt series trước. Ta copy y hệt hàm <code>buildViewAndProjectionMatrix</code> từ series trước qua,
+					và ta dùng lại <code>frustumCenter</code>định là gốc tọa độ:
+                    <pre><code class="language-javascript">class DirectionalLight {
+    constructor(dir, intensity) {
+        this.dir = dir.normalize();
+        this.intensity = intensity;
+        this.viewMatrix = null;				// <----------------------
+        this.projectionMatrix = null;		// <----------------------
+    }
+
+    buildViewAndProjectionMatrix() {
+		let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
+		let right = Vector3.cross(up, this.dir).normalize();
+		up = Vector3.cross(this.dir, right).normalize();
+		let frustumCenter = camera.getFrustumCenter(znear, shadowMapDistance);
+		let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
+		this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
+		this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance * 2);	// <-----------------------------
+	}
+}</code></pre>
+					Để far plane không cắt ngay chỗ mà ta đang nhìn, mình để <code>zFar</code> là <code>shadowMapDistance * 2</code>, khi đó
+					tâm của hình hộp chữ nhật projection của camera nguồn sáng sẽ trùng với tâm frustum của camera player, đảm bảo luôn đẹp 😁<br/><br/>
+					Thêm lại hàm <code>getFrustumCenter</code> vào <code>Camera</code>:
+					<pre><code class="language-javascript">class Camera {
+	...
+	getFrustumCenter(zNear, zFar) {
+		let forward = this.transform.getForward();
+		let near = Vector3.add(this.transform.position, Vector3.mul(forward, zNear));
+		let far = Vector3.add(this.transform.position, Vector3.mul(forward, zFar));
+		return Vector3.div(Vector3.add(near, far), 2);
+	}
+	...	
+}</code></pre>
 
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
