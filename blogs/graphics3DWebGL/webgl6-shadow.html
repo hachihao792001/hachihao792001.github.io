@@ -171,6 +171,118 @@ function render() {
                     Hình hơi bị kéo ngang ra vì canvas là 4:3 còn hộp orthographic của ta là hình vuông,
                     nhưng không sao, shadow map của ta sẽ là texture vuông nên nó sẽ không bị như vậy.
 
+					<h3>b. Render vào texture thay vì canvas</h3>
+                    Ta đang hiểu là mọi thứ ta vẽ từ đầu series tới giờ đều đi vào canvas, nhưng thật ra bên dưới nó đang đi vào một
+                    <a href="https://www.khronos.org/opengl/wiki/Framebuffer">framebuffer</a> mặc định. Frame buffer đơn giản chỉ là 1 vùng nhớ
+					mà kết hợp cả color buffer (screen buffer) và depth buffer. Và WebGL cho phép ta tạo framebuffer của riêng mình bằng
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/createFramebuffer"><code>gl.createFramebuffer</code></a>,
+                    và gắn texture vào làm buffer cho nó bằng
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/framebufferTexture2D"><code>gl.framebufferTexture2D</code></a>.
+                    Khi framebuffer đó đang được bind, mọi lệnh vẽ sẽ ghi vào texture đó chứ không ra màn hình nữa. Ta sẽ lưu shadow map như 1 texture và để nó
+					vào trong 1 frame buffer để WebGL render vào.<br/><br/>
+
+					Mình xin viết lại các tham số của hàm <code>gl.texImage2D</code> để bạn dễ theo dõi:
+					<pre><code class="language-javascript">gl.texImage2D(
+	// khe,
+	// mipmap level, nếu bạn chơi game nhiều bạn sẽ biết thuật ngữ này, mipmap là việc lưu các version nhỏ hơn của 1 texture để tối ưu
+	// internal format, là format mà webgl lưu,
+	// width,
+	// height,
+	// border, trong WebGL tham số này bắt buộc là 0 (WebGL không hỗ trợ border, cái này là tàn dư từ OpenGL),
+	// format truyền vào,
+	// kiểu của buffer,
+	// các pixel kiểu Uint8Array, vì pixels của Texture là kiểu Uint8ClampedArray (kiểu từ getImageData trả về) nên phải convert)</code></pre>
+					Shadow map thì chỉ có dữ liệu độ sâu, không cần màu. Nên internal format thay vì là RGBA, thì là 
+                    <code>DEPTH_COMPONENT24</code> (số depth 24 bit), còn format truyền vào thì là <code>DEPTH_COMPONENT</code> (format truyền vào không
+					thể là <code>DEPTH_COMPONENT24</code> vì nó sẽ gây lỗi). Cho nên
+					hàm "truyền" texture shadow map vào WebGL là:
+					<pre><code class="language-javascript">gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, shadowMapSize, shadowMapSize, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);</code></pre>
+					Ở trên mình để chữ "truyền" trong ngoặc kép là vì tham số cuối là <code>null</code> - ta không truyền vào gì cả, vì texture này là để GPU
+					tự sửa mỗi frame nên lúc đầu không cần pixel gì.<br/><br/>
+
+					Ngoài ra bạn nhớ ở <a href="webgl4-texture.html">blog 4</a> là khi truyền xong texture ta còn có 4 dòng để set các parameter về filter và
+					wrap. Với shadow map thì filter và wrap cũng giống texture mà ta đang xài, là <code>NEAREST</code> và <code>gl.CLAMP_TO_EDGE</code>.<br/><br/>
+
+					Như vậy, đoạn code tạo texture shadow map và để nó vào 1 frame buffer sẽ như sau, nó sẽ nằm hoàn toàn trong constructor của <code>DirectionalLight</code>:
+                    <pre><code class="language-javascript">class DirectionalLight {
+    constructor(dir, intensity) {
+        ...
+
+        // tạo 1 texture làm shadow map, texture này chỉ có depth
+        this.shadowMapTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.shadowMapTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, shadowMapSize, shadowMapSize, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        // framebuffer có depth attachment là texture ở trên, render vào đây thay vì canvas
+        this.shadowFramebuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFramebuffer);		// bind framebuffer vừa được tạo để gắn texture vào
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.shadowMapTexture, 0);		// <------------------------------
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);						// trở về frame buffer mặc định để vẽ lên canvas
+    }
+    ...
+}</code></pre>
+					Tham số của <code>gl.framebufferTexture2D</code>:
+					<pre><code class="language-hlsl">gl.framebufferTexture2D(
+	// khe
+	// attach vào đâu (color attachment, depth attachment, stencil attachment, ...), ở đây là depth
+	// loại texture (2D, 3D, cube map, ...), ở đây là 2D
+	// texture, ở đây là shadowMapTexture
+	// mipmap level, ở đây là 0 vì ta không dùng mipmap)</code></pre>
+                    Mình cho <code>shadowMapSize</code> chung chỗ với <code>shadowMapDistance</code>, để là 2048, vì đây là GPU, nên ta không sợ lag hề hề:
+                    <pre><code class="language-javascript">let shadowMapSize = 2048;
+let shadowMapDistance = 16;</code></pre>
+
+					Render ra canvas thì ta cần texture, ánh sáng, đủ thứ, còn render ra shadow map thì chỉ cần mỗi depth, nên ta sẽ dùng một cặp shader khác,
+					mà cặp shader khác thì đồng nghĩa là 1 program khác, cái này mình sẽ nói tới sau, giờ thì mình tập trung vào 2 shader mới trước.
+					Vertex shader chỉ lấy vào tọa độ và 3 matrix để nhân, còn fragment shader không làm gì luôn, vì depth thì GPU tự ghi sau khi
+                    rasterize, không cần ta xuất ra:<br/>
+					Vertex shader:
+                    <pre><code class="language-hlsl">#version 300 es
+uniform mat4 uModel;
+uniform mat4 uLightViewProjection;
+layout(location = 0) in vec3 aPosition;		// giải thích bên dưới
+
+void main(){
+    gl_Position = uLightViewProjection * uModel * vec4(aPosition, 1.0);
+}</code></pre>
+					Fragment shader:
+                    <pre><code class="language-hlsl">#version 300 es
+precision highp float;
+
+void main(){
+    // không xuất màu gì cả, depth thì GPU tự ghi
+}</code></pre>
+                    Vertex shader có một chỗ lạ là <code>layout(location = 0)</code>. Nhớ lại ở blog #3, mỗi <code>Mesh</code> có một Vertex Array Object (VAO) ghi nhớ cách đọc vertex buffer.
+                    Cái VAO đó không nhớ "attribute tên là <code>aPosition</code>", nó nhớ "attribute số mấy" (số mà <code>gl.getAttribLocation</code> trả về).
+                    Số này do GPU tự gán lúc link program, và không ai đảm bảo 2 program khác nhau sẽ gán <code>aPosition</code> cùng một số. Nếu lệch số thì shadow program
+                    sẽ đọc nhầm UV hoặc normal làm tọa độ. <code>layout(location = 0)</code> ép cả 2 program dùng số 0 cho <code>aPosition</code>, nên ta dùng lại được
+                    VAO của mesh mà không cần tạo thêm. Mình sẽ thêm dòng này vào vertex shader chính luôn.<br/><br/>
+
+                    Giờ ta có tới 2 program, nên mình gom đoạn tạo program thành một hàm:
+                    <pre><code class="language-javascript">function createProgram(vertexSource, fragmentSource) {
+    const program = gl.createProgram();
+    gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexSource));
+    gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentSource));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error("Program link error: " + gl.getProgramInfoLog(program));
+    }
+    return program;
+}
+
+const program = createProgram(vertexShaderSource, fragmentShaderSource);
+const shadowProgram = createProgram(shadowVertexShaderSource, shadowFragmentShaderSource);
+gl.useProgram(program);</code></pre>
+
+					Về uniform: Program khác nhau sẽ xài uniform khác nhau, <code>uModel</code> của shadow program là một location khác với <code>uModel</code> của program chính
+					(cái này có thể bạn cũng đã đoán ra trước vì hàm <code>gl.getUniformLocation</code> nhận thêm tham số program):
+					<pre><code class="language-javascript">const uShadowModel = gl.getUniformLocation(shadowProgram, "uModel");
+const uShadowLightViewProjection = gl.getUniformLocation(shadowProgram, "uLightViewProjection");</code></pre>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

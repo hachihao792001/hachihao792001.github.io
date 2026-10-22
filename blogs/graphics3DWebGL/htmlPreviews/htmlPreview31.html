@@ -986,11 +986,9 @@
 				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
 				let right = Vector3.cross(up, this.dir).normalize();
 				up = Vector3.cross(this.dir, right).normalize();
-				// chỉ lấy khúc frustum từ near tới shadowMapDistance, xa hơn thì không cần bóng
 				let frustumCenter = camera.getFrustumCenter(znear, shadowMapDistance);
 				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
 				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
-				// far plane là 2 * shadowMapDistance để tâm frustum nằm giữa khối hộp, không bị far plane cắt ngang
 				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance * 2);
 			}
 		}
