@@ -267,7 +267,9 @@ for (let light of pointLights) {
 
 dirLight.buildShadowMap(objectTris);</code></pre>
                     Hàm <code>isInShadow</code> thì ta để trong hàm <code>processTriangles</code> của <code>Rasterizer</code>, cụ thể là ngay sau khi tính xong được <code>pixelWorldPos</code>. Khi một pixel ở trong shadow
-                    thì ta nhân nó với một <code>shadowFactor</code> nào đó nhỏ hơn 1 để giảm độ sáng xuống (tùy bạn chỉnh):
+                    thì ta nhân nó với một <code>shadowFactor</code> nào đó nhỏ hơn 1 để giảm độ sáng xuống (tùy bạn chỉnh). Lưu ý là chỉ nhân phần sáng của Directional Light thôi,
+                    shadow map này là của Directional Light, pixel nằm trong bóng nghĩa là Directional Light không chiếu tới được nó, chứ point light thì vẫn chiếu tới bình thường.
+                    Nếu nhân luôn cả point light thì khi bạn kéo cường độ Directional Light về 0, bóng vẫn còn đó, vì nó đang làm tối ánh sáng của point light:
                     <pre><code class="language-javascript">if (z < this.depthBuffer[y][x]) {
     ...
     pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
@@ -277,7 +279,7 @@ dirLight.buildShadowMap(objectTris);</code></pre>
 
     ...
 
-    let lightIntensity = (dirLightDiffuse + pointLightDiffuse) * shadowFactor;
+    let lightIntensity = dirLightDiffuse * shadowFactor + pointLightDiffuse;
 
     ...
 }</code></pre>

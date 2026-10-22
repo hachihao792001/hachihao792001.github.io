@@ -177,7 +177,7 @@
  									}
  									totalPointLightDiffuse *= pointLightIntensity;
  
--									let lightIntensity = Math.max(ambientLight, (dirLightDiffuse + totalPointLightDiffuse) * shadowFactor);
+-									let lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
 -
 -									let texColor = tri.color;
 -									if (tri.texture && tri.texture.pixels) {
@@ -192,7 +192,7 @@
 -										const texY = Math.floor(pixelUV.v * (tri.texture.height - 1));
 -										const texIndex = (texY * tri.texture.width + texX) * 4;
 -										texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
-+									const lightIntensity = Math.max(ambientLight, (dirLightDiffuse + totalPointLightDiffuse) * shadowFactor);
++									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
 +
 +									let texR = triColor.r, texG = triColor.g, texB = triColor.b;
 +									if (texturePixels) {

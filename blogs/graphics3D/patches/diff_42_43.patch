@@ -980,7 +980,7 @@
 +									}
 +									totalPointLightDiffuse *= pointLightIntensity;
 +
-+									const lightIntensity = Math.max(ambientLight, (dirLightDiffuse + totalPointLightDiffuse) * shadowFactor);
++									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
 +
 +									let texR = triColor.r,
 +										texG = triColor.g,
@@ -1687,7 +1687,7 @@
 +				for (let line of lines) {
 +					if (!line || line.startsWith("#")) continue;
  
--									const lightIntensity = Math.max(ambientLight, (dirLightDiffuse + totalPointLightDiffuse) * shadowFactor);
+-									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
 +					if (line.startsWith("v ")) {
 +						const values = line.split(" ");
 +						vertices.push(new Vector3(parseFloat(values[1]), parseFloat(values[2]), parseFloat(values[3])));

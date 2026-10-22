@@ -850,7 +850,7 @@
 									}
 									totalPointLightDiffuse *= pointLightIntensity;
 
-									let lightIntensity = Math.max(ambientLight, (dirLightDiffuse + totalPointLightDiffuse) * shadowFactor);
+									let lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
 
 									let texColor = tri.color;
 									if (imgPixels != null) {

@@ -730,7 +730,7 @@
 									}
 									totalPointLightDiffuse *= pointLightIntensity;
 
-									const lightIntensity = Math.max(ambientLight, (dirLightDiffuse + totalPointLightDiffuse) * shadowFactor);
+									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
 
 									let texR = triColor.r,
 										texG = triColor.g,
