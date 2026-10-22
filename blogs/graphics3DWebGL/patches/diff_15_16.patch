@@ -50,7 +50,7 @@
  		}
  
  		class Texture {
-@@ -1301,9 +1279,8 @@
+@@ -1300,9 +1278,8 @@
  		}
  
  		class Rasterizer {
@@ -61,7 +61,7 @@
  
  				this.canvasWidth = canvasWidth;
  				this.canvasHeight = canvasHeight;
-@@ -1504,26 +1481,8 @@
+@@ -1503,26 +1480,8 @@
  				}
  			}
  
@@ -90,7 +90,7 @@
  			}
  		}
  
-@@ -1916,8 +1875,7 @@
+@@ -1915,8 +1874,7 @@
  		// ===== index.js =====
  		const gameCanvas = (document.getElementById("gameCanvas"));
  		const ctx = (gameCanvas.getContext("2d"));
@@ -100,7 +100,7 @@
  		const fov = 60;
  		let znear = 0.01,
  			zfar = 1000;
-@@ -1926,20 +1884,11 @@
+@@ -1925,20 +1883,11 @@
  		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
  		let keyStates = {};
  
@@ -121,7 +121,7 @@
  		let canvasRenderWidth = 600;
  		let canvasRenderHeight = 450;
  
-@@ -2068,7 +2017,7 @@
+@@ -2067,7 +2016,7 @@
  		function rasterize(visibleTris) {
  			rasterizer.clearScreen();
  			rasterizer.rasterizeClipSpaceTriangles(visibleTris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow);
@@ -130,7 +130,7 @@
  
  			let x = rasterizer.screenCenterX,
  				y = rasterizer.screenCenterY;
-@@ -2134,8 +2083,8 @@
+@@ -2133,8 +2082,8 @@
  		}
  
  		function updateRenderResolution() {
@@ -141,7 +141,7 @@
  
  			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
  			rasterizer.updateResolution(gameCanvas.width, gameCanvas.height);
-@@ -2146,21 +2095,10 @@
+@@ -2145,21 +2094,10 @@
  			canvasRenderHeight = readResolution(canvasResHeightInput, 16, 1440, canvasRenderHeight);
  			canvasResWidthInput.value = canvasRenderWidth.toString();
  			canvasResHeightInput.value = canvasRenderHeight.toString();
@@ -164,7 +164,7 @@
  		async function requestMouseLook() {
  			try {
  				await renderDiv.requestPointerLock({
-@@ -2175,8 +2113,6 @@
+@@ -2174,8 +2112,6 @@
  			}
  		}
  
@@ -173,7 +173,7 @@
  		gameCanvas.addEventListener("mousedown", () => {
  			if (document.pointerLockElement !== renderDiv) requestMouseLook();
  		});
-@@ -2187,21 +2123,6 @@
+@@ -2186,21 +2122,6 @@
  			}
  		});
  

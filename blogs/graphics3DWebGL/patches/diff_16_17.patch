@@ -38,23 +38,22 @@
  
  		class Transform {
  			constructor(localPosition = Vector3.zero.clone(), localEulerAngles = Vector3.zero.clone(), localScale = Vector3.one.clone(), name = "Transform") {
-@@ -1037,15 +1020,6 @@
+@@ -1037,14 +1020,6 @@
  				this.sensitivity = sensitivity;
  			}
  
--			getFrustumCenter(zNear, zFar, customZFar = -1) {
+-			getFrustumCenter(zNear, zFar) {
 -				let forward = this.transform.getForward();
 -
 -				let near = Vector3.add(this.transform.position, Vector3.mul(forward, zNear));
--				if (customZFar == -1) customZFar = zFar;
--				let far = Vector3.add(this.transform.position, Vector3.mul(forward, customZFar));
+-				let far = Vector3.add(this.transform.position, Vector3.mul(forward, zFar));
 -				return Vector3.div(Vector3.add(near, far), 2);
 -			}
 -
  			updateRotation(mouseMovementX, mouseMovementY) {
  				let afterYawRotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity), this.transform.rotation);
  
-@@ -1134,147 +1108,6 @@
+@@ -1133,147 +1108,6 @@
  			constructor(dir, intensity) {
  				this.dir = dir.normalize();
  				this.intensity = intensity;
@@ -75,7 +74,7 @@
 -				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
 -				let right = Vector3.cross(up, this.dir).normalize();
 -				up = Vector3.cross(this.dir, right).normalize();
--				//let frustumCenter = camera.getFrustumCenter(znear, zfar, shadowMapDistance);
+-				//let frustumCenter = camera.getFrustumCenter(znear, shadowMapDistance);
 -				let frustumCenter = Vector3.zero;
 -				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
 -				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
@@ -202,7 +201,7 @@
  			}
  		}
  
-@@ -1316,7 +1149,7 @@
+@@ -1315,7 +1149,7 @@
  				this.depthBuffer.fill(Infinity);
  			}
  
@@ -211,7 +210,7 @@
  				const screenBuffer = this.screenBuffer;
  				const depthBuffer = this.depthBuffer;
  				const canvasWidth = this.canvasWidth;
-@@ -1422,11 +1255,6 @@
+@@ -1421,11 +1255,6 @@
  									const pixelWorldZ =
  										(perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
  
@@ -223,16 +222,16 @@
  									let totalPointLightDiffuse = 0;
  									for (let i = 0; i < activeLightCount; i++) {
  										const lightPos = activeLights[i];
-@@ -1447,7 +1275,7 @@
+@@ -1446,7 +1275,7 @@
  									}
  									totalPointLightDiffuse *= pointLightIntensity;
  
--									const lightIntensity = Math.max(ambientLight, (dirLightDiffuse + totalPointLightDiffuse) * shadowFactor);
+-									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
 +									const lightIntensity = Math.max(ambientLight, dirLightDiffuse + totalPointLightDiffuse);
  
  									let texR = triColor.r,
  										texG = triColor.g,
-@@ -1925,9 +1753,6 @@
+@@ -1924,9 +1753,6 @@
  		const pointLightRangeText = (document.getElementById("pointRangeText"));
  		let pointLightRange = parseFloat(pointLightRangeSlider.value);
  
@@ -242,7 +241,7 @@
  		let brickTexture = new Texture(
  			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
  		);
-@@ -1975,13 +1800,6 @@
+@@ -1974,13 +1800,6 @@
  			return objectTris;
  		}
  
@@ -256,7 +255,7 @@
  		function worldSpaceToViewSpace(objectTris) {
  			const viewMat = camera.getViewMatrix();
  
-@@ -2016,7 +1834,7 @@
+@@ -2015,7 +1834,7 @@
  
  		function rasterize(visibleTris) {
  			rasterizer.clearScreen();
@@ -265,7 +264,7 @@
  			rasterizer.drawCall();
  
  			let x = rasterizer.screenCenterX,
-@@ -2041,7 +1859,6 @@
+@@ -2040,7 +1859,6 @@
  
  			updateGameObjectTransforms();
  			let objectTris = gameObjectToWorldSpaceTriangles();
@@ -273,7 +272,7 @@
  			let visibleTris = worldSpaceToViewSpace(objectTris);
  			sortNearestFirst(visibleTris);
  			viewSpaceToClipSpace(visibleTris);
-@@ -2072,10 +1889,6 @@
+@@ -2071,10 +1889,6 @@
  			pointLightRangeText.textContent = pointLightRange.toFixed(0);
  		});
  
