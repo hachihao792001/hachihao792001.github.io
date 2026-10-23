@@ -1,0 +1,161 @@
+--- "a/htmlPreviews\\htmlPreview31.html"
++++ "b/htmlPreviews\\htmlPreview32.html"
+@@ -972,6 +972,22 @@
+ 					}
+ 				}
+ 			}
++
++			drawDepth() {
++				if (this.mesh.vertexCount == 0) return;
++				gl.uniformMatrix4fv(uShadowModel, false, this.transform.getModelMatrix().toColumnMajor());
++				gl.bindVertexArray(this.mesh.vertexArray);
++				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
++			}
++
++			drawDepthWithChildren() {
++				this.drawDepth();
++				for (let child of this.transform.children) {
++					if (child.gameObject != null) {
++						child.gameObject.drawDepthWithChildren();
++					}
++				}
++			}
+ 		}
+ 
+ 		class DirectionalLight {
+@@ -980,6 +996,19 @@
+ 				this.intensity = intensity;
+ 				this.viewMatrix = null;
+ 				this.projectionMatrix = null;
++
++				this.shadowMapTexture = gl.createTexture();
++				gl.bindTexture(gl.TEXTURE_2D, this.shadowMapTexture);
++				gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, shadowMapSize, shadowMapSize, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
++				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
++				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
++				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++
++				this.shadowFramebuffer = gl.createFramebuffer();
++				gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFramebuffer);
++				gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.shadowMapTexture, 0);
++				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+ 			}
+ 
+ 			buildViewAndProjectionMatrix() {
+@@ -991,6 +1020,23 @@
+ 				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
+ 				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance * 2);
+ 			}
++
++			buildShadowMap(gameObjects) {
++				gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFramebuffer);
++				gl.viewport(0, 0, shadowMapSize, shadowMapSize);
++				gl.clear(gl.DEPTH_BUFFER_BIT);
++
++				gl.useProgram(shadowProgram);
++				gl.uniformMatrix4fv(uShadowLightView, false, this.viewMatrix.toColumnMajor());
++				gl.uniformMatrix4fv(uShadowLightProjection, false, this.projectionMatrix.toColumnMajor());
++				for (let gameObject of gameObjects) {
++					gameObject.drawDepthWithChildren();
++				}
++
++				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
++				gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
++				gl.useProgram(program);
++			}
+ 		}
+ 		// ===== mesh.js =====
+ 		class Triangle {
+@@ -1268,7 +1314,7 @@ uniform mat4 uModel;
+ uniform mat4 uNormalMatrix;
+ uniform mat4 uView;
+ uniform mat4 uProjection;
+-in vec3 aPosition;
++layout(location = 0) in vec3 aPosition;
+ in vec2 aUV;
+ in vec3 aNormal;
+ out vec2 vUV;
+@@ -1328,6 +1374,20 @@ void main(){
+ 	float lightIntensity = max(uAmbientLight, dirLightDiffuse + totalPointLightDiffuse);
+ 
+ 	outColor = vec4(min(color * lightIntensity, vec3(1.0)), 1.0);
++}`;
++		const shadowVertexShaderSource = `#version 300 es
++uniform mat4 uModel;
++uniform mat4 uView;
++uniform mat4 uProjection;
++layout(location = 0) in vec3 aPosition;
++
++void main(){
++	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
++}`;
++		const shadowFragmentShaderSource = `#version 300 es
++precision highp float;
++
++void main(){
+ }`;
+ 		function compileShader(type, source) {
+ 			const shader = gl.createShader(type);
+@@ -1341,13 +1401,19 @@ void main(){
+ 			return shader;
+ 		}
+ 
+-		const program = gl.createProgram();
+-		gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexShaderSource));
+-		gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource));
+-		gl.linkProgram(program);
+-		if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+-			throw new Error("Program link error: " + gl.getProgramInfoLog(program));
++		function createProgram(vertexSource, fragmentSource) {
++			const program = gl.createProgram();
++			gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexSource));
++			gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentSource));
++			gl.linkProgram(program);
++			if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
++				throw new Error("Program link error: " + gl.getProgramInfoLog(program));
++			}
++			return program;
+ 		}
++
++		const program = createProgram(vertexShaderSource, fragmentShaderSource);
++		const shadowProgram = createProgram(shadowVertexShaderSource, shadowFragmentShaderSource);
+ 		gl.useProgram(program);
+ 
+ 		const aPosition = gl.getAttribLocation(program, "aPosition");
+@@ -1368,6 +1434,10 @@ void main(){
+ 		const uPointLightIntensity = gl.getUniformLocation(program, "uPointLightIntensity");
+ 		const uPointLightRange = gl.getUniformLocation(program, "uPointLightRange");
+ 
++		const uShadowModel = gl.getUniformLocation(shadowProgram, "uModel");
++		const uShadowLightView = gl.getUniformLocation(shadowProgram, "uView");
++		const uShadowLightProjection = gl.getUniformLocation(shadowProgram, "uProjection");
++
+ 		gl.enable(gl.DEPTH_TEST);
+ 		gl.enable(gl.CULL_FACE);
+ 		gl.frontFace(gl.CW);
+@@ -1410,6 +1480,7 @@ void main(){
+ 		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
+ 		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
+ 		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
++		let shadowMapSize = 2048;
+ 		let shadowMapDistance = 16;
+ 		let dirLightDefaultDir = new Vector3(-1, -1, -1);
+ 		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
+@@ -1450,6 +1521,7 @@ void main(){
+ 			new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 1"),
+ 			new GameObject(new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 2"),
+ 		];
++		let shadowCasters = [ground, woodTower];
+ 
+ 		let lastTime = performance.now();
+ 		let dt = 0;
+@@ -1470,6 +1542,8 @@ void main(){
+ 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+ 
+ 			dirLight.buildViewAndProjectionMatrix();
++			dirLight.buildShadowMap(shadowCasters);
++
+ 			if (viewFromLight) {
+ 				gl.uniformMatrix4fv(uView, false, dirLight.viewMatrix.toColumnMajor());
+ 				gl.uniformMatrix4fv(uProjection, false, dirLight.projectionMatrix.toColumnMajor());

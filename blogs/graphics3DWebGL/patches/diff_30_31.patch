@@ -1,0 +1,110 @@
+--- "a/htmlPreviews\\htmlPreview30.html"
++++ "b/htmlPreviews\\htmlPreview31.html"
+@@ -228,6 +228,10 @@
+ 				<span id="pointRangeText" class="slider-value">14</span>
+ 			</span>
+ 		</div>
++		<div class="controlRow">
++			<label class="controlLabel" for="viewFromLight">View from light:</label>
++			<span><input type="checkbox" id="viewFromLight" /></span>
++		</div>
+ 	</div>
+ 
+ 	<div id="helpPopup" style="display: none">
+@@ -403,6 +407,16 @@
+ 				return matrix;
+ 			}
+ 
++			static Orthographic(size, zNear, zFar) {
++				let matrix = new Mat4x4();
++				matrix.m[0][0] = 2.0 / size;
++				matrix.m[1][1] = 2.0 / size;
++				matrix.m[2][2] = 2.0 / (zFar - zNear);
++				matrix.m[2][3] = -(zFar + zNear) / (zFar - zNear);
++				matrix.m[3][3] = 1.0;
++				return matrix;
++			}
++
+ 			static View(r, u, f, t) {
+ 				let matrix = new Mat4x4();
+ 				matrix.m[0][0] = r.x;
+@@ -871,6 +885,13 @@
+ 				this.sensitivity = sensitivity;
+ 			}
+ 
++			getFrustumCenter(zNear, zFar) {
++				let forward = this.transform.getForward();
++				let near = Vector3.add(this.transform.position, Vector3.mul(forward, zNear));
++				let far = Vector3.add(this.transform.position, Vector3.mul(forward, zFar));
++				return Vector3.div(Vector3.add(near, far), 2);
++			}
++
+ 			updateRotation(mouseMovementX, mouseMovementY) {
+ 				let afterYawRotation = Quaternion.multiply(Quaternion.buildQuaternionAxisAngle(Vector3.up, -mouseMovementX * this.sensitivity), this.transform.rotation);
+ 
+@@ -957,6 +978,18 @@
+ 			constructor(dir, intensity) {
+ 				this.dir = dir.normalize();
+ 				this.intensity = intensity;
++				this.viewMatrix = null;
++				this.projectionMatrix = null;
++			}
++
++			buildViewAndProjectionMatrix() {
++				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
++				let right = Vector3.cross(up, this.dir).normalize();
++				up = Vector3.cross(this.dir, right).normalize();
++				let frustumCenter = camera.getFrustumCenter(znear, shadowMapDistance);
++				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
++				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
++				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance * 2);
+ 			}
+ 		}
+ 		// ===== mesh.js =====
+@@ -1377,6 +1410,7 @@ void main(){
+ 		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
+ 		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
+ 		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
++		let shadowMapDistance = 16;
+ 		let dirLightDefaultDir = new Vector3(-1, -1, -1);
+ 		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
+ 		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
+@@ -1390,6 +1424,9 @@ void main(){
+ 		let pointLightRange = parseFloat(pointLightRangeSlider.value);
+ 		let maxActiveLights = 16;
+ 
++		const viewFromLightCheckbox = (document.getElementById("viewFromLight"));
++		let viewFromLight = false;
++
+ 		let brickTexture = new Texture(
+ 			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
+ 			gl
+@@ -1431,7 +1468,15 @@ void main(){
+ 
+ 		function render() {
+ 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+-			gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());
++
++			dirLight.buildViewAndProjectionMatrix();
++			if (viewFromLight) {
++				gl.uniformMatrix4fv(uView, false, dirLight.viewMatrix.toColumnMajor());
++				gl.uniformMatrix4fv(uProjection, false, dirLight.projectionMatrix.toColumnMajor());
++			} else {
++				gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());
++				gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
++			}
+ 
+ 			gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
+ 			gl.uniform1f(uDirLightIntensity, dirLight.intensity);
+@@ -1497,6 +1542,11 @@ void main(){
+ 			pointLightRangeText.textContent = pointLightRange.toFixed(0);
+ 		});
+ 
++		viewFromLightCheckbox.addEventListener("change", () => {
++			viewFromLight = viewFromLightCheckbox.checked;
++			viewFromLightCheckbox.blur();
++		});
++
+ 		function readResolution(input, min, max, current) {
+ 			let value = parseInt(input.value);
+ 			if (isNaN(value)) return current;
