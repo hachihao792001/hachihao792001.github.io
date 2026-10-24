@@ -1,0 +1,105 @@
+--- "a/htmlPreviews\\htmlPreview32.html"
++++ "b/htmlPreviews\\htmlPreview33.html"
+@@ -232,6 +232,10 @@
+ 			<label class="controlLabel" for="viewFromLight">View from light:</label>
+ 			<span><input type="checkbox" id="viewFromLight" /></span>
+ 		</div>
++		<div class="controlRow">
++			<label class="controlLabel" for="showShadowMap">Show shadow map:</label>
++			<span><input type="checkbox" id="showShadowMap" checked="checked" /></span>
++		</div>
+ 	</div>
+ 
+ 	<div id="helpPopup" style="display: none">
+@@ -1388,6 +1392,25 @@ void main(){
+ precision highp float;
+ 
+ void main(){
++}`;
++		const shadowMapDebugVertexShaderSource = `#version 300 es
++out vec2 vUV;
++
++void main(){
++	vec2 corner = vec2(gl_VertexID >> 1, gl_VertexID & 1);
++	vUV = corner;
++	gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
++}`;
++		const shadowMapDebugFragmentShaderSource = `#version 300 es
++precision highp float;
++
++uniform sampler2D uShadowMap;
++in vec2 vUV;
++out vec4 outColor;
++
++void main(){
++	float depth = texture(uShadowMap, vUV).r;
++	outColor = vec4(vec3(1.0 - depth), 1.0);	// càng gần đèn càng sáng
+ }`;
+ 		function compileShader(type, source) {
+ 			const shader = gl.createShader(type);
+@@ -1414,6 +1437,7 @@ void main(){
+ 
+ 		const program = createProgram(vertexShaderSource, fragmentShaderSource);
+ 		const shadowProgram = createProgram(shadowVertexShaderSource, shadowFragmentShaderSource);
++		const shadowMapDebugProgram = createProgram(shadowMapDebugVertexShaderSource, shadowMapDebugFragmentShaderSource);
+ 		gl.useProgram(program);
+ 
+ 		const aPosition = gl.getAttribLocation(program, "aPosition");
+@@ -1437,6 +1461,7 @@ void main(){
+ 		const uShadowModel = gl.getUniformLocation(shadowProgram, "uModel");
+ 		const uShadowLightView = gl.getUniformLocation(shadowProgram, "uView");
+ 		const uShadowLightProjection = gl.getUniformLocation(shadowProgram, "uProjection");
++		const uDebugShadowMap = gl.getUniformLocation(shadowMapDebugProgram, "uShadowMap");
+ 
+ 		gl.enable(gl.DEPTH_TEST);
+ 		gl.enable(gl.CULL_FACE);
+@@ -1497,6 +1522,8 @@ void main(){
+ 
+ 		const viewFromLightCheckbox = (document.getElementById("viewFromLight"));
+ 		let viewFromLight = false;
++		const showShadowMapCheckbox = (document.getElementById("showShadowMap"));
++		let showShadowMap = showShadowMapCheckbox.checked;
+ 
+ 		let brickTexture = new Texture(
+ 			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
+@@ -1574,6 +1601,28 @@ void main(){
+ 				light.drawWithChildren();
+ 			}
+ 			woodTower.drawWithChildren();
++
++			if (showShadowMap) {
++				drawShadowMapDebug();
++			}
++		}
++
++		function drawShadowMapDebug() {
++			const debugSize = Math.floor(gameCanvas.height / 3);
++			gl.viewport(0, 0, debugSize, debugSize);
++			gl.disable(gl.DEPTH_TEST);
++
++			gl.useProgram(shadowMapDebugProgram);
++			gl.activeTexture(gl.TEXTURE1);
++			gl.bindTexture(gl.TEXTURE_2D, dirLight.shadowMapTexture);
++			gl.uniform1i(uDebugShadowMap, 1);
++			gl.bindVertexArray(null);
++			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
++
++			gl.activeTexture(gl.TEXTURE0);
++			gl.useProgram(program);
++			gl.enable(gl.DEPTH_TEST);
++			gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
+ 		}
+ 
+ 		function update(time = performance.now()) {
+@@ -1621,6 +1670,11 @@ void main(){
+ 			viewFromLightCheckbox.blur();
+ 		});
+ 
++		showShadowMapCheckbox.addEventListener("change", () => {
++			showShadowMap = showShadowMapCheckbox.checked;
++			showShadowMapCheckbox.blur();
++		});
++
+ 		function readResolution(input, min, max, current) {
+ 			let value = parseInt(input.value);
+ 			if (isNaN(value)) return current;

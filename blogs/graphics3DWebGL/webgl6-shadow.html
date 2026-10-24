@@ -377,6 +377,143 @@ function render() {
 }</code></pre>
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview32"></div>
+                    Ta đã có shadow map rồi nhưng chẳng render nó ra đâu cả. Cho nên như series trước, ta
+                    sẽ vẽ shadow map ra 1 chỗ nào đó để xem.<br/><br/>
+                    
+                    Series trước ta vẽ shadow map ra một canvas khác, tuy nhiên đối với series này thì mình không làm vậy. Thật ra cũng không có gì khó,
+                    tạo 1 canvas mới đồng nghĩa tạo 1 context mới <code>gl2</code>, rồi cứ sử dụng nó thôi. Nhưng với series này mình sẽ vẽ
+                    nó vào góc trái dưới của chính canvas mà ta đã có. Vì làm như vậy ta sẽ biết thêm dc 1 vài trick, với nhìn nó gọn hơn 😳<br/><br/>
+
+                    Dù là cũng vẽ lên canvas gốc, nhưng ta không thể sử dụng program canvas gốc, lí do cũng như phần trên: program gốc vẽ đầy đủ
+                    màu, texture các thứ, còn ta chỉ đang render shadow map.
+                    Như vậy là ta lại tạo 1 program mới 😅:
+                    <pre><code class="language-javascript">const program = createProgram(vertexShaderSource, fragmentShaderSource);
+const shadowProgram = createProgram(shadowVertexShaderSource, shadowFragmentShaderSource);
+const shadowMapDebugProgram = createProgram(shadowMapDebugVertexShaderSource, shadowMapDebugFragmentShaderSource);  // <----------------------</code></pre>
+                    
+                    Bây giờ tới phần chính, làm sao để vẽ 1 texture vào góc trái canvas? Nếu làm như cách thông thường, ta phải tạo 1 quad nhỏ nằm
+                    trong vùng [-1; 1], phải xác định tọa độ 4 đỉnh của nó trong [-1; 1] và
+                    tạo VBO và VAO cho 4 đỉnh đó, rồi render nó mà không nhân ma trận nào (nó đã nằm sẵn trong vùng [-1; 1]).<br/><br/>
+                    
+                    Thật ra,
+                    có 1 trick khá hay, đó là sử dụng <a href="https://www.khronos.org/opengl/wiki/Vertex_Shader/Defined_Inputs"><code>gl_VertexID</code></a>,
+                    <code>gl_VertexID</code> là số thứ tự của đỉnh hiện tại mà vertex shader đang xử lí, với quad thì nó sẽ lần lượt bằng <code>0, 1, 2, 3</code>.
+                    Nhưng mà có 4 số đó thì sao, ta có thể làm được gì? Giờ ta sẽ không quan tâm tọa độ của nó trong canvas trước, mà quan tâm tới 4 tọa độ
+                    uv của nó, đó là <code>(0, 0)</code>, <code>(0, 1)</code>, <code>(1, 0)</code>, <code>(1, 1)</code>. Ta sẽ tạo ra 4 tọa độ này ngay trong 
+                    vertex shader bằng <code>gl_VertexID</code>. How? Cụ thể như sau.<br/><br/>
+
+                    <code>0, 1, 2, 3</code> viết thành nhị phân là <code>00, 01, 10, 11</code>. Mình nói tới đây chắc bạn cũng nhìn ra được r luôn r =)))) Đúng vậy, ta sẽ bốc
+                    số đầu tiên trong nhị phân ra làm <code>x</code>, và số thứ 2 ra làm <code>y</code>, it's just that simple.
+                    Cách "bốc" ra thì sẽ sử dụng bitwise operation (nếu
+                    bạn chưa biết thì google tìm hiểu nhé), lấy số đầu tiên thì ta dịch bit qua phải bằng toán tử <code>&gt;&gt;</code>, lấy số thứ hai thì ta dùng
+                    toán tử <code>&</code>.<br/><br/>
+                    
+                    Thế là ta đã có được 4 tọa độ UV 😳 Từ UV suy ra tọa độ NDC thì ta thực hiện lại cách chuyển từ [0; 1]
+                    sang [-1; 1], đó chính là nhân 2 và -1. Như vậy vertex shader sẽ như sau:
+                    <pre><code class="language-hlsl">#version 300 es
+out vec2 vUV;
+
+void main(){
+    // 4 góc uv tự sinh từ gl_VertexID với ý tưởng trên, ko cần truyền aPosition gì cả
+    vec2 corner = vec2(gl_VertexID >> 1, gl_VertexID &amp; 1);
+    vUV = corner;
+    // nhân 2 trừ 1 để ra NDC
+    gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
+}</code></pre>
+                    Với Fragment shader, nó nhận vào uniform shadow map, và dùng nó để sample ra depth từ <code>vUV</code>, dùng depth đó để tính ra 1 màu xám.
+                    Depth càng nhỏ càng gần, màu càng nhỏ càng đen, ta muốn càng gần nó càng sáng nên ta đảo ngược lại lấy 1 - depth:
+                    <pre><code class="language-hlsl">#version 300 es
+precision highp float;
+
+uniform sampler2D uShadowMap;
+in vec2 vUV;
+out vec4 outColor;
+
+void main(){
+    float depth = texture(uShadowMap, vUV).r;   // giải thích bên dưới
+    outColor = vec4(vec3(1.0 - depth), 1.0);    // càng gần đèn càng sáng
+}</code></pre>
+                    Cái này mình chưa nói tới ở trên, đó là các depth texture (cụ thể <code>shadowMapTexture</code>, được khởi tạo format là <code>DEPTH_COMPONENT24</code>),
+                    sẽ chỉ lưu giá trị depth ở channel <code>r</code>, chứ <code>g</code> và <code>b</code> sẽ = 0. Nên ở trên mình chỉ lấy <code>.r</code>, đây chỉ là 1 cái bạn cần lưu ý.<br/><br/>
+
+                    Các công đọan chuẩn bị vẽ shadow map debug đã xong bên GPU, giờ là bên CPU. Ta sẽ tạo 1 hàm <code>drawShadowMapDebug</code> để để vào cuối
+                    hàm <code>render</code>, nó phải làm những thứ sau:
+                    <ol>
+                        <li>Set view port về kích thước mà ta muốn shadow map chiếm trên canvas</li>
+                        <li>Tạm thời tắt <code>DEPTH_TEST</code>, để đảm bảo shadow map debug này luôn ở trên cùng</li>
+                        <li>Chuyển qua program shadow map debug</li>
+                        <li>Kích hoạt texture unit 1 và để <code>shadowMapTexture</code> vào đó, vì lúc này texture unit 0 đang xài cho texture thật của các GameObject.</li>
+                        <li>Vẽ shadow map debug</li>
+                        <li>Đưa về lại texture unit 0, về lại program chính, bật lại <code>DEPTH_TEST</code>, đưa về lại view port full canvas</li>
+                    </ol>
+                    Hàm <code>drawShadowMapDebug</code> sẽ như sau:
+                    <pre><code class="language-javascript">function drawShadowMapDebug() {
+    // bước 1
+    const debugSize = Math.floor(gameCanvas.height / 3);    // đưa về 1/3 chiều cao canvas, vừa đủ nhỏ
+    gl.viewport(0, 0, debugSize, debugSize);
+    // bước 2
+    gl.disable(gl.DEPTH_TEST);
+
+    // bước 3
+    gl.useProgram(shadowMapDebugProgram);
+    // bước 4
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, dirLight.shadowMapTexture);
+    gl.uniform1i(uDebugShadowMap, 1);
+    // bước 5
+    gl.bindVertexArray(null);                   // bind VAO null vì vertex shader không có attribute nào, không có dòng này cũng không sao nhưng làm vậy cho đúng
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);     // giải thích bên dưới
+
+    // bước 6
+    gl.activeTexture(gl.TEXTURE0);
+    gl.useProgram(program);
+    gl.enable(gl.DEPTH_TEST);
+    gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
+}</code></pre>
+                    Tất cả những dòng trên đều đã gặp qua, trừ dòng gọi hàm <code>gl.drawArrays</code>, mình xài primitive <code>gl.TRIANGLE_STRIP</code> chứ không
+                    phải <code>gl.TRIANGLES</code> như trước. <code>gl.TRIANGLE_STRIP</code> nghĩa là <i>"lấy 2 đỉnh trước swap lại, cộng với đỉnh hiện tại sẽ ra tam giác tiếp theo"</i>,
+                    còn <code>gl.TRIANGLES</code> là <i>"lấy từng bộ 3 đỉnh để làm tam giác"</i>.<br/><br/>
+
+                    Tại sao mình lại dùng cái đó? Bạn để ý lại ở vertex shader, ta dùng trick <code>gl_VertexID</code> để tạo ra 4 đỉnh UV:
+                    <code>(0, 0)</code>, <code>(0, 1)</code>, <code>(1, 0)</code>, <code>(1, 1)</code>,
+                    và từ 4 tọa độ đó suy ra được 4 tọa độ NDC: <code>(-1, -1)</code>, <code>(-1, 1)</code>, <code>(1, -1)</code>, <code>(1, 1)</code>.
+                    Nếu với cách làm bình thường, để vẽ được 1 quad lên màn hình, ta phải biến 4 tọa độ NDC đó thành 6 tọa độ, hoặc là dùng lại 4 đỉnh đó nhưng phải đi kèm element buffer.<br/><br/>
+                    <code>gl.TRIANGLE_STRIP</code> sẽ giải quyết được vấn đề đó, như trên mình nói, nó là <i>"lấy 2 đỉnh trước swap lại, cộng với đỉnh hiện tại sẽ ra tam giác tiếp theo"</i>,
+                    nghĩa là nó sẽ đi theo như sau:
+                    <ul>
+                        <li><code>[(-1, -1), (-1, 1), (1, -1)]</code> sẽ tạo ra tam giác đầu tiên</li>
+                        <li><code>[(1, -1), (-1, 1), (1, 1)]</code> (đã swap 2 đỉnh đầu) sẽ tạo ra tam giác thứ 2</li>
+                    </ul>
+                    Mục đích của việc swap 2 đỉnh đầu là để cả 2 tam giác đều cùng/ngược chiều kim đồng hồ. Bạn xem gif bên dưới để thấy rõ hơn (WebGL chiều y hướng lên):
+                    <div align="center">
+                        <img src="images/webgl6/TriangleStrip.gif" width="300px" />
+                    </div>
+                    Nó cùng chiều kim đồng hồ, là chiều mà ta quy ước.<br/><br/>
+
+                    Cuối cùng là ta tạo một checkbox <code>Show shadow map</code> để bật tắt việc vẽ shadow map debug:
+                    <pre><code class="language-html">&lt;div class=&quot;controlRow&quot;&gt;
+    &lt;label class=&quot;controlLabel&quot; for=&quot;showShadowMap&quot;&gt;Show shadow map:&lt;/label&gt;
+    &lt;span&gt;&lt;input type=&quot;checkbox&quot; id=&quot;showShadowMap&quot; checked=&quot;checked&quot;/&gt;&lt;/span&gt;
+&lt;/div&gt;</code></pre>
+                    <pre><code class="language-javascript">const showShadowMapCheckbox = (document.getElementById("showShadowMap"));
+let showShadowMap = showShadowMapCheckbox.checked;
+...
+showShadowMapCheckbox.addEventListener("change", () => {
+    showShadowMap = showShadowMapCheckbox.checked;
+    showShadowMapCheckbox.blur();
+});</code></pre>
+                    Và gọi hàm <code>drawShadowMapDebug</code> trong <code>render</code> nếu checkbox được tick:
+                    <pre><code class="language-javascript">function render() {
+    ...
+    if (showShadowMap) {
+        drawShadowMapDebug();
+    }
+}</code></pre>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview33"></div>
+                    Bạn thử tick <code>View from light</code> để so sánh với shadow map debug: chúng là cùng một góc nhìn, chỉ là một cái tô màu theo texture và ánh sáng,
+                    một cái tô màu theo độ sâu. Và như đã nói ở phần a, hình <code>View from light</code> bị kéo ngang, còn shadow map debug thì đúng tỉ lệ,
+                    vì shadow map là hình vuông.
 
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
