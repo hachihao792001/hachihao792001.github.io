@@ -514,7 +514,66 @@ showShadowMapCheckbox.addEventListener("change", () => {
                     Bạn thử tick <code>View from light</code> để so sánh với shadow map debug: chúng là cùng một góc nhìn, chỉ là một cái tô màu theo texture và ánh sáng,
                     một cái tô màu theo độ sâu. Và như đã nói ở phần a, hình <code>View from light</code> bị kéo ngang, còn shadow map debug thì đúng tỉ lệ,
                     vì shadow map là hình vuông.
+                    
+                    <h3>c. So sánh độ sâu ở fragment shader</h3>
+                    Quậy với shadow map đủ rồi, giờ là lúc sử dụng nó để render shadow ra canvas chính. Ý tưởng cũng y hệt series trước,
+                    với mỗi pixel ta đưa tọa độ thế giới của nó qua view và projection matrix của camera nguồn sáng (y như lúc build shadow map),
+                    rồi so sánh với độ sâu lưu trong shadow map. Ta thêm những thứ sau vào fragment shader chính:
+                    <pre><code class="language-hlsl">uniform sampler2D uShadowMap;      // <----------------------
+uniform mat4 uLightView;            // <----------------------
+uniform mat4 uLightProjection;      // <----------------------
+uniform bool uUseShadow;            // <----------------------
 
+...
+
+// hàm này chính là hàm isInShadow của series trước, hàm này trả về 1.0 nếu pixel hiện tại nằm trong bóng, 0.0 nếu không
+float getDirLightShadow() {
+    // đưa điểm này qua render pipeline của camera nguồn sáng, giống hệt lúc build shadow map
+    vec4 lightSpacePos = uLightProjection * uLightView * vec4(vWorldPosition, 1.0);     // vWorldPosition ta đã có sẵn
+    // chuyển từ NDC [-1; 1] qua [0; 1] cho cả x, y, z luôn. xy thì để làm uv trên texture shadow map, z thì để so sánh với depth trong shadow map
+    vec3 shadowMapCoord = lightSpacePos.xyz * 0.5 + 0.5;
+
+    // nằm ngoài shadow map thì coi như không có bóng
+    if (shadowMapCoord.x < 0.0 || shadowMapCoord.x > 1.0 || shadowMapCoord.y < 0.0 || shadowMapCoord.y > 1.0 || shadowMapCoord.z > 1.0) return 0.0;
+
+    float closestDepth = texture(uShadowMap, shadowMapCoord.xy).r;      // lấy depth của pixel trong shadow map, bằng uv mà ta vừa tính ra (shadowMapCoord.xy)
+    // so sánh giữa depth của pixel hiện tại (dưới góc nhìn của nguồn sáng) và depth của pixel trong shadow map
+    return shadowMapCoord.z > closestDepth ? 1.0 : 0.0;
+}
+
+...</code></pre>
+                    Ta cần x, y trong [0; 1] để làm uv lấy mẫu texture, và z cũng phải nằm trong [0; 1]
+                    để so sánh với depth của pixel trong shadow map. Cho nên ta * 0.5 + 0.5 cho 3 cái cùng lúc cho tiện.<br/><br/>
+
+                    Hàm <code>getDirLightShadow</code> trả về 1.0 nếu pixel hiện tại nằm trong bóng, 0.0 nếu không. Dù hlsl có boolean để viết lại y như <code>isInShadow</code>
+                    của series trước, nhưng mình dùng float, vì lúc sử dụng hàm ta có thể trừ trực tiếp để xét điều kiện, thay vì phải dùng <code>if</code> (GPU ghét if).
+                    Ngoài ra còn 1 lí do nữa mình sẽ nói sau.<br/><br/>
+
+                    Ở hàm main của fragment shader ta sử dụng hàm <code>getDirLightShadow</code> như sau:
+                    <pre><code class="language-hlsl">void main(){
+    vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
+    float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
+    float dirLightShadow = uUseShadow ? getDirLightShadow() : 0.0;          // <----------------------
+    dirLightDiffuse *= 1.0 - dirLightShadow;                                // nằm trong bóng thì diffuse = 0
+    ...
+}</code></pre>
+
+                    Về phía JS, ta truyền view và projection matrix của đèn (y như <code>buildShadowMap</code>), và bind shadow map vào texture unit 1 (như mình đã làm ở shadow map debug):
+                    <pre><code class="language-javascript">function render() {
+    ...
+    gl.uniform1i(uUseShadow, useShadow ? 1 : 0);
+    gl.uniformMatrix4fv(uLightView, false, dirLight.viewMatrix.toColumnMajor());
+    gl.uniformMatrix4fv(uLightProjection, false, dirLight.projectionMatrix.toColumnMajor());
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, dirLight.shadowMapTexture);
+    gl.uniform1i(uShadowMap, 1);
+    gl.activeTexture(gl.TEXTURE0);      // trả về unit 0 để vẽ texture của GameObject
+    ...
+}</code></pre>
+                    Mình cũng thêm checkbox <code>Shadow</code> giống series trước để bật tắt, và bỏ tick mặc định của <code>Show shadow map</code> cho đỡ che màn hình.
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview34"></div>
+                    Shadow đã có, nhưng nó lại có những vân sọc lạ lạ. Không còn lạ gì nữa, đây chính là hiện tượng Shadow Acne mà ta đã gặp ở series trước 😳.
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

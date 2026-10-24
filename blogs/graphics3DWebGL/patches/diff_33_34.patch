@@ -1,0 +1,106 @@
+--- "a/htmlPreviews\\htmlPreview33.html"
++++ "b/htmlPreviews\\htmlPreview34.html"
+@@ -234,7 +234,11 @@
+ 		</div>
+ 		<div class="controlRow">
+ 			<label class="controlLabel" for="showShadowMap">Show shadow map:</label>
+-			<span><input type="checkbox" id="showShadowMap" checked="checked" /></span>
++			<span><input type="checkbox" id="showShadowMap" /></span>
++		</div>
++		<div class="controlRow">
++			<label class="controlLabel" for="useShadow">Shadow:</label>
++			<span><input type="checkbox" id="useShadow" checked="checked" /></span>
+ 		</div>
+ 	</div>
+ 
+@@ -1347,14 +1351,31 @@ uniform int uPointLightCount;
+ uniform float uPointLightIntensity;
+ uniform float uPointLightRange;
+ 
++uniform sampler2D uShadowMap;
++uniform mat4 uLightView;
++uniform mat4 uLightProjection;
++uniform bool uUseShadow;
++
+ in vec2 vUV;
+ in vec3 vWorldNormal;
+ in vec3 vWorldPosition;
+ out vec4 outColor;
+ 
++float getDirLightShadow() {
++	vec4 lightSpacePos = uLightProjection * uLightView * vec4(vWorldPosition, 1.0);
++	vec3 shadowMapCoord = lightSpacePos.xyz * 0.5 + 0.5;
++
++	if (shadowMapCoord.x < 0.0 || shadowMapCoord.x > 1.0 || shadowMapCoord.y < 0.0 || shadowMapCoord.y > 1.0 || shadowMapCoord.z > 1.0) return 0.0;
++
++	float closestDepth = texture(uShadowMap, shadowMapCoord.xy).r;
++	return shadowMapCoord.z > closestDepth ? 1.0 : 0.0;
++}
++
+ void main(){
+ 	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
+ 	float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
++	float dirLightShadow = uUseShadow ? getDirLightShadow() : 0.0;
++	dirLightDiffuse *= 1.0 - dirLightShadow;
+ 
+ 	float pointLightRangeSquare = uPointLightRange * uPointLightRange;
+ 	float totalPointLightDiffuse = 0.0;
+@@ -1458,6 +1479,11 @@ void main(){
+ 		const uPointLightIntensity = gl.getUniformLocation(program, "uPointLightIntensity");
+ 		const uPointLightRange = gl.getUniformLocation(program, "uPointLightRange");
+ 
++		const uShadowMap = gl.getUniformLocation(program, "uShadowMap");
++		const uLightView = gl.getUniformLocation(program, "uLightView");
++		const uLightProjection = gl.getUniformLocation(program, "uLightProjection");
++		const uUseShadow = gl.getUniformLocation(program, "uUseShadow");
++
+ 		const uShadowModel = gl.getUniformLocation(shadowProgram, "uModel");
+ 		const uShadowLightView = gl.getUniformLocation(shadowProgram, "uView");
+ 		const uShadowLightProjection = gl.getUniformLocation(shadowProgram, "uProjection");
+@@ -1524,6 +1550,8 @@ void main(){
+ 		let viewFromLight = false;
+ 		const showShadowMapCheckbox = (document.getElementById("showShadowMap"));
+ 		let showShadowMap = showShadowMapCheckbox.checked;
++		const useShadowCheckbox = (document.getElementById("useShadow"));
++		let useShadow = useShadowCheckbox.checked;
+ 
+ 		let brickTexture = new Texture(
+ 			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
+@@ -1569,7 +1597,9 @@ void main(){
+ 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+ 
+ 			dirLight.buildViewAndProjectionMatrix();
+-			dirLight.buildShadowMap(shadowCasters);
++			if (useShadow) {
++				dirLight.buildShadowMap(shadowCasters);
++			}
+ 
+ 			if (viewFromLight) {
+ 				gl.uniformMatrix4fv(uView, false, dirLight.viewMatrix.toColumnMajor());
+@@ -1596,6 +1626,14 @@ void main(){
+ 			gl.uniform1f(uPointLightRange, pointLightRange);
+ 			gl.uniform1f(uAmbientLight, 0.1);
+ 
++			gl.uniform1i(uUseShadow, useShadow ? 1 : 0);
++			gl.uniformMatrix4fv(uLightView, false, dirLight.viewMatrix.toColumnMajor());
++			gl.uniformMatrix4fv(uLightProjection, false, dirLight.projectionMatrix.toColumnMajor());
++			gl.activeTexture(gl.TEXTURE1);
++			gl.bindTexture(gl.TEXTURE_2D, dirLight.shadowMapTexture);
++			gl.uniform1i(uShadowMap, 1);
++			gl.activeTexture(gl.TEXTURE0);
++
+ 			ground.drawWithChildren();
+ 			for (let light of pointLights) {
+ 				light.drawWithChildren();
+@@ -1675,6 +1713,11 @@ void main(){
+ 			showShadowMapCheckbox.blur();
+ 		});
+ 
++		useShadowCheckbox.addEventListener("change", () => {
++			useShadow = useShadowCheckbox.checked;
++			useShadowCheckbox.blur();
++		});
++
+ 		function readResolution(input, min, max, current) {
+ 			let value = parseInt(input.value);
+ 			if (isNaN(value)) return current;
