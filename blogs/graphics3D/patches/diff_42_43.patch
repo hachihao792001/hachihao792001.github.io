@@ -955,7 +955,7 @@
 -							const vertexUV = uvs[parseInt(vertexInfo[1]) - 1];
 +									let shadowFactor = 1.0;
 +									if (useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
-+										shadowFactor = 0.5;
++										shadowFactor = 0.2;
 +									}
  
 -							triVertices.push(vertexCoord);
@@ -1651,7 +1651,7 @@
  
 -									let shadowFactor = 1.0;
 -									if (useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
--										shadowFactor = 0.5;
+-										shadowFactor = 0.2;
 -									}
 +			async load(url) {
 +				const response = await fetch(url);

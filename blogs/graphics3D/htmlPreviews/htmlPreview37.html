@@ -966,7 +966,7 @@
 									pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
 
 									let inShadow = useShadow ? dirLight.isInShadow(pixelWorldPos, triWorldNormal) : false;
-									let shadowFactor = inShadow ? 0.5 : 1.0;
+									let shadowFactor = inShadow ? 0.2 : 1.0;
 
 									let totalPointLightDiffuse = 0;
 									const pointLightRangeSquare = pointLightRange * pointLightRange;

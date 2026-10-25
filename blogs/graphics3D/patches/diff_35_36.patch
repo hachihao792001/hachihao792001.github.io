@@ -39,7 +39,7 @@
  
 -									let inShadow = dirLight.isInShadow(pixelWorldPos, triWorldNormal);
 +									let inShadow = useShadow ? dirLight.isInShadow(pixelWorldPos, triWorldNormal) : false;
- 									let shadowFactor = inShadow ? 0.5 : 1.0;
+ 									let shadowFactor = inShadow ? 0.2 : 1.0;
  
  									let totalPointLightDiffuse = 0;
 @@ -1045,7 +1055,7 @@

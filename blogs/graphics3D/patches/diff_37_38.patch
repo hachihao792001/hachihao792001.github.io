@@ -140,10 +140,10 @@
 +									const pixelWorldZ = (perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
  
 -									let inShadow = useShadow ? dirLight.isInShadow(pixelWorldPos, triWorldNormal) : false;
--									let shadowFactor = inShadow ? 0.5 : 1.0;
+-									let shadowFactor = inShadow ? 0.2 : 1.0;
 +									let shadowFactor = 1.0;
 +									if (useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
-+										shadowFactor = 0.5;
++										shadowFactor = 0.2;
 +									}
  
  									let totalPointLightDiffuse = 0;
