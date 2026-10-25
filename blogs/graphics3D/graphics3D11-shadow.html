@@ -316,12 +316,29 @@ function drawShadowMapDebug() {
                     Nhưng mà thay vì đơn giản là chỉnh "chỗ mà nguồn sáng chiếu vào" là <code>(0, 0, 5)</code>, thì nó phải đi theo camera để cho shadow luôn hiện chuẩn cho mọi nơi.
                     Cụ thể chỗ đó là phải chính giữa frustum tầm nhìn của camera, tuy nhiên ta biết là far plane nó hơi xa nên suy ra chính giữa frustum cũng sẽ hơi xa,
                     cho nên ta tự thêm một biến <code>zfar</code> mới để lấy frustum nhỏ hơn để dùng nó cho riêng việc shadow mapping.<br/><br/>
-                    Về vấn đề thứ hai (vấn đề các điểm shadow nhỏ nhỏ), bạn có thể hiểu nó như hiện tượng "shadow quá nhạy vật nó cast shadow lên chính nó"
-                    nó xảy ra vì khi ta so sánh độ sâu từ 2 render pipeline khác nhau, thế nào thì sai số - floating point error - cũng xảy ra, một 
-                    pixel đang không biết nó có đang nằm trước nó hay không 😂 Hiện tượng này được gọi là Shadow Acne, hay xảy ra đối với những mặt phẳng
-                    gần như song song với ánh sáng, lúc đó phần nằm trước của mặt phẳng che đi phần nằm sau, mặt dù nó cùng một mặt phẳng. Cách sửa rất đơn giản,
+
+                    <h4>Shadow Acne</h4>
+                    Về vấn đề thứ hai (vấn đề các điểm shadow nhỏ nhỏ), bạn hãy tưởng tượng từ góc nhìn nguồn sáng, có 1 lưới ống hình vuông bắn xuống mặt đất, mỗi ống
+                    hình vuông đó bắt đầu từ một pixel trong shadow map (những ống này song song nhau vì là Orthographic projection).
+                    Mỗi ống sẽ có 1 vùng ảnh hưởng của riêng nó trên mặt đất, nếu ánh sáng bắn thẳng băng từ trên xuống
+                    thì các vùng ảnh hưởng đó sẽ là hình vuông, còn nếu bắn từ 1 góc nghiêng, các vùng ảnh hưởng đó sẽ là hình chữ nhật, hình bình hành, hình thoi,
+                    tùy vào góc của ánh sáng. Nhưng vùng ảnh hưởng hình gì không quan trọng, quan trọng là bạn phải hiểu là các điểm trong 1 vùng ảnh hưởng vẫn
+                    sẽ có depth khác nhau, nhưng đối với shadow map thì mọi điểm trong 1 vùng ảnh hưởng đều có chung 1 depth. Mình vẽ ra một hình minh họa cho bạn dễ hình dung:
+                    <div align="center">
+                        <img src="images/graphics3D11/ShadowAcne.png" alt="Shadow Acne illustration" width="400">
+                    </div>
+                    Điểm A và B đều nằm trong cùng 1 vùng ảnh hưởng (chung 1 ống), tuy nhiên A sẽ được xem là không nằm trong bóng vì depth của nó nhỏ hơn depth của shadow map ở "ống" đó,
+                    còn B sẽ được xem là nằm trong bóng vì depth của nó lớn hơn depth của "ống". Như vậy là A sẽ sáng còn B sẽ tối, mặc dù theo lý thuyết thì A và B đều phải sáng.
+                    Hiện tượng này được gọi là Shadow Acne 😳<br/><br/>
+                    Cách sửa hiển nhiên nhất là tăng kích thước shadow map lên để nó càng ngày càng chuẩn xác, tuy nhiên như ta biết thì CPU ta sẽ không chịu nổi 😅
+                    Có một cách sửa đơn giản hơn nhiều mà ai cũng xài, đó là
                     khi so sánh 2 depth bạn chỉ cần cộng thêm một số nhỏ cho depth của shadow map, để chắc chắn rằng là depth chính phải hơn depth shadow map và hơn một
-                    khoảng nhỏ nữa mới được tính là nằm ở trong bóng. Số nhỏ này được gọi là Shadow Bias, ta nên lưu ý không nên để số này quá lớn vì sẽ xảy ra hiện tượng
+                    khoảng nhỏ nữa mới được tính là nằm ở trong bóng, số nhỏ này được gọi là Shadow Bias:
+                    <div align="center">
+                        <img src="images/graphics3D11/ShadowBias.gif" alt="Shadow Bias illustration" width="400">
+                    </div>
+                    
+                    Ta nên lưu ý không nên để số này quá lớn vì sẽ xảy ra hiện tượng
                     shadow bị dời ra khỏi chỗ mà nó đáng lẽ xuất hiện, gọi là hiện tượng Peter Panning.<br/><br/>
                     Ta bắt tay vào sửa thôi 😳 Đầu tiên là ở class <code>Camera</code> ta thêm một hàm tính tọa độ chính giữa của frustum, và nhận vào một <code>zfar</code> tùy chỉnh nếu có:
                     <pre><code class="language-javascript">class Camera {
@@ -382,14 +399,35 @@ dirLight.buildShadowMap(objectTris);</code></pre>
                     thì bóng sẽ bị cắt đi và rồi biến mất luôn, đó là vì nó đã nằm ngoài "tầm nhìn" của nguồn sáng. Trong engine thật người ta sử dụng một kỹ thuật
                     gọi là Cascading Shadow Mapping (CSM), là dựng nhiều shadow map, mỗi shadow map tương ứng với một <code>zfar</code> - kích thước frustum để hiện rõ khi gần
                     và hiện blocky khi xa. Tuy nhiên mình nghĩ nhiêu đây là đủ rồi 🥵<br/><br/>
-                    Và một cái nữa, Shadow Acne thật ra chưa hết hẳn, bạn sẽ thấy từng mặt chớp 1 cái trước khi nó quay qua bên có bóng, và thật ra bóng nó cũng
-                    hơi bị Peter Panning một chút, vậy là sao để fix tiếp nhỉ? Thật ra ngoài việc cộng shadow bias vào depth của shadow map (để giảm ảnh hưởng của 
-                    floating point error khi so sánh), thì để triệt để ta phải cộng thêm một khoảng offset theo pháp tuyến của tam giác nữa, đặc biệt đối với những
-                    tam giác song song với ánh sáng. Kiểu do nó "cọ sát" với ánh sáng nhiều quá nên ta đẩy nó ra ngoài một chút để giảm thiểu "cọ sát" nhất. Offset
-                    này sẽ tăng theo "độ song song" của tam giác với ánh sáng (xài tích vô hướng), để đảm bảo những tam giác hướng về phía ánh sáng không bị ảnh hưởng
-                    gì mấy, vì nó không làm gì sai.<br/><br/>
-                    Offset này người ta hay tính theo đơn vị texel size, là kích thước của một "pixel" ở clip space so với một pixel ở màn hình, nói nôm na nó là tỉ lệ
-                    size (orthographic) / canvas size, ở trường hợp của ta là <code>shadowMapDistance / shadowMapSize</code>.<br/><br/>
+
+                    Và một cái nữa, Shadow Acne thật ra chưa hết hẳn, bạn sẽ thấy từng mặt chớp 1 cái trước khi nó quay qua bên có bóng. Cái này xảy ra cho những frame
+                    mà ánh sáng gần như song song với tam giác, shadow bias không thể cover hết:
+                    <div align="center" style="max-height: 300px">
+                        <img src="images/graphics3D11/NormalOffset.png" alt="Normal offset">
+                    </div>
+                    Bạn thấy là nếu cộng shadow bias thì phải cộng 1 khoảng khá lớn để cover được cho những trường hợp như điểm B.<br/><br/>
+
+                    Một cái mà người ta thường làm là:
+                    dịch điểm mà ta đang xét lên dọc theo pháp tuyến của tam giác, mình gọi khoảng cách dịch là offset.
+                    Offset này sẽ tăng theo "độ song song" của tam giác với ánh sáng (xài tích vô hướng), để đảm bảo những tam giác hướng về phía ánh sáng không bị ảnh hưởng
+                    gì mấy, còn những tam giác song song với ánh sáng sẽ được offset nhiều nhất.<br/><br/>
+
+                    Đối với trường hợp extreme nhất là ánh sáng tiệm cận song song tam giác, người ta sẽ cho offset bằng texel size của shadow map luôn, và sẽ giảm dần theo tích vô hướng như mình nói ở trên.
+                    Tại sao lại là texel size thì mình sẽ bên dưới, giờ mình sẽ giải thích kỹ texel size trước. Texel size chính là cái mà mình đã giải thích ở cuối <a href="graphics3D10-texture.html">blog texture</a>,
+                    tuy nhiên với trường hợp hiện tại sẽ có 1 điểm khác. Blog trước mình nói là <i>"texel size sẽ được tính bằng kích thước của game object mà nó được sample vào chia cho kích thước của texture"</i>,
+                    nhưng ở đây làm gì có game object hay texture nào. Thật ra texture của chúng ta chính là shadow map, và game object ở đây chính là grid "ống" mà mình nói ở trên,
+                    nghĩa là texel size trong trường hợp này chính là kích thước của 1 "ống".
+                    Kích thước texture shadow map là <code>shadowMapSize</code>, và kích thước toàn grid ống (số lượng ống) là <code>size</code> của Orthographic projection matrix,
+                    là bằng <code>shadowMapDistance</code>. Như vậy texel size - kích thước 1 "ống" - sẽ bằng <code>shadowMapDistance / shadowMapSize</code>.<br/><br/>
+
+                    Sidetrack qua texel size đủ rồi, bây giờ quay lại vấn đề chính: Tại sao offset lại phải tính theo texel size? Bạn xem gif sau:
+                    <div align="center">
+                        <img src="images/graphics3D11/NormalOffset.gif" style="max-height: 300px; max-width: 100vw;" alt="Normal offset gif">
+                    </div>
+                    Thật ra mình làm cái gif này hơi overkill, bạn chỉ cần hiểu là ta cộng hẳn 1 texel size để nó nằm ra ngoài vùng ảnh hưởng của "ống"
+                    hiện tại, và lên "ống" tiếp theo cho nó triệt để, it's that simple. Mà bạn phải nhớ là chỉ cộng full 1 texel size khi ánh sáng song song
+                    với bề mặt, nó sẽ giảm dần với các trường hợp ít nghiêm trọng.<br/><br/>
+                    
                     Ta chỉ cần sửa lại hàm <code>isInShadow</code> như sau:
                     <pre><code class="language-javascript">isInShadow(pixelWorldPos, triWorldNormal) {
     let dotProduct = Vector3.dot(triWorldNormal, this.dir);

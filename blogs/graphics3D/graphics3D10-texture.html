@@ -457,7 +457,16 @@ for (let y = bbox[2]; y <= bbox[3]; y++) {
                     không bao giờ vẽ ra ngoài màn hình nữa. Ta sẽ bỏ luôn bước clip với 4 cạnh màn hình, nhưng thật ra nó vẫn có tác dụng nếu ta tiếp tục phát triển
                     engine này về sau, suy cho cùng thì tất cả tam giác nằm gọn trong canvas vẫn sẽ dễ làm việc hơn.<br/><br/>
                     Kết quả cuối cùng:
-                    <div class="htmlPreview" id="htmlPreview29"></div>
+                    <div class="htmlPreview" id="htmlPreview29"></div><br/>
+
+                    Nhân tiện blog này đang nói về texture, mình sẽ nói luôn về texel (mình không tìm được chỗ nào để chèn ở trên cho hợp lý).<br/>
+                    Texel (texture element) chỉ đơn giản là pixel trong 1 texture, tuy nhiên 
+                    cái mà ta quan tâm là kích thước của nó trong thế giới (texel size).
+                    Ví dụ với 1 texture 16x16, khi sample nó vào 1 game object siêu bự, thì
+                    texture trên nó cũng sẽ bị giãn ra, từng "pixel" trong texture cũng sẽ bị giãn ra,
+                    kích thước thế giới của các "pixel" đó, được gọi là texel size. Với định nghĩa như vậy thì ta sẽ hiểu rằng
+                    texel size sẽ được tính bằng kích thước của game object mà nó được sample vào chia cho kích thước của texture (16x16).<br/>
+                    Mình nhắc tới texel size ở đây để làm setup cho blog sau, mình sẽ có nhắc tới 😳.
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
 
