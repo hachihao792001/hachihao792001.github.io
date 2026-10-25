@@ -574,6 +574,59 @@ float getDirLightShadow() {
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview34"></div>
                     Shadow đã có, nhưng nó lại có những vân sọc lạ lạ. Không còn lạ gì nữa, đây chính là hiện tượng Shadow Acne mà ta đã gặp ở series trước 😳.
+
+                    <h3>d. Shadow acne</h3>
+                    Nhắc lại nguyên nhân xảy ra shadow acne: mọi điểm trong vùng ảnh hưởng của từng texel của shadow map đều có chung giá trị depth, 
+                    trong khi thực chất depth của mọi điểm đều khác nhau, xảy ra hiện tượng 1 nửa số điểm nằm trong shadow và 1 nửa số điểm nằm ngoài shadow.<br/><br/>
+
+                    Cách sửa cũng y như series trước, 2 thứ:
+                    <ul>
+                        <li><b>Shadow bias</b>: cộng một số nhỏ vào depth của shadow map trước khi so sánh, tức là phải sâu hơn hẳn một khoảng mới tính là trong shadow.</li>
+                        <li><b>Normal offset</b>: đẩy điểm cần kiểm tra ra ngoài theo pháp tuyến một chút trước khi đưa qua pipeline của đèn. Đẩy tối đa 1 texel,
+                            và đẩy càng nhiều khi mặt phẳng càng song song với tia sáng (tích vô hướng càng gần 0), vì đó là lúc texel bị kéo dài nhất, acne nặng nhất.</li>
+                    </ul>
+
+                    Đây là phần đầu đoạn code <code>isInShadow</code> của series trước:
+                    <pre><code class="language-javascript">let dotProduct = triWorldNormalX * this.dir.x + triWorldNormalY * this.dir.y + triWorldNormalZ * this.dir.z;
+if (dotProduct >= 0) return false;
+
+let texelSize = shadowMapDistance / shadowMapSize;
+let normalOffset = texelSize * (1 - Math.abs(dotProduct));
+
+let lightSpacePos = new Vector3(
+    pixelWorldPosX + triWorldNormalX * normalOffset,
+    pixelWorldPosY + triWorldNormalY * normalOffset,
+    pixelWorldPosZ + triWorldNormalZ * normalOffset,
+);
+...</code></pre>
+                    Thì bên fragment shader của chúng ta cũng y như vậy, texel size thì tính bên ngoài CPU để đỡ tính lại mỗi pixel:
+                    <pre><code class="language-hlsl">uniform float uShadowBias;
+uniform float uShadowTexelSize;
+...
+
+float getDirLightShadow() {
+    float dotProduct = dot(vWorldNormal, uDirLightDir);
+    if (dotProduct >= 0.0) return 0.0;
+
+    // đẩy điểm ra theo pháp tuyến, càng song song với tia sáng thì đẩy càng xa (tối đa 1 texel)
+    float normalOffset = uShadowTexelSize * (1.0 - abs(dotProduct));
+    vec3 offsetPosition = vWorldPosition + vWorldNormal * normalOffset;
+
+    vec4 lightSpacePos = uLightProjection * uLightView * vec4(offsetPosition, 1.0);
+    ...
+    return shadowMapCoord.z > closestDepth + uShadowBias ? 1.0 : 0.0;       // cộng uShadowBias vào depth của shadow map trước khi so sánh
+}</code></pre>
+                    Tạo 2 uniform <code>uShadowBias</code> và <code>uShadowTexelSize</code> và truyền vào GPU từ CPU:
+                    <pre><code class="language-javascript">const uShadowBias = gl.getUniformLocation(program, "uShadowBias");
+const uShadowTexelSize = gl.getUniformLocation(program, "uShadowTexelSize");
+...
+let shadowBias = 0.0005;
+...
+gl.uniform1f(uShadowBias, shadowBias);
+gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại series trước nếu bạn quên tại sao texelSize lại bằng công thức này</code></pre>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview35"></div>
+                    
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
