@@ -173,7 +173,7 @@
 }</code></pre>
 					
 					Trong vertex shader, UV được nhận qua attribute rồi chuyển tiếp cho fragment shader:
-					<pre><code class="language-hlsl">...
+					<pre><code class="language-glsl">...
 in vec2 aUV;		// <---------------
 out vec2 vUV;		// <---------------
 
@@ -181,7 +181,7 @@ void main() {
 	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
 	vUV = aUV;		// <---------------
 }</code></pre>
-					<pre><code class="language-hlsl">...
+					<pre><code class="language-glsl">...
 in vec2 vUV;
 out vec4 outColor;
 
@@ -196,7 +196,7 @@ void main(){
 					Fragment shader nhận vUV từ vertex shader, là UV đã được nội suy (và perspective correct) cho pixel hiện tại, việc của ta hiện tại chỉ là lấy
 					đúng pixel trong Texture ra để hiển thị. Để làm được điều đó, ta khai báo một <code>uniform</code> <code>sampler2D</code> để nhận texture,
 					rồi gọi hàm <code>texture</code> để lấy màu tại vUV:
-					<pre><code class="language-hlsl">uniform sampler2D uTexture;		// <---------------
+					<pre><code class="language-glsl">uniform sampler2D uTexture;		// <---------------
 uniform bool uUseTexture;		// <---------------
 uniform vec3 uColor;
 in vec2 vUV;

@@ -226,7 +226,7 @@ function render() {
     ...
 }</code></pre>
 					Tham số của <code>gl.framebufferTexture2D</code>:
-					<pre><code class="language-hlsl">gl.framebufferTexture2D(
+					<pre><code class="language-glsl">gl.framebufferTexture2D(
 	// khe
 	// attach vào đâu (color attachment, depth attachment, stencil attachment, ...), ở đây là depth
 	// loại texture (2D, 3D, cube map, ...), ở đây là 2D
@@ -240,7 +240,7 @@ let shadowMapDistance = 16;</code></pre><br/>
                     Render ra canvas thì ta cần texture, ánh sáng, đủ thứ, còn render ra shadow map thì chỉ cần depth, nên ta sẽ phải dùng một cặp shader khác
                     với cặp shader đã có sẵn. Mà cặp shader khác thì đồng nghĩa là 1 program khác, cái này mình sẽ nói tới sau, giờ thì mình tập trung vào 2 shader mới trước.<br/>
 					Đầu tiên, vertex shader chỉ lấy vào tọa độ và 3 matrix để nhân:
-                    <pre><code class="language-hlsl">#version 300 es
+                    <pre><code class="language-glsl">#version 300 es
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
@@ -256,7 +256,7 @@ void main(){
                     VAO của mesh mà không cần tạo thêm. Cái <code>layout(location = 0)</code> này thì vertex shader chính cũng phải có.<br/><br/>
 
                     Còn fragment shader, ta không cần làm gì luôn, vì depth thì GPU tự ghi sau khi rasterize, không cần ta xuất ra:
-                    <pre><code class="language-hlsl">#version 300 es
+                    <pre><code class="language-glsl">#version 300 es
 precision highp float;
 
 void main(){
@@ -410,7 +410,7 @@ const shadowMapDebugProgram = createProgram(shadowMapDebugVertexShaderSource, sh
                     
                     Thế là ta đã có được 4 tọa độ UV 😳 Từ UV suy ra tọa độ NDC thì ta thực hiện lại cách chuyển từ [0; 1]
                     sang [-1; 1], đó chính là nhân 2 và -1. Như vậy vertex shader sẽ như sau:
-                    <pre><code class="language-hlsl">#version 300 es
+                    <pre><code class="language-glsl">#version 300 es
 out vec2 vUV;
 
 void main(){
@@ -422,7 +422,7 @@ void main(){
 }</code></pre>
                     Với Fragment shader, nó nhận vào uniform shadow map, và dùng nó để sample ra depth từ <code>vUV</code>, dùng depth đó để tính ra 1 màu xám.
                     Depth càng nhỏ càng gần, màu càng nhỏ càng đen, ta muốn càng gần nó càng sáng nên ta đảo ngược lại lấy 1 - depth:
-                    <pre><code class="language-hlsl">#version 300 es
+                    <pre><code class="language-glsl">#version 300 es
 precision highp float;
 
 uniform sampler2D uShadowMap;
@@ -519,7 +519,7 @@ showShadowMapCheckbox.addEventListener("change", () => {
                     Quậy với shadow map đủ rồi, giờ là lúc sử dụng nó để render shadow ra canvas chính. Ý tưởng cũng y hệt series trước,
                     với mỗi pixel ta đưa tọa độ thế giới của nó qua view và projection matrix của camera nguồn sáng (y như lúc build shadow map),
                     rồi so sánh với độ sâu lưu trong shadow map. Ta thêm những thứ sau vào fragment shader chính:
-                    <pre><code class="language-hlsl">uniform sampler2D uShadowMap;      // <----------------------
+                    <pre><code class="language-glsl">uniform sampler2D uShadowMap;      // <----------------------
 uniform mat4 uLightView;            // <----------------------
 uniform mat4 uLightProjection;      // <----------------------
 uniform bool uUseShadow;            // <----------------------
@@ -545,12 +545,12 @@ float getDirLightShadow() {
                     Ta cần x, y trong [0; 1] để làm uv lấy mẫu texture, và z cũng phải nằm trong [0; 1]
                     để so sánh với depth của pixel trong shadow map. Cho nên ta * 0.5 + 0.5 cho 3 cái cùng lúc cho tiện.<br/><br/>
 
-                    Hàm <code>getDirLightShadow</code> trả về 1.0 nếu pixel hiện tại nằm trong bóng, 0.0 nếu không. Dù hlsl có boolean để viết lại y như <code>isInShadow</code>
+                    Hàm <code>getDirLightShadow</code> trả về 1.0 nếu pixel hiện tại nằm trong bóng, 0.0 nếu không. Dù glsl có boolean để viết lại y như <code>isInShadow</code>
                     của series trước, nhưng mình dùng float, vì lúc sử dụng hàm ta có thể trừ trực tiếp để xét điều kiện, thay vì phải dùng <code>if</code> (GPU ghét if).
                     Ngoài ra còn 1 lí do nữa mình sẽ nói sau.<br/><br/>
 
                     Ở hàm main của fragment shader ta sử dụng hàm <code>getDirLightShadow</code> như sau:
-                    <pre><code class="language-hlsl">void main(){
+                    <pre><code class="language-glsl">void main(){
     vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
     float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
     float dirLightShadow = uUseShadow ? getDirLightShadow() : 0.0;          // <----------------------
@@ -600,7 +600,7 @@ let lightSpacePos = new Vector3(
 );
 ...</code></pre>
                     Thì bên fragment shader của chúng ta cũng y như vậy, texel size thì tính bên ngoài CPU để đỡ tính lại mỗi pixel:
-                    <pre><code class="language-hlsl">uniform float uShadowBias;
+                    <pre><code class="language-glsl">uniform float uShadowBias;
 uniform float uShadowTexelSize;
 ...
 

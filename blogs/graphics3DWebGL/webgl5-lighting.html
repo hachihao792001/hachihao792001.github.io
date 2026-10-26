@@ -107,7 +107,7 @@
 					Vì pháp tuyến là một vector, nó không có tọa độ, cho nên ta phải bỏ đi translation matrix, bằng cách bỏ đi việc cộng cột 4 => set <code>w = 0</code>.<br/><br/>
 
 					Như vậy vertex shader sẽ như sau:
-					<pre><code class="language-hlsl">...
+					<pre><code class="language-glsl">...
 in vec3 aNormal;		// <---------------------
 ...
 out vec3 vWorldNormal;	// <---------------------
@@ -171,7 +171,7 @@ const uDirLightIntensity = gl.getUniformLocation(program, "uDirLightIntensity");
 					Cuối cùng, phần tính ánh sáng sẽ nằm ở fragment shader. Đây là dòng tính diffuse của directional light trong series trước:
 					<pre><code class="language-javascript">const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;</code></pre>
 					Và nó cũng sẽ y hệt trong đây (fragment shader) 😳:
-					<pre><code class="language-hlsl">...
+					<pre><code class="language-glsl">...
 uniform vec3 uDirLightDir;				// <---------------------
 uniform float uDirLightIntensity;		// <---------------------
 in vec2 vUV;
@@ -381,7 +381,7 @@ void main(){
 	...
 }</code></pre>
 					Tiếp theo là nhận và sử dụng nó trong vertex shader:
-					<pre><code class="language-hlsl">...
+					<pre><code class="language-glsl">...
 uniform mat4 uNormalMatrix;
 ...
 
@@ -418,9 +418,9 @@ void main(){
 					
 					Cái duy nhất cần để ý là vị trí các point light là một mảng, khi truyền vào ta sẽ dùng hàm <code>gl.uniform3fv</code> và trong shader
 					cũng phải cho nó nhận vào 1 mảng, như sau:
-					<pre><code class="language-hlsl">uniform vec3 uPointLightPositions[16];</code></pre>
+					<pre><code class="language-glsl">uniform vec3 uPointLightPositions[16];</code></pre>
 					Như vậy fragment shader sẽ như sau:
-					<pre style="max-height: 500px"><code class="language-hlsl">#version 300 es
+					<pre style="max-height: 500px"><code class="language-glsl">#version 300 es
 precision highp float;
 
 uniform sampler2D uTexture;
@@ -495,7 +495,7 @@ void main(){
 					performance thật ra không mang lại bao nhiêu vì mọi thứ đã nằm trên GPU.<br/><br/>
 
 					Ở vertex shader thì ta chỉ truyền tọa độ thế giới cho fragment shader là xong:
-					<pre><code class="language-hlsl">...
+					<pre><code class="language-glsl">...
 out vec3 vWorldPosition;		// <------------------
 out vec3 vWorldNormal;
 

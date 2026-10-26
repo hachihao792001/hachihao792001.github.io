@@ -481,7 +481,7 @@ gl.frontFace(gl.CW);		// tam giác cùng chiều kim đồng hồ là mặt trư
 					chung 1 uniform.<br/><br/>
 
 					Vertex shader nhận Model matrix và nhân với tọa độ đỉnh, phần còn lại giữ nguyên, chỉ thay <code>aPosition</code> bằng <code>worldPosition</code>:
-					<pre><code class="language-hlsl">uniform mat4 uModel;		// <--------------------------
+					<pre><code class="language-glsl">uniform mat4 uModel;		// <--------------------------
 ...
 void main(){
 	float a = (uZFar + uZNear) / (uZFar - uZNear);
@@ -540,7 +540,7 @@ function update(time = performance.now()) {
 					Hàng cuối <code>0, 0, 1, 0</code> chính là chỗ chép z vào w để GPU tự chia (phần 8a).<br/><br/>
 
 					Vertex shader bây giờ gọn hẳn, 3 uniform cũ được thay bằng 1:
-					<pre><code class="language-hlsl">#version 300 es
+					<pre><code class="language-glsl">#version 300 es
 in vec3 aPosition;
 in vec3 aColor;
 uniform mat4 uModel;

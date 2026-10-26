@@ -118,7 +118,7 @@ gl.clear(gl.COLOR_BUFFER_BIT);</code></pre>
 					Đầu tiên mình sẽ giới thiệu cho bạn phiên bản đơn giản nhất của <code>Vertex shader</code> và <code>Fragment shader</code>.<br/><br/>
 
 					<b>Vertex shader</b>:
-					<pre><code class="language-hlsl">#version 300 es
+					<pre><code class="language-glsl">#version 300 es
 in vec3 aPosition;
 
 void main() {
@@ -135,7 +135,7 @@ void main() {
 						1 số <code>1.0</code> ở sau. Số này chính là <code>w</code>, để shader có thể perspective divide (sẽ nói sau).</li>
 					</ul><br/>
 					<b>Fragment shader</b>:
-			<pre><code class="language-hlsl">#version 300 es
+			<pre><code class="language-glsl">#version 300 es
 precision highp float;
 out vec4 outColor;
 
@@ -275,7 +275,7 @@ gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 12, 0);		// hàm nói cho 
 					</ol>
 					Bước 1 và 2 như sau:<br/><br/>
 					Vertex shader:
-					<pre><code class="language-hlsl">#version 300 es
+					<pre><code class="language-glsl">#version 300 es
 in vec3 aPosition;
 in vec3 aColor;			// <--------------------------
 out vec4 vColor;		// <--------------------------
@@ -289,7 +289,7 @@ void main(){
 					của Varying, nghĩa là nó sẽ thay đổi theo từng pixel). Thật ra <code>aColor</code> có thể là <code>vec4</code> cũng được nhưng để đơn giản
 					thì mình dùng <code>vec3</code> thôi.<br/><br/>
 					Fragment shader:
-					<pre><code class="language-hlsl">#version 300 es
+					<pre><code class="language-glsl">#version 300 es
 precision highp float;
 
 in vec4 vColor;			// <--------------------------
@@ -432,7 +432,7 @@ gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);</code></pre>
 					(hiểu nôm na như vậy).<br/><br/>
 					
 					Như vậy ta sẽ tạo một uniform để truyền aspect ratio:
-					<pre><code class="language-hlsl">#version 300 es
+					<pre><code class="language-glsl">#version 300 es
 in vec3 aPosition;
 in vec3 aColor;
 uniform float uAspect;		// <--------------------------
@@ -560,7 +560,7 @@ for (let i = 0; i < corners.length; i++) {
 					$$
 
 					Có được công thức rồi, giờ trong Vertex Shader ta tạo 2 uniform mới cho zNear và zFar:
-					<pre><code class="language-hlsl">#version 300 es
+					<pre><code class="language-glsl">#version 300 es
 in vec3 aPosition;
 in vec3 aColor;
 uniform float uZNear;		// <--------------------------
