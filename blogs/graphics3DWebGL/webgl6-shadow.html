@@ -626,6 +626,49 @@ gl.uniform1f(uShadowBias, shadowBias);
 gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại series trước nếu bạn quên tại sao texelSize lại bằng công thức này</code></pre>
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview35"></div>
+                    Series trước thì ta dừng lại ở đây vì lí do performance, nhưng giờ ta đang trên GPU rồi nên ta có thể làm dc thêm vài thứ nữa 😳
+
+                    <h3>e. Làm mờ viền bóng với PCF</h3>
+                    Shadow bây giờ đang khá răng cưa, dù shadow map size là 2048x2048 rồi, tăng nữa thì khá là tốn tài nguyên. Ta có thể làm mờ bóng đi bằng kỹ thuật 
+                    <a href="https://developer.nvidia.com/gpugems/gpugems/part-ii-lighting-and-shadows/chapter-11-shadow-map-antialiasing">PCF (Percentage-Closer Filtering)</a> 😳
+                    Nghe thì có vẻ đao to búa lớn nhưng thực chất nó rất đơn giản, chỉ là so sánh với các texel xung quanh trong shadow map thay vì chỉ 1 texel,
+                    rồi lấy trung bình kết quả so sánh.<br/><br/>
+
+                    Cụ thể, với 1 điểm <code>vWorldPosition</code>, sau khi đã chuyển sang <code>shadowMapCoord</code> (tọa độ [0; 1] sau khi đã qua render
+                    pipeline của nguồn sáng), thì thay vì dùng <code>shadowMapCoord.z</code> để so sánh với độ sâu ở tọa độ
+                    <code>shadowMapCoord.xy</code> trong shadow map. Thì ta sẽ so sánh nó với độ sâu của 9 texel trong vùng của
+                    <code>shadowMapCoord.xy</code>, rồi lấy phần trăm texel nằm trong shadow
+                    làm kết quả của hàm <code>getDirLightShadow</code>. Chú ý là bạn đừng nhầm lẫn với trung bình độ sâu của 9 texel
+                    nhé (trung bình độ sâu 9 texel xung quanh sẽ ra 1 độ sâu lơ lửng ở giữa), mà nó là <b>phần trăm texel nằm trong shadow của
+                    9 texel đó</b>.<br/><br/>
+
+                    Để lấy được các texel xung quanh, thì ta chỉ việc cộng trừ kích thước 1 texel trong shadow map,
+                    kích thước này chỉ là \(\frac{1}{2048}\) (nó khác kích thước texel 
+                    thế giới mà mình nói ở trên, which is <code>shadowMapDistance/shadowMapSize</code>).
+                    Số <code>2048</code> thì ta sẽ lấy bằng hàm <code>textureSize(uShadowMap, mipmap level)</code>.<br/><br/>
+
+                    Ta sửa phần cuối của hàm <code>getDirLightShadow</code> như sau:
+                    <pre><code class="language-hlsl">float getDirLightShadow() {
+    ...
+    // dùng hàm textureSize để lấy kích thước 2048x2048, rồi tính texel size 2D = (1/2048, 1/2048)
+    vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
+    // loop qua 9 texel, nếu nằm trong bóng thì +1, không thì không cộng, sau đó chia 9 là ra được phần trăm
+    float shadow = 0.0;
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            float closestDepth = texture(uShadowMap, shadowMapCoord.xy + vec2(x, y) * texelSize).r;
+            shadow += shadowMapCoord.z > closestDepth + uShadowBias ? 1.0 : 0.0;
+        }
+    }
+    return shadow / 9.0;
+}</code></pre>
+
+                    Có một chỗ cần để ý: PCF liên quan tới những texel hàng xóm, nếu như shadow bias nhỏ thì shadow acne sẽ quay lại, vì ta
+                    đang cộng shadow bias vào texel chính giữa, có thể nó sẽ không với tới những texel xung quanh. Mình có thử và sai vì thấy
+                    tăng nó lên <code>0.0015</code> là ô kê.<br/><br/>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview36"></div>
+                    
                     
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
