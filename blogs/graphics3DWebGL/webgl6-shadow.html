@@ -670,14 +670,28 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                     <div class="htmlPreview" id="htmlPreview36"></div>
 
                     <h2>2. Point light</h2>
-                    That's right, we finally gonna give shadow to point lights. Như trước tiên mình bỏ các đoạn code liên quan tới việc debug Directional Light, cụ thể
-                    là tick "View from ligth" và shadow map debug. Xem diff:
+                    That's right, we finally gonna give shadow to point lights. Nhưng trước tiên mình bỏ các đoạn code liên quan tới việc debug Directional Light, cụ thể
+                    là tick "View from light" và shadow map debug. Xem diff:
                     <div class="htmlPreview" id="htmlPreview37"></div>
 
                     Series trước mình nói làm shadow cho point light thì cần 6 shadow map vì nó chiếu ra 6 hướng. Giờ qua WebGL rồi thì ta không cần phải tạo
                     6 cái shadow map riêng, mà ghép chung lại với nhau thành 1 <a href="https://www.khronos.org/opengl/wiki/Cubemap_Texture">cube map</a>.
                     Nếu bạn từng làm qua game thì chắc sẽ nghe tới khái niệm này, nói nôm nay nó là 6 texture đại diện cho 6 mặt bên trong của 1 hình lập phương,
-                    ghép lại thành 1 texture bự gọi là cubemap. Kỹ thuật này người ta hay dùng để làm skybox, nhưng ở trường hợp của chúng ta thì làm shadow cho point light cũng hợp lí.<br/><br/>
+                    ghép lại thành 1 texture bự, đó chính là cubemap. Kỹ thuật này người ta hay dùng để làm skybox, 
+                    nhưng ở trường hợp của chúng ta thì làm shadow cho point light cũng hợp lí.<br/><br/>
+
+                    Trước khi làm gì liên quan tới point light, mình nên giải thích tường tận cách hoạt động của WebGL cube map cái đã. Nó sẽ như sau:
+                    Thay vì như texture bình thường là
+                    dùng uv để sample ra màu, thì cube map sẽ sử dụng 1 hướng (vec3). Cụ thể, bạn hãy tưởng tượng cube map là 1 cube có kích thước là 2 đơn vị, tâm ở (0, 0), tức là các
+                    đỉnh sẽ có tọa độ nằm trong khoảng [-1; 1], 6 mặt bên trong là 6 texture. Khi ta muốn lấy 1 texel trong cube map, ta cho WebGL một vector, 
+                    nó sẽ dùng vector đó để bắn từ trung tâm của cube ra ngoài, nó dính vào texel nào là màu trả ra là màu của texel đó:
+                    <div align="center">
+                        <img src="images/webgl6/cubemap.png" width="400px" />
+                    </div>
+
+                    Vector này được WebGL gọi là \(\vec{r}\), và địa chỉ trên các texture là <code>s</code> và <code>t</code> (thay vì là <code>u</code> và <code>v</code>) (don't ask
+                    me why). Có cái này mình đáng lẽ đã nói ở <a href="webgl4-texture.html">blog texture</a>, đó là tọa độ texture trong WebGL đếm từ dưới lên thay vì là từ trên xuống
+                    dưới, y như quy ước tọa độ trên màn hình của nó.
                     
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
