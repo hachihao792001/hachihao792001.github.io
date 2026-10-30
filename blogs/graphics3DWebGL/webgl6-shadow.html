@@ -681,7 +681,12 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                     nhưng ở trường hợp của chúng ta thì làm shadow cho point light cũng hợp lí.<br/><br/>
 
                     <h3>a. Cách hoạt động của Cube map trong WebGL (OpenGL)</h3>
-                    Trước khi làm gì liên quan tới point light, mình nên giải thích tường tận cách hoạt động của WebGL cube map cái đã. Nó sẽ như sau:
+                    Trước khi làm gì liên quan tới point light, mình nên giải thích tường tận cách hoạt động của WebGL cube map cái đã.
+                    Bình thường thì ta sẽ không quan tâm lắm về cách nó hoạt động (khi làm skybox, ...),
+                    tuy nhiên bây giờ ta đang làm shadow map, ta phải biết được cách nó sample như thế nào, để ta có thể code lại y hệt như vậy
+                    để tính depth của <code>vWorldPosition</code> mỗi frame.<br/><br/>
+                    
+                    Cách mà WebGL sample từ cube map:
                     Thay vì như texture bình thường là
                     dùng uv để sample ra màu, thì cube map sẽ sử dụng 1 hướng (vec3). Cụ thể, bạn hãy tưởng tượng cube map là 1 cube có kích thước là 2 đơn vị, tâm ở (0, 0), tức là các
                     đỉnh sẽ có tọa độ nằm trong khoảng [-1; 1], 6 mặt bên trong là 6 texture. Khi ta muốn lấy 1 texel trong cube map, ta cho WebGL một vector, 
@@ -691,16 +696,15 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                     </div>
 
                     Vector này được WebGL gọi là \(\vec{r}\), và địa chỉ trên các texture là <code>s</code> và <code>t</code> (thay vì là <code>u</code> và <code>v</code>) (don't ask
-                    me why). Có cái này mình đáng lẽ đã nói ở <a href="webgl4-texture.html">blog texture</a>, đó là tọa độ texture trong WebGL đếm từ dưới lên thay vì là từ trên xuống
-                    dưới, y như quy ước tọa độ trên màn hình của nó:
+                    me why). Riêng với cube map thì có một quy ước cần nhớ: nhìn từ tâm cube ra, <code>s</code> của mỗi mặt chạy từ trái qua phải, còn <code>t</code> chạy từ
+                    <b>trên xuống dưới</b>, giống như cách ta đọc một trang sách (lát nữa mình sẽ nói kĩ). Ví dụ với mặt <code>-X</code>:
                     <div align="center">
                         <img src="images/webgl6/cubemap2.png" width="400px" />
                     </div>
 
-                    Bây giờ ta phải tìm hiểu xem WebGL dùng \(\vec{r}\) để suy ra mặt và texel đang được chỉ như thế nào.
-                    Bình thường thì ta sẽ không quan tâm điều này (khi làm skybox, ...),
-                    tuy nhiên bây giờ ta đang làm shadow map, ta phải biết được cách nó sample như thế nào, để ta có thể code lại y hệt như vậy
-                    để tính depth của <code>vWorldPosition</code> mỗi frame.<br/><br/>
+                    OK, giờ ta hiểu là WebGL nhận vào 1 vector \(\vec{r}\) và dùng nó để sample từ cube map.
+                    Giờ ta phải tìm hiểu xem WebGL dùng \(\vec{r}\) để suy ra mặt và texel đang được chỉ như thế nào.
+                    <br/><br/>
 
                     Để suy ra mặt đang được chỉ, đầu tiên ta tìm component có trị tuyệt đối lớn nhất trong \(\vec{r}\), gọi là \(m_a\) (theo cách gọi của 
                     <a href="https://registry.khronos.org/OpenGL/specs/es/3.0/es_spec_3.0.pdf">OpenGL</a>). Sau đó lấy dấu của \(m_a\),
