@@ -680,6 +680,7 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                     ghép lại thành 1 texture bự, đó chính là cubemap. Kỹ thuật này người ta hay dùng để làm skybox, 
                     nhưng ở trường hợp của chúng ta thì làm shadow cho point light cũng hợp lí.<br/><br/>
 
+                    <h3>a. Cách hoạt động của Cube map trong WebGL (OpenGL)</h3>
                     Trước khi làm gì liên quan tới point light, mình nên giải thích tường tận cách hoạt động của WebGL cube map cái đã. Nó sẽ như sau:
                     Thay vì như texture bình thường là
                     dùng uv để sample ra màu, thì cube map sẽ sử dụng 1 hướng (vec3). Cụ thể, bạn hãy tưởng tượng cube map là 1 cube có kích thước là 2 đơn vị, tâm ở (0, 0), tức là các
@@ -691,8 +692,38 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
 
                     Vector này được WebGL gọi là \(\vec{r}\), và địa chỉ trên các texture là <code>s</code> và <code>t</code> (thay vì là <code>u</code> và <code>v</code>) (don't ask
                     me why). Có cái này mình đáng lẽ đã nói ở <a href="webgl4-texture.html">blog texture</a>, đó là tọa độ texture trong WebGL đếm từ dưới lên thay vì là từ trên xuống
-                    dưới, y như quy ước tọa độ trên màn hình của nó.
-                    
+                    dưới, y như quy ước tọa độ trên màn hình của nó:
+                    <div align="center">
+                        <img src="images/webgl6/cubemap2.png" width="400px" />
+                    </div>
+
+                    Bây giờ ta phải tìm hiểu xem WebGL dùng \(\vec{r}\) để suy ra mặt và texel đang được chỉ như thế nào.
+                    Bình thường thì ta sẽ không quan tâm điều này (khi làm skybox, ...),
+                    tuy nhiên bây giờ ta đang làm shadow map, ta phải biết được cách nó sample như thế nào, để ta có thể code lại y hệt như vậy
+                    để tính depth của <code>vWorldPosition</code> mỗi frame.<br/><br/>
+
+                    Để suy ra mặt đang được chỉ, đầu tiên ta tìm component có trị tuyệt đối lớn nhất trong \(\vec{r}\), gọi là \(m_a\) (theo cách gọi của 
+                    <a href="https://registry.khronos.org/OpenGL/specs/es/3.0/es_spec_3.0.pdf">OpenGL</a>). Sau đó lấy dấu của \(m_a\),
+                    là sẽ ra dc mặt đang được chỉ. Ví dụ:
+                    \(\vec{r} = (-1, 4, -5)\), ta thấy \(|z| = |-5|\) là trị tuyệt đối lớn nhất trong 3 component, và nó âm, suy ra mặt đang được chỉ là mặt <code>-Z</code>.
+                    It's obvious, component nào lớn nhất (về trị tuyệt đối) thì nó sẽ kéo theo cả vector hướng về phía đó.<br/><br/>
+
+                    Có được mặt rồi, thì tiếp theo là phải tìm ra được texel trên mặt nào đang được \(\vec{r}\) chỉ. Để tìm dc texel nào trên mặt đang đc chỉ,
+                    trước tiên ta phải tìm dc điểm trên mặt mà \(\vec{r}\) đang chỉ cái đã. Thay vì dùng 1 công thức phức tạp nào đó để tìm giao điểm giữa 1 vector
+                    và 1 mặt phẳng, ta chỉ cần lấy \(\vec{r}\) chia cho \(m_a\), nó sẽ ra 1 vector trỏ trúng tới mặt, chứ không xuyên qua hay chưa tới.
+                    Lí do tại sao nó lại như vậy:
+                    cube map có tọa độ các đỉnh nằm trong [-1; 1], nên khoảng cách từ trung tâm cube tới các mặt là 1. Bạn lấy \(\vec{r}\) chia cho \(m_a\)
+                    thì đương nhiên \(m_a\) sẽ bằng 1 hoặc -1, là trỏ trúng tới mặt, còn 2 component sẽ rút hoặc giãn theo 😳. Như vậy điểm mà \(\vec{r}\) đang trỏ tới có tọa độ là:
+                    $$
+                        (\frac{r_x}{|m_a|}, \frac{r_y}{|m_a|}, \frac{r_z}{|m_a|})
+                    $$
+                    <i style="font-size: 14px;">Một trong những component trên sẽ bằng -1 hoặc 1, như trên đã nói</i><br/><br/>
+                    Tìm được điểm mà \(\vec{r}\) đang chỉ rồi, thì suy ra texel cũng đơn giản. Điểm trên các mặt có tọa độ nằm giữa [-1; 1], còn <code>st</code> (<code>uv</code>)
+                    nằm trong [0; 1], nên ta chỉ đơn giản là cộng 1 rồi chia 2. Ta gọi 2 component còn lại của \(\vec{r}\) tương ứng với <code>st</code> là \(s_c\) và \(t_c\) (cũng theo cách
+                    đặt tên của <a href="https://registry.khronos.org/OpenGL/specs/es/3.0/es_spec_3.0.pdf">OpenGL</a>). Như vậy texel mà \(\vec{r}\) đang trỏ tới có <code>st</code> là:
+                    $$
+                    s = \frac{1}{2}\left(\frac{s_c}{|m_a|} + 1\right), \quad t = \frac{1}{2}\left(\frac{t_c}{|m_a|} + 1\right)
+                    $$
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
