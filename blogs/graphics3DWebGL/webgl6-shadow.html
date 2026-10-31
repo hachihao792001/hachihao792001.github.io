@@ -681,6 +681,10 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                     nhưng ở trường hợp của chúng ta thì làm shadow cho point light cũng hợp lí.<br/><br/>
 
                     <h3>a. Cách hoạt động của Cube map trong WebGL (OpenGL)</h3>
+                    <div align="center">
+                        <img style="display: block" src="https://learnopengl.com/img/advanced/cubemaps_skybox.png" width="400px" />
+                        <i>Cách biểu diễn phổ biến của cube map.<br/>Nguồn ảnh: <a href="https://learnopengl.com/img/advanced/cubemaps_skybox.png">learnopengl</a></i>
+                    </div>
                     Trước khi làm gì liên quan tới point light, mình nên giải thích tường tận cách hoạt động của WebGL cube map cái đã.
                     Bình thường thì ta sẽ không quan tâm lắm về cách nó hoạt động (khi làm skybox, ...),
                     tuy nhiên bây giờ ta đang làm shadow map, ta phải biết được cách nó sample như thế nào, để ta có thể code lại y hệt như vậy
@@ -801,6 +805,11 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_z\)</td>
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;">Nhìn về +Z rồi cúi xuống</td></tr>
                         </table>
+                    </div>
+
+                    Bạn có thể nhìn hình dưới đây để dễ nhớ và so:
+                    <div align="center">
+                        <img src="images/webgl6/cubemap_convention.png" width="500px" />
                     </div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
