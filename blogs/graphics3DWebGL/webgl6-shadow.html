@@ -728,6 +728,80 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                     $$
                     s = \frac{1}{2}\left(\frac{s_c}{|m_a|} + 1\right), \quad t = \frac{1}{2}\left(\frac{t_c}{|m_a|} + 1\right)
                     $$
+
+                    Đương nhiên là \(m_a\), \(s_c\) và \(t_c\) sẽ khác nhau đối với mỗi mặt, quan trọng là ta phải biết khác thế nào, hướng ra sao. Doc của OpenGL có luôn cái bảng
+                    cho mình
+                    xem, tuy nhiên thay vì mình show nó ra cho bạn xem luôn thì mình có rút ra được quy luật của nó😳 <br/><br/>
+                    
+                    Trước khi nói về quy luật, bạn phải nhớ là hệ tọa độ trong cube map là hệ tọa độ
+                    tay trái, ngược lại với WebGL 😳 Got it? Now this is the quy luật: bạn tưởng tượng bạn đang ở giữa cube, 
+                    bạn nhìn ra mặt nào, thì tọa độ <code>st</code> của mặt đó sẽ từ trái sang phải và từ trên xuống dưới (như hình trên mình vẽ), từ đó ta sẽ rút ra được
+                    \(s_c\) và \(t_c\).<br/>
+                    Ví dụ với mặt +Z:
+                    <ul>
+                        <li>Bạn nhìn vào mặt +Z => \(m_a = \vec{r}_z\)</li>
+                        <li>\(s\) hướng sang phải, trùng với +X => \(s_c=\vec{r}_x\)</li>
+                        <li>\(t\) hướng xuống dưới, trùng với -Y => \(t_c=\vec{r}_y\)</li>
+                    </ul>
+                    
+                    Một ví dụ khác là mặt -X, chính là cái hình ở trên:
+                    <ul>
+                        <li>Bạn nhìn vào mặt -X => \(m_a = \vec{r}_x\)</li>
+                        <li>\(s\) hướng sang phải (theo hướng mình nhìn), trùng với +Z => \(s_c=\vec{r}_z\)</li>
+                        <li>\(t\) hướng xuống dưới (theo hướng mình nhìn), trùng với -Y => \(t_c=-\vec{r}_y\)</li>
+                    </ul>
+                    
+                    Còn mặt trên và dưới thì bạn chỉ cần nhìn về lại mặt +Z, và ngẩng đầu lên hoặc xuống, rồi tính lại theo quy luật. Ví dụ với mặt +Y:
+                    <ul>
+                        <li>Bạn nhìn vào mặt +Y => \(m_a = \vec{r}_y\)</li>
+                        <li>\(s\) hướng sang phải (theo hướng mình nhìn), trùng với +X => \(s_c=\vec{r}_x\)</li>
+                        <li>\(t\) hướng xuống dưới (theo hướng mình nhìn), trùng với +Z => \(t_c=\vec{r}_z\)</li>
+                    </ul>
+
+                    Với quy luật trên, ta có bảng dưới đây:
+                    <div style="overflow-x: auto;">
+                        <table style="border-collapse: collapse; margin: 10px 0;">
+                            <tr>
+                                <th style="border: 1px solid #aaa; padding: 4px 6px;">Mặt</th>
+                                <th style="border: 1px solid #aaa; padding: 4px 6px;">\(m_a\)</th>
+                                <th style="border: 1px solid #aaa; padding: 4px 6px;">\(s_c\)</th>
+                                <th style="border: 1px solid #aaa; padding: 4px 6px;">\(t_c\)</th>
+                                <th style="border: 1px solid #aaa; padding: 4px 6px;">Ghi chú</th>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">+Z</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_z\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_x\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_y\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;"></td></tr>
+                            <tr>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">+X</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_x\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_z\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_y\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;"></td></tr>
+                            <tr><td style="border: 1px solid #aaa; padding: 4px 6px;">-Z</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_z\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_x\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_y\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;"></td></tr>
+                            <tr><td style="border: 1px solid #aaa; padding: 4px 6px;">-X</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_x\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_z\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_y\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;"></td></tr>
+                            <tr><td style="border: 1px solid #aaa; padding: 4px 6px;">+Y</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_y\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_x\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_z\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">Nhìn về +Z rồi ngẩng lên</td></tr>
+                            <tr><td style="border: 1px solid #aaa; padding: 4px 6px;">-Y</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_y\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_x\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_z\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">Nhìn về +Z rồi cúi xuống</td></tr>
+                        </table>
+                    </div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
