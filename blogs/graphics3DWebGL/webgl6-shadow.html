@@ -683,7 +683,7 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                     <h3>a. Cách hoạt động của Cube map trong WebGL (OpenGL)</h3>
                     <div align="center">
                         <img style="display: block" src="https://learnopengl.com/img/advanced/cubemaps_skybox.png" width="400px" />
-                        <i>Cách biểu diễn phổ biến của cube map.<br/>Nguồn ảnh: <a href="https://learnopengl.com/img/advanced/cubemaps_skybox.png">learnopengl</a></i>
+                        <i>Cách biểu diễn phổ biến của cube map.<br/>Nguồn ảnh: <a href="https://learnopengl.com/Advanced-OpenGL/Cubemaps">learnopengl</a></i>
                     </div>
                     Trước khi làm gì liên quan tới point light, mình nên giải thích tường tận cách hoạt động của WebGL cube map cái đã.
                     Bình thường thì ta sẽ không quan tâm lắm về cách nó hoạt động (khi làm skybox, ...),
@@ -745,7 +745,7 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                     <ul>
                         <li>Bạn nhìn vào mặt +Z => \(m_a = \vec{r}_z\)</li>
                         <li>\(s\) hướng sang phải, trùng với +X => \(s_c=\vec{r}_x\)</li>
-                        <li>\(t\) hướng xuống dưới, trùng với -Y => \(t_c=\vec{r}_y\)</li>
+                        <li>\(t\) hướng xuống dưới, trùng với -Y => \(t_c=-\vec{r}_y\)</li>
                     </ul>
                     
                     Một ví dụ khác là mặt -X, chính là cái hình ở trên:
@@ -772,21 +772,11 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                                 <th style="border: 1px solid #aaa; padding: 4px 6px;">\(t_c\)</th>
                                 <th style="border: 1px solid #aaa; padding: 4px 6px;">Ghi chú</th>
                             </tr>
-                            <tr>
-                                <td style="border: 1px solid #aaa; padding: 4px 6px;">+Z</td>
-                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_z\)</td>
-                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_x\)</td>
-                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_y\)</td>
-                                <td style="border: 1px solid #aaa; padding: 4px 6px;"></td></tr>
+
                             <tr>
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;">+X</td>
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_x\)</td>
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_z\)</td>
-                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_y\)</td>
-                                <td style="border: 1px solid #aaa; padding: 4px 6px;"></td></tr>
-                            <tr><td style="border: 1px solid #aaa; padding: 4px 6px;">-Z</td>
-                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_z\)</td>
-                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_x\)</td>
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_y\)</td>
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;"></td></tr>
                             <tr><td style="border: 1px solid #aaa; padding: 4px 6px;">-X</td>
@@ -794,6 +784,7 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_z\)</td>
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_y\)</td>
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;"></td></tr>
+                            
                             <tr><td style="border: 1px solid #aaa; padding: 4px 6px;">+Y</td>
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_y\)</td>
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_x\)</td>
@@ -804,6 +795,18 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_x\)</td>
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_z\)</td>
                                 <td style="border: 1px solid #aaa; padding: 4px 6px;">Nhìn về +Z rồi cúi xuống</td></tr>
+                            
+                            <tr>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">+Z</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_z\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_x\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_y\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;"></td></tr>
+                            <tr><td style="border: 1px solid #aaa; padding: 4px 6px;">-Z</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(r_z\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_x\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;">\(-r_y\)</td>
+                                <td style="border: 1px solid #aaa; padding: 4px 6px;"></td></tr>
                         </table>
                     </div>
 
@@ -823,8 +826,136 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                         </li>
                     </ul>
 
-                    Với Point light nó cũng sẽ tựa tựa như vậy, chỉ là bây giờ ta phải dùng cube map texture + 6 texture bình thường + 6 frame buffer. Với lại projection
-                    matrix thì phải là perspective, với FOV thì ta để là 90 độ vì như vậy 6 góc nhìn sẽ khớp vào nhau.
+                    Với Point light nó cũng sẽ tựa tựa như vậy, chỉ là bây giờ ta phải dùng cube map texture (trong đó có 6 texture) + 6 frame buffer. Với lại projection
+                    matrix thì phải là perspective, với FOV thì ta để là 90 độ vì như vậy 6 góc nhìn sẽ khớp vào nhau.<br/><br/>
+
+                    Trước giờ point light là các GameObject, và chỉ có vị trí của nó là được dùng trong việc tính ánh sáng. Bây giờ mình tạo 1 class Point Light riêng luôn,
+                    và kế thừa GameObject. Constructor của nó thì như mình nói ở trên, nó sẽ tạo cubemap, tạo 6 frame buffer để bind vào 6 texture bên trong cubemap. Trước khi
+                    show bạn code thì mình giới thiệu trước các thứ mới:
+                    <ul>
+                        <li><code>gl.TEXTURE_CUBE_MAP</code>: một khe mới để bind cubemap vào, cube map thì cũng chỉ là 1 texture, cũng tạo bằng <code>gl.createTexture()</code>
+                        , nhưng lúc bind thì bind vào đây</li>
+                        <li>Để access 6 texture bên trong cube map, ta dùng 6 cái khe sau:<br/>
+                        <code>gl.TEXTURE_CUBE_MAP_POSITIVE_X</code><br/>
+                        <code>gl.TEXTURE_CUBE_MAP_NEGATIVE_X</code><br/>
+                        <code>gl.TEXTURE_CUBE_MAP_POSITIVE_Y</code><br/>
+                        <code>gl.TEXTURE_CUBE_MAP_NEGATIVE_Y</code><br/>
+                        <code>gl.TEXTURE_CUBE_MAP_POSITIVE_Z</code><br/>
+                        <code>gl.TEXTURE_CUBE_MAP_NEGATIVE_Z</code><br/>
+                        Nhìn vào tên bạn cũng biết từng khe đang nói tới mặt nào. 6 khe này trong bộ nhớ nằm kế bên nhau nên thật ra bạn có thể for qua nó được, chỉ cần +1
+                        là sẽ qua cái tiếp theo.</li>
+                        <li>Khi set wrap cho texture cube map, ngoài <code>gl.TEXTURE_WRAP_S</code> và <code>gl.TEXTURE_WRAP_T</code> ra thì còn có <code>gl.TEXTURE_WRAP_R</code> nữa, nên bạn phải nhớ set.</li>
+                        <li>Ở directional light, ta bind texture vào frame buffer bằng hàm <code>gl.framebufferTexture2D</code>, mình nhắc lại tham số của nó như sau:<br/>
+                        <pre><code class="language-glsl">gl.framebufferTexture2D(
+	// khe
+	// attach vào đâu (color attachment, depth attachment, stencil attachment, ...), ở đây là depth
+	// loại texture (2D, 3D, cube map, ...)
+	// texture
+	// mipmap level, ở đây là 0 vì ta không dùng mipmap)</code></pre>
+                        Đối với directional light, loại texture là <code>gl.TEXTURE_2D</code> vì nó chỉ là 1 texture 2D bình thường. Còn với point light,
+                        ở tham số này ta truyền từng khe trong 6 khe ở trên vào.</li>
+                    </ul>
+
+                    Như vậy constructor sẽ như sau:
+                    <pre><code class="language-javascript">class PointLight extends GameObject {
+    constructor(pos, eulerAngles, scale, color, mesh, texture = null, name = "") {
+        super(pos, eulerAngles, scale, color, mesh, texture, name);
+
+        this.cubemap = gl.createTexture();                      // cubemap cũng chỉ là 1 texture bình thường
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.cubemap);      // gl.TEXTURE_CUBE_MAP là khe riêng của cube map
+        // for qua 6 cái khe của 6 mặt và gán null (như shadow texture của directional light)
+        for (let face = 0; face < 6; face++) {
+            gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, gl.DEPTH_COMPONENT24, pointShadowMapSize, pointShadowMapSize, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+        }
+        // set filter và wrap cho texture cubemap, có thêm gl.TEXTURE_WRAP_R
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+
+        // tạo 6 frame buffer cho 6 mặt texture
+        this.framebuffers = [];
+        for (let face = 0; face < 6; face++) {
+            const framebuffer = gl.createFramebuffer();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_X + face, this.cubemap, 0);
+            this.framebuffers.push(framebuffer);
+        }
+        // trả lại frame buffer về canvas
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+    ...
+}
+
+...
+
+let pointShadowMapSize = 512;</code></pre>
+                    Constructor đã xong, bây giờ tới việc build 6 shadow map mỗi frame. Projection matrix sẽ giống nhau cho 6 shadow map, không có gì đáng nói. Nhưng
+                    View matrix thì <code>forward</code>, <code>up</code>, <code>right</code> của 6 mặt đều khác nhau, ta phải đi tìm. Nhưng thật ra là ta đã đi tìm rồi,
+                    chúng chính là cái table \(m_a\), \(s_c\) và \(t_c\) ở trên 😳<br/><br/>
+                    
+                    Như vậy <code>forward</code>, <code>up</code>, <code>right</code> của 6 mặt là (mình để thành mảng static bên trong <code>PointLight</code> luôn):
+                    <pre><code class="language-javascript">class PointLight extends GameObject {
+    // forward, up, right của 6 mặt, theo đúng thứ tự +X, -X, +Y, -Y, +Z, -Z
+    static faces = [
+        [new Vector3(1, 0, 0), new Vector3(0, -1, 0), new Vector3(0, 0, -1)],
+        [new Vector3(-1, 0, 0), new Vector3(0, -1, 0), new Vector3(0, 0, 1)],
+        [new Vector3(0, 1, 0), new Vector3(0, 0, 1), new Vector3(1, 0, 0)],
+        [new Vector3(0, -1, 0), new Vector3(0, 0, -1), new Vector3(1, 0, 0)],
+        [new Vector3(0, 0, 1), new Vector3(0, -1, 0), new Vector3(1, 0, 0)],
+        [new Vector3(0, 0, -1), new Vector3(0, -1, 0), new Vector3(-1, 0, 0)],
+    ];
+    ...
+}</code></pre>
+                    Bạn để ý là với <code>forward</code>, <code>up</code>, <code>right</code> như vậy, thì 6 camera này đã biến thành hệ tọa độ tay phải, là giống như
+                    WebGL. Cho nên, ta chuyển lại <code>gl.frontFace</code> thành <code>gl.CCW</code> (ngược chiều kim đồng hồ) - là giá trị mặc định của WebGL. Nếu bạn
+                    không nhớ thì ta dùng <code>gl.CW</code> từ <a href="webgl2-basic2.html">blog 2</a> vì quy ước của ta là tam giác cùng chiều kim đồng hồ và engine ta là hệ tọa độ tay trái.<br/><br/>
+
+                    Như vậy hàm <code>buildShadowMap</code> sẽ như sau:
+                    <pre><code class="language-javascript">class PointLight extends GameObject {
+    ...
+    buildShadowMaps(gameObjects) {
+        gl.useProgram(pointShadowProgram);                          // dùng program riêng cho point light shadow, xem bên dưới
+        gl.viewport(0, 0, pointShadowMapSize, pointShadowMapSize);  // resize viewport, bước này hay dễ quên
+        gl.frontFace(gl.CCW);                                       // gl.CCW như trên nói
+
+        // perspective projection matrix với FOV là 90 độ, aspect ratio là 1/1, zNear là pointShadowNear (set ở bên dưới), zFar là pointLightRange (hợp lí)
+        let projection = Mat4x4.Projection(90, 1, 1, pointShadowNear, pointLightRange);
+        gl.uniformMatrix4fv(uPointShadowLightProjection, false, projection.toColumnMajor());    // chuyển vào shader
+        // for qua từng cái forward, up, right để build từng view matrix
+        for (let face = 0; face < 6; face++) {
+            let [forward, up, right] = PointLight.faces[face];
+            let view = Mat4x4.View(right, up, forward, this.transform.position);
+            gl.uniformMatrix4fv(uPointShadowLightView, false, view.toColumnMajor());
+
+            // bind frame buffer để vẽ depth của các GameObject
+            gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffers[face]);
+            gl.clear(gl.DEPTH_BUFFER_BIT);
+            for (let gameObject of gameObjects) {
+                // hàm này lúc trước không nhận tham số gì, giờ ta cho nhận tham số là uniform model matrix mà ta muốn truyền
+                gameObject.drawDepthWithChildren(uPointShadowModel);
+            }
+        }
+
+        // trả lại các thứ về ban đầu
+        gl.frontFace(gl.CW);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
+        gl.useProgram(program);
+    }
+}
+
+...
+
+// program của point light shadow dùng lại 2 shader của directional light shadow
+const pointShadowProgram = createProgram(shadowVertexShaderSource, shadowFragmentShaderSource);
+...
+const uPointShadowModel = gl.getUniformLocation(pointShadowProgram, "uModel");
+const uPointShadowLightView = gl.getUniformLocation(pointShadowProgram, "uView");
+const uPointShadowLightProjection = gl.getUniformLocation(pointShadowProgram, "uProjection");
+...
+let pointShadowNear = 0.05;</code></pre>
 
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
