@@ -811,6 +811,21 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                     <div align="center">
                         <img src="images/webgl6/cubemap_convention.png" width="500px" />
                     </div>
+
+                    <h3>b. Khởi tạo và build shadow map</h3>
+                    Tìm hiểu lý thuyết đủ rồi, giờ là tới lúc code 😳<br/><br/>
+
+                    Đầu tiên để mình nhắc lại Directional Light làm gì:
+                    <ul>
+                        <li>Trong constructor: Tạo texture mới, bind nó vào 1 frame buffer để có thể vẽ lên nó lúc nào cũng dc</li>
+                        <li>Build shadow map mỗi frame: Tạo lại projection matrix (orthographic) và view matrix dựa vào hướng nhìn hiện tại, truyền chúng vào shader.
+                            Bind frame buffer của shadow texture và vẽ depth của các GameObject, rồi trả lại frame buffer cho canvas. 
+                        </li>
+                    </ul>
+
+                    Với Point light nó cũng sẽ tựa tựa như vậy, chỉ là bây giờ ta phải dùng cube map texture + 6 texture bình thường + 6 frame buffer. Với lại projection
+                    matrix thì phải là perspective, với FOV thì ta để là 90 độ vì như vậy 6 góc nhìn sẽ khớp vào nhau.
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
