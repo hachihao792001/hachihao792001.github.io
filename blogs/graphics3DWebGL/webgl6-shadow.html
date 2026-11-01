@@ -1089,7 +1089,7 @@ function render() {
                     nếu không fill hết thì các phần tử rỗng nó sẽ mặc định là texture unit 0, bị overlap với texture bình thường.<br/><br/>
 
                     Oke, setup bên ngoài đã xong, giờ tới lúc ta thật sự xử lí point light shadow trong fragment shader. Đầu tiên ta viết 1 hàm <code>isInPointLightShadow</code>,
-                    hàm này nhận vào cube shadow map của 1 point light, tọa độ của point light đó và 1 tọa độ thế giới của pixel. Nó trả về xem pixel đó có nằm trong shadow hay không.<br/>
+                    hàm này nhận vào cube shadow map của 1 point light, tọa độ của point light đó và 1 tọa độ thế giới của pixel. Nó trả về xem pixel đó có nằm trong shadow hay không.<br/><br/>
 
                     Như directional light shadow, ta cũng cần normal offset để tránh shadow acne, normal offset thì tỉ lệ theo texel size. Texel size của directional light (orthographic) thì dễ,
                     còn texel size của point light (perspective) thì tính ra sao? Texel size của perspecive projection thì càng xa càng tăng, ta chỉ tính texel size ngay tại
@@ -1107,7 +1107,7 @@ function render() {
 	vec3 absLightToPixel = abs(lightToPixel);
 	float viewZ = max(absLightToPixel.x, max(absLightToPixel.y, absLightToPixel.z));        // đây chính là |m_a|
 	vec4 clipSpaceCoord = uPointLightShadowProjectionMain * vec4(0.0, 0.0, viewZ, 1.0);     // nhân projection matrix với cái "cụm" mình nói ở trên
-	float currentDepth = clipSpaceCoord.z / clipSpaceCoord.w * 0.5 + 0.5;                   // đưa từ [-1; 1] về [0; 1]
+	float currentDepth = clipSpaceCoord.z / clipSpaceCoord.w * 0.5 + 0.5;                   // perspective divide và đưa từ [-1; 1] về [0; 1]
 	float closestDepth = texture(pointShadowMap, lightToPixel).r;                           // lấy depth có sẵn trong shadow map ra
 	return currentDepth > closestDepth + uPointShadowBias;                                  // so sánh, vẫn có shadow bias
 }</code></pre>
@@ -1145,6 +1145,13 @@ function render() {
 
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview38"></div>
+
+                    Hmmmmmmmmmmm, shadow của point light thì đã có, khá nice, tuy nhiên bạn sẽ thấy nó giống như bị thiếu thiếu ở vài chỗ, đặc biệt là ở chỗ cửa sổ, bạn sẽ thấy rõ ràng
+                    là shadow bị cắt đứt luôn. Phần bên dưới sẽ sửa vấn đề này 😳
+
+                    <h3>d. Lưu khoảng cách thay vì depth</h3>
+
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
