@@ -1149,8 +1149,36 @@ function render() {
                     Hmmmmmmmmmmm, shadow của point light thì đã có, khá nice, tuy nhiên bạn sẽ thấy nó giống như bị thiếu thiếu ở vài chỗ, đặc biệt là ở chỗ cửa sổ, bạn sẽ thấy rõ ràng
                     là shadow bị cắt đứt luôn. Phần bên dưới sẽ sửa vấn đề này 😳
 
-                    <h3>d. Lưu khoảng cách thay vì depth</h3>
+                    <h3>d. Shadow bias là tuyến tính</h3>
+                    Mình cố ý để nó bị lỗi ở trên để expose ra được điều này 😳 Khi bạn dùng perspective projection matrix và sau đó perspective divide (WebGL làm giùm mình),
+                    thì depth lúc đó đã tỉ lệ theo \(\frac{1}{z}\) (xem lại <a href="../graphics3D/graphics3D3-projection.html">blog 3 series trước</a> nếu không nhớ tại sao).
+                    Còn shadow bias là bạn đang cộng 1 khoảng <b>tuyến tính</b> theo hướng ánh sáng để phép so sánh depth được "thoải mái" hơn, mình show lại hình của 
+                    <a href="../graphics3D/graphics3D11-shadow.html">blog 11 series trước</a> cho bạn xem:
+                    <div align="center">
+                        <img style="max-height: 300px" src="../graphics3D/images/graphics3D11/ShadowBias.gif"/>
+                    </div>
+                    Như vậy để fix được lỗi trên thì một là bạn làm cho bias cũng tỉ lệ theo \(\frac{1}{z}\), 2 là bạn cộng luôn bias ở view space thay vì ở clip space.
+                    Tuy nhiên ở view space là ta phải trừ bias vào <code>viewZ</code> thay vì như cũ là
+                    cộng bias vào depth có sẵn trong shadow map, cái này đơn giản chỉ là chuyển vế đối dấu.<br/><br/>
 
+                    Sửa ở hàm <code>isInPointLightShadow</code>:
+                    <pre><code class="language-glsl">bool isInPointLightShadow(samplerCube pointShadowMap,  vec3 lightPosition, vec3 pixelWorldPos) {
+	...
+	float viewZ = max(absLightToPixel.x, max(absLightToPixel.y, absLightToPixel.z));
+	float biasedViewZ = viewZ - uPointShadowBias;           // trừ bias
+	vec4 clipSpaceCoord = uPointLightShadowProjectionMain * vec4(0.0, 0.0, biasedViewZ, 1.0);       // sử dụng biasedViewZ thay vì viewZ
+	float currentDepth = clipSpaceCoord.z / clipSpaceCoord.w * 0.5 + 0.5;
+	float closestDepth = texture(pointShadowMap, lightToPixel).r;
+	return currentDepth > closestDepth;                     // so sánh thẳng luôn vì bias đã tính vào ở trên
+}</code></pre>
+                    Tăng bias lên xíu ví lúc này nó tăng theo tuyến tính, không bay vọt lên như hyperbol:
+                    <pre><code class="language-javascript">let pointShadowBias = 0.03;</code></pre>
+
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview39"></div>
+                    Quá nice 😳<br/><br/>
+
+                    Nếu bạn đang thắc mắc tại sao Directional Light không bị vụ này, thì đơn giản là tại nó không cần chia z, mọi thứ đều tuyến tính 😅
 
                     <div id="graphics3D-nav-bottom"></div>
                 </div>

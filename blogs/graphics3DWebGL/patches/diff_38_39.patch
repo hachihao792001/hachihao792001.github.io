@@ -1,0 +1,25 @@
+--- "a/htmlPreviews\\htmlPreview38.html"
++++ "b/htmlPreviews\\htmlPreview39.html"
+@@ -1453,10 +1453,11 @@ bool isInPointLightShadow(samplerCube pointShadowMap,  vec3 lightPosition, vec3
+ 
+ 	vec3 absLightToPixel = abs(lightToPixel);
+ 	float viewZ = max(absLightToPixel.x, max(absLightToPixel.y, absLightToPixel.z));
+-	vec4 clipSpaceCoord = uPointLightShadowProjectionMain * vec4(0.0, 0.0, viewZ, 1.0);
++	float biasedViewZ = viewZ - uPointShadowBias;
++	vec4 clipSpaceCoord = uPointLightShadowProjectionMain * vec4(0.0, 0.0, biasedViewZ, 1.0);
+ 	float currentDepth = clipSpaceCoord.z / clipSpaceCoord.w * 0.5 + 0.5;
+ 	float closestDepth = texture(pointShadowMap, lightToPixel).r;
+-	return currentDepth > closestDepth + uPointShadowBias;
++	return currentDepth > closestDepth;
+ }
+ 
+ void main(){
+@@ -1638,7 +1639,7 @@ void main(){
+ 		let pointLightRange = parseFloat(pointLightRangeSlider.value);
+ 		let pointShadowNear = 0.05;
+ 		let pointShadowMapSize = 512;
+-		let pointShadowBias = 0.002;
++		let pointShadowBias = 0.03;
+ 
+ 		const useShadowCheckbox = (document.getElementById("useShadow"));
+ 		let useShadow = useShadowCheckbox.checked;
