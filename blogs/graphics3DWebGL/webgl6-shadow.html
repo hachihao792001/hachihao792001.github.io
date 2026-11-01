@@ -830,7 +830,12 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
                     matrix thì phải là perspective, với FOV thì ta để là 90 độ vì như vậy 6 góc nhìn sẽ khớp vào nhau.<br/><br/>
 
                     Trước giờ point light là các GameObject, và chỉ có vị trí của nó là được dùng trong việc tính ánh sáng. Bây giờ mình tạo 1 class Point Light riêng luôn,
-                    và kế thừa GameObject. Constructor của nó thì như mình nói ở trên, nó sẽ tạo cubemap, tạo 6 frame buffer để bind vào 6 texture bên trong cubemap. Trước khi
+                    và kế thừa GameObject:
+                    <pre><code class="language-javascript">let pointLights = [
+    new PointLight(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 1"),
+    new PointLight(new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 2"),
+];</code></pre>
+                    Constructor của nó thì như mình nói ở trên, nó sẽ tạo cubemap, tạo 6 frame buffer để bind vào 6 texture bên trong cubemap. Trước khi
                     show bạn code thì mình giới thiệu trước các thứ mới:
                     <ul>
                         <li><code>gl.TEXTURE_CUBE_MAP</code>: một khe mới để bind cubemap vào, cube map thì cũng chỉ là 1 texture, cũng tạo bằng <code>gl.createTexture()</code>
@@ -922,19 +927,19 @@ let pointShadowMapSize = 512;</code></pre>
 
         // perspective projection matrix với FOV là 90 độ, aspect ratio là 1/1, zNear là pointShadowNear (set ở bên dưới), zFar là pointLightRange (hợp lí)
         let projection = Mat4x4.Projection(90, 1, 1, pointShadowNear, pointLightRange);
-        gl.uniformMatrix4fv(uPointShadowLightProjection, false, projection.toColumnMajor());    // chuyển vào shader
+        gl.uniformMatrix4fv(uPointLightShadowProjection, false, projection.toColumnMajor());    // chuyển vào shader
         // for qua từng cái forward, up, right để build từng view matrix
         for (let face = 0; face < 6; face++) {
             let [forward, up, right] = PointLight.faces[face];
             let view = Mat4x4.View(right, up, forward, this.transform.position);
-            gl.uniformMatrix4fv(uPointShadowLightView, false, view.toColumnMajor());
+            gl.uniformMatrix4fv(uPointLightShadowView, false, view.toColumnMajor());
 
             // bind frame buffer để vẽ depth của các GameObject
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffers[face]);
             gl.clear(gl.DEPTH_BUFFER_BIT);
             for (let gameObject of gameObjects) {
                 // hàm này lúc trước không nhận tham số gì, giờ ta cho nhận tham số là uniform model matrix mà ta muốn truyền
-                gameObject.drawDepthWithChildren(uPointShadowModel);
+                gameObject.drawDepthWithChildren(uPointLightShadowModel);
             }
         }
 
@@ -951,12 +956,195 @@ let pointShadowMapSize = 512;</code></pre>
 // program của point light shadow dùng lại 2 shader của directional light shadow
 const pointShadowProgram = createProgram(shadowVertexShaderSource, shadowFragmentShaderSource);
 ...
-const uPointShadowModel = gl.getUniformLocation(pointShadowProgram, "uModel");
-const uPointShadowLightView = gl.getUniformLocation(pointShadowProgram, "uView");
-const uPointShadowLightProjection = gl.getUniformLocation(pointShadowProgram, "uProjection");
+const uPointLightShadowModel = gl.getUniformLocation(pointShadowProgram, "uModel");
+const uPointLightShadowView = gl.getUniformLocation(pointShadowProgram, "uView");
+const uPointLightShadowProjection = gl.getUniformLocation(pointShadowProgram, "uProjection");
 ...
 let pointShadowNear = 0.05;</code></pre>
+                    Hàm <code>gameObject.drawDepthWithChildren()</code> (và hàm <code>gameObject.draw()</code>) lúc trước không có tham số gì.
+                    Nhưng giờ có thêm program của point light, có uniform model matrix riêng, nên hàm này ta phải cho truyền vào uniform model matrix để cả 2 đều xài dc:
+                    <pre><code class="language-javascript">class GameObject {
+    ...
+    drawDepth(uModel) {
+        ...
+        gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
+        ...
+    }
 
+    drawDepthWithChildren(uModel) {
+        this.drawDepth(uModel);
+        for (let child of this.transform.children) {
+            if (child.gameObject != null) {
+                child.gameObject.drawDepthWithChildren(uModel);
+            }
+        }
+    }    
+}</code></pre>
+                    <h3>c. Dùng cube shadow map ở fragment shader chính</h3>
+                    OK khởi tạo ban đầu và việc buid 6 shadow map mỗi frame đã xong, bây giờ ta phải xử lí việc thật sự render shadow. Mình cũng xin nhắc lại những gì
+                    mà ta làm với Directional Light shadow mỗi frame, nguyên văn: "với mỗi pixel ta đưa tọa độ thế giới của nó qua view và projection matrix của camera nguồn sáng
+                    (y như lúc build shadow map), rồi so sánh với độ sâu lưu trong shadow map".<br/><br/>
+
+                    Với point light shadow, việc lấy độ sâu có sẵn trong cube map shadow map thì ta chỉ cần truyền hướng từ point light tới pixel cho WebGL là xong.
+                    Tuy nhiên về việc tính độ sâu của tọa độ thế giới của pixel, thì ta phải biết được nó nằm trước mặt nào của cube map, để mà còn sử dụng đúng
+                    view matrix để tính độ sâu. Tuy nhiên ta không cần phải tìm lại view matrix trong fragment shader đâu, nó sẽ làm code rối thêm khá nhiều 🥵 <br/><br/>
+
+                    Có 1 trick nho nhỏ giúp ta dễ thở hơn, và nó dựa vào tính chất sau: Mục đích của
+                    việc đưa tọa độ thế giới pixel qua render pipeline của nguồn sáng là để tìm độ sâu của nó khi nhìn từ nguồn sáng. Như vậy,
+                    chỉ có độ sâu (z) trong view space là có giá trị, chứ x, y bằng bao nhiêu cũng không quan trọng. Mọi điểm trên mặt phẳng XY trong view space của nguồn sáng
+                    đều có độ sâu giống nhau và đều sẽ ra cùng 1 kết quả. Và guess what, ta cũng có cách tìm được z ở view space nguồn sáng rồi 😳 Vector từ point light
+                    tới pixel chính là \(\vec{r}\), ta đang xét view space, nên \(m_a\) của \(\vec{r}\) là component nào thì <code>forward</code> của view
+                    matrix sẽ chỉ tới mặt đó. Suy ra z ở view space chính là \(|m_a|\) 😳
+                    Như vậy cụm <code>view matrix * vWorldPosition</code> đơn giản chỉ là:
+                    $$
+                        \begin{pmatrix}
+                        0 \\
+                        0 \\
+                        |m_a| \\
+                        1
+                        \end{pmatrix}
+                    $$
+                    Ta chỉ cần truyền projection matrix của point light vào fragment shader và nhân cho vector trên là ra dc độ sâu để so.<br/><br/>
+
+                    Oke bây giờ lúc code, trước tiên ta phải truyền được những thứ sau vào shader (qua uniform):
+                    <ul>
+                        <li>Mảng shadow map (cube map) của các point light (đừng quên là engine ta handle nhiều point light 🥶)</li>
+                        <li>Số shadow map (cube map). Lí do ta phải có số shadow map riêng, mà không dùng luôn số point light làm số shadow map,
+                            là vì mỗi shadow map là một texture, texture thì cần nằm trong 1 texture unit,
+                            WebGL2 chỉ có hữu hạn texture unit nên số lượng shadow map cho point light phải được hạn chế riêng. Ta cũng phải nhớ là texture
+                            unit 0 đã được xài cho texture bình thường, texture unit 1 đã được xài cho shadow map của directional light, nên ta chỉ được
+                            xài từ texture unit 2 trở đi.</li>
+                        <li>Kích thước từng mặt shadow map</li>
+                        <li>Shadow bias của point light</li>
+                        <li>Projection matrix của point light</li>
+                    </ul>
+                    Fragment shader:
+                    <pre><code class="language-glsl">uniform samplerCube uPointShadowMaps[4];   // samplerCube là kiểu riêng cho cube map texture, chứ không dùng sampler2D
+uniform int uShadowPointLightCount;
+uniform float uPointShadowMapSize;
+uniform float uPointShadowBias;
+uniform mat4 uPointLightShadowProjectionMain;</code></pre>
+                    Khai báo bên javascript:
+                    <pre><code class="language-javascript">const uPointShadowMaps = gl.getUniformLocation(program, "uPointShadowMaps");
+const uShadowPointLightCount = gl.getUniformLocation(program, "uShadowPointLightCount");
+const uPointShadowMapSize = gl.getUniformLocation(program, "uPointShadowMapSize");
+const uPointShadowBias = gl.getUniformLocation(program, "uPointShadowBias");
+// thêm Main để phân biệt với uPointLightShadowProjection (uniform của pointShadowProgram) =)))
+const uPointLightShadowProjectionMain = gl.getUniformLocation(program, "uPointLightShadowProjectionMain");
+
+...
+
+const maxShadowPointLights = 4;</code></pre>
+                    
+                    You know what, ta giới hạn số point light shadow map là 4, mà phải viết cứng số 4 ở 2 chỗ, khá là không clean. <code>uPointLightPositions</code> - <code>maxActiveLights</code> cũng bị vấn đề tương tự.
+                    Cho nên đầu tiên mình sẽ làm chúng dynamic trước, bằng cách trực tiếp format string của fragment shader và nhét số vào trong đó. Như vậy ta phải để
+                    <code>maxActiveLights</code> và <code>maxShadowPointLights</code> lên trước khai báo của 2 shader string, để string fragment shader có thể bốc vào format:
+                    <pre><code  class="language-javascript">const maxActiveLights = 16;
+const maxShadowPointLights = 4;
+
+const fragmentShaderSource = `#version 300 es
+...
+uniform vec3 uPointLightPositions[${maxActiveLights}];
+...
+uniform samplerCube uPointShadowMaps[${maxShadowPointLights}];
+...`;</code></pre><br/>
+
+                    Xong việc khai báo uniform rồi, tới việc truyền dữ liệu vào chúng.
+                    Mấy uniform này cũng như các uniform toàn cục mỗi frame khác, cũng xử lí và truyền vào shader trong hàm <code>render</code>:
+                    <pre><code class="language-javascript">const maxShadowPointLights = 4;
+...
+function render() {
+    ...
+    const shadowPointLightCount = Math.min(pointLights.length, maxShadowPointLights);
+    // projection matrix này y hệt cái ở buildShadowMaps
+    const projection = Mat4x4.Projection(90, 1, 1, pointShadowNear, pointLightRange);
+    if (useShadow) {
+        ...
+        for (let i = 0; i < shadowPointLightCount; i++) {
+            pointLights[i].buildShadowMaps(shadowCasters, projection);
+        }
+    }
+
+    ...
+
+    // tạo mảng int chứa point shadow map nào sẽ dùng texture unit nào
+    const pointShadowMapUnits = [];
+    // xem bên dưới để biết tại sao ta phải for tới maxShadowPointLights thay vì shadowPointLightCount
+    for (let i = 0; i < maxShadowPointLights; i++) {
+        gl.activeTexture(gl.TEXTURE2 + i);      // bắt đầu xài từ texture unit 2
+        // nếu chưa đạt tới giới hạn point light shadow map thì cho xài texture unit hiện tại, không thì null
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, i < shadowPointLightCount ? pointLights[i].cubemap : null);
+        pointShadowMapUnits.push(2 + i);        // bắt đầu xài từ texture unit 2
+    }
+    // truyền vào các uniform 1 cách bình thường, uniform1iv để truyền 1 mảng texture unit (sampler)
+    gl.uniform1iv(uPointShadowMaps, pointShadowMapUnits);
+    gl.uniform1i(uShadowPointLightCount, shadowPointLightCount);
+    gl.uniform1f(uPointShadowMapSize, pointShadowMapSize);
+    gl.uniform1f(uPointShadowBias, pointShadowBias);
+    gl.uniformMatrix4fv(uPointLightShadowProjectionMain, false, projection.toColumnMajor());
+
+    ...
+}</code></pre>
+                    Ta phải for tới <code>maxShadowPointLights</code> vì ta phải fill hết giá trị cho mọi phần tử trong <code>uPointShadowMaps</code>,
+                    nếu không fill hết thì các phần tử rỗng nó sẽ mặc định là texture unit 0, bị overlap với texture bình thường.<br/><br/>
+
+                    Oke, setup bên ngoài đã xong, giờ tới lúc ta thật sự xử lí point light shadow trong fragment shader. Đầu tiên ta viết 1 hàm <code>isInPointLightShadow</code>,
+                    hàm này nhận vào cube shadow map của 1 point light, tọa độ của point light đó và 1 tọa độ thế giới của pixel. Nó trả về xem pixel đó có nằm trong shadow hay không.<br/>
+
+                    Như directional light shadow, ta cũng cần normal offset để tránh shadow acne, normal offset thì tỉ lệ theo texel size. Texel size của directional light (orthographic) thì dễ,
+                    còn texel size của point light (perspective) thì tính ra sao? Texel size của perspecive projection thì càng xa càng tăng, ta chỉ tính texel size ngay tại
+                    khoảng cách từng point light tới pixel, gọi nó là \(d\). Ta biết FOV của projection matrix là 90 độ, thì frustum của nó là một tam giác vuông cân,
+                    chiều cao của nó là \(d\) và đáy của nó sẽ rộng \(2d\). \(2d\) này chính là thứ tương tự với <code>size</code> của orthographic projection matrix,
+                    như vậy ta chỉ cần lấy \(2d\) chia cho kích thước shadow map là ra texel size.<br/><br/>
+
+                    Như vậy hàm <code>isInPointLightShadow</code> sẽ như sau:
+                    <pre><code class="language-glsl">bool isInPointLightShadow(samplerCube pointShadowMap,  vec3 lightPosition, vec3 pixelWorldPos) {
+	vec3 lightToPixel = pixelWorldPos - lightPosition;
+	float texelSize = 2.0 * length(lightToPixel) / uPointShadowMapSize;     // tính texel size theo công thức trên
+    // bản chất là cộng vào pixelWorldPos, nhưng cộng ở đây cũng kết quả tương tự. Ta tạo lightToPixel trước chủ yếu để xài luôn ở dòng trên
+	lightToPixel += vWorldNormal * texelSize;      
+
+	vec3 absLightToPixel = abs(lightToPixel);
+	float viewZ = max(absLightToPixel.x, max(absLightToPixel.y, absLightToPixel.z));        // đây chính là |m_a|
+	vec4 clipSpaceCoord = uPointLightShadowProjectionMain * vec4(0.0, 0.0, viewZ, 1.0);     // nhân projection matrix với cái "cụm" mình nói ở trên
+	float currentDepth = clipSpaceCoord.z / clipSpaceCoord.w * 0.5 + 0.5;                   // đưa từ [-1; 1] về [0; 1]
+	float closestDepth = texture(pointShadowMap, lightToPixel).r;                           // lấy depth có sẵn trong shadow map ra
+	return currentDepth > closestDepth + uPointShadowBias;                                  // so sánh, vẫn có shadow bias
+}</code></pre>
+
+                    Và cuối cùng, trong hàm main, trong vòng lặp point light, ta check xem <code>vWorldPosition</code> có nằm trong shadow của point light hiện tại hay không.
+                    <pre><code class="language-glsl">void main(){
+	...
+	for (int i = 0; i < uPointLightCount; i++) {
+		...
+
+		if (uUseShadow && i < uShadowPointLightCount){
+			bool isInShadow = false;
+            // sẽ giải thích bên dưới tại sao lại phải dùng switch case
+			switch(i){
+				case 0: isInShadow = isInPointLightShadow(uPointShadowMaps[0], uPointLightPositions[i], vWorldPosition); break;
+				case 1: isInShadow = isInPointLightShadow(uPointShadowMaps[1], uPointLightPositions[i], vWorldPosition); break;
+				case 2: isInShadow = isInPointLightShadow(uPointShadowMaps[2], uPointLightPositions[i], vWorldPosition); break;
+				case 3: isInShadow = isInPointLightShadow(uPointShadowMaps[3], uPointLightPositions[i], vWorldPosition); break;
+				default: isInShadow = false; break;
+			}
+			if (isInShadow)  // nếu nằm trong shadow thì bỏ qua diffuse của point light này, không cộng vào totalPointLightDiffuse
+				continue;
+		}
+
+		...
+    }
+    totalPointLightDiffuse *= uPointLightIntensity;
+
+	...
+}</code></pre>
+                    Bạn sẽ thấy ở trên mình có xài switch case để để từng số một vào <code>uPointShadowMaps</code>, thay vì xài luôn <code>uPointShadowMaps[i]</code>, tại
+                    sao? Đó là tại vì nó sẽ bị lỗi:
+                    <pre><code class="language-javascript">Uncaught Error: Shader compile error: ERROR: 0:85: '[' : array index for samplers must be constant integral expressions</code></pre>
+                    Như bạn thấy, array index cho samplers phải là constant, chứ không cho 1 biến. Tại sao lại như vậy thì mình không rõ, but hey the law is the law.<br/><br/>
+
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview38"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

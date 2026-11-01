@@ -1,0 +1,132 @@
+--- "a/htmlPreviews\\htmlPreview36.html"
++++ "b/htmlPreviews\\htmlPreview37.html"
+@@ -228,14 +228,6 @@
+ 				<span id="pointRangeText" class="slider-value">14</span>
+ 			</span>
+ 		</div>
+-		<div class="controlRow">
+-			<label class="controlLabel" for="viewFromLight">View from light:</label>
+-			<span><input type="checkbox" id="viewFromLight" /></span>
+-		</div>
+-		<div class="controlRow">
+-			<label class="controlLabel" for="showShadowMap">Show shadow map:</label>
+-			<span><input type="checkbox" id="showShadowMap" /></span>
+-		</div>
+ 		<div class="controlRow">
+ 			<label class="controlLabel" for="useShadow">Shadow:</label>
+ 			<span><input type="checkbox" id="useShadow" checked="checked" /></span>
+@@ -1428,25 +1420,6 @@ void main(){
+ precision highp float;
+ 
+ void main(){
+-}`;
+-		const shadowMapDebugVertexShaderSource = `#version 300 es
+-out vec2 vUV;
+-
+-void main(){
+-	vec2 corner = vec2(gl_VertexID >> 1, gl_VertexID & 1);
+-	vUV = corner;
+-	gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
+-}`;
+-		const shadowMapDebugFragmentShaderSource = `#version 300 es
+-precision highp float;
+-
+-uniform sampler2D uShadowMap;
+-in vec2 vUV;
+-out vec4 outColor;
+-
+-void main(){
+-	float depth = texture(uShadowMap, vUV).r;
+-	outColor = vec4(vec3(1.0 - depth), 1.0);	// càng gần đèn càng sáng
+ }`;
+ 		function compileShader(type, source) {
+ 			const shader = gl.createShader(type);
+@@ -1473,7 +1446,6 @@ void main(){
+ 
+ 		const program = createProgram(vertexShaderSource, fragmentShaderSource);
+ 		const shadowProgram = createProgram(shadowVertexShaderSource, shadowFragmentShaderSource);
+-		const shadowMapDebugProgram = createProgram(shadowMapDebugVertexShaderSource, shadowMapDebugFragmentShaderSource);
+ 		gl.useProgram(program);
+ 
+ 		const aPosition = gl.getAttribLocation(program, "aPosition");
+@@ -1504,7 +1476,6 @@ void main(){
+ 		const uShadowModel = gl.getUniformLocation(shadowProgram, "uModel");
+ 		const uShadowLightView = gl.getUniformLocation(shadowProgram, "uView");
+ 		const uShadowLightProjection = gl.getUniformLocation(shadowProgram, "uProjection");
+-		const uDebugShadowMap = gl.getUniformLocation(shadowMapDebugProgram, "uShadowMap");
+ 
+ 		gl.enable(gl.DEPTH_TEST);
+ 		gl.enable(gl.CULL_FACE);
+@@ -1564,10 +1535,6 @@ void main(){
+ 		let pointLightRange = parseFloat(pointLightRangeSlider.value);
+ 		let maxActiveLights = 16;
+ 
+-		const viewFromLightCheckbox = (document.getElementById("viewFromLight"));
+-		let viewFromLight = false;
+-		const showShadowMapCheckbox = (document.getElementById("showShadowMap"));
+-		let showShadowMap = showShadowMapCheckbox.checked;
+ 		const useShadowCheckbox = (document.getElementById("useShadow"));
+ 		let useShadow = useShadowCheckbox.checked;
+ 
+@@ -1619,13 +1586,8 @@ void main(){
+ 				dirLight.buildShadowMap(shadowCasters);
+ 			}
+ 
+-			if (viewFromLight) {
+-				gl.uniformMatrix4fv(uView, false, dirLight.viewMatrix.toColumnMajor());
+-				gl.uniformMatrix4fv(uProjection, false, dirLight.projectionMatrix.toColumnMajor());
+-			} else {
+-				gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());
+-				gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
+-			}
++			gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());
++			gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
+ 
+ 			gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
+ 			gl.uniform1f(uDirLightIntensity, dirLight.intensity);
+@@ -1659,28 +1621,6 @@ void main(){
+ 				light.drawWithChildren();
+ 			}
+ 			woodTower.drawWithChildren();
+-
+-			if (showShadowMap) {
+-				drawShadowMapDebug();
+-			}
+-		}
+-
+-		function drawShadowMapDebug() {
+-			const debugSize = Math.floor(gameCanvas.height / 3);
+-			gl.viewport(0, 0, debugSize, debugSize);
+-			gl.disable(gl.DEPTH_TEST);
+-
+-			gl.useProgram(shadowMapDebugProgram);
+-			gl.activeTexture(gl.TEXTURE1);
+-			gl.bindTexture(gl.TEXTURE_2D, dirLight.shadowMapTexture);
+-			gl.uniform1i(uDebugShadowMap, 1);
+-			gl.bindVertexArray(null);
+-			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+-
+-			gl.activeTexture(gl.TEXTURE0);
+-			gl.useProgram(program);
+-			gl.enable(gl.DEPTH_TEST);
+-			gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
+ 		}
+ 
+ 		function update(time = performance.now()) {
+@@ -1723,16 +1663,6 @@ void main(){
+ 			pointLightRangeText.textContent = pointLightRange.toFixed(0);
+ 		});
+ 
+-		viewFromLightCheckbox.addEventListener("change", () => {
+-			viewFromLight = viewFromLightCheckbox.checked;
+-			viewFromLightCheckbox.blur();
+-		});
+-
+-		showShadowMapCheckbox.addEventListener("change", () => {
+-			showShadowMap = showShadowMapCheckbox.checked;
+-			showShadowMapCheckbox.blur();
+-		});
+-
+ 		useShadowCheckbox.addEventListener("change", () => {
+ 			useShadow = useShadowCheckbox.checked;
+ 			useShadowCheckbox.blur();
