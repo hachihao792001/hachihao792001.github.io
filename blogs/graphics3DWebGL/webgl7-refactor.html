@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="Tái cấu trúc engine WebGL: ShaderProgram, VertexArray, index buffer, Texture/RenderTarget, component, và WebGLRenderer tách khỏi scene.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="../graphics3D/graphics3D.css">
+    <style>
+        .blog-content ul li a {
+            display: inline;
+            font-weight: inherit;
+            margin-bottom: 0;
+        }
+    </style>
+
+    <script src="/js/prism.js"></script>
+
+    <title>WebGL #7: Tái cấu trúc thành engine</title>
+</head>
+
+<body data-graphics3D-id="webgl7">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Tái cấu trúc thành engine</h1>
+                    Engine cơ bản đã xong, nó làm lại được hết tất cả những gì mà demo cuối <a href="../graphics3D/htmlPreviews/htmlPreview53">htmlPreview53</a> làm, thậm chí
+                    còn có thêm cả point light shadow 😳 Tuy nhiên bây giờ code khá là hỗn độn, biến global quá nhiều, localtion của attribute, uniform để ra 1 tràng rất khó nhìn.
+                    Nhiệm vụ của blog này chính là tái cấu trúc lại mọi thứ, làm nó giống như 1 engine có thể xài lại nhiều lần cho các project khác nhau.
+
+                    <h2>1. ShaderProgram</h2>
+                    Đây là toàn bộ phần code tạo 3 program, các attribute và uniform của 3 program đó:
+                    <pre style="max-height: 400px;"><code class="language-javascript">const program = createProgram(vertexShaderSource, fragmentShaderSource);
+const shadowProgram = createProgram(shadowVertexShaderSource, shadowFragmentShaderSource);
+const pointShadowProgram = createProgram(shadowVertexShaderSource, shadowFragmentShaderSource);
+gl.useProgram(program);
+
+const aPosition = gl.getAttribLocation(program, "aPosition");
+const aUV = gl.getAttribLocation(program, "aUV");
+const aNormal = gl.getAttribLocation(program, "aNormal");
+const uModel = gl.getUniformLocation(program, "uModel");
+const uNormalMatrix = gl.getUniformLocation(program, "uNormalMatrix");
+const uView = gl.getUniformLocation(program, "uView");
+const uProjection = gl.getUniformLocation(program, "uProjection");
+const uTexture = gl.getUniformLocation(program, "uTexture");
+const uUseTexture = gl.getUniformLocation(program, "uUseTexture");
+const uColor = gl.getUniformLocation(program, "uColor");
+const uDirLightDir = gl.getUniformLocation(program, "uDirLightDir");
+const uDirLightIntensity = gl.getUniformLocation(program, "uDirLightIntensity");
+const uAmbientLight = gl.getUniformLocation(program, "uAmbientLight");
+const uPointLightPositions = gl.getUniformLocation(program, "uPointLightPositions");
+const uPointLightCount = gl.getUniformLocation(program, "uPointLightCount");
+const uPointLightIntensity = gl.getUniformLocation(program, "uPointLightIntensity");
+const uPointLightRange = gl.getUniformLocation(program, "uPointLightRange");
+
+const uShadowMap = gl.getUniformLocation(program, "uShadowMap");
+const uLightView = gl.getUniformLocation(program, "uLightView");
+const uLightProjection = gl.getUniformLocation(program, "uLightProjection");
+const uUseShadow = gl.getUniformLocation(program, "uUseShadow");
+const uShadowBias = gl.getUniformLocation(program, "uShadowBias");
+const uShadowTexelSize = gl.getUniformLocation(program, "uShadowTexelSize");
+const uPointShadowMaps = gl.getUniformLocation(program, "uPointShadowMaps");
+const uShadowPointLightCount = gl.getUniformLocation(program, "uShadowPointLightCount");
+const uPointShadowMapSize = gl.getUniformLocation(program, "uPointShadowMapSize");
+const uPointShadowBias = gl.getUniformLocation(program, "uPointShadowBias");
+const uPointLightShadowProjectionMain = gl.getUniformLocation(program, "uPointLightShadowProjectionMain");
+
+const uShadowModel = gl.getUniformLocation(shadowProgram, "uModel");
+const uShadowLightView = gl.getUniformLocation(shadowProgram, "uView");
+const uShadowLightProjection = gl.getUniformLocation(shadowProgram, "uProjection");
+const uPointLightShadowModel = gl.getUniformLocation(pointShadowProgram, "uModel");
+const uPointLightShadowView = gl.getUniformLocation(pointShadowProgram, "uView");
+const uPointLightShadowProjection = gl.getUniformLocation(pointShadowProgram, "uProjection");</code></pre>
+
+                    Not the cleanest code in the world. Phần này mình sẽ gom mấy cái uniform lại cho từng program một, còn attribute mình để sau.<br/><br/>
+                    Đầu tiên, bạn có biết là thật ra mình có thể extract uniform ra từ program không 😳 từ việc extract đó mình có thể tạo các biến chứa địa
+                    chỉ các uniform trong 1 vòng for mà không cần phải ghi từng dòng như trên. Ta sẽ làm điều đó thông qua 2 hàm <code>gl.getProgramParameter</code> và 
+                    <code>gl.getActiveUniform</code>.<br/><br/>
+                    
+                    Hàm <code>gl.getProgramParameter(program, tên info)</code> để lấy 1 thông tin trong program ra ngoài, thông tin mà chúng ta quan tâm là số uniform
+                    trong program, là <code>gl.ACTIVE_UNIFORMS</code>.<br/>
+                    <i>Thật ra ta đã sử dụng qua hàm này rồi, sau khi ta tạo program ta dùng hàm này để check lỗi:</i>
+                    <pre><code class="language-javascript">if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {      // gl.LINK_STATUS chính là 1 info có thể lấy
+    throw new Error("Program link error: " + gl.getProgramInfoLog(program));
+}</code></pre>
+                    Còn hàm <code>gl.getActiveUniform(program, index của uniform)</code> có công dụng lấy thông tin 1 uniform bằng index (địa chỉ) của nó,
+                    thông tin của 1 uniform là: <code>name</code>, <code>type</code> (<code>gl.FLOAT</code>, ...) và <code>size</code> (số phần tử nếu là mảng,
+                    nếu không phải mảng thì nó = 1).
+                    Đối với mảng thì có 1 điều cần lưu ý, ví dụ với <code>uPointShadowMaps</code>, thì nó sẽ trả về <code>name</code> là "uPointShadowMaps[0]"
+                    chứ không phải "uPointShadowMaps".<br/>                    
+                    Có số lượng uniform và có cách lấy uniform theo index rồi, tức là ta có thể for qua chúng được 😳<br/><br/>
+
+                    Để gom các thứ cho từng program một, mình tạo một class mới <code>ShaderProgram</code>, class này sẽ là một wrapper cho program của WebGL,
+                    bao gồm các hàm liên quan như <code>compileShader</code>, <code>useProgram</code> và các hàm truyền dữ liệu vào uniform.<br/><br/>
+
+                    Đầu tiên là constructor, hàm <code>compileShader</code> và hàm <code>use</code>:
+                    <pre><code class="language-javascript">class ShaderProgram {
+    constructor(gl, vertexSource, fragmentSource) { // nhận vào gl context và string của 2 shader
+        this.gl = gl;
+        // tạo, attach shader, link program y hệt như trước
+        this.glProgram = gl.createProgram();
+        gl.attachShader(this.glProgram, ShaderProgram.compileShader(gl, gl.VERTEX_SHADER, vertexSource));
+        gl.attachShader(this.glProgram, ShaderProgram.compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource));
+        gl.linkProgram(this.glProgram);
+        if (!gl.getProgramParameter(this.glProgram, gl.LINK_STATUS)) {
+            throw new Error("Program link error: " + gl.getProgramInfoLog(this.glProgram));
+        }
+
+        // tạo 1 "dictionary" chứa các uniform, không dùng mảng vì ta index bằng tên
+        this.uniforms = {};
+        const uniformCount = gl.getProgramParameter(this.glProgram, gl.ACTIVE_UNIFORMS);
+        for (let i = 0; i < uniformCount; i++) {
+            const info = gl.getActiveUniform(this.glProgram, i);    // lấy thông tin uniform theo index
+            const name = info.name.replace("[0]", "");              // điều lưu ý đối với mảng mà mình nói ở trên, bỏ "[0]" ra cho đúng tên
+            // mỗi phần tử trong "dictionary" này chứa location (để dùng trong các hàm truyền dữ liệu vào uniform), type và size
+            this.uniforms[name] = {
+                location: gl.getUniformLocation(this.glProgram, info.name),
+                type: info.type,
+                size: info.size,
+            };
+        }
+    }
+
+    // y hệt như cũ
+    static compileShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            const log = gl.getShaderInfoLog(shader);
+            gl.deleteShader(shader);
+            throw new Error("Shader compile error: " + log);
+        }
+        return shader;
+    }
+
+    use() {
+        this.gl.useProgram(this.glProgram);
+    }
+}</code></pre>
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3DWebGL.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

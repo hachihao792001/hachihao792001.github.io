@@ -40,5 +40,11 @@
         "webTitle": "WebGL #6: Shadow",
         "title": "WebGL #6: Shadow",
         "route": "/blogs/graphics3DWebGL/webgl6-shadow.html"
+    },
+    {
+        "id": "webgl7",
+        "webTitle": "WebGL #7: Tái cấu trúc thành engine",
+        "title": "WebGL #7: Tái cấu trúc thành engine",
+        "route": "/blogs/graphics3DWebGL/webgl7-refactor.html"
     }
 ]
