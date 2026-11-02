@@ -1,0 +1,343 @@
+--- "a/htmlPreviews\\htmlPreview39.html"
++++ "b/htmlPreviews\\htmlPreview40.html"
+@@ -949,16 +949,16 @@
+ 
+ 			draw() {
+ 				if (this.mesh.vertexCount == 0) return;
+-				gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
+-				gl.uniformMatrix4fv(uNormalMatrix, false, this.transform.getNormalMatrix().toColumnMajor());
++				program.set("uModel", this.transform.getModelMatrix());
++				program.set("uNormalMatrix", this.transform.getNormalMatrix());
+ 
+ 				if (this.texture) {
+ 					gl.activeTexture(gl.TEXTURE0);
+-					gl.uniform1i(uTexture, 0);
++					program.set("uTexture", 0);
+ 					gl.bindTexture(gl.TEXTURE_2D, this.texture.glTexture);
+ 				}
+-				gl.uniform1i(uUseTexture, this.texture ? 1 : 0);
+-				gl.uniform3f(uColor, this.color.r / 255, this.color.g / 255, this.color.b / 255);
++				program.set("uUseTexture", this.texture != null);
++				program.set("uColor", this.color);
+ 
+ 				gl.bindVertexArray(this.mesh.vertexArray);
+ 				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
+@@ -973,18 +973,18 @@
+ 				}
+ 			}
+ 
+-			drawDepth(uModel) {
++			drawDepth(depthProgram) {
+ 				if (this.mesh.vertexCount == 0) return;
+-				gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
++				depthProgram.set("uModel", this.transform.getModelMatrix());
+ 				gl.bindVertexArray(this.mesh.vertexArray);
+ 				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
+ 			}
+ 
+-			drawDepthWithChildren(uModel) {
+-				this.drawDepth(uModel);
++			drawDepthWithChildren(depthProgram) {
++				this.drawDepth(depthProgram);
+ 				for (let child of this.transform.children) {
+ 					if (child.gameObject != null) {
+-						child.gameObject.drawDepthWithChildren(uModel);
++						child.gameObject.drawDepthWithChildren(depthProgram);
+ 					}
+ 				}
+ 			}
+@@ -1026,16 +1026,16 @@
+ 				gl.viewport(0, 0, shadowMapSize, shadowMapSize);
+ 				gl.clear(gl.DEPTH_BUFFER_BIT);
+ 
+-				gl.useProgram(shadowProgram);
+-				gl.uniformMatrix4fv(uShadowLightView, false, this.viewMatrix.toColumnMajor());
+-				gl.uniformMatrix4fv(uShadowLightProjection, false, this.projectionMatrix.toColumnMajor());
++				shadowProgram.use();
++				shadowProgram.set("uView", this.viewMatrix);
++				shadowProgram.set("uProjection", this.projectionMatrix);
+ 				for (let gameObject of gameObjects) {
+-					gameObject.drawDepthWithChildren(uShadowModel);
++					gameObject.drawDepthWithChildren(shadowProgram);
+ 				}
+ 
+ 				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+ 				gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
+-				gl.useProgram(program);
++				program.use();
+ 			}
+ 		}
+ 		class PointLight extends GameObject {
+@@ -1073,27 +1073,27 @@
+ 			}
+ 
+ 			buildShadowMaps(gameObjects, projection) {
+-				gl.useProgram(pointShadowProgram);
++				pointShadowProgram.use();
+ 				gl.viewport(0, 0, pointShadowMapSize, pointShadowMapSize);
+ 				gl.frontFace(gl.CCW);
+ 
+-				gl.uniformMatrix4fv(uPointLightShadowProjection, false, projection.toColumnMajor());
++				pointShadowProgram.set("uProjection", projection);
+ 				for (let face = 0; face < 6; face++) {
+ 					let [forward, up, right] = PointLight.faces[face];
+ 					let view = Mat4x4.View(right, up, forward, this.transform.position);
+-					gl.uniformMatrix4fv(uPointLightShadowView, false, view.toColumnMajor());
++					pointShadowProgram.set("uView", view);
+ 
+ 					gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffers[face]);
+ 					gl.clear(gl.DEPTH_BUFFER_BIT);
+ 					for (let gameObject of gameObjects) {
+-						gameObject.drawDepthWithChildren(uPointLightShadowModel);
++						gameObject.drawDepthWithChildren(pointShadowProgram);
+ 					}
+ 				}
+ 
+ 				gl.frontFace(gl.CW);
+ 				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+ 				gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
+-				gl.useProgram(program);
++				program.use();
+ 			}
+ 		}
+ 
+@@ -1364,6 +1364,79 @@
+ 			}
+ 		}
+ 
++		// ===== webgl.js =====
++		class ShaderProgram {
++			constructor(gl, vertexSource, fragmentSource) {
++				this.gl = gl;
++				this.glProgram = gl.createProgram();
++				gl.attachShader(this.glProgram, ShaderProgram.compileShader(gl, gl.VERTEX_SHADER, vertexSource));
++				gl.attachShader(this.glProgram, ShaderProgram.compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource));
++				gl.linkProgram(this.glProgram);
++				if (!gl.getProgramParameter(this.glProgram, gl.LINK_STATUS)) {
++					throw new Error("Program link error: " + gl.getProgramInfoLog(this.glProgram));
++				}
++
++				this.uniforms = {};
++				const uniformCount = gl.getProgramParameter(this.glProgram, gl.ACTIVE_UNIFORMS);
++				for (let i = 0; i < uniformCount; i++) {
++					const info = gl.getActiveUniform(this.glProgram, i);
++					const name = info.name.replace("[0]", "");
++					this.uniforms[name] = {
++						location: gl.getUniformLocation(this.glProgram, info.name),
++						type: info.type,
++						size: info.size,
++					};
++				}
++			}
++
++			static compileShader(gl, type, source) {
++				const shader = gl.createShader(type);
++				gl.shaderSource(shader, source);
++				gl.compileShader(shader);
++				if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
++					const log = gl.getShaderInfoLog(shader);
++					gl.deleteShader(shader);
++					throw new Error("Shader compile error: " + log);
++				}
++				return shader;
++			}
++
++			use() {
++				this.gl.useProgram(this.glProgram);
++			}
++
++			set(name, value) {
++				const uniform = this.uniforms[name];
++				if (!uniform) throw new Error(`ShaderProgram.set: ${name} is not an active uniform`);
++
++				const gl = this.gl;
++				const location = uniform.location;
++				switch (uniform.type) {
++					case gl.FLOAT:
++						if (uniform.size > 1) gl.uniform1fv(location, value);
++						else gl.uniform1f(location, value);
++						break;
++					case gl.FLOAT_VEC3:
++						if (uniform.size > 1) gl.uniform3fv(location, value);
++						else if (value instanceof Color) gl.uniform3f(location, value.r / 255, value.g / 255, value.b / 255);
++						else gl.uniform3f(location, value.x, value.y, value.z);
++						break;
++					case gl.FLOAT_MAT4:
++						gl.uniformMatrix4fv(location, false, value.toColumnMajor());
++						break;
++					case gl.INT:
++					case gl.BOOL:
++					case gl.SAMPLER_2D:
++					case gl.SAMPLER_CUBE:
++						if (uniform.size > 1) gl.uniform1iv(location, value);
++						else gl.uniform1i(location, Number(value));
++						break;
++					default:
++						throw new Error(`ShaderProgram.set: type 0x${uniform.type.toString(16)} of ${name} is not supported`);
++				}
++			}
++		}
++
+ 		// ===== index.js =====
+ 		const gameCanvas = (document.getElementById("gameCanvas"));
+ 		const gl = (gameCanvas.getContext("webgl2"));
+@@ -1516,70 +1589,14 @@ precision highp float;
+ 
+ void main(){
+ }`;
+-		function compileShader(type, source) {
+-			const shader = gl.createShader(type);
+-			gl.shaderSource(shader, source);
+-			gl.compileShader(shader);
+-			if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+-				const log = gl.getShaderInfoLog(shader);
+-				gl.deleteShader(shader);
+-				throw new Error("Shader compile error: " + log);
+-			}
+-			return shader;
+-		}
+-
+-		function createProgram(vertexSource, fragmentSource) {
+-			const program = gl.createProgram();
+-			gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexSource));
+-			gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentSource));
+-			gl.linkProgram(program);
+-			if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+-				throw new Error("Program link error: " + gl.getProgramInfoLog(program));
+-			}
+-			return program;
+-		}
++		const program = new ShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
++		const shadowProgram = new ShaderProgram(gl, shadowVertexShaderSource, shadowFragmentShaderSource);
++		const pointShadowProgram = new ShaderProgram(gl, shadowVertexShaderSource, shadowFragmentShaderSource);
++		program.use();
+ 
+-		const program = createProgram(vertexShaderSource, fragmentShaderSource);
+-		const shadowProgram = createProgram(shadowVertexShaderSource, shadowFragmentShaderSource);
+-		const pointShadowProgram = createProgram(shadowVertexShaderSource, shadowFragmentShaderSource);
+-		gl.useProgram(program);
+-
+-		const aPosition = gl.getAttribLocation(program, "aPosition");
+-		const aUV = gl.getAttribLocation(program, "aUV");
+-		const aNormal = gl.getAttribLocation(program, "aNormal");
+-		const uModel = gl.getUniformLocation(program, "uModel");
+-		const uNormalMatrix = gl.getUniformLocation(program, "uNormalMatrix");
+-		const uView = gl.getUniformLocation(program, "uView");
+-		const uProjection = gl.getUniformLocation(program, "uProjection");
+-		const uTexture = gl.getUniformLocation(program, "uTexture");
+-		const uUseTexture = gl.getUniformLocation(program, "uUseTexture");
+-		const uColor = gl.getUniformLocation(program, "uColor");
+-		const uDirLightDir = gl.getUniformLocation(program, "uDirLightDir");
+-		const uDirLightIntensity = gl.getUniformLocation(program, "uDirLightIntensity");
+-		const uAmbientLight = gl.getUniformLocation(program, "uAmbientLight");
+-		const uPointLightPositions = gl.getUniformLocation(program, "uPointLightPositions");
+-		const uPointLightCount = gl.getUniformLocation(program, "uPointLightCount");
+-		const uPointLightIntensity = gl.getUniformLocation(program, "uPointLightIntensity");
+-		const uPointLightRange = gl.getUniformLocation(program, "uPointLightRange");
+-
+-		const uShadowMap = gl.getUniformLocation(program, "uShadowMap");
+-		const uLightView = gl.getUniformLocation(program, "uLightView");
+-		const uLightProjection = gl.getUniformLocation(program, "uLightProjection");
+-		const uUseShadow = gl.getUniformLocation(program, "uUseShadow");
+-		const uShadowBias = gl.getUniformLocation(program, "uShadowBias");
+-		const uShadowTexelSize = gl.getUniformLocation(program, "uShadowTexelSize");
+-		const uPointShadowMaps = gl.getUniformLocation(program, "uPointShadowMaps");
+-		const uShadowPointLightCount = gl.getUniformLocation(program, "uShadowPointLightCount");
+-		const uPointShadowMapSize = gl.getUniformLocation(program, "uPointShadowMapSize");
+-		const uPointShadowBias = gl.getUniformLocation(program, "uPointShadowBias");
+-		const uPointLightShadowProjectionMain = gl.getUniformLocation(program, "uPointLightShadowProjectionMain");
+-
+-		const uShadowModel = gl.getUniformLocation(shadowProgram, "uModel");
+-		const uShadowLightView = gl.getUniformLocation(shadowProgram, "uView");
+-		const uShadowLightProjection = gl.getUniformLocation(shadowProgram, "uProjection");
+-		const uPointLightShadowModel = gl.getUniformLocation(pointShadowProgram, "uModel");
+-		const uPointLightShadowView = gl.getUniformLocation(pointShadowProgram, "uView");
+-		const uPointLightShadowProjection = gl.getUniformLocation(pointShadowProgram, "uProjection");
++		const aPosition = gl.getAttribLocation(program.glProgram, "aPosition");
++		const aUV = gl.getAttribLocation(program.glProgram, "aUV");
++		const aNormal = gl.getAttribLocation(program.glProgram, "aNormal");
+ 
+ 		gl.enable(gl.DEPTH_TEST);
+ 		gl.enable(gl.CULL_FACE);
+@@ -1590,7 +1607,7 @@ void main(){
+ 		let znear = 0.01,
+ 			zfar = 1000;
+ 		let projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+-		gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
++		program.set("uProjection", projectionMatrix);
+ 		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 5, 0.2);
+ 		let keyStates = {};
+ 
+@@ -1697,11 +1714,11 @@ void main(){
+ 				}
+ 			}
+ 
+-			gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());
+-			gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
++			program.set("uView", camera.getViewMatrix());
++			program.set("uProjection", projectionMatrix);
+ 
+-			gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
+-			gl.uniform1f(uDirLightIntensity, dirLight.intensity);
++			program.set("uDirLightDir", dirLight.dir);
++			program.set("uDirLightIntensity", dirLight.intensity);
+ 
+ 			const pointLightData = new Float32Array(maxActiveLights * 3);
+ 			const pointLightCount = Math.min(pointLights.length, maxActiveLights);
+@@ -1711,31 +1728,31 @@ void main(){
+ 				pointLightData[i * 3 + 1] = lightPos.y;
+ 				pointLightData[i * 3 + 2] = lightPos.z;
+ 			}
+-			gl.uniform3fv(uPointLightPositions, pointLightData);
+-			gl.uniform1i(uPointLightCount, pointLightCount);
+-			gl.uniform1f(uPointLightIntensity, pointLightIntensity);
+-			gl.uniform1f(uPointLightRange, pointLightRange);
+-			gl.uniform1f(uAmbientLight, 0.1);
++			program.set("uPointLightPositions", pointLightData);
++			program.set("uPointLightCount", pointLightCount);
++			program.set("uPointLightIntensity", pointLightIntensity);
++			program.set("uPointLightRange", pointLightRange);
++			program.set("uAmbientLight", 0.1);
+ 
+-			gl.uniform1i(uUseShadow, useShadow ? 1 : 0);
+-			gl.uniformMatrix4fv(uLightView, false, dirLight.viewMatrix.toColumnMajor());
+-			gl.uniformMatrix4fv(uLightProjection, false, dirLight.projectionMatrix.toColumnMajor());
++			program.set("uUseShadow", useShadow);
++			program.set("uLightView", dirLight.viewMatrix);
++			program.set("uLightProjection", dirLight.projectionMatrix);
+ 			gl.activeTexture(gl.TEXTURE1);
+ 			gl.bindTexture(gl.TEXTURE_2D, dirLight.shadowMapTexture);
+-			gl.uniform1i(uShadowMap, 1);
++			program.set("uShadowMap", 1);
+ 			const pointShadowMapUnits = [];
+ 			for (let i = 0; i < maxShadowPointLights; i++) {
+ 				gl.activeTexture(gl.TEXTURE2 + i);
+ 				gl.bindTexture(gl.TEXTURE_CUBE_MAP, i < shadowPointLightCount ? pointLights[i].cubemap : null);
+ 				pointShadowMapUnits.push(2 + i);
+ 			}
+-			gl.uniform1iv(uPointShadowMaps, pointShadowMapUnits);
+-			gl.uniform1i(uShadowPointLightCount, shadowPointLightCount);
+-			gl.uniform1f(uPointShadowMapSize, pointShadowMapSize);
+-			gl.uniform1f(uPointShadowBias, pointShadowBias);
+-			gl.uniformMatrix4fv(uPointLightShadowProjectionMain, false, pointLightShadowProjectionMat.toColumnMajor());
+-			gl.uniform1f(uShadowBias, shadowBias);
+-			gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);
++			program.set("uPointShadowMaps", pointShadowMapUnits);
++			program.set("uShadowPointLightCount", shadowPointLightCount);
++			program.set("uPointShadowMapSize", pointShadowMapSize);
++			program.set("uPointShadowBias", pointShadowBias);
++			program.set("uPointLightShadowProjectionMain", pointLightShadowProjectionMat);
++			program.set("uShadowBias", shadowBias);
++			program.set("uShadowTexelSize", shadowMapDistance / shadowMapSize);
+ 			gl.activeTexture(gl.TEXTURE0);
+ 
+ 			ground.drawWithChildren();
+@@ -1801,7 +1818,7 @@ void main(){
+ 			gameCanvas.height = canvasRenderHeight;
+ 
+ 			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+-			gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
++			program.set("uProjection", projectionMatrix);
+ 			gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
+ 		}
+ 

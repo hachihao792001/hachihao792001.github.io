@@ -228,7 +228,150 @@ const uPointLightShadowProjection = gl.getUniformLocation(pointShadowProgram, "u
         }
     }
 }</code></pre>
-                    
+                    Thế là class <code>ShaderProgram</code> đã xong, giờ tới lúc ta thay thế hết mọi chỗ trong code 😳 Đầu tiên là chỗ tạo program:
+                    <pre><code class="language-javascript">const program = new ShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
+const shadowProgram = new ShaderProgram(gl, shadowVertexShaderSource, shadowFragmentShaderSource);
+const pointShadowProgram = new ShaderProgram(gl, shadowVertexShaderSource, shadowFragmentShaderSource);
+program.use();
+
+const aPosition = gl.getAttribLocation(program.glProgram, "aPosition");
+const aUV = gl.getAttribLocation(program.glProgram, "aUV");
+const aNormal = gl.getAttribLocation(program.glProgram, "aNormal");
+
+// bỏ hết ~35 dòng gl.getUniformLocation 🥵</code></pre>
+
+                    Class <code>GameObject</code>:
+                    <pre style="max-height: 400px;"><code class="language-javascript">class GameObject {
+    ...
+    draw() {
+        if (this.mesh.vertexCount == 0) return;
+        program.set("uModel", this.transform.getModelMatrix());             // <----------------------
+        program.set("uNormalMatrix", this.transform.getNormalMatrix());     // <----------------------
+
+        if (this.texture) {
+            gl.activeTexture(gl.TEXTURE0);
+            program.set("uTexture", 0);                                     // <----------------------
+            gl.bindTexture(gl.TEXTURE_2D, this.texture.glTexture);
+        }
+        program.set("uUseTexture", this.texture != null);                   // <----------------------
+        program.set("uColor", this.color);                                  // <----------------------
+
+        gl.bindVertexArray(this.mesh.vertexArray);
+        gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
+    }
+
+    // thay vì nhận vào uModel thì nhận vào program luôn
+    drawDepth(depthProgram) {
+        if (this.mesh.vertexCount == 0) return;
+        depthProgram.set("uModel", this.transform.getModelMatrix());        // <----------------------
+        ...
+    }
+
+    // cũng nhận vào depthProgram để truyền cho drawDepth
+    drawDepthWithChildren(depthProgram) {
+        this.drawDepth(depthProgram);
+        for (let child of this.transform.children) {
+            if (child.gameObject != null) {
+                child.gameObject.drawDepthWithChildren(depthProgram);
+            }
+        }
+    }
+}</code></pre>
+                    Class <code>DirectionalLight</code>:
+                    <pre style="max-height: 400px;"><code class="language-javascript">class DirectionalLight {
+    ...
+    buildShadowMap(gameObjects) {
+        ...
+        shadowProgram.use();                                        // <----------------------
+        shadowProgram.set("uView", this.viewMatrix);                // <----------------------
+        shadowProgram.set("uProjection", this.projectionMatrix);    // <----------------------
+        for (let gameObject of gameObjects) {
+            gameObject.drawDepthWithChildren(shadowProgram);        // truyền program thay vì location của uModel
+        }
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
+        program.use();                                              // <----------------------
+    }
+}</code></pre>
+                    Class <code>PointLight</code>:
+                    <pre style="max-height: 400px;"><code class="language-javascript">class PointLight extends GameObject {
+    ...
+    buildShadowMaps(gameObjects, projection) {
+        pointShadowProgram.use();                                       // <----------------------
+        gl.viewport(0, 0, pointShadowMapSize, pointShadowMapSize);
+        gl.frontFace(gl.CCW);
+
+        pointShadowProgram.set("uProjection", projection);              // <----------------------
+        for (let face = 0; face < 6; face++) {
+            let [forward, up, right] = PointLight.faces[face];
+            let view = Mat4x4.View(right, up, forward, this.transform.position);
+            pointShadowProgram.set("uView", view);                      // <----------------------
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffers[face]);
+            gl.clear(gl.DEPTH_BUFFER_BIT);
+            for (let gameObject of gameObjects) {
+                gameObject.drawDepthWithChildren(pointShadowProgram);   // <----------------------
+            }
+        }
+
+        gl.frontFace(gl.CW);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
+        program.use();                                                  // <----------------------
+    }
+}</code></pre>
+                    2 chỗ set cho projection matrix chính:
+                    <pre><code class="language-javascript">const fov = 60;
+let znear = 0.01,
+    zfar = 1000;
+let projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+program.set("uProjection", projectionMatrix);           // <----------------------
+
+...
+
+function updateRenderResolution() {
+    gameCanvas.width = canvasRenderWidth;
+    gameCanvas.height = canvasRenderHeight;
+
+    projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+    program.set("uProjection", projectionMatrix);       // <----------------------
+    gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
+}</code></pre>
+                    Cuối cùng là hàm <code>render</code>, chỗ truyền dữ liệu vào uniform nhiều nhất:
+                    <pre style="max-height: 400px;"><code class="language-javascript">function render() {
+    ...
+    program.set("uView", camera.getViewMatrix());
+    program.set("uProjection", projectionMatrix);
+
+    program.set("uDirLightDir", dirLight.dir);
+    program.set("uDirLightIntensity", dirLight.intensity);
+
+    ...
+    program.set("uPointLightPositions", pointLightData);
+    program.set("uPointLightCount", pointLightCount);
+    program.set("uPointLightIntensity", pointLightIntensity);
+    program.set("uPointLightRange", pointLightRange);
+    program.set("uAmbientLight", 0.1);
+
+    program.set("uUseShadow", useShadow);
+    program.set("uLightView", dirLight.viewMatrix);
+    program.set("uLightProjection", dirLight.projectionMatrix);
+    ...
+    program.set("uShadowMap", 1);
+    ...
+    program.set("uPointShadowMaps", pointShadowMapUnits);
+    program.set("uShadowPointLightCount", shadowPointLightCount);
+    program.set("uPointShadowMapSize", pointShadowMapSize);
+    program.set("uPointShadowBias", pointShadowBias);
+    program.set("uPointLightShadowProjectionMain", pointLightShadowProjectionMat);
+    program.set("uShadowBias", shadowBias);
+    program.set("uShadowTexelSize", shadowMapDistance / shadowMapSize);
+    ...
+}</code></pre>
+                    Kết quả (xem diff):
+                    <div class="htmlPreview" id="htmlPreview40" data-disabled="true"></div>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
