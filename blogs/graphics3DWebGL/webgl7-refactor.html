@@ -163,8 +163,72 @@ const uPointLightShadowProjection = gl.getUniformLocation(pointShadowProgram, "u
     use() {
         this.gl.useProgram(this.glProgram);
     }
-}</code></pre>
+}</code></pre><br/>
 
+                    Về hàm truyền dữ liệu vào các uniform, thì ta phải biết được là <code>gl.loại</code> nào tương ứng với kiểu nào trong shader, 
+                    và sử dụng hàm nào để truyền. Mình đã nhờ
+                    Claude làm ra 1 bảng khá chuẩn chỉnh:
+                    <div style="overflow-x: auto;">
+                    <table style="border-collapse: collapse; margin: 10px 0;">
+                        <tr>
+                            <th style="border: 1px solid #aaa; padding: 4px 6px;">GLSL</th>
+                            <th style="border: 1px solid #aaa; padding: 4px 6px;"><code>info.type</code></th>
+                            <th style="border: 1px solid #aaa; padding: 4px 6px;">Hàm truyền 1 giá trị</th>
+                            <th style="border: 1px solid #aaa; padding: 4px 6px;">Hàm truyền mảng (<code>size &gt; 1</code>)</th>
+                        </tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>float</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.FLOAT</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1f(loc, x)</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1fv(loc, arr)</code></td></tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>vec2</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.FLOAT_VEC2</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform2f(loc, x, y)</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform2fv(loc, arr)</code></td></tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>vec3</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.FLOAT_VEC3</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform3f(loc, x, y, z)</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform3fv(loc, arr)</code></td></tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>vec4</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.FLOAT_VEC4</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform4f(loc, x, y, z, w)</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform4fv(loc, arr)</code></td></tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>int</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.INT</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1i(loc, n)</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1iv(loc, arr)</code></td></tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>ivec2</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.INT_VEC2</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform2i(loc, x, y)</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform2iv(loc, arr)</code></td></tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uint</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.UNSIGNED_INT</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1ui(loc, n)</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1uiv(loc, arr)</code></td></tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>bool</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.BOOL</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1i(loc, 0 / 1)</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1iv(loc, arr)</code></td></tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>mat3</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.FLOAT_MAT3</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniformMatrix3fv(loc, false, m)</code><br/>(tham số thứ 2 là transpose)</td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniformMatrix3fv(loc, false, m)</code><br/>m là mảng 1 chiều chứa hết phần tử của mọi ma trận</td></tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>mat4</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.FLOAT_MAT4</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniformMatrix4fv(loc, false, m)</code><br/>(tham số thứ 2 là transpose)</td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniformMatrix4fv(loc, false, m)</code><br/>m là mảng 1 chiều chứa hết phần tử của mọi ma trận</td></tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>sampler2D</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.SAMPLER_2D</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1i(loc, unit)</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1iv(loc, units)</code></td></tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>samplerCube</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.SAMPLER_CUBE</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1i(loc, unit)</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1iv(loc, units)</code></td></tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>sampler2DArray</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.SAMPLER_2D_ARRAY</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1i(loc, unit)</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1iv(loc, units)</code></td></tr>
+                        <tr><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>sampler2DShadow</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>gl.SAMPLER_2D_SHADOW</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1i(loc, unit)</code></td><td style="border: 1px solid #aaa; padding: 4px 6px;"><code>uniform1iv(loc, units)</code></td></tr>
+                    </table>
+                    </div>
+                    <i>Có mấy cái ta chưa xài qua nhưng mình để đầy đủ luôn</i><br/><br/>
+                    Có được bảng trên rồi, thì hàm truyền dữ liệu vào các uniform chỉ cần switch case để dùng hàm cho đúng:
+                    <pre><code class="language-javascript">class ShaderProgram {
+    ...
+    // nhớ là trước khi gọi hàm này ta phải gọi hàm use trước
+    set(name, value) {
+        const uniform = this.uniforms[name];        // lấy uniform bằng name
+        if (!uniform) throw new Error(`ShaderProgram.set: ${name} is not an active uniform`);
+
+        const gl = this.gl;
+        const location = uniform.location;
+        switch (uniform.type) {
+            case gl.FLOAT:
+                if (uniform.size &gt; 1) gl.uniform1fv(location, value);
+                else gl.uniform1f(location, value);
+                break;
+            case gl.FLOAT_VEC3:
+                if (uniform.size &gt; 1) gl.uniform3fv(location, value);
+                else if (value instanceof Color) gl.uniform3f(location, value.r / 255, value.g / 255, value.b / 255);       // vec3 có thể là màu
+                else gl.uniform3f(location, value.x, value.y, value.z);
+                break;
+            case gl.FLOAT_MAT4:
+                gl.uniformMatrix4fv(location, false, value.toColumnMajor());
+                break;
+            case gl.INT:
+            case gl.BOOL:
+            case gl.SAMPLER_2D:
+            case gl.SAMPLER_CUBE:
+                if (uniform.size &gt; 1) gl.uniform1iv(location, value);
+                else gl.uniform1i(location, Number(value));
+                break;
+            default:
+                throw new Error(`ShaderProgram.set: type 0x${uniform.type.toString(16)} of ${name} is not supported`);
+        }
+    }
+}</code></pre>
+                    
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
