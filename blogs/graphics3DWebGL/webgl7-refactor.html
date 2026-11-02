@@ -372,6 +372,40 @@ function updateRenderResolution() {
                     Kết quả (xem diff):
                     <div class="htmlPreview" id="htmlPreview40" data-disabled="true"></div>
 
+                    <h2>2. VertexLayout, VertexBuffer, VertexArray</h2>
+                    Tiếp theo là mình sẽ xử lí mấy cái attribute, và cũng như gom lại hết vertex buffer (VBO) và vertex array (VAO).<br/><br/>
+
+                    Từ đầu tới giờ ta chỉ xài 3 attribute là <code>aPosition</code>, <code>aUV</code> và <code>aNormal</code>, và chúng đã đủ cho những thứ cho ta cần làm:
+                    <code>aPosition</code> cho tọa độ đỉnh, <code>aUV</code> cho texture, và <code>aNormal</code> cho lighting.<br/><br/>
+
+                    Tuy nhiên trong các engine thật, thì attribute hay đi theo bộ, 1 shader có thể dùng bộ attribute này, trong khi shader khác có thể dùng bộ attribute khác.
+                    1 ví dụ điển hình là trick shadow map debug ở blog trước, thay vì dùng trick <code>gl_VertexID</code>, thì ta có thể pass vào 1 <code>aPosition</code>,
+                    đó cũng là 1 bộ attribute, chỉ gồm 1 attribute. Các bộ attribute này gọi là <b>Vertex layout</b>.<br/><br/>
+
+                    Cho nên ta cũng sẽ tạo 1 class <code>VertexLayout</code> để gom lại các attribute và tính stride của chúng, một attribute sẽ bao gồm: name, localtion, size
+                    (số component) và offset. Vì khá đơn giản nên ta không cần 1 class riêng cho attribute, mà ghi thẳng thành các object trong class <code>VertexLayout</code>.<br/><br/>
+
+                    Class <code>VertexLayout</code> sẽ như sau:
+                    <pre><code class="language-javascript">class VertexLayout {
+    constructor(attributes) {
+        this.attributes = [];
+        let offset = 0;
+        for (const attribute of attributes) {
+            // attribute truyền vào chỉ có name, location và size. Ta tự thêm vào offset vì cái này VertexLayout mới tính được
+            this.attributes.push({ ...attribute, offset: offset });
+            offset += attribute.size * 4;       // 3 attribute của ta đều chứa toàn float, mỗi float 4 byte
+        }
+        this.stride = offset;       // sau vòng for trên thì offset bằng tổng size các attribute, chính là stride
+    }
+
+    // bộ attribute mà ta xài ở toàn engine, để luôn thành 1 static
+    static standard = new VertexLayout([
+        { name: "aPosition", location: 0, size: 3 },
+        { name: "aUV", location: 1, size: 2 },
+        { name: "aNormal", location: 2, size: 3 },
+    ]);
+}</code></pre>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
