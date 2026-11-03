@@ -425,8 +425,7 @@ out vec3 vWorldNormal;</code></pre>
                     Tiếp theo là gom VBO và VAO thành class <code>VertexBuffer</code> và <code>VertexArray</code>. Constructor của <code>VertexBuffer</code>
                     sẽ nhận vào dữ liệu (1 <code>Float32Array</code>) cho buffer, tạo buffer, bind và truyền dữ liệu vào buffer đó, ngoài ra còn lưu thêm <code>byteLength</code>
                     của <code>Float32Array</code> để tiện dùng khi cần:
-                    <pre><code class="language-javascript">
-class VertexBuffer {
+                    <pre><code class="language-javascript">class VertexBuffer {
     constructor(gl, data) {
         this.gl = gl;
         this.glBuffer = gl.createBuffer();
@@ -471,8 +470,38 @@ class VertexBuffer {
         gl.drawArrays(gl.TRIANGLES, 0, this.vertexCount);
     }
 }</code></pre>
+                    Thế là xong 3 class <code>VertexLayout</code>, <code>VertexBuffer</code>, và <code>VertexArray</code> 😳 Giờ là lúc ta sử dụng chúng. Chỉ cần sửa đúng 3
+                    chỗ, 1 chỗ tạo VBO, VAO (<code>Mesh.uploadToGPU</code>), và 2 chỗ vẽ (2 hàm <code>draw</code> trong <code>GameObject</code>):
+                    <pre><code class="language-javascript">class Mesh {
+    ...
+    uploadToGPU() {
+        ...
 
+        // bản cũ ở đây khá nhiều dòng (xem diff), bây giờ ta chỉ cần truyền hết các thứ vào 2 class, nó tự tính stride, offset hết 😳
+        const vertexBuffer = new VertexBuffer(gl, vertexData);
+        this.vertexArray = new VertexArray(gl, VertexLayout.standard, vertexBuffer);
+    }
+}</code></pre>
+                    <pre><code class="language-javascript">class GameObject {
+    ...
 
+    draw() {
+        ...
+
+        this.mesh.vertexArray.draw();
+    }
+
+    ...
+
+    drawDepth(depthProgram) {
+        ...
+        this.mesh.vertexArray.draw();
+    }
+
+    ...
+}</code></pre>
+                    Kết quả (xem diff):
+                    <div class="htmlPreview" id="htmlPreview41" data-disabled="true"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

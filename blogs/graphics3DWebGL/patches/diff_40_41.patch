@@ -1,0 +1,127 @@
+--- "a/htmlPreviews\\htmlPreview40.html"
++++ "b/htmlPreviews\\htmlPreview41.html"
+@@ -960,8 +960,7 @@
+ 				program.set("uUseTexture", this.texture != null);
+ 				program.set("uColor", this.color);
+ 
+-				gl.bindVertexArray(this.mesh.vertexArray);
+-				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
++				this.mesh.vertexArray.draw();
+ 			}
+ 
+ 			drawWithChildren() {
+@@ -976,8 +975,7 @@
+ 			drawDepth(depthProgram) {
+ 				if (this.mesh.vertexCount == 0) return;
+ 				depthProgram.set("uModel", this.transform.getModelMatrix());
+-				gl.bindVertexArray(this.mesh.vertexArray);
+-				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
++				this.mesh.vertexArray.draw();
+ 			}
+ 
+ 			drawDepthWithChildren(depthProgram) {
+@@ -1156,18 +1154,8 @@
+ 				}
+ 				this.vertexCount = this.tris.length * 3;
+ 
+-				this.vertexArray = gl.createVertexArray();
+-				gl.bindVertexArray(this.vertexArray);
+-				const vertexBuffer = gl.createBuffer();
+-				gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+-				gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
+-				gl.enableVertexAttribArray(aPosition);
+-				gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 32, 0);
+-				gl.enableVertexAttribArray(aUV);
+-				gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 32, 12);
+-				gl.enableVertexAttribArray(aNormal);
+-				gl.vertexAttribPointer(aNormal, 3, gl.FLOAT, false, 32, 20);
+-				gl.bindVertexArray(null);
++				const vertexBuffer = new VertexBuffer(gl, vertexData);
++				this.vertexArray = new VertexArray(gl, VertexLayout.standard, vertexBuffer);
+ 			}
+ 		}
+ 
+@@ -1437,6 +1425,61 @@
+ 			}
+ 		}
+ 
++		class VertexLayout {
++			constructor(attributes) {
++				this.attributes = [];
++				let offset = 0;
++				for (const attribute of attributes) {
++					this.attributes.push({ ...attribute, offset: offset });
++					offset += attribute.size * 4;
++				}
++				this.stride = offset;
++			}
++
++			static standard = new VertexLayout([
++				{ name: "aPosition", location: 0, size: 3 },
++				{ name: "aUV", location: 1, size: 2 },
++				{ name: "aNormal", location: 2, size: 3 },
++			]);
++		}
++
++		class VertexBuffer {
++			constructor(gl, data) {
++				this.gl = gl;
++				this.glBuffer = gl.createBuffer();
++				gl.bindBuffer(gl.ARRAY_BUFFER, this.glBuffer);
++				gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
++				this.byteLength = data.byteLength;
++			}
++		}
++
++		class VertexArray {
++			constructor(gl, layout, vertexBuffer) {
++				this.gl = gl;
++				this.layout = layout;
++				this.vertexBuffer = vertexBuffer;
++
++				this.glVertexArray = gl.createVertexArray();
++				gl.bindVertexArray(this.glVertexArray);
++				gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer.glBuffer);
++				for (const attribute of layout.attributes) {
++					gl.enableVertexAttribArray(attribute.location);
++					gl.vertexAttribPointer(attribute.location, attribute.size, gl.FLOAT, false, layout.stride, attribute.offset);
++				}
++				gl.bindVertexArray(null);
++			}
++
++			get vertexCount() {
++				return this.vertexBuffer.byteLength / this.layout.stride;
++			}
++
++			draw() {
++				const gl = this.gl;
++				gl.bindVertexArray(this.glVertexArray);
++				gl.drawArrays(gl.TRIANGLES, 0, this.vertexCount);
++			}
++		}
++
+ 		// ===== index.js =====
+ 		const gameCanvas = (document.getElementById("gameCanvas"));
+ 		const gl = (gameCanvas.getContext("webgl2"));
+@@ -1450,8 +1493,8 @@ uniform mat4 uNormalMatrix;
+ uniform mat4 uView;
+ uniform mat4 uProjection;
+ layout(location = 0) in vec3 aPosition;
+-in vec2 aUV;
+-in vec3 aNormal;
++layout(location = 1) in vec2 aUV;
++layout(location = 2) in vec3 aNormal;
+ out vec2 vUV;
+ out vec3 vWorldPosition;
+ out vec3 vWorldNormal;
+@@ -1594,10 +1637,6 @@ void main(){
+ 		const pointShadowProgram = new ShaderProgram(gl, shadowVertexShaderSource, shadowFragmentShaderSource);
+ 		program.use();
+ 
+-		const aPosition = gl.getAttribLocation(program.glProgram, "aPosition");
+-		const aUV = gl.getAttribLocation(program.glProgram, "aUV");
+-		const aNormal = gl.getAttribLocation(program.glProgram, "aNormal");
+-
+ 		gl.enable(gl.DEPTH_TEST);
+ 		gl.enable(gl.CULL_FACE);
+ 		gl.frontFace(gl.CW);
