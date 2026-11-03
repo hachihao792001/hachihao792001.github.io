@@ -376,14 +376,14 @@ function updateRenderResolution() {
                     Tiếp theo là mình sẽ xử lí mấy cái attribute, và cũng như gom lại hết vertex buffer (VBO) và vertex array (VAO).<br/><br/>
 
                     Từ đầu tới giờ ta chỉ xài 3 attribute là <code>aPosition</code>, <code>aUV</code> và <code>aNormal</code>, và chúng đã đủ cho những thứ cho ta cần làm:
-                    <code>aPosition</code> cho tọa độ đỉnh, <code>aUV</code> cho texture, và <code>aNormal</code> cho lighting.<br/><br/>
-
+                    <code>aPosition</code> cho tọa độ đỉnh, <code>aUV</code> cho texture, và <code>aNormal</code> cho lighting.
                     Tuy nhiên trong các engine thật, thì attribute hay đi theo bộ, 1 shader có thể dùng bộ attribute này, trong khi shader khác có thể dùng bộ attribute khác.
                     1 ví dụ điển hình là trick shadow map debug ở blog trước, thay vì dùng trick <code>gl_VertexID</code>, thì ta có thể pass vào 1 <code>aPosition</code>,
                     đó cũng là 1 bộ attribute, chỉ gồm 1 attribute. Các bộ attribute này gọi là <b>Vertex layout</b>.<br/><br/>
 
-                    Cho nên ta cũng sẽ tạo 1 class <code>VertexLayout</code> để gom lại các attribute và tính stride của chúng, một attribute sẽ bao gồm: name, localtion, size
-                    (số component) và offset. Vì khá đơn giản nên ta không cần 1 class riêng cho attribute, mà ghi thẳng thành các object trong class <code>VertexLayout</code>.<br/><br/>
+                    Cho nên ta cũng sẽ tạo 1 class <code>VertexLayout</code> để gom lại các attribute, và đồng thời tính stride của chúng để pass vào hàm
+                    <code>gl.vertexAttribPointer</code>. Một attribute sẽ bao gồm: name, localtion, size
+                    (số component) và offset. Vì nó khá đơn giản nên ta không cần 1 class riêng cho attribute, mà ghi thẳng thành các object trong class <code>VertexLayout</code>.<br/><br/>
 
                     Class <code>VertexLayout</code> sẽ như sau:
                     <pre><code class="language-javascript">class VertexLayout {
@@ -405,6 +405,73 @@ function updateRenderResolution() {
         { name: "aNormal", location: 2, size: 3 },
     ]);
 }</code></pre>
+                    Trong 2 vertex shader, ta có set <code>layout(location = 0)</code> cho <code>aPosition</code> để xác nhận index của <code>aPosition</code>
+                    luôn là 0 ở mọi program, làm như vậy để biến <code>aPosition</code> dùng được cho cả program chính và shadow program.
+                    Chữ layout đó chính là <code>VertexLayout</code> 😳, như vậy bây giờ ta hiểu full nghĩa của đoạn đó là
+                    "trong 1 vertex layout, index của <code>aPosition</code> là 0". Như vậy, để cho chắc ăn thì ta sẽ set luôn location cho <code>aUV</code>
+                    và <code>aNormal</code> trong vertex shader chính:
+                    <pre><code class="language-glsl">#version 300 es
+uniform mat4 uModel;
+uniform mat4 uNormalMatrix;
+uniform mat4 uView;
+uniform mat4 uProjection;
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec2 aUV;           // <----------------------
+layout(location = 2) in vec3 aNormal;       // <----------------------
+out vec2 vUV;
+out vec3 vWorldPosition;
+out vec3 vWorldNormal;</code></pre>
+
+                    Tiếp theo là gom VBO và VAO thành class <code>VertexBuffer</code> và <code>VertexArray</code>. Constructor của <code>VertexBuffer</code>
+                    sẽ nhận vào dữ liệu (1 <code>Float32Array</code>) cho buffer, tạo buffer, bind và truyền dữ liệu vào buffer đó, ngoài ra còn lưu thêm <code>byteLength</code>
+                    của <code>Float32Array</code> để tiện dùng khi cần:
+                    <pre><code class="language-javascript">
+class VertexBuffer {
+    constructor(gl, data) {
+        this.gl = gl;
+        this.glBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.glBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+        this.byteLength = data.byteLength;
+    }
+}</code></pre>
+                    Class <code>VertexBuffer</code> chỉ có nhiêu đó 😳 nó chỉ là để wrap buffer của WebGL lại rồi cho bên ngoài xài dữ liệu của nó.
+                    Thật ra nếu đầy đủ thì phải có thêm hàm <code>bind</code> để bind lại buffer này khi cần, nhưng engine chúng ta thì bind mọi dữ liệu
+                    1 lần duy nhất ngay lúc bắt đầu, nên cũng không cần.<br/><br/>
+
+                    Tiếp theo là class <code>VertexArray</code>. Nếu bạn không nhớ rõ VAO làm gì, thì nó đơn giản chỉ là nhớ attribute nào đọc phần nào
+                    của 1 buffer, ngoài ra nó còn nhớ element buffer để hàm <code>drawElements</code> biết lấy đỉnh nào theo thứ tự nào để vẽ, nhưng ta bỏ
+                    element buffer từ lâu rồi nên không cần quan tâm. Như vậy constructor của <code>VertexArray</code> sẽ nhận vào 1 <code>VertexLayout</code>
+                    và 1 <code>VertexBuffer</code>, nó sẽ tạo VAO, gọi hàm <code>vertexAttribPointer</code> để "nối" các attribute và buffer dựa vào stride
+                    và offset của chúng. Ngoài ra mình thêm hàm <code>vertexCount</code> (tính số đỉnh bằng kích thước byte của vertex buffer chia cho stride),
+                    và <code>draw</code> (bind VAO xong vẽ thôi):
+                    <pre><code class="language-javascript">class VertexArray {
+    constructor(gl, layout, vertexBuffer) {
+        this.gl = gl;
+        this.layout = layout;
+        this.vertexBuffer = vertexBuffer;
+
+        this.glVertexArray = gl.createVertexArray();
+        gl.bindVertexArray(this.glVertexArray);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer.glBuffer);
+        for (const attribute of layout.attributes) {
+            gl.enableVertexAttribArray(attribute.location);
+            gl.vertexAttribPointer(attribute.location, attribute.size, gl.FLOAT, false, layout.stride, attribute.offset);
+        }
+        gl.bindVertexArray(null);
+    }
+
+    get vertexCount() {
+        return this.vertexBuffer.byteLength / this.layout.stride;
+    }
+
+    draw() {
+        const gl = this.gl;
+        gl.bindVertexArray(this.glVertexArray);
+        gl.drawArrays(gl.TRIANGLES, 0, this.vertexCount);
+    }
+}</code></pre>
+
 
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
