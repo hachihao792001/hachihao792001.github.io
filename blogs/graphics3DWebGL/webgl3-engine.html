@@ -323,9 +323,8 @@ toColumnMajor() {
 		gl.bindVertexArray(null);
 	}
 }</code></pre>
-					Lần này mình dùng <code>drawArrays</code> chứ không dùng index buffer như blog 1. Mesh của engine là một danh sách tam giác, mỗi tam giác 3 đỉnh
-					riêng, nên chưa có index để dùng. Gom các đỉnh trùng vị trí lại thành index buffer thì được, nhưng series này không làm: từ blog 4, blog 5 trở đi
-					mỗi đỉnh còn mang uv và normal riêng theo từng mặt, nên 2 đỉnh trùng vị trí của 2 mặt khác nhau vẫn không gộp được.<br/><br/>
+					Lần này mình dùng <code>drawArrays</code> chứ không dùng index buffer như blog 1. Mình các đỉnh có chung tọa độ thì không có nghĩa là chúng sẽ có chung pháp
+					tuyến, ví dụ như 3 tam giác ở 1 góc của 1 cục cube vậy, ta cần pháp tuyến các mặt khác nhau để sau này tính ánh sáng cho đúng.<br/><br/>
 
 					Ngoài ra, <code>cubeMesh</code> được ground và 2 cube point light dùng chung, nên chỉ có 1 VAO cho cả 3, giống phần 12 của blog 2: 
 					cùng 1 VAO, mỗi lần vẽ đổi <code>uModel</code>.

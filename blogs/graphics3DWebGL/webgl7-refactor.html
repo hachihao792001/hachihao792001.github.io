@@ -502,6 +502,44 @@ out vec3 vWorldNormal;</code></pre>
 }</code></pre>
                     Kết quả (xem diff):
                     <div class="htmlPreview" id="htmlPreview41" data-disabled="true"></div>
+
+                    <h2>3. Mesh và index buffer</h2>
+                    Đúng vậy, tiêu đề không sai, chúng ta sẽ mang index buffer trở lại 😳 Blog 3 mình có nói là không xài index buffer được vì các đỉnh có tọa độ giống nhau
+                    không có nghĩa là có pháp tuyến giống nhau (3 tam giác chung 1 đỉnh trong 1 cube). Tuy nhiên, "không có nghĩa" không có nghĩa là "tất cả", ví dụ như các tam
+                    giác nằm chung 1 mặt phẳng, thì các đỉnh trùng nhau của chúng là có chung pháp tuyến luôn.<br/><br/>
+
+                    Như vậy ta sẽ tạo 1 class <code>IndexBuffer</code>, constructor nhận vào các index, nó sẽ lưu lại số lượng index, loại của index (int32 hay int16, mình có
+                    nói ở <a href="webgl1-basic.html">blog 1</a>). Sau đó nó tạo 1 buffer để lưu các index đó vào khe <code>gl.ELEMENT_ARRAY_BUFFER</code>, tuy nhiên trước
+                    khi bind khe để lưu thì nên bỏ bind VAO trước, vì bạn nhớ là VAO cũng nhớ luôn element buffer giùm mình, mình mà còn bind VAO thì lúc truyền vào element
+                    buffer, nó sẽ thay đổi luôn VAO đó. Như vậy class sẽ như sau (chỉ có constructor);
+                    <pre><code class="language-javascript">class IndexBuffer {
+    constructor(gl, indices) {
+        this.gl = gl;
+        this.count = indices.length;
+        this.type = indices instanceof Uint32Array ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;       // check kiểu của index để lưu cho đúng
+        this.glBuffer = gl.createBuffer();
+        gl.bindVertexArray(null);           // ELEMENT_ARRAY_BUFFER là một phần của VAO, đừng ghi đè index buffer của VAO đang bind
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.glBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+    }
+}</code></pre>
+                    Vì VAO chứa index buffer, nên ta phải thêm nó vào trong class <code>VertexArray</code>:
+                    <pre><code class="language-javascript">class VertexArray {
+    constructor(gl, layout, vertexBuffer, indexBuffer) {
+        ...
+        this.indexBuffer = indexBuffer;                                         // <----------------------
+        ...
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer.glBuffer);           // <---------------------- VAO nhớ luôn index buffer
+        gl.bindVertexArray(null);
+    }
+
+    draw() {
+        const gl = this.gl;
+        gl.bindVertexArray(this.glVertexArray);
+        gl.drawElements(gl.TRIANGLES, this.indexBuffer.count, this.indexBuffer.type, 0);   // <----------------------
+    }
+}</code></pre>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
