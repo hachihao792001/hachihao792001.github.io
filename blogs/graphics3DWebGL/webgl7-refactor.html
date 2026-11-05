@@ -503,7 +503,7 @@ out vec3 vWorldNormal;</code></pre>
                     Kết quả (xem diff):
                     <div class="htmlPreview" id="htmlPreview41" data-disabled="true"></div>
 
-                    <h2>3. Mesh và index buffer</h2>
+                    <h2>3. Index buffer và Mesh</h2>
                     Đúng vậy, tiêu đề không sai, chúng ta sẽ mang index buffer trở lại 😳 Blog 3 mình có nói là không xài index buffer được vì các đỉnh có tọa độ giống nhau
                     không có nghĩa là có pháp tuyến giống nhau (3 tam giác chung 1 đỉnh trong 1 cube). Tuy nhiên, "không có nghĩa" không có nghĩa là "tất cả", ví dụ như các tam
                     giác nằm chung 1 mặt phẳng, thì các đỉnh trùng nhau của chúng là có chung pháp tuyến luôn.<br/><br/>
@@ -539,7 +539,59 @@ out vec3 vWorldNormal;</code></pre>
         gl.drawElements(gl.TRIANGLES, this.indexBuffer.count, this.indexBuffer.type, 0);   // <----------------------
     }
 }</code></pre>
+                    Trước khi nói về class <code>Mesh</code>, mình sẽ nói về class <code>Triangle</code> trước:
+                    <pre><code class="language-javascript">class Triangle {
+    constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
+        this.vertices = vertices;
+        this.uv = uv;
+        this.color = color;
+        this.normal = Vector3.forward.clone();
 
+        this.updateNormal();
+    }
+
+    updateNormal() {
+        let edge1 = Vector3.sub(this.vertices[0], this.vertices[1]);
+        let edge2 = Vector3.sub(this.vertices[1], this.vertices[2]);
+        this.normal = Vector3.cross(edge1, edge2).normalize();
+    }
+}</code></pre>
+                    Cơ bản bây giờ là nó chỉ là 1 cục dữ liệu chứ không còn làm gì nữa, việc xử lí dữ liệu các thứ đã nằm hết ở shader, ở Javascript ta chỉ cần xếp data
+                    cho đúng rồi truyền hết vào cho GPU là xong. Cho nên mình quyết định <b>bỏ</b> class <code>Triangle</code> và nhét những dữ liệu của nó vào <code>Mesh</code>
+                    luôn 😳 Tức là bây giờ <code>Mesh</code> không còn chứa danh sách tam giác, mà chứa luôn full danh sách đỉnh, uv, normal, và cả index. Màu thì không chứa nữa do thực
+                    tế ta cũng ko dùng:
+                    <pre><code class="language-javascript">class Mesh {
+    constructor(positions, uvs, normals, indices) {
+        this.positions = positions;
+        this.uvs = uvs;
+        this.normals = normals;
+        this.indices = indices;
+        this.uploadToGPU();
+    }
+
+    get vertexCount() {
+        return this.positions.length / 3;
+    }
+}</code></pre>
+                    Ngoài ra còn hàm <code>uploadToGPU</code>, bản cũ chúng ta đang hard code việc tạo dãy data:
+                    <pre><code class="language-javascript">uploadToGPU() {
+    ...
+    // 8 là số float mỗi đỉnh (3 + 2 + 3), 24 là số float mỗi tam giác (8 * 3)
+    for (let i = 0; i < this.tris.length; i++) {
+        for (let j = 0; j < 3; j++) {
+            const vertex = this.tris[i].vertices[j];
+            vertexData[i * 24 + j * 8] = vertex.x;
+            vertexData[i * 24 + j * 8 + 1] = vertex.y;
+            vertexData[i * 24 + j * 8 + 2] = vertex.z;
+            vertexData[i * 24 + j * 8 + 3] = this.tris[i].uv[j].u;
+            vertexData[i * 24 + j * 8 + 4] = this.tris[i].uv[j].v;
+            vertexData[i * 24 + j * 8 + 5] = this.tris[i].normal.x;
+            vertexData[i * 24 + j * 8 + 6] = this.tris[i].normal.y;
+            vertexData[i * 24 + j * 8 + 7] = this.tris[i].normal.z;
+        }
+    }
+    ...
+}</code></pre>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
