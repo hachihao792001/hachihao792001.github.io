@@ -391,18 +391,18 @@ function updateRenderResolution() {
         this.attributes = [];
         let offset = 0;
         for (const attribute of attributes) {
-            // attribute truyền vào chỉ có name, location và size. Ta tự thêm vào offset vì cái này VertexLayout mới tính được
+            // attribute truyền vào chỉ có name, location và componentCount. Ta tự thêm vào offset vì cái này VertexLayout mới tính được
             this.attributes.push({ ...attribute, offset: offset });
-            offset += attribute.size * 4;       // 3 attribute của ta đều chứa toàn float, mỗi float 4 byte
+            offset += attribute.componentCount * 4;       // 3 attribute của ta đều chứa toàn float, mỗi float 4 byte
         }
         this.stride = offset;       // sau vòng for trên thì offset bằng tổng size các attribute, chính là stride
     }
 
     // bộ attribute mà ta xài ở toàn engine, để luôn thành 1 static
     static standard = new VertexLayout([
-        { name: "aPosition", location: 0, size: 3 },
-        { name: "aUV", location: 1, size: 2 },
-        { name: "aNormal", location: 2, size: 3 },
+        { name: "aPosition", location: 0, componentCount: 3 },
+        { name: "aUV", location: 1, componentCount: 2 },
+        { name: "aNormal", location: 2, componentCount: 3 },
     ]);
 }</code></pre>
                     Trong 2 vertex shader, ta có set <code>layout(location = 0)</code> cho <code>aPosition</code> để xác nhận index của <code>aPosition</code>
@@ -455,7 +455,7 @@ out vec3 vWorldNormal;</code></pre>
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer.glBuffer);
         for (const attribute of layout.attributes) {
             gl.enableVertexAttribArray(attribute.location);
-            gl.vertexAttribPointer(attribute.location, attribute.size, gl.FLOAT, false, layout.stride, attribute.offset);
+            gl.vertexAttribPointer(attribute.location, attribute.componentCount, gl.FLOAT, false, layout.stride, attribute.offset);
         }
         gl.bindVertexArray(null);
     }
@@ -575,7 +575,9 @@ out vec3 vWorldNormal;</code></pre>
 }</code></pre>
                     Ngoài ra còn hàm <code>uploadToGPU</code>, bản cũ chúng ta đang hard code việc tạo dãy data:
                     <pre><code class="language-javascript">uploadToGPU() {
-    ...
+    if (this.tris.length == 0) return;
+
+    const vertexData = new Float32Array(this.tris.length * 24);
     // 8 là số float mỗi đỉnh (3 + 2 + 3), 24 là số float mỗi tam giác (8 * 3)
     for (let i = 0; i < this.tris.length; i++) {
         for (let j = 0; j < 3; j++) {
@@ -592,6 +594,35 @@ out vec3 vWorldNormal;</code></pre>
     }
     ...
 }</code></pre>
+                    Bây giờ ta sẽ làm gọn phần code này lại, mình sẽ làm từng bước một vì những biến và số này khá là rối, có cái tính bằng byte, có cái tính bằng số float, 
+                    có cái tính bằng số vertex 🥵<br/><br/>
+                    
+                    Bước đầu tiên: bỏ đi khái niệm tam giác và for qua từng đỉnh một, tuy nhiên như bạn biết thì bây giờ đâu còn khái niệm đỉnh là
+                    1 cục hoàn chỉnh, mà ta đã tách ra thành các dữ liệu position, uv và normal. Như vậy việc "for qua từng đỉnh" thực ra là ta đang "for qua từng 8 float",
+                    trong 8 float đó ta sẽ xử lí 3 attribute rõ ràng:
+                    <pre><code class="language-javascript">uploadToGPU() {
+    const layout = VertexLayout.standard;                                           // lấy layout standard (layout duy nhất trong engine)
+    const floatsPerVertex = layout.stride / 4;                                      // tính số float trong 1 đỉnh (8), stride là đơn vị byte
+    const vertexData = new Float32Array(this.vertexCount * floatsPerVertex);        // số float tổng cộng của Mesh là số đỉnh * số float trong 1 đỉnh
+    
+    // for qua từng 8 float, và viết rõ việc xử lí từng attribute
+    for (let i = 0; i < vertexData.length; i += floatsPerVertex) {      // i tính theo số float
+        let positionStartIndex = i / floatsPerVertex * 3;
+        vertexData[i] = this.positions[positionStartIndex];
+        vertexData[i + 1] = this.positions[positionStartIndex + 1];
+        vertexData[i + 2] = this.positions[positionStartIndex + 2];
+
+        let uvStartIndex = i / floatsPerVertex * 2;
+        vertexData[i + 3] = this.uvs[uvStartIndex];
+        vertexData[i + 4] = this.uvs[uvStartIndex + 1];
+
+        let normalStartIndex = i / floatsPerVertex * 3;
+        vertexData[i + 5] = this.normals[normalStartIndex];
+        vertexData[i + 6] = this.normals[normalStartIndex + 1];
+        vertexData[i + 7] = this.normals[normalStartIndex + 2];
+    }
+}</code></pre>
+                    
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

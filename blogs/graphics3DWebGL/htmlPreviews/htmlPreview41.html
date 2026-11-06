@@ -1431,15 +1431,15 @@
 				let offset = 0;
 				for (const attribute of attributes) {
 					this.attributes.push({ ...attribute, offset: offset });
-					offset += attribute.size * 4;
+					offset += attribute.componentCount * 4;
 				}
 				this.stride = offset;
 			}
 
 			static standard = new VertexLayout([
-				{ name: "aPosition", location: 0, size: 3 },
-				{ name: "aUV", location: 1, size: 2 },
-				{ name: "aNormal", location: 2, size: 3 },
+				{ name: "aPosition", location: 0, componentCount: 3 },
+				{ name: "aUV", location: 1, componentCount: 2 },
+				{ name: "aNormal", location: 2, componentCount: 3 },
 			]);
 		}
 
@@ -1464,7 +1464,7 @@
 				gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer.glBuffer);
 				for (const attribute of layout.attributes) {
 					gl.enableVertexAttribArray(attribute.location);
-					gl.vertexAttribPointer(attribute.location, attribute.size, gl.FLOAT, false, layout.stride, attribute.offset);
+					gl.vertexAttribPointer(attribute.location, attribute.componentCount, gl.FLOAT, false, layout.stride, attribute.offset);
 				}
 				gl.bindVertexArray(null);
 			}
