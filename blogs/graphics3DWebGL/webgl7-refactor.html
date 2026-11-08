@@ -597,13 +597,12 @@ out vec3 vWorldNormal;</code></pre>
                     Bây giờ ta sẽ làm gọn phần code này lại, mình sẽ làm từng bước một vì những biến và số này khá là rối, có cái tính bằng byte, có cái tính bằng số float, 
                     có cái tính bằng số vertex 🥵<br/><br/>
                     
-                    Bước đầu tiên: bỏ đi khái niệm tam giác và for qua từng đỉnh một, tuy nhiên như bạn biết thì bây giờ đâu còn khái niệm đỉnh là
-                    1 cục hoàn chỉnh, mà ta đã tách ra thành các dữ liệu position, uv và normal. Như vậy việc "for qua từng đỉnh" thực ra là ta đang "for qua từng 8 float",
-                    trong 8 float đó ta sẽ xử lí 3 attribute rõ ràng:
+                    Bước đầu tiên: bỏ đi khái niệm tam giác, và for qua từng đỉnh một. Tuy nhiên, bây giờ thì ta đâu còn khái niệm đỉnh là
+                    1 cục hoàn chỉnh nữa, mà ta đã tách ra thành các dữ liệu position, uv và normal. Như vậy việc "for qua từng đỉnh" thực ra là ta đang "for qua từng 8 float",
+                    trong 8 float đó ta sẽ xử lí 3 attribute rõ ràng. :
                     <pre><code class="language-javascript">uploadToGPU() {
-    const layout = VertexLayout.standard;                                           // lấy layout standard (layout duy nhất trong engine)
-    const floatsPerVertex = layout.stride / 4;                                      // tính số float trong 1 đỉnh (8), stride là đơn vị byte
-    const vertexData = new Float32Array(this.vertexCount * floatsPerVertex);        // số float tổng cộng của Mesh là số đỉnh * số float trong 1 đỉnh
+    const floatsPerVertex = 8;
+    const vertexData = new Float32Array(this.vertexCount * floatsPerVertex);        // tổng số float bên trong 1 Mesh = số đỉnh trong Mesh * số float trong 1 đỉnh
     
     // for qua từng 8 float, và viết rõ việc xử lí từng attribute
     for (let i = 0; i < vertexData.length; i += floatsPerVertex) {      // i tính theo số float
@@ -622,7 +621,30 @@ out vec3 vWorldNormal;</code></pre>
         vertexData[i + 7] = this.normals[normalStartIndex + 2];
     }
 }</code></pre>
-                    
+                    Tiếp theo, ta biết là <code>8</code> chính là stride của 1 vertex với layout standard (position, uv, normal). Và <code>3, 2, 3</code> chính
+                    là 3 <code>componentCount</code> của 3 attribute:
+                    <pre><code class="language-javascript">uploadToGPU() {
+    const layout = VertexLayout.standard;
+    const floatsPerVertex = layout.stride / 4;
+    const vertexData = new Float32Array(this.vertexCount * floatsPerVertex);
+    
+    for (let i = 0; i < vertexData.length; i += floatsPerVertex) {      // i tính theo số float
+        let positionStartIndex = i / floatsPerVertex * 3;
+        vertexData[i] = this.positions[positionStartIndex];
+        vertexData[i + 1] = this.positions[positionStartIndex + 1];
+        vertexData[i + 2] = this.positions[positionStartIndex + 2];
+
+        let uvStartIndex = i / floatsPerVertex * 2;
+        vertexData[i + 3] = this.uvs[uvStartIndex];
+        vertexData[i + 4] = this.uvs[uvStartIndex + 1];
+
+        let normalStartIndex = i / floatsPerVertex * 3;
+        vertexData[i + 5] = this.normals[normalStartIndex];
+        vertexData[i + 6] = this.normals[normalStartIndex + 1];
+        vertexData[i + 7] = this.normals[normalStartIndex + 2];
+    }
+}</code></pre>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
