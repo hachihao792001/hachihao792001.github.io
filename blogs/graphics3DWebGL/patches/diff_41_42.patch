@@ -1,0 +1,449 @@
+--- "a/htmlPreviews\\htmlPreview41.html"
++++ "b/htmlPreviews\\htmlPreview42.html"
+@@ -948,7 +948,7 @@
+ 			}
+ 
+ 			draw() {
+-				if (this.mesh.vertexCount == 0) return;
++				if (!this.mesh) return;
+ 				program.set("uModel", this.transform.getModelMatrix());
+ 				program.set("uNormalMatrix", this.transform.getNormalMatrix());
+ 
+@@ -973,7 +973,7 @@
+ 			}
+ 
+ 			drawDepth(depthProgram) {
+-				if (this.mesh.vertexCount == 0) return;
++				if (!this.mesh) return;
+ 				depthProgram.set("uModel", this.transform.getModelMatrix());
+ 				this.mesh.vertexArray.draw();
+ 			}
+@@ -1096,229 +1096,184 @@
+ 		}
+ 
+ 		// ===== mesh.js =====
+-		class Triangle {
+-			constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
+-				this.vertices = vertices;
+-				this.uv = uv;
+-				this.color = color;
+-				this.normal = Vector3.forward.clone();
+-
+-				this.updateNormal();
+-			}
+-
+-			updateNormal() {
+-				let edge1 = Vector3.sub(this.vertices[0], this.vertices[1]);
+-				let edge2 = Vector3.sub(this.vertices[1], this.vertices[2]);
+-				this.normal = Vector3.cross(edge1, edge2).normalize();
+-			}
+-		}
+-
+ 		class Mesh {
+-			constructor(tris = []) {
+-				this.tris = tris;
+-				this.vertexCount = 0;
+-				this.vertexArray = null;
++			constructor(positions, uvs, normals, indices) {
++				this.positions = positions;
++				this.uvs = uvs;
++				this.normals = normals;
++				this.indices = indices;
+ 				this.uploadToGPU();
+ 			}
+ 
+-			setTriangles(tris, color = new Color(255, 255, 255)) {
+-				this.tris = [];
+-				for (let tri of tris) {
+-					this.tris.push(
+-						new Triangle(
+-							[tri.vertices[0].clone(), tri.vertices[1].clone(), tri.vertices[2].clone()],
+-							[tri.uv[0].clone(), tri.uv[1].clone(), tri.uv[2].clone()],
+-							color,
+-						),
+-					);
+-				}
+-				this.uploadToGPU();
++			get vertexCount() {
++				return this.positions.length / 3;
+ 			}
+ 
+ 			uploadToGPU() {
+-				if (this.tris.length == 0) return;
+-
+-				const vertexData = new Float32Array(this.tris.length * 24);
+-				for (let i = 0; i < this.tris.length; i++) {
+-					for (let j = 0; j < 3; j++) {
+-						const vertex = this.tris[i].vertices[j];
+-						vertexData[i * 24 + j * 8] = vertex.x;
+-						vertexData[i * 24 + j * 8 + 1] = vertex.y;
+-						vertexData[i * 24 + j * 8 + 2] = vertex.z;
+-						vertexData[i * 24 + j * 8 + 3] = this.tris[i].uv[j].u;
+-						vertexData[i * 24 + j * 8 + 4] = this.tris[i].uv[j].v;
+-						vertexData[i * 24 + j * 8 + 5] = this.tris[i].normal.x;
+-						vertexData[i * 24 + j * 8 + 6] = this.tris[i].normal.y;
+-						vertexData[i * 24 + j * 8 + 7] = this.tris[i].normal.z;
++				const layout = VertexLayout.standard;
++				const floatsPerVertex = layout.stride / 4;
++				const meshDatas = [this.positions, this.uvs, this.normals];
++				const vertexData = new Float32Array(this.vertexCount * floatsPerVertex);
++
++				for (let i = 0; i < vertexData.length; i += floatsPerVertex) {
++					for (let attrib = 0; attrib < layout.attributes.length; attrib++) {
++						let startIndex = i / floatsPerVertex * layout.attributes[attrib].componentCount;
++						let offset = layout.attributes[attrib].offset / 4;
++
++						for (let component = 0; component < layout.attributes[attrib].componentCount; component++)
++							vertexData[i + offset + component] = meshDatas[attrib][startIndex + component];
+ 					}
+ 				}
+-				this.vertexCount = this.tris.length * 3;
+ 
+ 				const vertexBuffer = new VertexBuffer(gl, vertexData);
+-				this.vertexArray = new VertexArray(gl, VertexLayout.standard, vertexBuffer);
++				const indexBuffer = new IndexBuffer(gl, this.indices);
++				this.vertexArray = new VertexArray(gl, layout, vertexBuffer, indexBuffer);
+ 			}
+ 		}
+ 
+-		class Quad extends Mesh {
++		class MeshBuilder {
+ 			constructor() {
+-				super(Quad.generateInitialTriangles());
++				this.positions = [];
++				this.uvs = [];
++				this.normals = [];
++				this.indices = [];
++				this.vertexIndexByKey = new Map();
++			}
++
++			addTriangle(vertices, uvs) {
++				let edge1 = Vector3.sub(vertices[0], vertices[1]);
++				let edge2 = Vector3.sub(vertices[1], vertices[2]);
++				let normal = Vector3.cross(edge1, edge2).normalize();
++				for (let i = 0; i < 3; i++) {
++					this.indices.push(this.addVertex(vertices[i], uvs[i], normal));
++				}
+ 			}
+ 
+-			static generateInitialTriangles() {
+-				let tris = [];
+-				let color = new Color(255, 255, 255);
++			addVertex(position, uv, normal) {
++				const values = [position.x, position.y, position.z, uv.u, uv.v, normal.x, normal.y, normal.z];
++				const key = values.join(",");
++				let index = this.vertexIndexByKey.get(key);
++				if (index === undefined) {
++					index = this.positions.length / 3;
++					this.positions.push(values[0], values[1], values[2]);
++					this.uvs.push(values[3], values[4]);
++					this.normals.push(values[5], values[6], values[7]);
++					this.vertexIndexByKey.set(key, index);
++				}
++				return index;
++			}
+ 
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(0.5, -0.5, 0), new Vector3(0.5, 0.5, 0), new Vector3(-0.5, 0.5, 0)],
+-						[new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
+-						color,
+-					),
++			build() {
++				const vertexCount = this.positions.length / 3;
++				return new Mesh(
++					new Float32Array(this.positions),
++					new Float32Array(this.uvs),
++					new Float32Array(this.normals),
++					vertexCount <= 65536 ? new Uint16Array(this.indices) : new Uint32Array(this.indices),
+ 				);
++			}
++		}
++
++		class Primitives {
++			static quad() {
++				const builder = new MeshBuilder();
+ 
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(0.5, -0.5, 0), new Vector3(-0.5, 0.5, 0), new Vector3(-0.5, -0.5, 0)],
+-						[new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
+-						color,
+-					),
++				builder.addTriangle(
++					[new Vector3(0.5, -0.5, 0), new Vector3(0.5, 0.5, 0), new Vector3(-0.5, 0.5, 0)],
++					[new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
+ 				);
+ 
+-				return tris;
+-			}
+-		}
++				builder.addTriangle(
++					[new Vector3(0.5, -0.5, 0), new Vector3(-0.5, 0.5, 0), new Vector3(-0.5, -0.5, 0)],
++					[new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
++				);
+ 
+-		class Cube extends Mesh {
+-			constructor() {
+-				super(Cube.generateInitialTriangles());
++				return builder.build();
+ 			}
+ 
+-			static generateInitialTriangles() {
+-				let tris = [];
+-				let color = new Color(255, 255, 255);
++			static cube() {
++				const builder = new MeshBuilder();
+ 
+ 				// FRONT
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(-0.5, -0.5, -0.5), new Vector3(-0.5, 0.5, -0.5), new Vector3(0.5, 0.5, -0.5)],
+-						[new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)],
+-						color,
+-					),
++				builder.addTriangle(
++					[new Vector3(-0.5, -0.5, -0.5), new Vector3(-0.5, 0.5, -0.5), new Vector3(0.5, 0.5, -0.5)],
++					[new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)],
+ 				);
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, 0.5, -0.5), new Vector3(0.5, -0.5, -0.5)],
+-						[new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)],
+-						color,
+-					),
++				builder.addTriangle(
++					[new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, 0.5, -0.5), new Vector3(0.5, -0.5, -0.5)],
++					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)],
+ 				);
+ 
+ 				// RIGHT
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(0.5, -0.5, -0.5), new Vector3(0.5, 0.5, -0.5), new Vector3(0.5, 0.5, 0.5)],
+-						[new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1)],
+-						color,
+-					),
++				builder.addTriangle(
++					[new Vector3(0.5, -0.5, -0.5), new Vector3(0.5, 0.5, -0.5), new Vector3(0.5, 0.5, 0.5)],
++					[new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1)],
+ 				);
+ 
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(0.5, -0.5, -0.5), new Vector3(0.5, 0.5, 0.5), new Vector3(0.5, -0.5, 0.5)],
+-						[new Vector2(0, 0), new Vector2(1, 1), new Vector2(0, 1)],
+-						color,
+-					),
++				builder.addTriangle(
++					[new Vector3(0.5, -0.5, -0.5), new Vector3(0.5, 0.5, 0.5), new Vector3(0.5, -0.5, 0.5)],
++					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(0, 1)],
+ 				);
+ 
+ 				// BACK
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(0.5, -0.5, 0.5), new Vector3(0.5, 0.5, 0.5), new Vector3(-0.5, 0.5, 0.5)],
+-						[new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
+-						color,
+-					),
++				builder.addTriangle(
++					[new Vector3(0.5, -0.5, 0.5), new Vector3(0.5, 0.5, 0.5), new Vector3(-0.5, 0.5, 0.5)],
++					[new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)],
+ 				);
+ 
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(0.5, -0.5, 0.5), new Vector3(-0.5, 0.5, 0.5), new Vector3(-0.5, -0.5, 0.5)],
+-						[new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
+-						color,
+-					),
++				builder.addTriangle(
++					[new Vector3(0.5, -0.5, 0.5), new Vector3(-0.5, 0.5, 0.5), new Vector3(-0.5, -0.5, 0.5)],
++					[new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)],
+ 				);
+ 
+ 				// LEFT
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(-0.5, -0.5, 0.5), new Vector3(-0.5, 0.5, 0.5), new Vector3(-0.5, 0.5, -0.5)],
+-						[new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0)],
+-						color,
+-					),
++				builder.addTriangle(
++					[new Vector3(-0.5, -0.5, 0.5), new Vector3(-0.5, 0.5, 0.5), new Vector3(-0.5, 0.5, -0.5)],
++					[new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0)],
+ 				);
+ 
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(-0.5, -0.5, 0.5), new Vector3(-0.5, 0.5, -0.5), new Vector3(-0.5, -0.5, -0.5)],
+-						[new Vector2(0, 1), new Vector2(1, 0), new Vector2(0, 0)],
+-						color,
+-					),
++				builder.addTriangle(
++					[new Vector3(-0.5, -0.5, 0.5), new Vector3(-0.5, 0.5, -0.5), new Vector3(-0.5, -0.5, -0.5)],
++					[new Vector2(0, 1), new Vector2(1, 0), new Vector2(0, 0)],
+ 				);
+ 
+ 				// TOP
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(-0.5, 0.5, -0.5), new Vector3(-0.5, 0.5, 0.5), new Vector3(0.5, 0.5, 0.5)],
+-						[new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)],
+-						color,
+-					),
++				builder.addTriangle(
++					[new Vector3(-0.5, 0.5, -0.5), new Vector3(-0.5, 0.5, 0.5), new Vector3(0.5, 0.5, 0.5)],
++					[new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)],
+ 				);
+ 
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(-0.5, 0.5, -0.5), new Vector3(0.5, 0.5, 0.5), new Vector3(0.5, 0.5, -0.5)],
+-						[new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)],
+-						color,
+-					),
++				builder.addTriangle(
++					[new Vector3(-0.5, 0.5, -0.5), new Vector3(0.5, 0.5, 0.5), new Vector3(0.5, 0.5, -0.5)],
++					[new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)],
+ 				);
+ 
+ 				// BOTTOM
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(0.5, -0.5, 0.5), new Vector3(-0.5, -0.5, 0.5), new Vector3(-0.5, -0.5, -0.5)],
+-						[new Vector2(1, 1), new Vector2(0, 1), new Vector2(0, 0)],
+-						color,
+-					),
++				builder.addTriangle(
++					[new Vector3(0.5, -0.5, 0.5), new Vector3(-0.5, -0.5, 0.5), new Vector3(-0.5, -0.5, -0.5)],
++					[new Vector2(1, 1), new Vector2(0, 1), new Vector2(0, 0)],
+ 				);
+ 
+-				tris.push(
+-					new Triangle(
+-						[new Vector3(0.5, -0.5, 0.5), new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, -0.5, -0.5)],
+-						[new Vector2(1, 1), new Vector2(0, 0), new Vector2(1, 0)],
+-						color,
+-					),
++				builder.addTriangle(
++					[new Vector3(0.5, -0.5, 0.5), new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, -0.5, -0.5)],
++					[new Vector2(1, 1), new Vector2(0, 0), new Vector2(1, 0)],
+ 				);
+ 
+-				return tris;
++				return builder.build();
+ 			}
+ 		}
+ 
+-		class ObjMesh extends Mesh {
+-			constructor(objURL) {
+-				super();
+-				this.load(objURL);
+-			}
+-
+-			async load(url) {
++		class ObjLoader {
++			static async load(url) {
+ 				const response = await fetch(url);
+ 				const objText = await response.text();
+-				const triangles = this.parseOBJ(objText);
+-				this.setTriangles(triangles);
++				return ObjLoader.parse(objText);
+ 			}
+ 
+-			parseOBJ(objText) {
++			static parse(objText) {
+ 				const vertices = [];
+ 				const uvs = [];
+-				const triangles = [];
++				const builder = new MeshBuilder();
+ 				const lines = objText.split("\n");
+ 
+ 				for (let line of lines) {
+@@ -1343,12 +1298,11 @@
+ 							triVertices.push(vertexCoord);
+ 							triUVs.push(vertexUV);
+ 						}
+-						let newTri = new Triangle(triVertices, triUVs);
+-						triangles.push(newTri);
++						builder.addTriangle(triVertices, triUVs);
+ 					}
+ 				}
+ 
+-				return triangles;
++				return builder.build();
+ 			}
+ 		}
+ 
+@@ -1449,15 +1403,27 @@
+ 				this.glBuffer = gl.createBuffer();
+ 				gl.bindBuffer(gl.ARRAY_BUFFER, this.glBuffer);
+ 				gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+-				this.byteLength = data.byteLength;
++			}
++		}
++
++		class IndexBuffer {
++			constructor(gl, indices) {
++				this.gl = gl;
++				this.count = indices.length;
++				this.type = indices instanceof Uint32Array ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
++				this.glBuffer = gl.createBuffer();
++				gl.bindVertexArray(null);
++				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.glBuffer);
++				gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+ 			}
+ 		}
+ 
+ 		class VertexArray {
+-			constructor(gl, layout, vertexBuffer) {
++			constructor(gl, layout, vertexBuffer, indexBuffer) {
+ 				this.gl = gl;
+ 				this.layout = layout;
+ 				this.vertexBuffer = vertexBuffer;
++				this.indexBuffer = indexBuffer;
+ 
+ 				this.glVertexArray = gl.createVertexArray();
+ 				gl.bindVertexArray(this.glVertexArray);
+@@ -1466,17 +1432,14 @@
+ 					gl.enableVertexAttribArray(attribute.location);
+ 					gl.vertexAttribPointer(attribute.location, attribute.componentCount, gl.FLOAT, false, layout.stride, attribute.offset);
+ 				}
++				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer.glBuffer);
+ 				gl.bindVertexArray(null);
+ 			}
+ 
+-			get vertexCount() {
+-				return this.vertexBuffer.byteLength / this.layout.stride;
+-			}
+-
+ 			draw() {
+ 				const gl = this.gl;
+ 				gl.bindVertexArray(this.glVertexArray);
+-				gl.drawArrays(gl.TRIANGLES, 0, this.vertexCount);
++				gl.drawElements(gl.TRIANGLES, this.indexBuffer.count, this.indexBuffer.type, 0);
+ 			}
+ 		}
+ 
+@@ -1709,15 +1672,17 @@ void main(){
+ 			gl
+ 		);
+ 
+-		let cubeMesh = new Cube();
++		let cubeMesh = Primitives.cube();
+ 		let woodTower = new GameObject(
+ 			new Vector3(0, -0.17, 0),
+ 			Vector3.zero,
+ 			new Vector3(1, 1, 1),
+ 			new Color(255, 255, 255),
+-			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj"),
++			null,
+ 			woodTexture
+ 		);
++		ObjLoader.load("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj")
++			.then((mesh) => (woodTower.mesh = mesh));
+ 		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
+ 		let pointLights = [
+ 			new PointLight(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 1"),

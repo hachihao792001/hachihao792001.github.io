@@ -1112,25 +1112,17 @@
 			uploadToGPU() {
 				const layout = VertexLayout.standard;
 				const floatsPerVertex = layout.stride / 4;
+				const meshDatas = [this.positions, this.uvs, this.normals];
 				const vertexData = new Float32Array(this.vertexCount * floatsPerVertex);
 
 				for (let i = 0; i < vertexData.length; i += floatsPerVertex) {
-					let positionStartIndex = i / floatsPerVertex * layout.attributes[0].componentCount;
-					let positionOffset = layout.attributes[0].offset / 4;
-					vertexData[i + positionOffset] = this.positions[positionStartIndex];
-					vertexData[i + positionOffset + 1] = this.positions[positionStartIndex + 1];
-					vertexData[i + positionOffset + 2] = this.positions[positionStartIndex + 2];
+					for (let attrib = 0; attrib < layout.attributes.length; attrib++) {
+						let startIndex = i / floatsPerVertex * layout.attributes[attrib].componentCount;
+						let offset = layout.attributes[attrib].offset / 4;
 
-					let uvStartIndex = i / floatsPerVertex * layout.attributes[1].componentCount;
-					let uvOffset = layout.attributes[1].offset / 4;
-					vertexData[i + uvOffset] = this.uvs[uvStartIndex];
-					vertexData[i + uvOffset + 1] = this.uvs[uvStartIndex + 1];
-					
-					let normalStartIndex = i / floatsPerVertex * layout.attributes[2].componentCount;
-					let normalOffset = layout.attributes[2].offset / 4;
-					vertexData[i + normalOffset] = this.normals[normalStartIndex];
-					vertexData[i + normalOffset + 1] = this.normals[normalStartIndex + 1];
-					vertexData[i + normalOffset + 2] = this.normals[normalStartIndex + 2];
+						for (let component = 0; component < layout.attributes[attrib].componentCount; component++)
+							vertexData[i + offset + component] = meshDatas[attrib][startIndex + component];
+					}
 				}
 
 				const vertexBuffer = new VertexBuffer(gl, vertexData);
