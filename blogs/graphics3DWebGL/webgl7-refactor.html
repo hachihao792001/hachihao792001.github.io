@@ -953,6 +953,197 @@ ObjLoader.load("https://raw.githubusercontent.com/.../wooden watch tower2.obj")
                     Kết quả (xem diff):
                     <div class="htmlPreview" id="htmlPreview42" data-disabled="true"></div>
 
+                    <h2>4. Texture2D và TextureCube</h2>
+                    Tiếp theo là mình sẽ gom texture và framebuffer. Đối với texture thì hiện tại có 3 chỗ tạo texture: class <code>Texture</code>, shadow map của
+                    <code>DirectionalLight</code>, và cube map của <code>PointLight</code>. Chỗ nào cũng gọi các hàm giống nhau: <code>createTexture</code>, <code>bindTexture</code>,
+                    <code>texImage2D</code> rồi 4, 5 dòng <code>texParameteri</code>. Đối với framebuffer, thì có 2 chỗ: 1 cái của directional light, 6 cái của mỗi point
+                    light, lần nào bind framebuffer cũng phải nhớ đổi <code>gl.viewport</code> cho bằng kích thước texture, vẽ xong thì đổi lại thành canvas chính (ở blog 6 mình có
+                    ghi chú là "bước này hay dễ quên").<br/><br/>
+
+                    Đầu tiên là về texture bình thường, mình sẽ tạo 1 class <code>Texture2D</code>, đại diện cho texture trong GPU, khác với class <code>Texture</code> (trong CPU).
+                    Để biết constructor của <code>Texture2D</code> cần gì, mình xin viết lại các tham số của hàm <code>gl.texImage2D</code>:
+                    <pre><code class="language-javascript">gl.texImage2D(
+	// khe,
+	// mipmap level
+	// internal format, là format mà webgl lưu,
+	// width,
+	// height,
+	// border, trong WebGL tham số này bắt buộc là 0 (WebGL không hỗ trợ border, cái này là tàn dư từ OpenGL),
+	// format truyền vào,
+	// kiểu của buffer,
+	// các pixel kiểu Uint8Array, vì pixels của Texture là kiểu Uint8ClampedArray (kiểu từ getImageData trả về) nên phải convert)</code></pre>
+                    
+                    Khe thì luôn là <code>gl.TEXTURE_2D</code>, mipmap level luôn là 0, border cũng luôn là 0. Vì vậy những gì mà ta cần truyền vào trong
+                    constructor là: internal format, width, height, format truyền vào, kiểu và các pixel.<br/><br/>
+                    
+                    Internal format, format và kiểu là các <code>gl....</code>, khá là khó nhớ
+                    và dễ lộn (nhất là 2 cái format), cho nên tốt nhất mình nên để default value cho 3 cái này để lúc sau dùng nhiều thì đỡ phải lộn. Với pixels, mình sẽ để nó
+                    đằng trước 3 cái kia, lí do thì khá là củ chuối. Mình làm vậy là vì Javascript không cho mình skip qua tham số mặc định như C#, muốn dùng tham số mặc định
+                    thì mình phải truyền vào <code>undefined</code>. Cụ thể, nếu mình để pixels là tham số cuối, thì khi tạo <code>Texture2D</code> nó sẽ như sau:
+                    <pre><code  class="language-javascript">this.glTexture = new Texture2D(this.gl, this.width, this.height, undefined, undefined, undefined, new Uint8Array(this.pixels.buffer));</code></pre>
+                    Skip qua 3 tham số mặc định bằng 3 cái <code>undefined</code> thì khá là khổ 😅 cho nên để pixels trước 3 cái đó là cách tốt nhất.<br/><br/>
+                    Cho nên class <code>Texture2D</code> sẽ như sau:
+                    <pre><code class="language-javascript">class Texture2D {
+    constructor(gl, width, height, pixels = null, internalFormat = gl.RGBA8, format = gl.RGBA, type = gl.UNSIGNED_BYTE) {
+        this.gl = gl;
+        this.width = width;
+        this.height = height;
+        this.glTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.glTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, pixels);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
+
+    // depth texture thì cũng dùng lại class này, chỉ là truyền vào internalFormat, format và type khác
+    static depth(gl, size) {
+        return new Texture2D(gl, size, size, null, gl.DEPTH_COMPONENT24, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT);
+    }
+
+    // bind với texture unit bất kỳ
+    bind(unit) {
+        this.gl.activeTexture(this.gl.TEXTURE0 + unit);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTexture);
+    }
+}</code></pre>
+                    Có class <code>Texture2D</code> rồi, thì class <code>Texture</code> sẽ giảm phần code liên quan tới GPU:
+                    <pre><code class="language-javascript">class Texture {
+    constructor(url = "", gl = null) {
+        this.pixels = null;
+        this.width = 0;
+        this.height = 0;
+        this.gl = gl;
+        this.glTexture = null;          // lúc trước ta createTexture ở đây luôn, bây giờ ta giao việc đó cho Texture2D
+        if (url) this.load(url);
+    }
+
+    async load(url) {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = url;
+        const loaded = new Promise((resolve) => {
+            img.onload = () => {
+                resolve();
+            };
+        });
+        await loaded;
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = img.width;
+        tempCanvas.height = img.height;
+        const tempCtx = (tempCanvas.getContext("2d"));
+        tempCtx.drawImage(img, 0, 0);
+        this.pixels = tempCtx.getImageData(0, 0, img.width, img.height).data;
+        this.width = img.width;
+        this.height = img.height;
+
+        // 5 dòng GPU tóm gọn lại thành 1 dòng này
+        // Có 1 lưu ý là lúc trước glTexture là một texture thuần của GPU (kết quả của hàm createTexture), bây giờ thì nó là một Texture2D
+        this.glTexture = new Texture2D(this.gl, this.width, this.height, new Uint8Array(this.pixels.buffer));   
+    }
+}</code></pre>
+                    <code>Texture.glTexture</code> đổi kiểu thì hàm <code>GameObject.draw</code> phải cập nhật:
+                    <pre><code class="language-javascript">class GameObject {
+    ...
+    draw() {
+        ...
+
+        const glTexture = this.texture ? this.texture.glTexture : null;
+        if (glTexture) {
+            glTexture.bind(0);                  // xài hàm bind mới của Texture2D, bind vào texture unit 0
+            program.set("uTexture", 0);
+        }
+        program.set("uUseTexture", glTexture != null);          // <----------------------
+        program.set("uColor", this.color);
+
+        this.mesh.vertexArray.draw();
+    }
+    ...
+}</code></pre>
+                    Cũng như <code>shadowMapTexture</code> của <code>DirectionalLight</code>:
+                    <pre><code class="language-javascript">class DirectionalLight {
+    constructor(dir, intensity) {
+        this.dir = dir.normalize();
+        this.intensity = intensity;
+        this.viewMatrix = null;
+        this.projectionMatrix = null;
+
+        this.shadowMapTexture = Texture2D.depth(gl, shadowMapSize);     // 7 dòng rút thành 1 dòng
+
+        this.shadowFramebuffer = gl.createFramebuffer();
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFramebuffer);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.shadowMapTexture.glTexture, 0);    // <--------------
+    }
+    ...
+}</code></pre>
+
+                    Với Cube map thì mình tạo class <code>TextureCube</code>, cũng không có gì đáng nói, nó chỉ là bê mấy phần code liên quan tới cube map vào 😳 Giá trị mặc
+                    định thì cũng không cần vì ta chỉ cần nó cho 1 mục đích duy nhất đó là point light shadow:
+                    <pre><code class="language-javascript">class TextureCube {
+    constructor(gl, size, internalFormat, format, type) {
+        this.gl = gl;
+        this.width = size;
+        this.height = size;
+        this.glTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.glTexture);
+        for (let face = 0; face < 6; face++) {
+            gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, internalFormat, size, size, 0, format, type, null);
+        }
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+    }
+
+    static depth(gl, size) {
+        return new TextureCube(gl, size, gl.DEPTH_COMPONENT24, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT);
+    }
+
+    bind(unit) {
+        this.gl.activeTexture(this.gl.TEXTURE0 + unit);
+        this.gl.bindTexture(this.gl.TEXTURE_CUBE_MAP, this.glTexture);
+    }
+}</code></pre>
+                    Chỗ đầu tiên hiển nhiên cần cập nhật là trong <code>PointLight</code>:
+                    <pre><code class="language-javascript">class PointLight extends GameObject {
+    ...
+
+    constructor(pos, eulerAngles, scale, color, mesh, texture = null, name = "") {
+        super(pos, eulerAngles, scale, color, mesh, texture, name);
+
+        this.cubemap = TextureCube.depth(gl, pointShadowMapSize);   // 10 dòng rút lại thành như vậy
+    
+        this.framebuffers = [];
+        for (let face = 0; face < 6; face++) {
+            const framebuffer = gl.createFramebuffer();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_X + face, this.cubemap.glTexture, 0);     // <--------------
+            this.framebuffers.push(framebuffer);
+        }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+    ...
+}</code></pre>
+
+                    Ngoài ra trong hàm <code>render</code> ta đổi phần code bind texture unit bằng 2 class mới. Bạn phải nhớ lại là: texture bình thường của GameObject là unit 0,
+                    shadow map của directional light là unit 1, và 4 unit còn lại là của point light shadow map:
+                    <pre><code class="language-javascript">function render() {
+    ...
+    dirLight.shadowMapTexture.bind(1);              // <--------------
+    program.set("uShadowMap", 1);
+    const pointShadowMapUnits = [];
+    for (let i = 0; i < maxShadowPointLights; i++) {
+        if (i < shadowPointLightCount) pointLights[i].cubemap.bind(2 + i);          // <--------------
+        pointShadowMapUnits.push(2 + i);
+    }
+    ...
+}</code></pre>
+
+                    Kết quả (xem diff):
+                    <div class="htmlPreview" id="htmlPreview43"></div>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

@@ -1,0 +1,170 @@
+--- "a/htmlPreviews\\htmlPreview42.html"
++++ "b/htmlPreviews\\htmlPreview43.html"
+@@ -630,7 +630,7 @@
+ 				this.width = 0;
+ 				this.height = 0;
+ 				this.gl = gl;
+-				this.glTexture = gl.createTexture();
++				this.glTexture = null;
+ 				if (url) this.load(url);
+ 			}
+ 
+@@ -653,13 +653,7 @@
+ 				this.width = img.width;
+ 				this.height = img.height;
+ 
+-				this.gl.bindTexture(gl.TEXTURE_2D, this.glTexture);
+-				this.gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(this.pixels.buffer));
+-
+-				this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+-				this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+-				this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+-				this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++				this.glTexture = new Texture2D(this.gl, this.width, this.height, new Uint8Array(this.pixels.buffer));
+ 			}
+ 		}
+ 
+@@ -952,12 +946,12 @@
+ 				program.set("uModel", this.transform.getModelMatrix());
+ 				program.set("uNormalMatrix", this.transform.getNormalMatrix());
+ 
+-				if (this.texture) {
+-					gl.activeTexture(gl.TEXTURE0);
++				const glTexture = this.texture ? this.texture.glTexture : null;
++				if (glTexture) {
++					glTexture.bind(0);
+ 					program.set("uTexture", 0);
+-					gl.bindTexture(gl.TEXTURE_2D, this.texture.glTexture);
+ 				}
+-				program.set("uUseTexture", this.texture != null);
++				program.set("uUseTexture", glTexture != null);
+ 				program.set("uColor", this.color);
+ 
+ 				this.mesh.vertexArray.draw();
+@@ -995,17 +989,11 @@
+ 				this.viewMatrix = null;
+ 				this.projectionMatrix = null;
+ 
+-				this.shadowMapTexture = gl.createTexture();
+-				gl.bindTexture(gl.TEXTURE_2D, this.shadowMapTexture);
+-				gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, shadowMapSize, shadowMapSize, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++				this.shadowMapTexture = Texture2D.depth(gl, shadowMapSize);
+ 
+ 				this.shadowFramebuffer = gl.createFramebuffer();
+ 				gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFramebuffer);
+-				gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.shadowMapTexture, 0);
++				gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.shadowMapTexture.glTexture, 0);
+ 				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+ 			}
+ 
+@@ -1049,22 +1037,13 @@
+ 			constructor(pos, eulerAngles, scale, color, mesh, texture = null, name = "") {
+ 				super(pos, eulerAngles, scale, color, mesh, texture, name);
+ 
+-				this.cubemap = gl.createTexture();
+-				gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.cubemap);
+-				for (let face = 0; face < 6; face++) {
+-					gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, gl.DEPTH_COMPONENT24, pointShadowMapSize, pointShadowMapSize, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+-				}
+-				gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+-				gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+-				gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+-				gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+-				gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
++				this.cubemap = TextureCube.depth(gl, pointShadowMapSize);
+ 
+ 				this.framebuffers = [];
+ 				for (let face = 0; face < 6; face++) {
+ 					const framebuffer = gl.createFramebuffer();
+ 					gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+-					gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_X + face, this.cubemap, 0);
++					gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_X + face, this.cubemap.glTexture, 0);
+ 					this.framebuffers.push(framebuffer);
+ 				}
+ 				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+@@ -1444,6 +1423,57 @@
+ 			}
+ 		}
+ 
++		class Texture2D {
++			constructor(gl, width, height, pixels = null, internalFormat = gl.RGBA8, format = gl.RGBA, type = gl.UNSIGNED_BYTE) {
++				this.gl = gl;
++				this.width = width;
++				this.height = height;
++				this.glTexture = gl.createTexture();
++				gl.bindTexture(gl.TEXTURE_2D, this.glTexture);
++				gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, pixels);
++				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
++				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
++				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++			}
++
++			static depth(gl, size) {
++				return new Texture2D(gl, size, size, null, gl.DEPTH_COMPONENT24, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT);
++			}
++
++			bind(unit) {
++				this.gl.activeTexture(this.gl.TEXTURE0 + unit);
++				this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTexture);
++			}
++		}
++
++		class TextureCube {
++			constructor(gl, size, internalFormat, format, type) {
++				this.gl = gl;
++				this.width = size;
++				this.height = size;
++				this.glTexture = gl.createTexture();
++				gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.glTexture);
++				for (let face = 0; face < 6; face++) {
++					gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, internalFormat, size, size, 0, format, type, null);
++				}
++				gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
++				gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
++				gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++				gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++				gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
++			}
++
++			static depth(gl, size) {
++				return new TextureCube(gl, size, gl.DEPTH_COMPONENT24, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT);
++			}
++
++			bind(unit) {
++				this.gl.activeTexture(this.gl.TEXTURE0 + unit);
++				this.gl.bindTexture(this.gl.TEXTURE_CUBE_MAP, this.glTexture);
++			}
++		}
++
+ 		// ===== index.js =====
+ 		const gameCanvas = (document.getElementById("gameCanvas"));
+ 		const gl = (gameCanvas.getContext("webgl2"));
+@@ -1742,13 +1772,11 @@ void main(){
+ 			program.set("uUseShadow", useShadow);
+ 			program.set("uLightView", dirLight.viewMatrix);
+ 			program.set("uLightProjection", dirLight.projectionMatrix);
+-			gl.activeTexture(gl.TEXTURE1);
+-			gl.bindTexture(gl.TEXTURE_2D, dirLight.shadowMapTexture);
++			dirLight.shadowMapTexture.bind(1);
+ 			program.set("uShadowMap", 1);
+ 			const pointShadowMapUnits = [];
+ 			for (let i = 0; i < maxShadowPointLights; i++) {
+-				gl.activeTexture(gl.TEXTURE2 + i);
+-				gl.bindTexture(gl.TEXTURE_CUBE_MAP, i < shadowPointLightCount ? pointLights[i].cubemap : null);
++				if (i < shadowPointLightCount) pointLights[i].cubemap.bind(2 + i);
+ 				pointShadowMapUnits.push(2 + i);
+ 			}
+ 			program.set("uPointShadowMaps", pointShadowMapUnits);
+@@ -1758,7 +1786,6 @@ void main(){
+ 			program.set("uPointLightShadowProjectionMain", pointLightShadowProjectionMat);
+ 			program.set("uShadowBias", shadowBias);
+ 			program.set("uShadowTexelSize", shadowMapDistance / shadowMapSize);
+-			gl.activeTexture(gl.TEXTURE0);
+ 
+ 			ground.drawWithChildren();
+ 			for (let light of pointLights) {
