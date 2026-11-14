@@ -791,8 +791,167 @@ out vec3 vWorldNormal;</code></pre>
     }
     ...
 }</code></pre>
+                    Class <code>Mesh</code> đã xong, bây giờ tới những class con của nó 😳 Mình sẽ thay đổi chúng 1 chút: Mình không cho <code>Cube</code>, <code>Quad</code>
+                    và <code>ObjMesh</code> là subclass của <code>Mesh</code> nữa, vì thực chất chúng không phải là "một loại của" <code>Mesh</code>, mà là "một đối tượng của" <code>Mesh</code>.
+                    Chúng đều là <code>Mesh</code> hết, chỉ là có thông tin khác nhau thôi.<br/><br/>
 
+                    Thay vào đó, mình sẽ tạo class <code>Primitive</code> để chứa các <code>Mesh</code> mặc định thành các biến static,
+                    engine ta thì chỉ có <code>Cube</code> và <code>Quad</code>:
+                    <pre style="max-height: 500px;"><code class="language-javascript">class Primitives {
+    static quad() {
+        return Mesh.fromTriangles([
+            new Triangle(
+                [new Vector3(0.5, -0.5, 0), new Vector3(0.5, 0.5, 0), new Vector3(-0.5, 0.5, 0)],
+                [new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)]
+            ),
 
+            new Triangle(
+                [new Vector3(0.5, -0.5, 0), new Vector3(-0.5, 0.5, 0), new Vector3(-0.5, -0.5, 0)],
+                [new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)]
+            ),
+        ]);
+    }
+
+    static cube() {
+        return Mesh.fromTriangles([
+            // FRONT
+            new Triangle(
+                [new Vector3(-0.5, -0.5, -0.5), new Vector3(-0.5, 0.5, -0.5), new Vector3(0.5, 0.5, -0.5)],
+                [new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)]
+            ),
+            new Triangle(
+                [new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, 0.5, -0.5), new Vector3(0.5, -0.5, -0.5)],
+                [new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)]
+            ),
+
+            // RIGHT
+            new Triangle(
+                [new Vector3(0.5, -0.5, -0.5), new Vector3(0.5, 0.5, -0.5), new Vector3(0.5, 0.5, 0.5)],
+                [new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1)]
+            ),
+
+            new Triangle(
+                [new Vector3(0.5, -0.5, -0.5), new Vector3(0.5, 0.5, 0.5), new Vector3(0.5, -0.5, 0.5)],
+                [new Vector2(0, 0), new Vector2(1, 1), new Vector2(0, 1)]
+            ),
+
+            // BACK
+            new Triangle(
+                [new Vector3(0.5, -0.5, 0.5), new Vector3(0.5, 0.5, 0.5), new Vector3(-0.5, 0.5, 0.5)],
+                [new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1)]
+            ),
+
+            new Triangle(
+                [new Vector3(0.5, -0.5, 0.5), new Vector3(-0.5, 0.5, 0.5), new Vector3(-0.5, -0.5, 0.5)],
+                [new Vector2(1, 0), new Vector2(0, 1), new Vector2(0, 0)]
+            ),
+
+            // LEFT
+            new Triangle(
+                [new Vector3(-0.5, -0.5, 0.5), new Vector3(-0.5, 0.5, 0.5), new Vector3(-0.5, 0.5, -0.5)],
+                [new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0)]
+            ),
+
+            new Triangle(
+                [new Vector3(-0.5, -0.5, 0.5), new Vector3(-0.5, 0.5, -0.5), new Vector3(-0.5, -0.5, -0.5)],
+                [new Vector2(0, 1), new Vector2(1, 0), new Vector2(0, 0)]
+            ),
+
+            // TOP
+            new Triangle(
+                [new Vector3(-0.5, 0.5, -0.5), new Vector3(-0.5, 0.5, 0.5), new Vector3(0.5, 0.5, 0.5)],
+                [new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1)]
+            ),
+
+            new Triangle(
+                [new Vector3(-0.5, 0.5, -0.5), new Vector3(0.5, 0.5, 0.5), new Vector3(0.5, 0.5, -0.5)],
+                [new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0)]
+            ),
+
+            // BOTTOM
+            new Triangle(
+                [new Vector3(0.5, -0.5, 0.5), new Vector3(-0.5, -0.5, 0.5), new Vector3(-0.5, -0.5, -0.5)],
+                [new Vector2(1, 1), new Vector2(0, 1), new Vector2(0, 0)]
+            ),
+
+            new Triangle(
+                [new Vector3(0.5, -0.5, 0.5), new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, -0.5, -0.5)],
+                [new Vector2(1, 1), new Vector2(0, 0), new Vector2(1, 0)]
+            ),
+        ]);
+    }
+    }</code></pre>
+                    Còn <code>ObjMesh</code>, nó không miêu tả 1 mesh nào đó cụ thể, mà load thông tin file obj từ link mà ta đưa nó. Cơ bản class 
+                    <code>ObjMesh</code> chỉ chứa các hàm để load, chứ không phải "một loại của" hay "một đối tượng của" <code>Mesh</code>. Cho nên mình chuyển nó
+                    thành class mới <code>ObjLoader</code>, chỉ có công dụng load như mình nói trên:
+                    <pre style="max-height: 500px;"><code class="language-javascript">class ObjLoader {
+    static async load(url) {
+        const response = await fetch(url);
+        const objText = await response.text();
+        return ObjLoader.parse(objText);
+    }
+
+    static parse(objText) {
+        const vertices = [];
+        const uvs = [];
+        const triangles = [];
+        const lines = objText.split("\n");
+
+        for (let line of lines) {
+            if (!line || line.startsWith("#")) continue;
+
+            if (line.startsWith("v ")) {
+                const values = line.split(" ");
+                vertices.push(new Vector3(parseFloat(values[1]), parseFloat(values[2]), parseFloat(values[3])));
+            } else if (line.startsWith("vt ")) {
+                const values = line.split(" ");
+                uvs.push(new Vector2(parseFloat(values[1]), 1 - parseFloat(values[2])));
+            } else if (line.startsWith("f ")) {
+                const vertexInfoStrs = line.split(" ").slice(1);
+
+                let triVertices = [];
+                let triUVs = [];
+                for (let vertexInfoStr of vertexInfoStrs) {
+                    const vertexInfo = vertexInfoStr.split("/");
+                    const vertexCoord = vertices[parseInt(vertexInfo[0]) - 1];
+                    const vertexUV = uvs[parseInt(vertexInfo[1]) - 1];
+
+                    triVertices.push(vertexCoord);
+                    triUVs.push(vertexUV);
+                }
+                triangles.push(new Triangle(triVertices, triUVs));
+            }
+        }
+
+        return Mesh.fromTriangles(triangles);       // dùng hàm fromTriangles mới
+    }
+}</code></pre>
+                    Vì không còn <code>ObjMesh</code> nữa, nên lúc tạo GameObject có sử dụng <code>ObjMesh</code> (tòa tháp gỗ), ta tạm thời để nó null, sau đó
+                    ta mới gọi <code>ObjLoader.load</code>. Như vậy, phần khai báo sẽ trở thành như sau:
+                    <pre><code class="language-javascript">let cubeMesh = Primitives.cube();                               // <----------------------
+let woodTower = new GameObject(
+    ...
+    null,                                                       // <---------------------- load xong mới có mesh
+    woodTexture
+);
+ObjLoader.load("https://raw.githubusercontent.com/.../wooden watch tower2.obj")
+    .then((mesh) => (woodTower.mesh = mesh));                  // load là hàm async, dùng .then để đợi khi nó xong để set mesh</code></pre>
+                    
+                    Ở class GameObject, ta có check nếu <code>this.mesh.vertexCount == 0</code> thì khoan vẽ, bây giờ ta chỉ cần check null là oke:
+                    <pre><code class="language-javascript">class GameObject {
+    ...
+    draw() {
+        if (!this.mesh) return;                                 // <----------------------
+        ...
+    }
+    ...
+    drawDepth(depthProgram) {
+        if (!this.mesh) return;                                 // <----------------------
+        ...
+    }
+}</code></pre>
+                    Kết quả (xem diff):
+                    <div class="htmlPreview" id="htmlPreview42" data-disabled="true"></div>
 
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
