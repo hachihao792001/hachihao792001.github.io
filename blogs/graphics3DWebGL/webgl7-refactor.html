@@ -536,7 +536,7 @@ out vec3 vWorldNormal;</code></pre>
     draw() {
         const gl = this.gl;
         gl.bindVertexArray(this.glVertexArray);
-        gl.drawElements(gl.TRIANGLES, this.indexBuffer.count, this.indexBuffer.type, 0);   // <----------------------
+        gl.drawElements(gl.TRIANGLES, this.indexBuffer.count, this.indexBuffer.type, 0);   // dùng drawElements thay vì dùng drawArrays
     }
 }</code></pre>
                     Trước khi nói về class <code>Mesh</code>, mình sẽ nói về class <code>Triangle</code> trước:
@@ -557,9 +557,24 @@ out vec3 vWorldNormal;</code></pre>
     }
 }</code></pre>
                     Cơ bản bây giờ là nó chỉ là 1 cục dữ liệu chứ không còn làm gì nữa, việc xử lí dữ liệu các thứ đã nằm hết ở shader, ở Javascript ta chỉ cần xếp data
-                    cho đúng rồi truyền hết vào cho GPU là xong. Cho nên mình quyết định <b>bỏ</b> class <code>Triangle</code> và nhét những dữ liệu của nó vào <code>Mesh</code>
-                    luôn 😳 Tức là bây giờ <code>Mesh</code> không còn chứa danh sách tam giác, mà chứa luôn full danh sách đỉnh, uv, normal, và cả index. Màu thì không chứa nữa do thực
-                    tế ta cũng ko dùng:
+                    cho đúng rồi truyền hết vào cho GPU là xong. Mình vẫn giữ class <code>Triangle</code>, nhưng mình bỏ <code>color</code> (ta đó giờ không dùng),
+                    và chuyển pháp tuyến thành 1 hàm <code>getNormal</code> thôi.
+                    Lúc trước có thuộc tính <code>normal</code> và hàm <code>updateNormal</code> là vì ta cập nhật dữ liệu trong <code>Triangle</code> mỗi frame, nhưng giờ việc
+                    cập nhật đó đã nằm trong GPU:
+                    <pre><code class="language-javascript">class Triangle {
+    constructor(vertices, uvs) {
+        this.vertices = vertices;
+        this.uvs = uvs;
+    }
+
+    getNormal() {
+        const edge1 = Vector3.sub(this.vertices[0], this.vertices[1]);
+        const edge2 = Vector3.sub(this.vertices[1], this.vertices[2]);
+        return Vector3.cross(edge1, edge2).normalize();
+    }
+}</code></pre>
+                    Class <code>Mesh</code> bây giờ không còn chứa danh sách tam giác nữa, mà chứa luôn full danh sách đỉnh, uv, normal, và cả index. Làm như vậy để
+                    dễ truyền vào GPU hơn:
                     <pre><code class="language-javascript">class Mesh {
     constructor(positions, uvs, normals, indices) {
         this.positions = positions;
@@ -675,7 +690,7 @@ out vec3 vWorldNormal;</code></pre>
     }
     ...
 }</code></pre>
-                    Từng attribute có +1, +2 để set cho từng component, nghĩa là ta có thể for quaa chúng:
+                    Từng attribute có +1, +2 để set cho từng component, nghĩa là ta có thể for qua chúng:
                     <pre style="max-height: 400px"><code class="language-javascript">uploadToGPU() {
     const layout = VertexLayout.standard;
     const floatsPerVertex = layout.stride / 4;
@@ -724,7 +739,60 @@ out vec3 vWorldNormal;</code></pre>
     this.vertexArray = new VertexArray(gl, layout, vertexBuffer, indexBuffer);
 }</code></pre>
 
-                    Bạn thấy là nếu mình show luôn phiên bản này cho bạn từ đầu, thì bạn sẽ ngồi ngẫm khá lâu 😅 (do vấn đề về đơn vị mình nói trên).
+                    Bạn thấy là nếu mình show luôn phiên bản này cho bạn từ đầu, thì bạn sẽ ngồi ngẫm khá lâu 😅 (do vấn đề về đơn vị mình nói trên).<br/><br/>
+
+                    Oke, class <code>Mesh</code> bây giờ đã có cách để đưa dữ liệu các đỉnh vào GPU, việc còn lại duy nhất là nhận vào 1 list tam giác và chuyển nó thành dữ liệu
+                    đỉnh 😳 Lúc trước ta có hàm <code>setTriangles</code>, hàm này mang ý nghĩa "set danh sách triangle này cho Mesh", nhưng bây giờ thì Mesh không chứa tam giác nữa,
+                    nên mình đổi tên hàm đó thành <code>fromTriangles</code>, nghĩa là "tạo Mesh từ list triangle này".<br/><br/>
+                    
+                    Hàm <code>fromTriangles</code> sẽ tách danh sách tam giác truyền
+                    vào thành danh sách đỉnh, uv và pháp tuyến, ngoài ra nó còn phải tìm những đỉnh nào trùng nhau y hệt và xử lí vào <code>indices</code> cho chúng.
+                    Với xử lí <code>indices</code>, mình sẽ tạo 1 "dictionary" <code>vertexIndexByKey</code>, có key là 1 string, string này chính là
+                    3 cái <code>positions</code>, <code>uvs</code>, <code>normals</code> join lại với nhau, và value của <code>vertexIndexByKey</code> chính là index của đỉnh.
+                    Làm như vậy nghĩa là các đỉnh có dữ liệu y hệt nhau thì sẽ dùng chung 1 index. Như vậy hàm <code>fromTriangles</code> sẽ như sau:
+                    <pre><code class="language-javascript">class Mesh {
+    ...
+    static fromTriangles(triangles) {
+        const positions = [];
+        const uvs = [];
+        const normals = [];
+        const indices = [];
+        const vertexIndexByKey = {};            // dictionary mình nói ở trên
+
+        for (const triangle of triangles) {
+            const normal = triangle.getNormal();
+
+            for (let i = 0; i < 3; i++) {
+                const position = triangle.vertices[i];
+                const uv = triangle.uvs[i];
+                // join các dữ liệu lại với nhau làm key, cách nhau bằng dấu phẩy (cách nhau bằng gì cũng được)
+                const key = [position.x, position.y, position.z, uv.u, uv.v, normal.x, normal.y, normal.z].join(",");
+                let index = vertexIndexByKey[key];
+                // nếu chưa có dữ liệu trên thì tạo index mới, nếu có rồi thì dùng lại index cho vị trí này
+                if (index === undefined) {         
+                    index = positions.length / 3;
+                    positions.push(position.x, position.y, position.z);
+                    uvs.push(uv.u, uv.v);
+                    normals.push(normal.x, normal.y, normal.z);
+                    vertexIndexByKey[key] = index;
+                }
+                indices.push(index);
+            }
+        }
+
+        // check số đỉnh để indices dùng kiểu cho đúng (constructor của class IndexBuffer sẽ tự suy ra type để truyền đúng cho GPU)
+        const vertexCount = positions.length / 3;
+        return new Mesh(
+            new Float32Array(positions),
+            new Float32Array(uvs),
+            new Float32Array(normals),
+            vertexCount <= 65536 ? new Uint16Array(indices) : new Uint32Array(indices),
+        );
+    }
+    ...
+}</code></pre>
+
+
 
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
