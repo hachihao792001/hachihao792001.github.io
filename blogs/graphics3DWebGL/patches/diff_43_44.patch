@@ -1,0 +1,115 @@
+--- "a/htmlPreviews\\htmlPreview43.html"
++++ "b/htmlPreviews\\htmlPreview44.html"
+@@ -990,11 +990,7 @@
+ 				this.projectionMatrix = null;
+ 
+ 				this.shadowMapTexture = Texture2D.depth(gl, shadowMapSize);
+-
+-				this.shadowFramebuffer = gl.createFramebuffer();
+-				gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFramebuffer);
+-				gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.shadowMapTexture.glTexture, 0);
+-				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
++				this.shadowTarget = new RenderTarget(gl, this.shadowMapTexture);
+ 			}
+ 
+ 			buildViewAndProjectionMatrix() {
+@@ -1008,8 +1004,7 @@
+ 			}
+ 
+ 			buildShadowMap(gameObjects) {
+-				gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFramebuffer);
+-				gl.viewport(0, 0, shadowMapSize, shadowMapSize);
++				this.shadowTarget.bind();
+ 				gl.clear(gl.DEPTH_BUFFER_BIT);
+ 
+ 				shadowProgram.use();
+@@ -1019,8 +1014,7 @@
+ 					gameObject.drawDepthWithChildren(shadowProgram);
+ 				}
+ 
+-				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+-				gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
++				RenderTarget.bindCanvas(gl);
+ 				program.use();
+ 			}
+ 		}
+@@ -1039,19 +1033,14 @@
+ 
+ 				this.cubemap = TextureCube.depth(gl, pointShadowMapSize);
+ 
+-				this.framebuffers = [];
++				this.targets = [];
+ 				for (let face = 0; face < 6; face++) {
+-					const framebuffer = gl.createFramebuffer();
+-					gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+-					gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_X + face, this.cubemap.glTexture, 0);
+-					this.framebuffers.push(framebuffer);
++					this.targets.push(new RenderTarget(gl, this.cubemap, face));
+ 				}
+-				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+ 			}
+ 
+ 			buildShadowMaps(gameObjects, projection) {
+ 				pointShadowProgram.use();
+-				gl.viewport(0, 0, pointShadowMapSize, pointShadowMapSize);
+ 				gl.frontFace(gl.CCW);
+ 
+ 				pointShadowProgram.set("uProjection", projection);
+@@ -1060,7 +1049,7 @@
+ 					let view = Mat4x4.View(right, up, forward, this.transform.position);
+ 					pointShadowProgram.set("uView", view);
+ 
+-					gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffers[face]);
++					this.targets[face].bind();
+ 					gl.clear(gl.DEPTH_BUFFER_BIT);
+ 					for (let gameObject of gameObjects) {
+ 						gameObject.drawDepthWithChildren(pointShadowProgram);
+@@ -1068,8 +1057,7 @@
+ 				}
+ 
+ 				gl.frontFace(gl.CW);
+-				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+-				gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
++				RenderTarget.bindCanvas(gl);
+ 				program.use();
+ 			}
+ 		}
+@@ -1474,6 +1462,29 @@
+ 			}
+ 		}
+ 
++		class RenderTarget {
++			constructor(gl, depthTexture, cubeFace = -1) {
++				this.gl = gl;
++				this.width = depthTexture.width;
++				this.height = depthTexture.height;
++				this.glFramebuffer = gl.createFramebuffer();
++				gl.bindFramebuffer(gl.FRAMEBUFFER, this.glFramebuffer);
++				const textureTarget = cubeFace >= 0 ? gl.TEXTURE_CUBE_MAP_POSITIVE_X + cubeFace : gl.TEXTURE_2D;
++				gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, textureTarget, depthTexture.glTexture, 0);
++				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
++			}
++
++			bind() {
++				this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.glFramebuffer);
++				this.gl.viewport(0, 0, this.width, this.height);
++			}
++
++			static bindCanvas(gl) {
++				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
++				gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
++			}
++		}
++
+ 		// ===== index.js =====
+ 		const gameCanvas = (document.getElementById("gameCanvas"));
+ 		const gl = (gameCanvas.getContext("webgl2"));
+@@ -1851,7 +1862,7 @@ void main(){
+ 
+ 			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+ 			program.set("uProjection", projectionMatrix);
+-			gl.viewport(0, 0, gameCanvas.width, gameCanvas.height);
++			RenderTarget.bindCanvas(gl);
+ 		}
+ 
+ 		function readAndApplyResolutionInput() {

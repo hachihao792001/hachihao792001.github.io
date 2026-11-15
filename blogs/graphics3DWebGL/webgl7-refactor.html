@@ -954,11 +954,9 @@ ObjLoader.load("https://raw.githubusercontent.com/.../wooden watch tower2.obj")
                     <div class="htmlPreview" id="htmlPreview42" data-disabled="true"></div>
 
                     <h2>4. Texture2D và TextureCube</h2>
-                    Tiếp theo là mình sẽ gom texture và framebuffer. Đối với texture thì hiện tại có 3 chỗ tạo texture: class <code>Texture</code>, shadow map của
+                    Đối với texture thì hiện tại có 3 chỗ tạo texture: class <code>Texture</code>, shadow map của
                     <code>DirectionalLight</code>, và cube map của <code>PointLight</code>. Chỗ nào cũng gọi các hàm giống nhau: <code>createTexture</code>, <code>bindTexture</code>,
-                    <code>texImage2D</code> rồi 4, 5 dòng <code>texParameteri</code>. Đối với framebuffer, thì có 2 chỗ: 1 cái của directional light, 6 cái của mỗi point
-                    light, lần nào bind framebuffer cũng phải nhớ đổi <code>gl.viewport</code> cho bằng kích thước texture, vẽ xong thì đổi lại thành canvas chính (ở blog 6 mình có
-                    ghi chú là "bước này hay dễ quên").<br/><br/>
+                    <code>texImage2D</code> rồi 4, 5 dòng <code>texParameteri</code>.<br/><br/>
 
                     Đầu tiên là về texture bình thường, mình sẽ tạo 1 class <code>Texture2D</code>, đại diện cho texture trong GPU, khác với class <code>Texture</code> (trong CPU).
                     Để biết constructor của <code>Texture2D</code> cần gì, mình xin viết lại các tham số của hàm <code>gl.texImage2D</code>:
@@ -1142,8 +1140,107 @@ ObjLoader.load("https://raw.githubusercontent.com/.../wooden watch tower2.obj")
 }</code></pre>
 
                     Kết quả (xem diff):
-                    <div class="htmlPreview" id="htmlPreview43"></div>
+                    <div class="htmlPreview" id="htmlPreview43" data-disabled="true"></div>
 
+                    <h2>5. Gom các frame buffer thành RenderTarget</h2>
+                    Frame buffer ta dùng ở blog trước để làm việc với shadow, cụ thể là ta dùng nó để có thể render vào depth texture, ta tổng cộng
+                    có 7 frame buffer: 1 cái của directional light và 6 cái của point light. Lần nào bind framebuffer ta cũng phải đổi
+                    <code>gl.viewport</code> cho bằng kích thước texture, render xong vào texture thì đổi lại thành canvas chính (ở blog 6 mình có
+                    ghi chú là "bước này hay dễ quên"). Ta sẽ tạo class <code>RenderTarget</code> để gom các frame buffer lại cho gọn,
+                    và để việc chỉnh viewport bên trong nó luôn cho đỡ quên.<br/><br/>
+
+                    Constructor của <code>RenderTarget</code> sẽ nhận vào một <code>Texture2D</code>. Ngoài ra, vì <code>RenderTarget</code> sẽ xử lí luôn
+                    cả frame buffer cho texture bình thường và texture cube map, nên mình cho truyền vào 1 biến <code>cubeFace</code> nữa, nếu nó = -1 thì nó 
+                    là texture bình thường (<code>gl.TEXTURE_2D</code>), còn nếu >= 0 thì là 1 trong các mặt của cube map (lấy 
+                    <code>gl.TEXTURE_CUBE_MAP_POSITIVE_X + cubeFace</code>). Như vậy class <code>RenderTarget</code> sẽ như sau:
+                    <pre><code class="language-javascript">class RenderTarget {
+    // depthTexture là một Texture2D, cubeFace thì như trên nói
+    constructor(gl, depthTexture, cubeFace = -1) {
+        this.gl = gl;
+        this.width = depthTexture.width;
+        this.height = depthTexture.height;
+        this.glFramebuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.glFramebuffer);
+        // dựa vào cubeFace để biết dùng target nào
+        const textureTarget = cubeFace >= 0 ? gl.TEXTURE_CUBE_MAP_POSITIVE_X + cubeFace : gl.TEXTURE_2D;
+        // framebufferTexture2D(khe, attach vào đâu, loại texture, texture, mipmap level)
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, textureTarget, depthTexture.glTexture, 0);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);   // trả lại canvas chính
+    }
+
+    // bind thì nhớ đổi kích thước view port
+    bind() {
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.glFramebuffer);
+        this.gl.viewport(0, 0, this.width, this.height);
+    }
+
+    // trả lại canvas cũng phải nhớ đổi view port, hàm là static vì chỉ có 1 canvas chính, mang ý nghĩa toàn cục
+    static bindCanvas(gl) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    }
+}</code></pre>
+                    Thay thế các chỗ sử dụng frame buffer:
+                    <pre><code class="language-javascript">class DirectionalLight {
+    constructor(dir, intensity) {
+        ...
+        this.shadowMapTexture = Texture2D.depth(gl, shadowMapSize);
+        this.shadowTarget = new RenderTarget(gl, this.shadowMapTexture);        // <----------------------
+    }
+    
+    ...
+
+    buildShadowMap(gameObjects) {
+        this.shadowTarget.bind();                                               // <----------------------
+
+        ...
+
+        RenderTarget.bindCanvas(gl);                                            // <----------------------
+        program.use();
+    }
+}</code></pre>
+                    <pre><code class="language-javascript">class PointLight extends GameObject {
+    ...
+
+    constructor(pos, eulerAngles, scale, color, mesh, texture = null, name = "") {
+        ...
+
+        this.targets = [];      // lúc trước lưu mảng framebuffer, giờ lưu mảng RenderTarget
+        for (let face = 0; face < 6; face++) {
+            this.targets.push(new RenderTarget(gl, this.cubemap, face));        // gọn code lại thành 1 dòng
+        }
+    }
+
+    buildShadowMaps(gameObjects, projection) {
+        pointShadowProgram.use();
+        // chỗ này lúc trước phải set view port thành kích thước của shadow map, bây giờ hàm bind của RenderTarget sẽ lo việc đó
+        gl.frontFace(gl.CCW);
+
+        pointShadowProgram.set("uProjection", projection);
+        for (let face = 0; face < 6; face++) {
+            ...
+
+            this.targets[face].bind();          // <--------------
+            ...
+        }
+
+        gl.frontFace(gl.CW);
+        RenderTarget.bindCanvas(gl);            // <--------------
+        program.use();
+    }
+}</code></pre>
+
+                    Chỗ cuối là ở hàm thay đổi kích thước canvas:
+                    <pre><code class="language-javascript">function updateRenderResolution() {
+    gameCanvas.width = canvasRenderWidth;
+    gameCanvas.height = canvasRenderHeight;
+
+    projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
+    program.set("uProjection", projectionMatrix);
+    RenderTarget.bindCanvas(gl);                // <--------------
+}</code></pre>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview44" data-disabled="true"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
