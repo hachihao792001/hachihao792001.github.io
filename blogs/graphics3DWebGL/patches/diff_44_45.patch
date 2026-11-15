@@ -31,7 +31,7 @@
 +				}
 +				let myComponent = this.getComponent(type);
 +				if (myComponent != null)
-+					result.add(myComponent);
++					result.push(myComponent);
 +				for (let i = 0; i < this.transform.childCount; i++) {
 +					result.push(...this.transform.getChild(i).gameObject.getComponentsInChildren(type));
 +				}
@@ -51,7 +51,7 @@
 +		}
 +
 +		class Material {
-+			constructor({ color = new Color(255, 255, 255), texture = null } = {}) {
++			constructor(color = new Color(255, 255, 255), texture = null) {
  				this.color = color;
 -				this.mesh = mesh;
  				this.texture = texture;
@@ -181,7 +181,7 @@
  		);
  
 +		let scene = new Scene();
-+		
++
  		let cubeMesh = Primitives.cube();
 -		let woodTower = new GameObject(
 -			new Vector3(0, -0.17, 0),
@@ -192,14 +192,14 @@
 -			woodTexture
 -		);
 +		let woodTower = scene.add(new GameObject("Wood tower", new Vector3(0, -0.17, 0), Vector3.zero, Vector3.one));
-+		let towerRenderer = woodTower.addComponent(new MeshRenderer(null, new Material({ texture: woodTexture })));
++		let towerRenderer = woodTower.addComponent(new MeshRenderer(null, new Material(new Color(255, 255, 255), woodTexture)));
  		ObjLoader.load("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj")
 -			.then((mesh) => (woodTower.mesh = mesh));
 -		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
 +			.then((mesh) => (towerRenderer.mesh = mesh));
 +
 +		let ground = scene.add(new GameObject("Ground", new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30)));
-+		ground.addComponent(new MeshRenderer(cubeMesh, new Material({ color: new Color(0, 255, 0), texture: brickTexture })));
++		ground.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(0, 255, 0), brickTexture)));
 +
  		let pointLights = [
 -			new PointLight(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 1"),
