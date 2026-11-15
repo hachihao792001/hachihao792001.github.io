@@ -1452,6 +1452,47 @@ for (let light of pointLights) {
 
                     Kết quả (xem diff):
                     <div class="htmlPreview" id="htmlPreview45" data-disabled="true"></div>
+
+                    <h2>7. Chuyển DirectionalLight thành Component</h2>
+                    Hiện tại <code>DirectionalLight</code> chỉ chứa <code>dir</code> để chỉ hướng hiện tại nó đang chiếu, muốn nó là <code>Component</code>
+                    thì nó phải gắn vào 1 <code>GameObject</code> nào đó (mặt trời), tức là nó phải có thêm vị trí và scale.
+                    Thực tế thì vị trí và scale của mặt trời chả ảnh hưởng gì tới directional light, nhưng ta gắn như vậy thì sẽ làm được nhiều thứ hơn
+                    và code sẽ gọn hơn (và vì Unity cũng làm vậy 😁).<br/><br/>
+                    
+                    Có một <code>GameObject</code> đàng hoàng cho directional light rồi, nên giờ ta không cần phải tạo thêm 1 <code>Quaternion</code>
+                    <code>dirLightRotation</code> chỉ để xoay nó mỗi frame nữa, ta chỉ cần xoay mặt trời là xong. Với lại, 3 cái 
+                    <code>shadowMapSize, shadowDistance, shadowBias</code> mình cũng nhét luôn vào class <code>DirectionalLight</code> luôn vì chúng cũng
+                    chỉ được dùng trong <code>DirectionalLight</code><br/><br/>
+
+                    Như vậy, class <code>DirectionalLight</code> sẽ như sau:
+                    <pre><code class="language-javascript">class DirectionalLight extends Component {
+    constructor(intensity, shadowMapSize, shadowDistance, shadowBias) {
+        super();
+        this.intensity = intensity;
+        this.shadowMapSize = shadowMapSize;         // <--------------
+        this.shadowDistance = shadowDistance;       // <--------------
+        this.shadowBias = shadowBias;               // <--------------
+        ...
+    }
+
+    // thêm hàm lấy dir, chính là forward của transform
+    get dir() {
+        return this.transform.getForward();
+    }
+
+    buildViewAndProjectionMatrix() {
+        let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
+        let right = Vector3.cross(up, this.dir).normalize();
+        up = Vector3.cross(this.dir, right).normalize();
+        let frustumCenter = camera.getFrustumCenter(znear, this.shadowDistance);                            // <--------------
+        let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, this.shadowDistance));              // <--------------
+        this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
+        this.projectionMatrix = Mat4x4.Orthographic(this.shadowDistance, 0.1, this.shadowDistance * 2);     // <--------------
+    }
+
+    ...
+}</code></pre>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
