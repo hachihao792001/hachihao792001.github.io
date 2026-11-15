@@ -1241,6 +1241,217 @@ ObjLoader.load("https://raw.githubusercontent.com/.../wooden watch tower2.obj")
 }</code></pre>
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview44" data-disabled="true"></div>
+
+                    <h2>6. Tái cấu trúc GameObject và thêm khái niệm Scene</h2>
+                    Hiện tại, class <code>GameObject</code> đang chứa mesh, chứa màu và chứa cả texture, và tự nó vẽ chính nó nữa,
+                    điều này có thể tiện cho mình hiện tại.
+                    Nhưng sau này mình muốn thêm thêm những cái khác thì không thể cứ nhét vào GameObject hết được, muốn project thành engine thật thì mình phải lấy mấy cái
+                    đó ra ngoài hết. Mình sẽ bắt chước Unity về vấn đề này, tất cả những thứ trên đều sẽ biến thành các <code>Component</code> 😳<br/><br/>
+
+                    Class <code>Component</code> mình cho đơn giản là 1 class chứa 1 <code>GameObject</code>, và có hàm getter lấy <code>Transform</code> của game object đó: 
+                    <pre><code class="language-javascript">class Component {
+    constructor() {
+        this.gameObject = null;
+    }
+
+    get transform() {
+        return this.gameObject.transform;
+    }
+}</code></pre>
+                    Như vậy class <code>GameObject</code> sẽ trở nên như sau:
+                    <pre><code>class GameObject {
+    static incrementingID = 0;
+
+    // constructor lúc trước nhận 7 tham số, giờ chỉ nhận 4
+    constructor(name = "", pos, eulerAngles, scale) {
+        this.id = GameObject.incrementingID++;
+        this.name = name || `GameObject ${this.id}`;
+        this.transform = new Transform(pos, eulerAngles, scale, this.name);
+        this.transform.gameObject = this;
+        this.components = [];           // <--------------
+    }
+
+    // hàm thêm component mới, không có gì đáng nói
+    addComponent(component) {
+        component.gameObject = this;
+        this.components.push(component);
+        return component;
+    }
+
+    // hàm lấy component của 1 kiểu, ta truyền 1 class vào trong type (that's how Javascript works, don't even need Generic)
+    getComponent(type) {
+        return this.components.find(x => x instanceof type);
+    }
+
+    // hàm lấy tất cả component của 1 kiểu trong cây phả hệ (bao gồm cả chính nó)
+    getComponentsInChildren(type) {
+        let result = [];
+        if (this.transform.childCount == 0) {
+            let myComponent = this.getComponent(type);
+            return myComponent != null ? [myComponent] : [];
+        }
+        let myComponent = this.getComponent(type);
+        if (myComponent != null)
+            result.add(myComponent);
+        for (let i = 0; i < this.transform.childCount; i++) {
+            result.push(...this.transform.getChild(i).gameObject.getComponentsInChildren(type));
+        }
+
+        return result;
+    }
+}</code></pre>
+
+                    Như bạn thấy là <code>GameObject</code> bây giờ không còn chứa mesh, texture và color nữa, vì mình đã đưa nó ra ngoài.
+                    Đầu tiên là texture và màu, mình sẽ để nó ra 1 class khác là <code>Material</code>. Class này chỉ cần chứa 2 cái đó là được,
+                    không cần làm gì khác (khác với Material của Unity là chứa cả shader của riêng nó), <code>Material</code> chưa phải là 1 <code>Component</code>:
+                    <pre><code class="language-javascript">class Material {
+    constructor(color = new Color(255, 255, 255), texture = null) {
+        this.color = color;
+        this.texture = texture;
+    }
+}</code></pre>
+
+                    Đối việc vẽ mesh thì mình tạo 1 class <code>MeshRenderer</code> (là 1 <code>Component</code>),
+                    nó sẽ chứa mesh và material của GameObject, ngoài ra nó còn
+                    chứa 1 biến <code>castShadow</code> để engine biết là mesh này có đổ bóng không (lúc trước thì mình để hết các GameObject có đổ
+                    bóng vào một mảng bên ngoài). Về hàm thì nó sẽ chứa <code>draw</code> và <code>drawDepth</code>, còn 2 hàm withChildren thì không nằm
+                    trong đây (vì MeshRenderer không quan tâm tới quan hệ cha con), thực tế là mình bỏ luôn 2 hàm đó luôn, khi mình nói tới phần scene thì
+                    sẽ rõ lí do 😳
+                    <pre><code class="language-javascript">class MeshRenderer extends Component {
+    constructor(mesh, material, castShadow = true) {
+        super();
+        this.mesh = mesh;
+        this.material = material;
+        this.castShadow = castShadow;
+    }
+
+    // y hệt draw cũ, chỉ khác chỗ lấy texture và màu
+    draw() {
+        if (!this.mesh) return;
+        program.set("uModel", this.transform.getModelMatrix());
+        program.set("uNormalMatrix", this.transform.getNormalMatrix());
+
+        const glTexture = this.material.texture ? this.material.texture.glTexture : null;
+        if (glTexture) {
+            glTexture.bind(0);
+            program.set("uTexture", 0);
+        }
+        program.set("uUseTexture", glTexture != null);
+        program.set("uColor", this.material.color);
+
+        this.mesh.vertexArray.draw();
+    }
+
+    // y hệt drawDepth cũ
+    drawDepth(depthProgram) {
+        if (!this.mesh) return;
+        depthProgram.set("uModel", this.transform.getModelMatrix());
+        this.mesh.vertexArray.draw();
+    }
+}</code></pre>
+
+                    Vì ta đổi kiểu của các <code>GameObject</code> có đổ bóng (bây giờ chỉ còn là <code>MeshRenderer</code>), thì ta phải cập nhật
+                    2 class ánh sáng:
+                    <pre><code class="language-javascript">class DirectionalLight {
+    ...
+
+    buildShadowMap(shadowCasters) {
+        ...
+        for (let meshRenderer of shadowCasters) {
+            meshRenderer.drawDepth(shadowProgram);  // chỗ này lúc trước gọi drawDepthWithChildren, giờ chỉ là drawDepth, vụ children thì phần scene sẽ rõ
+        }
+        ...
+    }
+}</code></pre>
+                    <pre><code class="language-javascript">class PointLight extends GameObject {
+    ...
+
+    constructor(name, pos, eulerAngles, scale) {    // constructor cũng giảm bớt tham số
+        super(name, pos, eulerAngles, scale);
+
+        ...
+    }
+
+    buildShadowMaps(shadowCasters, projection) {
+        ...
+        for (let face = 0; face < 6; face++) {
+            ...
+            for (let meshRenderer of shadowCasters) {
+                meshRenderer.drawDepth(pointShadowProgram);     // như trên
+            }
+        }
+
+        ...
+    }
+}</code></pre><br/>
+
+                    Ô kê, <code>GameObject</code> đã gọn, bây giờ tới phần quản lí mọi <code>GameObject</code> trong engine, như bạn thấy ở tiêu đề của
+                    phần này, thì mình sẽ gom hết các <code>GameObject</code> thành 1 <code>Scene</code>. Về dữ liệu thì <code>Scene</code> chứa
+                    danh sách các <code>GameObject</code> ở tầng cao nhất là đủ. Còn các hàm muốn đi sâu vào cây phả hệ scene thì cứ lần theo hệ thống cha con
+                    để tìm, cụ thể ở đây mình thêm hàm <code>getAllComponentsOfType</code> để lấy hết reference tới tất cả component thuộc 1 kiểu <code>type</code> trong scene.
+                    Hàm này chỉ cần dùng hàm <code>getComponentsInChildren</code> của các <code>GameObject</code> ở tầng cao nhất là lấy được hết.
+                    <pre><code class="language-javascript">class Scene {
+    constructor() {
+        this.roots = [];        // các GameObject ở tầng cao nhất
+    }
+
+    // thêm 1 GameObject mới ở tầng cao nhất
+    add(gameObject) {
+        this.roots.push(gameObject);
+        return gameObject;
+    }
+
+    // như mình nói ở trên
+    getAllComponentsOfType(type) {
+        const result = [];
+        for (let i = 0; i < this.roots.length; i++) {
+            result.push(...this.roots[i].getComponentsInChildren(type));
+        }
+
+        return result;
+    }
+}</code></pre>
+                    Vì đã có class <code>Scene</code> quản lí, nên phần khai báo các <code>GameObject</code> sẽ như sau:
+                    <pre><code class="language-javascript">let scene = new Scene();
+
+let cubeMesh = Primitives.cube();
+// tách phần tạo GameObject và MeshRenderer ra
+let woodTower = scene.add(new GameObject("Wood tower", new Vector3(0, -0.17, 0), Vector3.zero, Vector3.one));  // GameObject bây giờ
+let towerRenderer = woodTower.addComponent(new MeshRenderer(null, new Material({ texture: woodTexture })));
+ObjLoader.load("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj")
+    .then((mesh) => (towerRenderer.mesh = mesh));
+
+let ground = scene.add(new GameObject("Ground", new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30)));
+ground.addComponent(new MeshRenderer(cubeMesh, new Material({ color: new Color(0, 255, 0), texture: brickTexture })));
+
+let pointLights = [
+    scene.add(new PointLight("Point light 1", new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1))),
+    scene.add(new PointLight("Point light 2", new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1))),
+];
+let pointLightMaterial = new Material();
+for (let light of pointLights) {
+    light.addComponent(new MeshRenderer(cubeMesh, pointLightMaterial, false));
+}</code></pre>
+
+                    Cuối cùng là hàm <code>render</code>, vì ta đã bỏ đi 2 hàm vẽ withChildren rồi nên phải cập nhật. Ta đơn giản chỉ là lấy hết
+                    tất cả <code>MeshRenderer</code> bằng hàm <code>Scene.getAllComponentsOfType</code>, gọi từng hàm <code>draw</code> của chúng là
+                    xong, ta không cần lo tới children vì <code>Scene.getAllComponentsOfType</code> đã lo hết. Với lại mảng <code>shadowCasters</code>
+                    chỉ là các <code>MeshRenderer</code> mà có <code>castShadow = true</code>.
+                    <pre><code class="language-javascript">function render() {
+    ...
+
+    const meshRenderers = scene.getAllComponentsOfType(MeshRenderer);
+    const shadowCasters = meshRenderers.filter((meshRenderer) => meshRenderer.castShadow);
+
+    ...
+
+    for (let meshRenderer of meshRenderers) {
+        meshRenderer.draw();
+    }
+}</code></pre>
+
+                    Kết quả (xem diff):
+                    <div class="htmlPreview" id="htmlPreview45" data-disabled="true"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

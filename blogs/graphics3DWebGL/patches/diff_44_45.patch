@@ -1,0 +1,241 @@
+--- "a/htmlPreviews\\htmlPreview44.html"
++++ "b/htmlPreviews\\htmlPreview45.html"
+@@ -931,54 +931,106 @@
+ 		class GameObject {
+ 			static incrementingID = 0;
+ 
+-			constructor(pos, eulerAngles, scale, color, mesh, texture = null, name = "") {
++			constructor(name = "", pos, eulerAngles, scale) {
+ 				this.id = GameObject.incrementingID++;
+ 				this.name = name || `GameObject ${this.id}`;
+ 				this.transform = new Transform(pos, eulerAngles, scale, this.name);
+ 				this.transform.gameObject = this;
++				this.components = [];
++			}
++
++			addComponent(component) {
++				component.gameObject = this;
++				this.components.push(component);
++				return component;
++			}
++
++			getComponent(type) {
++				return this.components.find(x => x instanceof type);
++			}
++
++			getComponentsInChildren(type) {
++				let result = [];
++				if (this.transform.childCount == 0) {
++					let myComponent = this.getComponent(type);
++					return myComponent != null ? [myComponent] : [];
++				}
++				let myComponent = this.getComponent(type);
++				if (myComponent != null)
++					result.add(myComponent);
++				for (let i = 0; i < this.transform.childCount; i++) {
++					result.push(...this.transform.getChild(i).gameObject.getComponentsInChildren(type));
++				}
++
++				return result;
++			}
++		}
++
++		class Component {
++			constructor() {
++				this.gameObject = null;
++			}
++
++			get transform() {
++				return this.gameObject.transform;
++			}
++		}
++
++		class Material {
++			constructor({ color = new Color(255, 255, 255), texture = null } = {}) {
+ 				this.color = color;
+-				this.mesh = mesh;
+ 				this.texture = texture;
+ 			}
++		}
++
++		class MeshRenderer extends Component {
++			constructor(mesh, material, castShadow = true) {
++				super();
++				this.mesh = mesh;
++				this.material = material;
++				this.castShadow = castShadow;
++			}
+ 
+ 			draw() {
+ 				if (!this.mesh) return;
+ 				program.set("uModel", this.transform.getModelMatrix());
+ 				program.set("uNormalMatrix", this.transform.getNormalMatrix());
+ 
+-				const glTexture = this.texture ? this.texture.glTexture : null;
++				const glTexture = this.material.texture ? this.material.texture.glTexture : null;
+ 				if (glTexture) {
+ 					glTexture.bind(0);
+ 					program.set("uTexture", 0);
+ 				}
+ 				program.set("uUseTexture", glTexture != null);
+-				program.set("uColor", this.color);
++				program.set("uColor", this.material.color);
+ 
+ 				this.mesh.vertexArray.draw();
+ 			}
+ 
+-			drawWithChildren() {
+-				this.draw();
+-				for (let child of this.transform.children) {
+-					if (child.gameObject != null) {
+-						child.gameObject.drawWithChildren();
+-					}
+-				}
+-			}
+-
+ 			drawDepth(depthProgram) {
+ 				if (!this.mesh) return;
+ 				depthProgram.set("uModel", this.transform.getModelMatrix());
+ 				this.mesh.vertexArray.draw();
+ 			}
++		}
+ 
+-			drawDepthWithChildren(depthProgram) {
+-				this.drawDepth(depthProgram);
+-				for (let child of this.transform.children) {
+-					if (child.gameObject != null) {
+-						child.gameObject.drawDepthWithChildren(depthProgram);
+-					}
++		class Scene {
++			constructor() {
++				this.roots = [];
++			}
++
++			add(gameObject) {
++				this.roots.push(gameObject);
++				return gameObject;
++			}
++
++			getAllComponentsOfType(type) {
++				const result = [];
++				for (let i = 0; i < this.roots.length; i++) {
++					result.push(...this.roots[i].getComponentsInChildren(type));
+ 				}
++
++				return result;
+ 			}
+ 		}
+ 
+@@ -1003,15 +1055,15 @@
+ 				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance * 2);
+ 			}
+ 
+-			buildShadowMap(gameObjects) {
++			buildShadowMap(shadowCasters) {
+ 				this.shadowTarget.bind();
+ 				gl.clear(gl.DEPTH_BUFFER_BIT);
+ 
+ 				shadowProgram.use();
+ 				shadowProgram.set("uView", this.viewMatrix);
+ 				shadowProgram.set("uProjection", this.projectionMatrix);
+-				for (let gameObject of gameObjects) {
+-					gameObject.drawDepthWithChildren(shadowProgram);
++				for (let meshRenderer of shadowCasters) {
++					meshRenderer.drawDepth(shadowProgram);
+ 				}
+ 
+ 				RenderTarget.bindCanvas(gl);
+@@ -1028,8 +1080,8 @@
+ 				[new Vector3(0, 0, -1), new Vector3(0, -1, 0), new Vector3(-1, 0, 0)],
+ 			];
+ 
+-			constructor(pos, eulerAngles, scale, color, mesh, texture = null, name = "") {
+-				super(pos, eulerAngles, scale, color, mesh, texture, name);
++			constructor(name, pos, eulerAngles, scale) {
++				super(name, pos, eulerAngles, scale);
+ 
+ 				this.cubemap = TextureCube.depth(gl, pointShadowMapSize);
+ 
+@@ -1039,7 +1091,7 @@
+ 				}
+ 			}
+ 
+-			buildShadowMaps(gameObjects, projection) {
++			buildShadowMaps(shadowCasters, projection) {
+ 				pointShadowProgram.use();
+ 				gl.frontFace(gl.CCW);
+ 
+@@ -1051,8 +1103,8 @@
+ 
+ 					this.targets[face].bind();
+ 					gl.clear(gl.DEPTH_BUFFER_BIT);
+-					for (let gameObject of gameObjects) {
+-						gameObject.drawDepthWithChildren(pointShadowProgram);
++					for (let meshRenderer of shadowCasters) {
++						meshRenderer.drawDepth(pointShadowProgram);
+ 					}
+ 				}
+ 
+@@ -1714,23 +1766,25 @@ void main(){
+ 			gl
+ 		);
+ 
++		let scene = new Scene();
++		
+ 		let cubeMesh = Primitives.cube();
+-		let woodTower = new GameObject(
+-			new Vector3(0, -0.17, 0),
+-			Vector3.zero,
+-			new Vector3(1, 1, 1),
+-			new Color(255, 255, 255),
+-			null,
+-			woodTexture
+-		);
++		let woodTower = scene.add(new GameObject("Wood tower", new Vector3(0, -0.17, 0), Vector3.zero, Vector3.one));
++		let towerRenderer = woodTower.addComponent(new MeshRenderer(null, new Material({ texture: woodTexture })));
+ 		ObjLoader.load("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj")
+-			.then((mesh) => (woodTower.mesh = mesh));
+-		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
++			.then((mesh) => (towerRenderer.mesh = mesh));
++
++		let ground = scene.add(new GameObject("Ground", new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30)));
++		ground.addComponent(new MeshRenderer(cubeMesh, new Material({ color: new Color(0, 255, 0), texture: brickTexture })));
++
+ 		let pointLights = [
+-			new PointLight(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 1"),
+-			new PointLight(new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 2"),
++			scene.add(new PointLight("Point light 1", new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1))),
++			scene.add(new PointLight("Point light 2", new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1))),
+ 		];
+-		let shadowCasters = [ground, woodTower];
++		let pointLightMaterial = new Material();
++		for (let light of pointLights) {
++			light.addComponent(new MeshRenderer(cubeMesh, pointLightMaterial, false));
++		}
+ 
+ 		let lastTime = performance.now();
+ 		let dt = 0;
+@@ -1750,6 +1804,9 @@ void main(){
+ 		function render() {
+ 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+ 
++			const meshRenderers = scene.getAllComponentsOfType(MeshRenderer);
++			const shadowCasters = meshRenderers.filter((meshRenderer) => meshRenderer.castShadow);
++
+ 			dirLight.buildViewAndProjectionMatrix();
+ 			const shadowPointLightCount = Math.min(pointLights.length, maxShadowPointLights);
+ 			const pointLightShadowProjectionMat = Mat4x4.Projection(90, 1, 1, pointShadowNear, pointLightRange);
+@@ -1798,11 +1855,9 @@ void main(){
+ 			program.set("uShadowBias", shadowBias);
+ 			program.set("uShadowTexelSize", shadowMapDistance / shadowMapSize);
+ 
+-			ground.drawWithChildren();
+-			for (let light of pointLights) {
+-				light.drawWithChildren();
++			for (let meshRenderer of meshRenderers) {
++				meshRenderer.draw();
+ 			}
+-			woodTower.drawWithChildren();
+ 		}
+ 
+ 		function update(time = performance.now()) {
