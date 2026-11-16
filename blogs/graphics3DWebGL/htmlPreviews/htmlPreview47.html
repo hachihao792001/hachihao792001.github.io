@@ -1400,8 +1400,13 @@
 						else gl.uniform3f(location, value.x, value.y, value.z);
 						break;
 					case gl.FLOAT_MAT4:
-						if (uniform.size > 1) gl.uniformMatrix4fv(location, false, value);
-						else gl.uniformMatrix4fv(location, false, value.toColumnMajor());
+						if (uniform.size > 1) {
+							const data = new Float32Array(value.length * 16);
+							for (let i = 0; i < value.length; i++) data.set(value[i].toColumnMajor(), i * 16);
+							gl.uniformMatrix4fv(location, false, data);
+						} else {
+							gl.uniformMatrix4fv(location, false, value.toColumnMajor());
+						}
 						break;
 					case gl.INT:
 					case gl.BOOL:
@@ -1814,10 +1819,10 @@ void main(){
 
 			const meshRenderers = scene.getAllComponentsOfType(MeshRenderer);
 			const shadowCasters = meshRenderers.filter((meshRenderer) => meshRenderer.castShadow);
-
-			dirLight.buildViewAndProjectionMatrix();
 			const pointLights = scene.getAllComponentsOfType(PointLight);
 			const shadowPointLightCount = Math.min(pointLights.length, maxShadowPointLights);
+
+			dirLight.buildViewAndProjectionMatrix();
 			if (useShadow) {
 				dirLight.buildShadowMap(shadowCasters);
 				for (let i = 0; i < shadowPointLightCount; i++) {
@@ -1828,8 +1833,17 @@ void main(){
 			program.set("uView", camera.getViewMatrix());
 			program.set("uProjection", projectionMatrix);
 
+			program.set("uAmbientLight", 0.1);
+			program.set("uUseShadow", useShadow);
+
 			program.set("uDirLightDir", dirLight.dir);
 			program.set("uDirLightIntensity", dirLight.intensity);
+			program.set("uLightView", dirLight.viewMatrix);
+			program.set("uLightProjection", dirLight.projectionMatrix);
+			dirLight.shadowMapTexture.bind(1);
+			program.set("uShadowMap", 1);
+			program.set("uShadowBias", dirLight.shadowBias);
+			program.set("uShadowTexelSize", dirLight.shadowDistance / dirLight.shadowMapSize);
 
 			const pointLightData = new Float32Array(maxActiveLights * 3);
 			const pointLightIntensities = new Float32Array(maxActiveLights);
@@ -1847,23 +1861,17 @@ void main(){
 			program.set("uPointLightCount", pointLightCount);
 			program.set("uPointLightIntensities", pointLightIntensities);
 			program.set("uPointLightRanges", pointLightRanges);
-			program.set("uAmbientLight", 0.1);
 
-			program.set("uUseShadow", useShadow);
-			program.set("uLightView", dirLight.viewMatrix);
-			program.set("uLightProjection", dirLight.projectionMatrix);
-			dirLight.shadowMapTexture.bind(1);
-			program.set("uShadowMap", 1);
 			const pointShadowMapUnits = [];
-			const pointLightShadowProjections = new Float32Array(maxShadowPointLights * 16);
-			const pointShadowMapSizes = new Float32Array(maxShadowPointLights);
-			const pointShadowBiases = new Float32Array(maxShadowPointLights);
+			const pointLightShadowProjections = [];
+			const pointShadowMapSizes = [];
+			const pointShadowBiases = [];
 			for (let i = 0; i < maxShadowPointLights; i++) {
 				if (i < shadowPointLightCount) {
 					pointLights[i].cubemap.bind(2 + i);
-					pointLightShadowProjections.set(pointLights[i].getShadowProjection().toColumnMajor(), i * 16);
-					pointShadowMapSizes[i] = pointLights[i].shadowMapSize;
-					pointShadowBiases[i] = pointLights[i].shadowBias;
+					pointLightShadowProjections.push(pointLights[i].getShadowProjection());
+					pointShadowMapSizes.push(pointLights[i].shadowMapSize);
+					pointShadowBiases.push(pointLights[i].shadowBias);
 				}
 				pointShadowMapUnits.push(2 + i);
 			}
@@ -1872,8 +1880,6 @@ void main(){
 			program.set("uPointShadowMapSizes", pointShadowMapSizes);
 			program.set("uPointShadowBiases", pointShadowBiases);
 			program.set("uPointLightShadowProjections", pointLightShadowProjections);
-			program.set("uShadowBias", dirLight.shadowBias);
-			program.set("uShadowTexelSize", dirLight.shadowDistance / dirLight.shadowMapSize);
 
 			for (let meshRenderer of meshRenderers) {
 				meshRenderer.draw();

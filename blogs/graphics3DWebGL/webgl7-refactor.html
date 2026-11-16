@@ -1259,7 +1259,7 @@ ObjLoader.load("https://raw.githubusercontent.com/.../wooden watch tower2.obj")
     }
 }</code></pre>
                     Như vậy class <code>GameObject</code> sẽ trở nên như sau:
-                    <pre><code>class GameObject {
+                    <pre><code class="language-javascript">class GameObject {
     static incrementingID = 0;
 
     // constructor lúc trước nhận 7 tham số, giờ chỉ nhận 4
@@ -1514,6 +1514,10 @@ function render() {
     program.set("uShadowTexelSize", dirLight.shadowDistance / dirLight.shadowMapSize);          // <----------------------
     ...
 }</code></pre>
+                    Ngoài ra trong <code>render</code> mình sắp xếp lại mấy dòng set uniform cho gọn:
+                    mọi dòng của directional light (kể cả phần shadow của nó, trước đây bị tách làm
+                    2 khúc, kẹp giữa là code bóng của point light) giờ nằm liền nhau ngay sau camera, còn <code>uAmbientLight</code> và <code>uUseShadow</code> thì dời lên
+                    trước chúng. Hàm render chỉ có sắp xếp lại như vậy thôi chứ không làm gì khác.<br/><br/>
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview46" data-disabled="true"></div>
 
@@ -1645,8 +1649,109 @@ void main(){
 }</code></pre>
 
                     Về việc truyền những uniform đó vào từ bên Javascript, ta cứ xài hàm <code>ShaderProgram.set</code> mà ta đã tạo là ô kê. Tuy nhiên bây giờ
-                    ta phải xử lí 1 trường hợp mới: <code>uPointLightShadowProjections</code> là một mảng <code>mat4</code> 😳
+                    ta phải xử lí thêm 1 trường hợp mới: <code>uPointLightShadowProjections</code> là một mảng <code>mat4</code> 😳 Truyền ma trận hay mảng ma trận
+                    vào GPU thì ta đều xài hàm <code>gl.uniformMatrix4fv</code>, hàm này 
+                    nhận vào 1 mảng 1 chiều, các ma trận là column-major và nằm kế bên nhau. Cho nên trong hàm <code>ShaderProgram.set</code> ta phải biến
+                    1 mảng <code>Mat4x4</code> thành dạng như trên, bằng cách sử dụng hàm
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/set">Float32Array.set(array, offset)</a>:
                     
+                    <pre><code class="language-glsl">class ShaderProgram {
+    ...
+
+    set(name, value) {
+        ...
+        switch (uniform.type) {
+            ...
+            case gl.FLOAT_MAT4:
+                if (uniform.size > 1) {
+                    const data = new Float32Array(value.length * 16);
+                    for (let i = 0; i < value.length; i++) data.set(value[i].toColumnMajor(), i * 16);  // dùng hàm set của Float32Array
+                    gl.uniformMatrix4fv(location, false, data);
+                } else {
+                    gl.uniformMatrix4fv(location, false, value.toColumnMajor());
+                }
+                break;
+            ...
+        }
+    }
+}</code></pre>
+                    Oke đã đủ trường hợp, bây giờ ở hàm <code>render</code> (chỗ gọi truyền uniform), ta sửa như sau:
+                    <pre><code class="language-javascript">function render() {
+    ...
+    const pointLights = scene.getAllComponentsOfType(PointLight);                       // dùng cái này thay vì mảng point light global (giờ nó đã là 1 mảng GameObject)
+    const shadowPointLightCount = Math.min(pointLights.length, maxShadowPointLights);   // dời dòng này lên cho chung nhóm point light
+
+    dirLight.buildViewAndProjectionMatrix();
+    if (useShadow) {
+        dirLight.buildShadowMap(shadowCasters);
+        for (let i = 0; i < shadowPointLightCount; i++) {
+            pointLights[i].buildShadowMaps(shadowCasters);                              // không truyền vào pointLightShadowProjectionMat nữa (mỗi cái đã có riêng)
+        }
+    }
+
+    ...
+
+    const pointLightData = new Float32Array(maxActiveLights * 3);
+    // 2 mảng intensity và range
+    const pointLightIntensities = new Float32Array(maxActiveLights);
+    const pointLightRanges = new Float32Array(maxActiveLights);
+    const pointLightCount = Math.min(pointLights.length, maxActiveLights);
+    for (let i = 0; i < pointLightCount; i++) {
+        const lightPos = pointLights[i].transform.position;
+        pointLightData[i * 3] = lightPos.x;
+        pointLightData[i * 3 + 1] = lightPos.y;
+        pointLightData[i * 3 + 2] = lightPos.z;
+        pointLightIntensities[i] = pointLights[i].intensity;                            // <------------------
+        pointLightRanges[i] = pointLights[i].range;                                     // <------------------
+    }
+    program.set("uPointLightPositions", pointLightData);
+    program.set("uPointLightCount", pointLightCount);
+    program.set("uPointLightIntensities", pointLightIntensities);                       // <------------------
+    program.set("uPointLightRanges", pointLightRanges);                                 // <------------------
+
+    const pointShadowMapUnits = [];
+    // 3 mảng projection matrix, shadow map size và bias
+    const pointLightShadowProjections = []; // đây là 1 mảng Mat4x4
+    const pointShadowMapSizes = [];
+    const pointShadowBiases = [];
+    for (let i = 0; i < maxShadowPointLights; i++) {
+        if (i < shadowPointLightCount) {
+            pointLights[i].cubemap.bind(2 + i);
+            pointLightShadowProjections.push(pointLights[i].getShadowProjection());     // <------------------
+            pointShadowMapSizes.push(pointLights[i].shadowMapSize);                     // <------------------
+            pointShadowBiases.push(pointLights[i].shadowBias);                          // <------------------
+        }
+        pointShadowMapUnits.push(2 + i);
+    }
+    program.set("uPointShadowMaps", pointShadowMapUnits);
+    program.set("uShadowPointLightCount", shadowPointLightCount);
+    program.set("uPointShadowMapSizes", pointShadowMapSizes);                           // <------------------
+    program.set("uPointShadowBiases", pointShadowBiases);                               // <------------------
+    program.set("uPointLightShadowProjections", pointLightShadowProjections);           // <------------------
+
+    for (let meshRenderer of meshRenderers) {
+        meshRenderer.draw();
+    }
+}</code></pre>
+                    
+                    Cuối cùng là ta phải đổi 2 slider intensity và range, ta for qua và set cho từng đèn thôi:
+                    <pre><code class="language-javascript">pointLightIntensitySlider.addEventListener("input", () => {
+    const intensity = parseFloat(pointLightIntensitySlider.value);
+    for (let light of scene.getAllComponentsOfType(PointLight)) {
+        light.intensity = intensity;
+    }
+    pointLightIntensityText.textContent = intensity.toFixed(2);
+});
+
+pointLightRangeSlider.addEventListener("input", () => {
+    const range = parseFloat(pointLightRangeSlider.value);
+    for (let light of scene.getAllComponentsOfType(PointLight)) {
+        light.range = range;
+    }
+    pointLightRangeText.textContent = range.toFixed(0);
+});</code></pre>
+                    Kết quả (xem diff):
+                    <div class="htmlPreview" id="htmlPreview47" data-disabled="true"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

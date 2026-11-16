@@ -1823,8 +1823,17 @@ void main(){
 			program.set("uView", camera.getViewMatrix());
 			program.set("uProjection", projectionMatrix);
 
+			program.set("uAmbientLight", 0.1);
+			program.set("uUseShadow", useShadow);
+
 			program.set("uDirLightDir", dirLight.dir);
 			program.set("uDirLightIntensity", dirLight.intensity);
+			program.set("uLightView", dirLight.viewMatrix);
+			program.set("uLightProjection", dirLight.projectionMatrix);
+			dirLight.shadowMapTexture.bind(1);
+			program.set("uShadowMap", 1);
+			program.set("uShadowBias", dirLight.shadowBias);
+			program.set("uShadowTexelSize", dirLight.shadowDistance / dirLight.shadowMapSize);
 
 			const pointLightData = new Float32Array(maxActiveLights * 3);
 			const pointLightCount = Math.min(pointLights.length, maxActiveLights);
@@ -1838,13 +1847,7 @@ void main(){
 			program.set("uPointLightCount", pointLightCount);
 			program.set("uPointLightIntensity", pointLightIntensity);
 			program.set("uPointLightRange", pointLightRange);
-			program.set("uAmbientLight", 0.1);
 
-			program.set("uUseShadow", useShadow);
-			program.set("uLightView", dirLight.viewMatrix);
-			program.set("uLightProjection", dirLight.projectionMatrix);
-			dirLight.shadowMapTexture.bind(1);
-			program.set("uShadowMap", 1);
 			const pointShadowMapUnits = [];
 			for (let i = 0; i < maxShadowPointLights; i++) {
 				if (i < shadowPointLightCount) pointLights[i].cubemap.bind(2 + i);
@@ -1855,8 +1858,6 @@ void main(){
 			program.set("uPointShadowMapSize", pointShadowMapSize);
 			program.set("uPointShadowBias", pointShadowBias);
 			program.set("uPointLightShadowProjectionMain", pointLightShadowProjectionMat);
-			program.set("uShadowBias", dirLight.shadowBias);
-			program.set("uShadowTexelSize", dirLight.shadowDistance / dirLight.shadowMapSize);
 
 			for (let meshRenderer of meshRenderers) {
 				meshRenderer.draw();

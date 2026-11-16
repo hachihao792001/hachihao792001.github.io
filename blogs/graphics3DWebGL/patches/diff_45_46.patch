@@ -1,0 +1,117 @@
+--- "a/htmlPreviews\\htmlPreview45.html"
++++ "b/htmlPreviews\\htmlPreview46.html"
+@@ -1034,10 +1034,13 @@
+ 			}
+ 		}
+ 
+-		class DirectionalLight {
+-			constructor(dir, intensity) {
+-				this.dir = dir.normalize();
++		class DirectionalLight extends Component {
++			constructor(intensity, shadowMapSize, shadowDistance, shadowBias) {
++				super();
+ 				this.intensity = intensity;
++				this.shadowMapSize = shadowMapSize;
++				this.shadowDistance = shadowDistance;
++				this.shadowBias = shadowBias;
+ 				this.viewMatrix = null;
+ 				this.projectionMatrix = null;
+ 
+@@ -1045,14 +1048,18 @@
+ 				this.shadowTarget = new RenderTarget(gl, this.shadowMapTexture);
+ 			}
+ 
++			get dir() {
++				return this.transform.getForward();
++			}
++
+ 			buildViewAndProjectionMatrix() {
+ 				let up = Math.abs(Vector3.dot(this.dir, Vector3.up)) < 0.99 ? Vector3.up : Vector3.forward;
+ 				let right = Vector3.cross(up, this.dir).normalize();
+ 				up = Vector3.cross(this.dir, right).normalize();
+-				let frustumCenter = camera.getFrustumCenter(znear, shadowMapDistance);
+-				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
++				let frustumCenter = camera.getFrustumCenter(znear, this.shadowDistance);
++				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, this.shadowDistance));
+ 				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
+-				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance * 2);
++				this.projectionMatrix = Mat4x4.Orthographic(this.shadowDistance, 0.1, this.shadowDistance * 2);
+ 			}
+ 
+ 			buildShadowMap(shadowCasters) {
+@@ -1736,12 +1743,6 @@ void main(){
+ 		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
+ 		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
+ 		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
+-		let shadowMapSize = 2048;
+-		let shadowMapDistance = 16;
+-		let shadowBias = 0.0015;
+-		let dirLightDefaultDir = new Vector3(-1, -1, -1);
+-		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
+-		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
+ 		let dirLightRotateSpeed = parseFloat(lightDirRotateSpeedSlider.value);
+ 
+ 		const pointLightIntensitySlider = (document.getElementById("pointIntensity"));
+@@ -1774,6 +1775,10 @@ void main(){
+ 		ObjLoader.load("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj")
+ 			.then((mesh) => (towerRenderer.mesh = mesh));
+ 
++		let sun = scene.add(new GameObject("Sun"));
++		sun.transform.lookRotation(new Vector3(-1, -1, -1).normalize());
++		let dirLight = sun.addComponent(new DirectionalLight(parseFloat(lightDirIntensitySlider.value), 2048, 16, 0.0015));
++
+ 		let ground = scene.add(new GameObject("Ground", new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30)));
+ 		ground.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(0, 255, 0), brickTexture)));
+ 
+@@ -1796,9 +1801,7 @@ void main(){
+ 			}
+ 
+ 			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
+-			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
+-			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
+-			dirLight.dir.normalize();
++			sun.transform.rotation = Quaternion.multiply(q, sun.transform.rotation);
+ 		}
+ 
+ 		function render() {
+@@ -1820,8 +1823,17 @@ void main(){
+ 			program.set("uView", camera.getViewMatrix());
+ 			program.set("uProjection", projectionMatrix);
+ 
++			program.set("uAmbientLight", 0.1);
++			program.set("uUseShadow", useShadow);
++
+ 			program.set("uDirLightDir", dirLight.dir);
+ 			program.set("uDirLightIntensity", dirLight.intensity);
++			program.set("uLightView", dirLight.viewMatrix);
++			program.set("uLightProjection", dirLight.projectionMatrix);
++			dirLight.shadowMapTexture.bind(1);
++			program.set("uShadowMap", 1);
++			program.set("uShadowBias", dirLight.shadowBias);
++			program.set("uShadowTexelSize", dirLight.shadowDistance / dirLight.shadowMapSize);
+ 
+ 			const pointLightData = new Float32Array(maxActiveLights * 3);
+ 			const pointLightCount = Math.min(pointLights.length, maxActiveLights);
+@@ -1835,13 +1847,7 @@ void main(){
+ 			program.set("uPointLightCount", pointLightCount);
+ 			program.set("uPointLightIntensity", pointLightIntensity);
+ 			program.set("uPointLightRange", pointLightRange);
+-			program.set("uAmbientLight", 0.1);
+ 
+-			program.set("uUseShadow", useShadow);
+-			program.set("uLightView", dirLight.viewMatrix);
+-			program.set("uLightProjection", dirLight.projectionMatrix);
+-			dirLight.shadowMapTexture.bind(1);
+-			program.set("uShadowMap", 1);
+ 			const pointShadowMapUnits = [];
+ 			for (let i = 0; i < maxShadowPointLights; i++) {
+ 				if (i < shadowPointLightCount) pointLights[i].cubemap.bind(2 + i);
+@@ -1852,8 +1858,6 @@ void main(){
+ 			program.set("uPointShadowMapSize", pointShadowMapSize);
+ 			program.set("uPointShadowBias", pointShadowBias);
+ 			program.set("uPointLightShadowProjectionMain", pointLightShadowProjectionMat);
+-			program.set("uShadowBias", shadowBias);
+-			program.set("uShadowTexelSize", shadowMapDistance / shadowMapSize);
+ 
+ 			for (let meshRenderer of meshRenderers) {
+ 				meshRenderer.draw();

@@ -1,0 +1,268 @@
+--- "a/htmlPreviews\\htmlPreview46.html"
++++ "b/htmlPreviews\\htmlPreview47.html"
+@@ -1077,7 +1077,7 @@
+ 				program.use();
+ 			}
+ 		}
+-		class PointLight extends GameObject {
++		class PointLight extends Component {
+ 			static faces = [
+ 				[new Vector3(1, 0, 0), new Vector3(0, -1, 0), new Vector3(0, 0, -1)],
+ 				[new Vector3(-1, 0, 0), new Vector3(0, -1, 0), new Vector3(0, 0, 1)],
+@@ -1087,10 +1087,15 @@
+ 				[new Vector3(0, 0, -1), new Vector3(0, -1, 0), new Vector3(-1, 0, 0)],
+ 			];
+ 
+-			constructor(name, pos, eulerAngles, scale) {
+-				super(name, pos, eulerAngles, scale);
++			constructor(intensity, range, shadowMapSize, shadowNear, shadowBias) {
++				super();
++				this.intensity = intensity;
++				this.range = range;
++				this.shadowMapSize = shadowMapSize;
++				this.shadowNear = shadowNear;
++				this.shadowBias = shadowBias;
+ 
+-				this.cubemap = TextureCube.depth(gl, pointShadowMapSize);
++				this.cubemap = TextureCube.depth(gl, shadowMapSize);
+ 
+ 				this.targets = [];
+ 				for (let face = 0; face < 6; face++) {
+@@ -1098,11 +1103,15 @@
+ 				}
+ 			}
+ 
+-			buildShadowMaps(shadowCasters, projection) {
++			getShadowProjection() {
++				return Mat4x4.Projection(90, 1, 1, this.shadowNear, this.range);
++			}
++
++			buildShadowMaps(shadowCasters) {
+ 				pointShadowProgram.use();
+ 				gl.frontFace(gl.CCW);
+ 
+-				pointShadowProgram.set("uProjection", projection);
++				pointShadowProgram.set("uProjection", this.getShadowProjection());
+ 				for (let face = 0; face < 6; face++) {
+ 					let [forward, up, right] = PointLight.faces[face];
+ 					let view = Mat4x4.View(right, up, forward, this.transform.position);
+@@ -1391,7 +1400,13 @@
+ 						else gl.uniform3f(location, value.x, value.y, value.z);
+ 						break;
+ 					case gl.FLOAT_MAT4:
+-						gl.uniformMatrix4fv(location, false, value.toColumnMajor());
++						if (uniform.size > 1) {
++							const data = new Float32Array(value.length * 16);
++							for (let i = 0; i < value.length; i++) data.set(value[i].toColumnMajor(), i * 16);
++							gl.uniformMatrix4fv(location, false, data);
++						} else {
++							gl.uniformMatrix4fv(location, false, value.toColumnMajor());
++						}
+ 						break;
+ 					case gl.INT:
+ 					case gl.BOOL:
+@@ -1581,9 +1596,9 @@ uniform float uDirLightIntensity;
+ uniform float uAmbientLight;
+ 
+ uniform vec3 uPointLightPositions[${maxActiveLights}];
++uniform float uPointLightIntensities[${maxActiveLights}];
++uniform float uPointLightRanges[${maxActiveLights}];
+ uniform int uPointLightCount;
+-uniform float uPointLightIntensity;
+-uniform float uPointLightRange;
+ 
+ uniform sampler2D uShadowMap;
+ uniform mat4 uLightView;
+@@ -1594,9 +1609,9 @@ uniform float uShadowTexelSize;
+ 
+ uniform samplerCube uPointShadowMaps[${maxShadowPointLights}];
+ uniform int uShadowPointLightCount;
+-uniform float uPointShadowMapSize;
+-uniform float uPointShadowBias;
+-uniform mat4 uPointLightShadowProjectionMain;
++uniform float uPointShadowMapSizes[${maxShadowPointLights}];
++uniform float uPointShadowBiases[${maxShadowPointLights}];
++uniform mat4 uPointLightShadowProjections[${maxShadowPointLights}];
+ 
+ in vec2 vUV;
+ in vec3 vWorldNormal;
+@@ -1626,15 +1641,15 @@ float getDirLightShadow() {
+ 	return shadow / 9.0;
+ }
+ 
+-bool isInPointLightShadow(samplerCube pointShadowMap, vec3 lightPosition, vec3 pixelWorldPos) {
++bool isInPointLightShadow(samplerCube pointShadowMap, mat4 shadowProjection, float shadowMapSize, float shadowBias, vec3 lightPosition, vec3 pixelWorldPos) {
+ 	vec3 lightToPixel = pixelWorldPos - lightPosition;
+-	float texelSize = 2.0 * length(lightToPixel) / uPointShadowMapSize;
++	float texelSize = 2.0 * length(lightToPixel) / shadowMapSize;
+ 	lightToPixel += vWorldNormal * texelSize;
+ 
+ 	vec3 absLightToPixel = abs(lightToPixel);
+ 	float viewZ = max(absLightToPixel.x, max(absLightToPixel.y, absLightToPixel.z));
+-	float biasedViewZ = viewZ - uPointShadowBias;
+-	vec4 clipSpaceCoord = uPointLightShadowProjectionMain * vec4(0.0, 0.0, biasedViewZ, 1.0);
++	float biasedViewZ = viewZ - shadowBias;
++	vec4 clipSpaceCoord = shadowProjection * vec4(0.0, 0.0, biasedViewZ, 1.0);
+ 	float currentDepth = clipSpaceCoord.z / clipSpaceCoord.w * 0.5 + 0.5;
+ 	float closestDepth = texture(pointShadowMap, lightToPixel).r;
+ 	return currentDepth > closestDepth;
+@@ -1646,7 +1661,6 @@ void main(){
+ 	float dirLightShadow = uUseShadow ? getDirLightShadow() : 0.0;
+ 	dirLightDiffuse *= 1.0 - dirLightShadow;
+ 
+-	float pointLightRangeSquare = uPointLightRange * uPointLightRange;
+ 	float totalPointLightDiffuse = 0.0;
+ 	for (int i = 0; i < uPointLightCount; i++) {
+ 		vec3 pointLightVec = uPointLightPositions[i] - vWorldPosition;
+@@ -1655,16 +1669,17 @@ void main(){
+ 		if (uUseShadow && i < uShadowPointLightCount){
+ 			bool isInShadow = false;
+ 			switch(i){
+-				case 0: isInShadow = isInPointLightShadow(uPointShadowMaps[0], uPointLightPositions[i], vWorldPosition); break;
+-				case 1: isInShadow = isInPointLightShadow(uPointShadowMaps[1], uPointLightPositions[i], vWorldPosition); break;
+-				case 2: isInShadow = isInPointLightShadow(uPointShadowMaps[2], uPointLightPositions[i], vWorldPosition); break;
+-				case 3: isInShadow = isInPointLightShadow(uPointShadowMaps[3], uPointLightPositions[i], vWorldPosition); break;
++				case 0: isInShadow = isInPointLightShadow(uPointShadowMaps[0], uPointLightShadowProjections[0], uPointShadowMapSizes[0], uPointShadowBiases[0], uPointLightPositions[i], vWorldPosition); break;
++				case 1: isInShadow = isInPointLightShadow(uPointShadowMaps[1], uPointLightShadowProjections[1], uPointShadowMapSizes[1], uPointShadowBiases[1], uPointLightPositions[i], vWorldPosition); break;
++				case 2: isInShadow = isInPointLightShadow(uPointShadowMaps[2], uPointLightShadowProjections[2], uPointShadowMapSizes[2], uPointShadowBiases[2], uPointLightPositions[i], vWorldPosition); break;
++				case 3: isInShadow = isInPointLightShadow(uPointShadowMaps[3], uPointLightShadowProjections[3], uPointShadowMapSizes[3], uPointShadowBiases[3], uPointLightPositions[i], vWorldPosition); break;
+ 				default: isInShadow = false; break;
+ 			}
+ 			if (isInShadow)
+ 				continue;
+ 		}
+ 
++		float pointLightRangeSquare = uPointLightRanges[i] * uPointLightRanges[i];
+ 		float distanceFromPixelToPointLight2 = dot(pointLightVec, pointLightVec);
+ 		if (distanceFromPixelToPointLight2 >= pointLightRangeSquare) continue;
+ 
+@@ -1674,9 +1689,8 @@ void main(){
+ 		float pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRangeSquare;
+ 		float inverseSquareDistance = 1.0 / (1.0 + 0.02 * distanceFromPixelToPointLight2);
+ 		float attenuation = (1.0 - pointLightDistanceRatio) * inverseSquareDistance;
+-		totalPointLightDiffuse += currentPointLightDiffuse * attenuation;
++		totalPointLightDiffuse += currentPointLightDiffuse * attenuation * uPointLightIntensities[i];
+ 	}
+-	totalPointLightDiffuse *= uPointLightIntensity;
+ 
+ 	float lightIntensity = max(uAmbientLight, dirLightDiffuse + totalPointLightDiffuse);
+ 
+@@ -1747,13 +1761,8 @@ void main(){
+ 
+ 		const pointLightIntensitySlider = (document.getElementById("pointIntensity"));
+ 		const pointLightIntensityText = (document.getElementById("pointIntensityText"));
+-		let pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
+ 		const pointLightRangeSlider = (document.getElementById("pointRange"));
+ 		const pointLightRangeText = (document.getElementById("pointRangeText"));
+-		let pointLightRange = parseFloat(pointLightRangeSlider.value);
+-		let pointShadowNear = 0.05;
+-		let pointShadowMapSize = 512;
+-		let pointShadowBias = 0.03;
+ 
+ 		const useShadowCheckbox = (document.getElementById("useShadow"));
+ 		let useShadow = useShadowCheckbox.checked;
+@@ -1783,12 +1792,13 @@ void main(){
+ 		ground.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(0, 255, 0), brickTexture)));
+ 
+ 		let pointLights = [
+-			scene.add(new PointLight("Point light 1", new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1))),
+-			scene.add(new PointLight("Point light 2", new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1))),
++			scene.add(new GameObject("Point light 1", new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1))),
++			scene.add(new GameObject("Point light 2", new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1))),
+ 		];
+ 		let pointLightMaterial = new Material();
+ 		for (let light of pointLights) {
+ 			light.addComponent(new MeshRenderer(cubeMesh, pointLightMaterial, false));
++			light.addComponent(new PointLight(parseFloat(pointLightIntensitySlider.value), parseFloat(pointLightRangeSlider.value), 512, 0.05, 0.03));
+ 		}
+ 
+ 		let lastTime = performance.now();
+@@ -1809,14 +1819,14 @@ void main(){
+ 
+ 			const meshRenderers = scene.getAllComponentsOfType(MeshRenderer);
+ 			const shadowCasters = meshRenderers.filter((meshRenderer) => meshRenderer.castShadow);
++			const pointLights = scene.getAllComponentsOfType(PointLight);
++			const shadowPointLightCount = Math.min(pointLights.length, maxShadowPointLights);
+ 
+ 			dirLight.buildViewAndProjectionMatrix();
+-			const shadowPointLightCount = Math.min(pointLights.length, maxShadowPointLights);
+-			const pointLightShadowProjectionMat = Mat4x4.Projection(90, 1, 1, pointShadowNear, pointLightRange);
+ 			if (useShadow) {
+ 				dirLight.buildShadowMap(shadowCasters);
+ 				for (let i = 0; i < shadowPointLightCount; i++) {
+-					pointLights[i].buildShadowMaps(shadowCasters, pointLightShadowProjectionMat);
++					pointLights[i].buildShadowMaps(shadowCasters);
+ 				}
+ 			}
+ 
+@@ -1836,28 +1846,40 @@ void main(){
+ 			program.set("uShadowTexelSize", dirLight.shadowDistance / dirLight.shadowMapSize);
+ 
+ 			const pointLightData = new Float32Array(maxActiveLights * 3);
++			const pointLightIntensities = new Float32Array(maxActiveLights);
++			const pointLightRanges = new Float32Array(maxActiveLights);
+ 			const pointLightCount = Math.min(pointLights.length, maxActiveLights);
+ 			for (let i = 0; i < pointLightCount; i++) {
+ 				const lightPos = pointLights[i].transform.position;
+ 				pointLightData[i * 3] = lightPos.x;
+ 				pointLightData[i * 3 + 1] = lightPos.y;
+ 				pointLightData[i * 3 + 2] = lightPos.z;
++				pointLightIntensities[i] = pointLights[i].intensity;
++				pointLightRanges[i] = pointLights[i].range;
+ 			}
+ 			program.set("uPointLightPositions", pointLightData);
+ 			program.set("uPointLightCount", pointLightCount);
+-			program.set("uPointLightIntensity", pointLightIntensity);
+-			program.set("uPointLightRange", pointLightRange);
++			program.set("uPointLightIntensities", pointLightIntensities);
++			program.set("uPointLightRanges", pointLightRanges);
+ 
+ 			const pointShadowMapUnits = [];
++			const pointLightShadowProjections = [];
++			const pointShadowMapSizes = [];
++			const pointShadowBiases = [];
+ 			for (let i = 0; i < maxShadowPointLights; i++) {
+-				if (i < shadowPointLightCount) pointLights[i].cubemap.bind(2 + i);
++				if (i < shadowPointLightCount) {
++					pointLights[i].cubemap.bind(2 + i);
++					pointLightShadowProjections.push(pointLights[i].getShadowProjection());
++					pointShadowMapSizes.push(pointLights[i].shadowMapSize);
++					pointShadowBiases.push(pointLights[i].shadowBias);
++				}
+ 				pointShadowMapUnits.push(2 + i);
+ 			}
+ 			program.set("uPointShadowMaps", pointShadowMapUnits);
+ 			program.set("uShadowPointLightCount", shadowPointLightCount);
+-			program.set("uPointShadowMapSize", pointShadowMapSize);
+-			program.set("uPointShadowBias", pointShadowBias);
+-			program.set("uPointLightShadowProjectionMain", pointLightShadowProjectionMat);
++			program.set("uPointShadowMapSizes", pointShadowMapSizes);
++			program.set("uPointShadowBiases", pointShadowBiases);
++			program.set("uPointLightShadowProjections", pointLightShadowProjections);
+ 
+ 			for (let meshRenderer of meshRenderers) {
+ 				meshRenderer.draw();
+@@ -1895,13 +1917,19 @@ void main(){
+ 		});
+ 
+ 		pointLightIntensitySlider.addEventListener("input", () => {
+-			pointLightIntensity = parseFloat(pointLightIntensitySlider.value);
+-			pointLightIntensityText.textContent = pointLightIntensity.toFixed(2);
++			const intensity = parseFloat(pointLightIntensitySlider.value);
++			for (let light of scene.getAllComponentsOfType(PointLight)) {
++				light.intensity = intensity;
++			}
++			pointLightIntensityText.textContent = intensity.toFixed(2);
+ 		});
+ 
+ 		pointLightRangeSlider.addEventListener("input", () => {
+-			pointLightRange = parseFloat(pointLightRangeSlider.value);
+-			pointLightRangeText.textContent = pointLightRange.toFixed(0);
++			const range = parseFloat(pointLightRangeSlider.value);
++			for (let light of scene.getAllComponentsOfType(PointLight)) {
++				light.range = range;
++			}
++			pointLightRangeText.textContent = range.toFixed(0);
+ 		});
+ 
+ 		useShadowCheckbox.addEventListener("change", () => {
