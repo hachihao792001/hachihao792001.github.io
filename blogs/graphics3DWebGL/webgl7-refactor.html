@@ -1523,34 +1523,48 @@ function render() {
                     này chỉ dùng đúng cho 1 mục đích. Cho nên phần này mình cũng sẽ biến <code>PointLight</code> thành 1 <code>Component</code> (như Unity).<br/><br/>
                     
                     Phần này cũng sẽ giải quyết vấn đề <code>pointLightIntensity</code> và <code>pointLightRange</code> là 2 biến global, tức là mọi point light trong scene bây giờ có thể có
-                    range và intensity riêng của nó. Tuy nhiên làm như vậy sẽ có hệ quả là projection matrix của chúng sẽ khác nhau, cho nên cho mỗi point light ta phải tính lại.<br/><br/>
+                    range và intensity riêng của nó. Tuy nhiên làm như vậy sẽ có hệ quả là projection matrix của chúng sẽ khác nhau, cho nên cho mỗi point light ta phải tính lại. Ngoài ra,
+                    phần này cũng gom <code>shadowMapSize, shadowNear, shadowBias</code> như <code>DirectionalLight</code>.<br/><br/>
 
                     Như vậy class <code>PointLight</code> sẽ thành như sau:
                     <pre><code class="language-javascript">class PointLight extends Component {                                       // <----------------------
-    static faces = [ ... ];
-
-    // constructor giờ nhận intensity, range (đúng tính chất của 1 PointLight), chứ không nhận name, pos, eulerAngles, scale (GameObject lo) nữa
-    constructor(intensity, range) {                                        
+    ...
+    // constructor giờ nhận intensity, range, ... (đúng tính chất của 1 PointLight), chứ không nhận name, pos, eulerAngles, scale (GameObject lo) nữa
+    constructor(intensity, range, shadowMapSize, shadowNear, shadowBias) {      // <----------------------
         super();
-        this.intensity = intensity;                                         // <----------------------
-        this.range = range;                                                 // <----------------------
+        this.intensity = intensity;                                             // <----------------------
+        this.range = range;                                                     // <----------------------
+        this.shadowMapSize = shadowMapSize;                                     // <----------------------
+        this.shadowNear = shadowNear;                                           // <----------------------
+        this.shadowBias = shadowBias;                                           // <----------------------
 
+        this.cubemap = TextureCube.depth(gl, shadowMapSize);                    // <---------------------- thay cho pointShadowMapSize global
         ...
     }
 
-    getShadowProjection() {                                                // viết hàm tính projection matrix cho PointLight này 
-        return Mat4x4.Projection(90, 1, 1, pointShadowNear, this.range);
+    getShadowProjection() {                                                     // viết hàm tính projection matrix cho PointLight này 
+        return Mat4x4.Projection(90, 1, 1, this.shadowNear, this.range);        // dùng 2 cái near và far của chính PointLight này
     }
-
-    buildShadowMaps(shadowCasters) {                                       // không nhận projection nữa, dùng của chính PointLight này
+    
+    buildShadowMaps(shadowCasters) {                                            // không nhận projection nữa, dùng của chính PointLight này
         pointShadowProgram.use();
         gl.frontFace(gl.CCW);
 
-        pointShadowProgram.set("uProjection", this.getShadowProjection());  // <----------------------
+        pointShadowProgram.set("uProjection", this.getShadowProjection());      // <----------------------
         ...
     }
 }</code></pre>
-
+                    Lúc tạo các PointLight sẽ sửa thành như sau:
+                    <pre><code class="language-javascript">let pointLights = [
+    scene.add(new GameObject("Point light 1", new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1))),     // <--------------
+    scene.add(new GameObject("Point light 2", new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1))),    // <--------------
+];
+let pointLightMaterial = new Material();
+for (let light of pointLights) {
+    light.addComponent(new MeshRenderer(cubeMesh, pointLightMaterial, false));
+    light.addComponent(new PointLight(parseFloat(pointLightIntensitySlider.value), parseFloat(pointLightRangeSlider.value), 512, 0.05, 0.03));  // <--------------
+}</code></pre>
+                    
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
