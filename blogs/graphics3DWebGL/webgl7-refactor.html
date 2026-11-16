@@ -1762,12 +1762,281 @@ pointLightRangeSlider.addEventListener("input", () => {
                         <li><code>DirectionalLight</code> và <code>PointLight</code> tự tạo shadow map của chính nó và tự <b>lưu</b> nó</li>
                         <li><code>MeshRenderer</code> tự vẽ bằng <code>program</code> global</li>
                     </ul>
-                    Như bạn thấy, thì blog sau là mình sẽ thêm lại Software Rasterizer vào 😳 Cho nên mấy cái liên quan tới WebGL mình phải bỏ ra hết.<br/><br/>
+                    Như bạn thấy, thì blog sau là mình sẽ thêm lại Software Rasterizer vào 😳 Cho nên mấy cái liên quan tới WebGL mình phải bỏ ra khỏi hết mấy class
+                    này, và gom vào 1 class khác. Mình sẽ đặt tên nó là <code>WebGLRenderer</code>, lí do nó có tên như vậy là vì Software Rasterizer và WebGL chỉ
+                    khác nhau ở chỗ ai là người vẽ (Renderer), mấy cái còn lại như thông tin mesh, texture (CPU), ánh sáng thì chỉ là thông tin mà ta thay đổi
+                    mỗi frame để vẽ.<br/><br/>
+                    
+                    Vì vai trò của class <code>WebGLRenderer</code> là ôm hết mọi thứ thuộc về WebGL, cho nên nó phải có cách <b>lưu</b> được những thứ của WebGL
+                    thay cho những class kia, cụ thể là VAO, Texture2D và shadow map (3 ý đầu của 4 ý trên). Mình sẽ dùng
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap"><code>WeakMap</code></a>
+                    (giống Dictionary trong C#) để map các cặp thông tin CPU - GPU với nhau, lúc cần truy cập gì thì <code>WebGLRenderer</code> check xem
+                    nó đã tồn tại trong map chưa, nếu có rồi thì trả về,
+                    nếu chưa thì tạo, cache và trả về. Các cặp CPU - GPU cụ thể là:
+                    <ul>
+                        <li><code>Mesh</code> -> <code>VertexArray</code></li>
+                        <li><code>Texture</code> -> <code>Texture2D</code></li>
+                        <li><code>DirectionalLight</code> -> shadow map</li>
+                        <li><code>PointLight</code> -> cube shadow map</li>
+                    </ul>
+                    Để phục vụ cho việc mapping này mình sẽ tạo luôn class riêng cho shadow map của 2 cái light, 2 class này chỉ đơn giản là giữ texture
+                    và những <code>RenderTarget</code> của nó:
+                    <pre><code class="language-javascript">class DirectionalShadowMap {
+    constructor(gl, size) {
+        this.texture = Texture2D.depth(gl, size);
+        this.target = new RenderTarget(gl, this.texture);
+    }
+}
 
-                    Về cơ bản thì Software Rasterizer và WebGL chỉ khác nhau ở chỗ ai là người vẽ (Renderer), mấy cái còn lại như thông tin mesh, texture (CPU), ánh sáng, ... chỉ
-                    là... thông tin. Cho nên phần này mình sẽ viết trước renderer cho WebGL, là <code>WebGLRenderer</code>. Vì vai trò của class này
-                    là ôm hết mọi thứ về WebGL, nên nó phải có cách lưu được những thứ của WebGL, cụ thể là 3 dòng đầu của 4 dòng trên
-                    (mình in đậm chữ <b>lưu</b> là vì vậy): VAO, Texture2D và shadow map.<br/><br/>
+class PointLightShadowMap {
+    static faces = [ ... ];
+
+    constructor(gl, size) {
+        this.texture = TextureCube.depth(gl, size);
+        this.targets = [];
+        for (let face = 0; face < 6; face++) {
+            this.targets.push(new RenderTarget(gl, this.texture, face));
+        }
+    }
+}</code></pre>
+                    Về lại <code>WebGLRenderer</code>, vì nó là 1 renderer, nên ngoài lưu 3 cái trên ra thì nó còn phải lưu thêm
+                    context của canvas (gl) và 3 cái <code>ShaderProgram</code>. Như vậy phần đầu class <code>WebGLRenderer</code> sẽ như sau:
+                    <pre style="max-height: 500px"><code class="language-javascript">class WebGLRenderer {
+    constructor(canvas) {
+        const gl = canvas.getContext("webgl2");
+        this.gl = gl;
+        this.canvas = canvas;
+
+        this.useShadow = true;
+
+        this.program = new ShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
+        this.shadowProgram = new ShaderProgram(gl, shadowVertexShaderSource, shadowFragmentShaderSource);
+        this.pointShadowProgram = new ShaderProgram(gl, shadowVertexShaderSource, shadowFragmentShaderSource);
+
+        this.vertexArrays = new WeakMap();      // Mesh -> VertexArray
+        this.textures = new WeakMap();          // Texture -> Texture2D
+        this.shadowMaps = new WeakMap();        // DirectionalLight / PointLight -> shadow map
+
+        gl.enable(gl.DEPTH_TEST);
+        gl.enable(gl.CULL_FACE);
+        gl.frontFace(gl.CW);
+        gl.clearColor(240 / 255, 240 / 255, 240 / 255, 1);
+    }
+
+    // hàm này để phục vụ 3 hàm dưới, check xem trong 1 map có key không, nếu không thì dùng hàm lamdba create để tạo cái mới
+    getOrCreate(map, key, create) {
+        let value = map.get(key);
+        if (value === undefined) {
+            value = create();
+            map.set(key, value);
+        }
+        return value;
+    }
+
+    // cặp Mesh -> VertexArray
+    getVertexArray(mesh) {
+        if (!mesh) return null;                 // model chưa load xong
+        const gl = this.gl;
+        return this.getOrCreate(this.vertexArrays, mesh, () => {
+            // đoạn code này chính là Mesh.uploadToGPU
+            const layout = VertexLayout.standard;
+            const floatsPerVertex = layout.stride / 4;
+            const meshDatas = [mesh.positions, mesh.uvs, mesh.normals];
+            const vertexData = new Float32Array(mesh.vertexCount * floatsPerVertex);
+
+            for (let i = 0; i < vertexData.length; i += floatsPerVertex) {
+                for (let attrib = 0; attrib < layout.attributes.length; attrib++) {
+                    let startIndex = i / floatsPerVertex * layout.attributes[attrib].componentCount;
+                    let offset = layout.attributes[attrib].offset / 4;
+
+                    for (let component = 0; component < layout.attributes[attrib].componentCount; component++)
+                        vertexData[i + offset + component] = meshDatas[attrib][startIndex + component];
+                }
+            }
+
+            const vertexBuffer = new VertexBuffer(gl, vertexData);
+            const indexBuffer = new IndexBuffer(gl, mesh.indices);
+            return new VertexArray(gl, layout, vertexBuffer, indexBuffer);
+        });
+    }
+
+    // cặp Texture -> Texture2D
+    getTexture(texture) {
+        if (!texture || !texture.pixels) return null;       // không có texture, hoặc chưa load xong
+        return this.getOrCreate(this.textures, texture, () => {
+            return new Texture2D(this.gl, texture.width, texture.height, new Uint8Array(texture.pixels.buffer));
+        });
+    }
+
+    // cặp DirectionalLight -> DirectionalShadowMap
+    getDirectionalShadowMap(light) {
+        return this.getOrCreate(this.shadowMaps, light, () => new DirectionalShadowMap(this.gl, light.shadowMapSize));
+    }
+
+    // cặp PointLight -> PointLightShadowMap
+    getPointLightShadowMap(light) {
+        return this.getOrCreate(this.shadowMaps, light, () => new PointLightShadowMap(this.gl, light.shadowMapSize));
+    }
+}</code></pre>
+
+                    Đó là xong phần "lưu" của <code>WebGLRenderer</code>, bây giờ ta sẽ bàn tới phần "vẽ" của nó, cơ bản thì nó chỉ lấy những hàm sau:
+                    <ul>
+                        <li>2 hàm <code>draw</code> và <code>drawDepth</code> của <code>GameObject</code></li>
+                        <li>Hàm <code>buildShadowMap</code> của <code>DirectionalLight</code></li>
+                        <li>Hàm <code>buildShadowMaps</code> của <code>PointLight</code></li>
+                        <li>Hàm <code>render</code></li>
+                    </ul>
+
+                    Như vậy phần sau của <code>WebGLRenderer</code> là:
+                    <pre style="max-height: 500px;"><code class="language-javascript">class WebGLRenderer {
+    ...
+    render(scene, camera) {
+        const gl = this.gl;
+        const program = this.program;
+
+        const meshRenderers = scene.getAllComponentsOfType(MeshRenderer);
+        const shadowCasters = meshRenderers.filter((meshRenderer) => meshRenderer.castShadow);
+        const dirLight = scene.getAllComponentsOfType(DirectionalLight)[0];      // engine này chỉ có 1 directional light
+        const pointLights = scene.getAllComponentsOfType(PointLight);
+        const shadowPointLightCount = Math.min(pointLights.length, maxShadowPointLights);
+
+        RenderTarget.bindCanvas(gl);            // bind vào canvas chính cho chắc
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        dirLight.buildViewAndProjectionMatrix(camera);
+        if (this.useShadow) {
+            this.buildDirectionalShadowMap(dirLight, shadowCasters);
+            for (let i = 0; i < shadowPointLightCount; i++) {
+                this.buildPointLightShadowMap(pointLights[i], shadowCasters);
+            }
+        }
+
+        program.use();
+        program.set("uView", camera.getViewMatrix());
+        program.set("uProjection", camera.getProjectionMatrix(this.canvas.width, this.canvas.height));
+
+        program.set("uAmbientLight", 0.1);
+        program.set("uUseShadow", this.useShadow);
+
+        program.set("uDirLightDir", dirLight.dir);
+        program.set("uDirLightIntensity", dirLight.intensity);
+        program.set("uLightView", dirLight.viewMatrix);
+        program.set("uLightProjection", dirLight.projectionMatrix);
+        this.getDirectionalShadowMap(dirLight).texture.bind(1);
+        program.set("uShadowMap", 1);
+        program.set("uShadowBias", dirLight.shadowBias);
+        program.set("uShadowTexelSize", dirLight.shadowDistance / dirLight.shadowMapSize);
+
+        const pointLightData = new Float32Array(maxActiveLights * 3);
+        const pointLightIntensities = new Float32Array(maxActiveLights);
+        const pointLightRanges = new Float32Array(maxActiveLights);
+        const pointLightCount = Math.min(pointLights.length, maxActiveLights);
+        for (let i = 0; i < pointLightCount; i++) {
+            const lightPos = pointLights[i].transform.position;
+            pointLightData[i * 3] = lightPos.x;
+            pointLightData[i * 3 + 1] = lightPos.y;
+            pointLightData[i * 3 + 2] = lightPos.z;
+            pointLightIntensities[i] = pointLights[i].intensity;
+            pointLightRanges[i] = pointLights[i].range;
+        }
+        program.set("uPointLightPositions", pointLightData);
+        program.set("uPointLightCount", pointLightCount);
+        program.set("uPointLightIntensities", pointLightIntensities);
+        program.set("uPointLightRanges", pointLightRanges);
+
+        const pointShadowMapUnits = [];
+        const pointLightShadowProjections = [];
+        const pointShadowMapSizes = [];
+        const pointShadowBiases = [];
+        for (let i = 0; i < maxShadowPointLights; i++) {
+            if (i < shadowPointLightCount) {
+                this.getPointLightShadowMap(pointLights[i]).texture.bind(2 + i);
+                pointLightShadowProjections.push(pointLights[i].getShadowProjection());
+                pointShadowMapSizes.push(pointLights[i].shadowMapSize);
+                pointShadowBiases.push(pointLights[i].shadowBias);
+            }
+            pointShadowMapUnits.push(2 + i);
+        }
+        program.set("uPointShadowMaps", pointShadowMapUnits);
+        program.set("uShadowPointLightCount", shadowPointLightCount);
+        program.set("uPointShadowMapSizes", pointShadowMapSizes);
+        program.set("uPointShadowBiases", pointShadowBiases);
+        program.set("uPointLightShadowProjections", pointLightShadowProjections);
+
+        for (let meshRenderer of meshRenderers) {
+            this.drawMeshRenderer(meshRenderer);
+        }
+    }
+
+    // đổi tên hàm draw thành drawMeshRenderer cho rõ đối tượng
+    drawMeshRenderer(meshRenderer) {
+        const vertexArray = this.getVertexArray(meshRenderer.mesh);
+        if (!vertexArray) return;
+        const program = this.program;
+        program.set("uModel", meshRenderer.transform.getModelMatrix());
+        program.set("uNormalMatrix", meshRenderer.transform.getNormalMatrix());
+
+        const glTexture = this.getTexture(meshRenderer.material.texture);
+        if (glTexture) {
+            glTexture.bind(0);
+            program.set("uTexture", 0);
+        }
+        program.set("uUseTexture", glTexture != null);
+        program.set("uColor", meshRenderer.material.color);
+
+        vertexArray.draw();
+    }
+
+    drawDepth(meshRenderer, depthProgram) {
+        const vertexArray = this.getVertexArray(meshRenderer.mesh);
+        if (!vertexArray) return;
+        depthProgram.set("uModel", meshRenderer.transform.getModelMatrix());
+        vertexArray.draw();
+    }
+
+    // lấy từ DirectionalLight.buildShadowMap, những chỗ nào class này có thì dùng this.
+    buildDirectionalShadowMap(light, shadowCasters) {
+        const gl = this.gl;
+        this.getDirectionalShadowMap(light).target.bind();
+        gl.clear(gl.DEPTH_BUFFER_BIT);
+
+        this.shadowProgram.use();
+        this.shadowProgram.set("uView", light.viewMatrix);
+        this.shadowProgram.set("uProjection", light.projectionMatrix);
+        for (let meshRenderer of shadowCasters) {
+            this.drawDepth(meshRenderer, this.shadowProgram);
+        }
+
+        RenderTarget.bindCanvas(gl);
+        // bỏ program.use()
+    }
+
+    // lấy từ PointLight.buildShadowMaps, những chỗ nào class này có thì dùng this.
+    buildPointLightShadowMap(light, shadowCasters) {
+        const gl = this.gl;
+        const shadowMap = this.getPointLightShadowMap(light);
+        const pointShadowProgram = this.pointShadowProgram;
+        pointShadowProgram.use();
+        gl.frontFace(gl.CCW);
+
+        pointShadowProgram.set("uProjection", light.getShadowProjection());
+        for (let face = 0; face < 6; face++) {
+            let [forward, up, right] = PointLightShadowMap.faces[face];
+            let view = Mat4x4.View(right, up, forward, light.transform.position);
+            pointShadowProgram.set("uView", view);
+
+            shadowMap.targets[face].bind();
+            gl.clear(gl.DEPTH_BUFFER_BIT);
+            for (let meshRenderer of shadowCasters) {
+                this.drawDepth(meshRenderer, pointShadowProgram);
+            }
+        }
+
+        gl.frontFace(gl.CW);
+        RenderTarget.bindCanvas(gl);
+        // bỏ program.use()
+    }
+}</code></pre><br/>
 
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
