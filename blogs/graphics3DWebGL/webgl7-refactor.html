@@ -1752,6 +1752,23 @@ pointLightRangeSlider.addEventListener("input", () => {
 });</code></pre>
                     Kết quả (xem diff):
                     <div class="htmlPreview" id="htmlPreview47" data-disabled="true"></div>
+
+                    <h2>9. WebGLRenderer</h2>
+                    Engine bây giờ đã gọn, những cú pháp liên quan tới WebGL đã nằm gọn hết trong các class, không cần phải nhớ lại hàm gì nhận tham số gì theo
+                    thứ tự nào nữa. Tuy nhiên, engine này đang được cấu trúc theo kiểu chỉ hỗ trợ WebGL, cụ thể:
+                    <ul>
+                        <li><code>Mesh</code> tự <code>uploadToGPU</code> trong constructor, trong <code>uploadToGPU</code> thì nó tự <b>lưu</b> VAO</li>
+                        <li><code>Texture</code> (CPU) tự tạo <code>Texture2D</code> (GPU) và tự <b>lưu</b> nó.</li>
+                        <li><code>DirectionalLight</code> và <code>PointLight</code> tự tạo shadow map của chính nó và tự <b>lưu</b> nó</li>
+                        <li><code>MeshRenderer</code> tự vẽ bằng <code>program</code> global</li>
+                    </ul>
+                    Như bạn thấy, thì blog sau là mình sẽ thêm lại Software Rasterizer vào 😳 Cho nên mấy cái liên quan tới WebGL mình phải bỏ ra hết.<br/><br/>
+
+                    Về cơ bản thì Software Rasterizer và WebGL chỉ khác nhau ở chỗ ai là người vẽ (Renderer), mấy cái còn lại như thông tin mesh, texture (CPU), ánh sáng, ... chỉ
+                    là... thông tin. Cho nên phần này mình sẽ viết trước renderer cho WebGL, là <code>WebGLRenderer</code>. Vì vai trò của class này
+                    là ôm hết mọi thứ về WebGL, nên nó phải có cách lưu được những thứ của WebGL, cụ thể là 3 dòng đầu của 4 dòng trên
+                    (mình in đậm chữ <b>lưu</b> là vì vậy): VAO, Texture2D và shadow map.<br/><br/>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
