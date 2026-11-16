@@ -1475,7 +1475,7 @@ for (let light of pointLights) {
         ...
     }
 
-    // thêm hàm lấy dir, chính là forward của transform
+    // bây giờ dir là 1 hàm getter, trả về forward của transform
     get dir() {
         return this.transform.getForward();
     }
@@ -1491,6 +1491,64 @@ for (let light of pointLights) {
     }
 
     ...
+}</code></pre>
+                    
+                    Phần khai báo sẽ gọn thành như sau:
+                    <pre><code class="language-javascript">// bỏ shadowMapSize, shadowMapDistance, shadowBias, dirLightDefaultDir, dirLightRotation
+...
+let scene = new Scene();
+...
+let sun = scene.add(new GameObject("Sun"));                                     // <----------------------
+sun.transform.lookRotation(new Vector3(-1, -1, -1).normalize());                // bản cũ thì phải set dirLightDefaultDir
+let dirLight = sun.addComponent(new DirectionalLight(parseFloat(lightDirIntensitySlider.value), 2048, 16, 0.0015));     // shadowMapSize, shadowDistance, shadowBias
+
+function updateGameObjectTransforms() {
+    ...
+    let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
+    sun.transform.rotation = Quaternion.multiply(q, sun.transform.rotation);    // xoay GameObject mặt trời thay vì xoay 1 Quaternion không không
+}
+
+function render() {
+    ...
+    program.set("uShadowBias", dirLight.shadowBias);                                            // <----------------------
+    program.set("uShadowTexelSize", dirLight.shadowDistance / dirLight.shadowMapSize);          // <----------------------
+    ...
+}</code></pre>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview46" data-disabled="true"></div>
+
+                    <h2>8. Chuyển Point light thành component</h2>
+                    Tới point light, thì nó có vấn đề ngược lại với Directional Light, đó là nó đang <code>extends GameObject</code>, nghĩa là ta đang hiểu đây là "một GameObject biết
+                    phát sáng". Về OOP thì làm vậy cũng không gì sai, nó cũng là "một dạng của" <code>GameObject</code>, nhưng về engine thì nó khá tù túng, vì giờ "loại" <code>GameObject</code>
+                    này chỉ dùng đúng cho 1 mục đích. Cho nên phần này mình cũng sẽ biến <code>PointLight</code> thành 1 <code>Component</code> (như Unity).<br/><br/>
+                    
+                    Phần này cũng sẽ giải quyết vấn đề <code>pointLightIntensity</code> và <code>pointLightRange</code> là 2 biến global, tức là mọi point light trong scene bây giờ có thể có
+                    range và intensity riêng của nó. Tuy nhiên làm như vậy sẽ có hệ quả là projection matrix của chúng sẽ khác nhau, cho nên cho mỗi point light ta phải tính lại.<br/><br/>
+
+                    Như vậy class <code>PointLight</code> sẽ thành như sau:
+                    <pre><code class="language-javascript">class PointLight extends Component {                                       // <----------------------
+    static faces = [ ... ];
+
+    // constructor giờ nhận intensity, range (đúng tính chất của 1 PointLight), chứ không nhận name, pos, eulerAngles, scale (GameObject lo) nữa
+    constructor(intensity, range) {                                        
+        super();
+        this.intensity = intensity;                                         // <----------------------
+        this.range = range;                                                 // <----------------------
+
+        ...
+    }
+
+    getShadowProjection() {                                                // viết hàm tính projection matrix cho PointLight này 
+        return Mat4x4.Projection(90, 1, 1, pointShadowNear, this.range);
+    }
+
+    buildShadowMaps(shadowCasters) {                                       // không nhận projection nữa, dùng của chính PointLight này
+        pointShadowProgram.use();
+        gl.frontFace(gl.CCW);
+
+        pointShadowProgram.set("uProjection", this.getShadowProjection());  // <----------------------
+        ...
+    }
 }</code></pre>
 
                     <div id="graphics3D-nav-bottom"></div>
