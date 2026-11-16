@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview38.html"
 +++ "b/htmlPreviews\\htmlPreview39.html"
-@@ -1453,10 +1453,11 @@ bool isInPointLightShadow(samplerCube pointShadowMap,  vec3 lightPosition, vec3
+@@ -1453,10 +1453,11 @@ bool isInPointLightShadow(samplerCube pointShadowMap, vec3 lightPosition, vec3
  
  	vec3 absLightToPixel = abs(lightToPixel);
  	float viewZ = max(absLightToPixel.x, max(absLightToPixel.y, absLightToPixel.z));

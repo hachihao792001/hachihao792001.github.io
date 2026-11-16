@@ -1567,7 +1567,7 @@ float getDirLightShadow() {
 	return shadow / 9.0;
 }
 
-bool isInPointLightShadow(samplerCube pointShadowMap,  vec3 lightPosition, vec3 pixelWorldPos) {
+bool isInPointLightShadow(samplerCube pointShadowMap, vec3 lightPosition, vec3 pixelWorldPos) {
 	vec3 lightToPixel = pixelWorldPos - lightPosition;
 	float texelSize = 2.0 * length(lightToPixel) / uPointShadowMapSize;
 	lightToPixel += vWorldNormal * texelSize;

@@ -1098,7 +1098,7 @@ function render() {
                     như vậy ta chỉ cần lấy \(2d\) chia cho kích thước shadow map là ra texel size.<br/><br/>
 
                     Như vậy hàm <code>isInPointLightShadow</code> sẽ như sau:
-                    <pre><code class="language-glsl">bool isInPointLightShadow(samplerCube pointShadowMap,  vec3 lightPosition, vec3 pixelWorldPos) {
+                    <pre><code class="language-glsl">bool isInPointLightShadow(samplerCube pointShadowMap, vec3 lightPosition, vec3 pixelWorldPos) {
 	vec3 lightToPixel = pixelWorldPos - lightPosition;
 	float texelSize = 2.0 * length(lightToPixel) / uPointShadowMapSize;     // tính texel size theo công thức trên
     // bản chất là cộng vào pixelWorldPos, nhưng cộng ở đây cũng kết quả tương tự. Ta tạo lightToPixel trước chủ yếu để xài luôn ở dòng trên
@@ -1162,7 +1162,7 @@ function render() {
                     cộng bias vào depth có sẵn trong shadow map, cái này đơn giản chỉ là chuyển vế đối dấu.<br/><br/>
 
                     Sửa ở hàm <code>isInPointLightShadow</code>:
-                    <pre><code class="language-glsl">bool isInPointLightShadow(samplerCube pointShadowMap,  vec3 lightPosition, vec3 pixelWorldPos) {
+                    <pre><code class="language-glsl">bool isInPointLightShadow(samplerCube pointShadowMap, vec3 lightPosition, vec3 pixelWorldPos) {
 	...
 	float viewZ = max(absLightToPixel.x, max(absLightToPixel.y, absLightToPixel.z));
 	float biasedViewZ = viewZ - uPointShadowBias;           // trừ bias
