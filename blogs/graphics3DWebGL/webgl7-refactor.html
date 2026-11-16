@@ -1564,6 +1564,88 @@ for (let light of pointLights) {
     light.addComponent(new MeshRenderer(cubeMesh, pointLightMaterial, false));
     light.addComponent(new PointLight(parseFloat(pointLightIntensitySlider.value), parseFloat(pointLightRangeSlider.value), 512, 0.05, 0.03));  // <--------------
 }</code></pre>
+                    Việc tách intensity và range riêng ra cho từng point light thì còn 1 hệ quả nữa, đó là shader cũng phải tách ra riêng. Cụ thể là
+                    <code>uPointLightIntensity</code>, <code>uPointLightRange</code> đều phải biến thành mảng
+                    <code>uPointLightIntensities[]</code>, <code>uPointLightRanges[]</code>, tương tự với <code>uPointShadowMapSize</code>,
+                    <code>uPointShadowBias</code>, <code>uPointLightShadowProjectionMain</code>.<br/><br/>
+
+                    Như vậy fragment shader sẽ trở thành như sau:
+                    <pre><code class="language-glsl">#version 300 es
+precision highp float;
+
+...
+
+uniform vec3 uPointLightPositions[${maxActiveLights}];
+uniform float uPointLightIntensities[${maxActiveLights}];               // <--------------
+uniform float uPointLightRanges[${maxActiveLights}];                    // <--------------
+uniform int uPointLightCount;
+
+...
+
+uniform float uPointShadowMapSizes[${maxShadowPointLights}];            // <--------------
+uniform float uPointShadowBiases[${maxShadowPointLights}];              // <--------------
+uniform mat4 uPointLightShadowProjections[${maxShadowPointLights}];     // <--------------
+
+...
+
+float getDirLightShadow() {
+	...
+}
+
+// shadowProjection, shadowMapSize, shadowBias bây giờ phải truyền vào, vì tụi nó đã theo từng point light
+bool isInPointLightShadow(samplerCube pointShadowMap, mat4 shadowProjection, float shadowMapSize, float shadowBias, vec3 lightPosition, vec3 pixelWorldPos) {
+	vec3 lightToPixel = pixelWorldPos - lightPosition;
+	float texelSize = 2.0 * length(lightToPixel) / shadowMapSize;                   // <--------------
+	lightToPixel += vWorldNormal * texelSize;
+
+	vec3 absLightToPixel = abs(lightToPixel);
+	float viewZ = max(absLightToPixel.x, max(absLightToPixel.y, absLightToPixel.z));
+	float biasedViewZ = viewZ - shadowBias;                                         // <--------------
+	vec4 clipSpaceCoord = shadowProjection * vec4(0.0, 0.0, biasedViewZ, 1.0);      // <--------------
+	float currentDepth = clipSpaceCoord.z / clipSpaceCoord.w * 0.5 + 0.5;
+	float closestDepth = texture(pointShadowMap, lightToPixel).r;
+	return currentDepth > closestDepth;
+}
+
+void main(){
+	...
+
+    // dời pointLightRangeSquare vào trong vòng for vì giờ nó theo từng point light
+	float totalPointLightDiffuse = 0.0;
+	for (int i = 0; i < uPointLightCount; i++) {
+		vec3 pointLightVec = uPointLightPositions[i] - vWorldPosition;
+		if (dot(vWorldNormal, pointLightVec) <= 0.0) continue;
+
+		if (uUseShadow && i < uShadowPointLightCount){
+			bool isInShadow = false;
+			switch(i){
+                // 4 dòng gọi hàm isInPointLightShadow phải đổi
+				case 0: isInShadow = isInPointLightShadow(uPointShadowMaps[0], uPointLightShadowProjections[0], uPointShadowMapSizes[0], uPointShadowBiases[0], uPointLightPositions[i], vWorldPosition); break;
+				case 1: isInShadow = isInPointLightShadow(uPointShadowMaps[1], uPointLightShadowProjections[1], uPointShadowMapSizes[1], uPointShadowBiases[1], uPointLightPositions[i], vWorldPosition); break;
+				case 2: isInShadow = isInPointLightShadow(uPointShadowMaps[2], uPointLightShadowProjections[2], uPointShadowMapSizes[2], uPointShadowBiases[2], uPointLightPositions[i], vWorldPosition); break;
+				case 3: isInShadow = isInPointLightShadow(uPointShadowMaps[3], uPointLightShadowProjections[3], uPointShadowMapSizes[3], uPointShadowBiases[3], uPointLightPositions[i], vWorldPosition); break;
+				default: isInShadow = false; break;
+			}
+			if (isInShadow)
+				continue;
+		}
+
+        // dời pointLightRangeSquare xuống đây
+		float pointLightRangeSquare = uPointLightRanges[i] * uPointLightRanges[i];
+		float distanceFromPixelToPointLight2 = dot(pointLightVec, pointLightVec);
+		if (distanceFromPixelToPointLight2 >= pointLightRangeSquare) continue;
+
+		...
+        // nhân point light intensity cho mỗi point light vì giờ nó khác nhau
+		totalPointLightDiffuse += currentPointLightDiffuse * attenuation * uPointLightIntensities[i];
+	}
+    // không nhân point light intensity ở ngoài vòng for nữa
+
+	...
+}</code></pre>
+
+                    Về việc truyền những uniform đó vào từ bên Javascript, ta cứ xài hàm <code>ShaderProgram.set</code> mà ta đã tạo là ô kê. Tuy nhiên bây giờ
+                    ta phải xử lí 1 trường hợp mới: <code>uPointLightShadowProjections</code> là một mảng <code>mat4</code> 😳
                     
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
