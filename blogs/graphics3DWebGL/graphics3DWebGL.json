@@ -46,5 +46,11 @@
         "webTitle": "WebGL #7: Tái cấu trúc thành engine",
         "title": "WebGL #7: Tái cấu trúc thành engine",
         "route": "/blogs/graphics3DWebGL/webgl7-refactor.html"
+    },
+    {
+        "id": "webgl8",
+        "webTitle": "WebGL #8: Thêm lại Software Rasterizer",
+        "title": "WebGL #8: Thêm lại Software Rasterizer",
+        "route": "/blogs/graphics3DWebGL/webgl8-software.html"
     }
 ]
