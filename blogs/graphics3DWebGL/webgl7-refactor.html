@@ -2038,6 +2038,135 @@ class PointLightShadowMap {
     }
 }</code></pre><br/>
 
+                    <code>WebGLRenderer</code> đã xong, bây giờ là tới lúc ta thay đổi mấy cái bên ngoài:
+                    <ul>
+                        <li>Bỏ biến global <code>gl</code>, 3 program (<code>program</code>, <code>shadowProgram</code>, <code>pointShadowProgram</code>), dòng <code>program.use()</code>
+                            và mấy dòng <code>gl.enable</code>, <code>gl.frontFace</code>, <code>gl.clearColor</code> trước nằm ở đầu <code>index.js</code>. Những cái này chuyển hết
+                            vào constructor của renderer như ở trên.</li>
+                        <li><code>Camera</code> bây giờ sẽ giữ <code>fov</code>, <code>near</code>, <code>far</code> 
+                            thay cho 4 biến global <code>fov</code>, <code>znear</code>, <code>zfar</code>. Ngoài nó còn có hàm 
+                            <code>getProjectionMatrix(width, height)</code> để thay cho biến global <code>projectionMatrix</code>.
+                            Hàm <code>Renderer.render</code> tính projection mỗi frame theo kích thước canvas và gọi <code>RenderTarget.bindCanvas</code>
+                            nên <code>updateRenderResolution</code> không phải gọi lại mấy hàm này nữa.</li>
+                        <li><code>buildViewAndProjectionMatrix(camera)</code> nhận camera vào để dùng <code>camera.near</code>, thay vì dùng biến <code>znear</code> global.</li>
+                        <li><code>MeshRenderer</code> và 2 loại light không còn giữ thứ gì của GPU. <code>Texture</code> chỉ đọc pixels, 
+                            nên 2 chỗ tạo <code>brickTexture</code>, <code>woodTexture</code> bỏ tham số <code>gl</code>.</li>
+                        <li>2 hằng số <code>maxActiveLights</code>, <code>maxShadowPointLights</code> vẫn là biến global khai báo ngay phía trên chuỗi shader source,
+                            vì shader dùng chúng trong template string (blog 6); renderer đọc chung 2 biến đó.</li>
+                    </ul>
+                    <pre><code class="language-javascript">class Texture {
+    constructor(url = "") {               // không cần gl nữa
+        this.pixels = null;
+        this.width = 0;
+        this.height = 0;
+        if (url) this.load(url);
+    }
+    async load(url) {
+        ...
+        // dòng cuối bỏ việc gán glTexture
+    }
+}
+
+class Camera {
+    static maxPitch = 89.9;
+    constructor(pos, euler, speed, sensitivity) {
+        this.transform = new Transform(pos, euler);
+        this.speed = speed;
+        this.sensitivity = sensitivity;
+        this.fov = 60;                      // <----------------------
+        this.near = 0.01;                   // <----------------------
+        this.far = 1000;                    // <----------------------
+    }
+
+    getProjectionMatrix(width, height) {   // <----------------------
+        return Mat4x4.Projection(this.fov, height, width, this.near, this.far);
+    }
+    ...
+}
+
+class Mesh {
+    constructor(positions, uvs, normals, indices) {
+        ...
+        // bỏ this.uploadToGPU();                                       // <----------------------
+    }
+    ...
+    // bỏ hàm uploadToGPU(), đã chuyển vào WebGLRenderer.getVertexArray // <----------------------
+}
+
+class MeshRenderer extends Component {
+    constructor(mesh, material, castShadow = true) {
+        ...
+    }
+    ... // bỏ hàm draw() và drawDepth(), đã chuyển vào WebGLRenderer
+}
+
+class DirectionalLight extends Component {
+    constructor(intensity, shadowMapSize, shadowDistance, shadowBias) {
+        super();
+        this.intensity = intensity;
+        this.shadowMapSize = shadowMapSize;
+        this.shadowDistance = shadowDistance;
+        this.shadowBias = shadowBias;
+        this.viewMatrix = null;
+        this.projectionMatrix = null;
+
+        // bỏ shadowMapTexture, shadowTarget
+    }
+
+    buildViewAndProjectionMatrix(camera) {                                              // nhận vào camera để xài camera.near
+        ...
+        let frustumCenter = camera.getFrustumCenter(camera.near, this.shadowDistance);  // <----------------------
+        ...
+    }
+
+    // bỏ hàm buildShadowMap, đã chuyển vào WebGLRenderer
+}
+
+class PointLight extends Component {
+    // không còn giữ mảng faces, đã đưa cho PointLightShadowMap
+    constructor(intensity, range, shadowMapSize, shadowNear, shadowBias) {
+        ...
+        // bỏ cubemap và targets                                        // <----------------------
+    }
+
+    getShadowProjection() { ... }       // giữ lại, không dính gl
+
+    // bỏ buildShadowMaps, đã chuyển vào WebGLRenderer
+}</code></pre>
+
+                    Đã xử xong các class, bây giờ tới phần main của engine (index.js):
+                    <pre><code class="language-javascript">// ===== index.js =====
+const gameCanvas = (document.getElementById("gameCanvas"));
+const renderer = new WebGLRenderer(gameCanvas);                         // thay cho const gl = gameCanvas.getContext("webgl2")
+...
+renderer.useShadow = useShadowCheckbox.checked;                         // trong listener của checkbox cũng vậy
+
+function update(time = performance.now()) {
+    ...
+    updateGameObjectTransforms();
+    renderer.render(scene, camera);                                     // thay cho hàm render() global, bỏ luôn hàm đó
+    ...
+}
+...
+
+useShadowCheckbox.addEventListener("change", () => {
+    renderer.useShadow = useShadowCheckbox.checked;                     // dùng renderer.useShadow thay vì biến useShadow global
+    useShadowCheckbox.blur();
+});
+
+function readResolution(input, min, max, current) { ... }
+
+function updateRenderResolution() {
+    gameCanvas.width = canvasRenderWidth;
+    gameCanvas.height = canvasRenderHeight;
+
+    // bỏ các dòng tính lại projection matrix, set uniform, bind target canvas, như trên nói
+}</code></pre>
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview48" data-disabled="true"></div>
+                    Code giờ đã ra dáng 1 engine: scene, texture, ... là dữ liệu, WebGL nằm gọn trong 1 class, có vai trò là vẽ những dữ liệu đó ra.
+                    Mọi thứ đã được chuẩn bị xong để blog sau nhét lại Software Rasterizer vào 😳<br/><br/>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
