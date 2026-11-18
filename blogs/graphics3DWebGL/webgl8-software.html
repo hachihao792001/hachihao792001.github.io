@@ -50,7 +50,100 @@
                 <div class="blog-content col-12 col-lg-10" id="main">
                     <div id="graphics3D-nav-top"></div>
                     <h1>Thêm lại Software Rasterizer</h1>
-                    
+
+                    Giờ tới lúc ta mang lại Software Rasterizer về 😳 Ở blog trước ta đã setup khá là chỉnh chu cho việc này, ta tách thông tin
+                    ra các dữ liệu trong thế giới, và thứ để vẽ (renderer) ra riêng. Ở blog này ta chỉ cần
+                    viết thêm một renderer nữa cho Software Rasterizer là xong, mình sẽ đặt tên nó là <code>SoftwareRenderer</code>.
+
+                    <h2>1. Tạo 1 canvas mới</h2>
+                    Như bạn biết thì 1 canvas chỉ có 1 loại context, Software Rasterizer thì là <code>2d</code>, WebGL2 thì là <code>webgl2</code>.
+                    Cho nên muốn có cả 2 thì bắt buộc ta phải có 2 canvas để switch qua switch lại.
+
+                    <pre><code class="language-html">&lt;h1&gt;Hanvas Engine&lt;/h1&gt;
+&lt;div id=&quot;render&quot;&gt;
+    &lt;canvas id=&quot;gameCanvas&quot; width=&quot;600&quot; height=&quot;450&quot; style=&quot;border: 2px solid #aaa; background: #fff&quot;&gt;&lt;/canvas&gt;
+    &lt;canvas id=&quot;softwareCanvas&quot; width=&quot;600&quot; height=&quot;450&quot; style=&quot;border: 2px solid #aaa; background: #fff; display: none&quot;&gt;&lt;/canvas&gt;
+    &lt;div id=&quot;crosshair&quot;&gt;&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+                    Thêm một cái dropdown để chọn giữa 2 canvas:
+                    <pre><code class="language-html">&lt;div id=&quot;controls&quot;&gt;
+    &lt;div class=&quot;controlRow&quot;&gt;
+        &lt;label class=&quot;controlLabel&quot; for=&quot;rendererSelect&quot;&gt;Renderer:&lt;/label&gt;
+        &lt;span&gt;
+            &lt;select id=&quot;rendererSelect&quot;&gt;
+                &lt;option value=&quot;webgl&quot;&gt;WebGL&lt;/option&gt;
+                &lt;option value=&quot;software&quot;&gt;Software&lt;/option&gt;
+            &lt;/select&gt;
+        &lt;/span&gt;
+    &lt;/div&gt;
+    ...
+&lt;/div&gt;</code></pre>
+                    Xuống tới javascript, trước khi làm gì thì mình tạo trước <code>SoftwareRenderer</code>, ta chưa cần làm gì với nó, giờ nó
+                    chỉ cần lấy canvas và context, bốc <code>imageData</code> từ nó, rồi trong hàm render ta tô 1 màu xám mặc định là xong:
+                    <pre><code class="language-javascript">class SoftwareRenderer {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext("2d");
+        this.resize();
+    }
+
+    resize() {
+        this.width = this.canvas.width;
+        this.height = this.canvas.height;
+        this.imageData = this.ctx.createImageData(this.width, this.height);
+        this.screenBuffer = this.imageData.data;
+    }
+
+    render(scene, camera) {
+        if (this.canvas.width != this.width || this.canvas.height != this.height) this.resize();
+        for (let i = 0; i < this.screenBuffer.length; i += 4) {
+            this.screenBuffer[i] = 240;
+            this.screenBuffer[i + 1] = 240;
+            this.screenBuffer[i + 2] = 240;
+            this.screenBuffer[i + 3] = 255;
+        }
+        this.ctx.putImageData(this.imageData, 0, 0);
+    }
+}</code></pre>
+
+                    Ở dưới phần main thì lấy reference tới canvas mới và cái dropdown, tạo <code>SoftwareRenderer</code>, đổi tên <code>renderer</code>
+                    <code>webglRenderer</code> (cho phân biệt). Hàm <code>updateResolution</code> thì thêm 2 dòng set width height cho canvas của software,
+                    và cuối cùng là thêm đầy đủ event cho canvas thứ 2 là ô kê.
+                    <pre><code class="language-javascript">// ===== index.js =====
+const gameCanvas = (document.getElementById("gameCanvas"));
+const softwareCanvas = (document.getElementById("softwareCanvas"));
+const webglRenderer = new WebGLRenderer(gameCanvas);
+const softwareRenderer = new SoftwareRenderer(softwareCanvas);
+let renderer = webglRenderer;
+const rendererSelect = (document.getElementById("rendererSelect"));
+
+...
+
+function updateRenderResolution() {
+    gameCanvas.width = canvasRenderWidth;
+    gameCanvas.height = canvasRenderHeight;
+    softwareCanvas.width = canvasRenderWidth;           // <----------------------
+    softwareCanvas.height = canvasRenderHeight;         // <----------------------
+}
+
+...
+
+for (let canvas of [gameCanvas, softwareCanvas]) {
+    canvas.addEventListener("mousedown", () => {
+        if (document.pointerLockElement !== renderDiv) requestMouseLook();
+    });
+}
+
+rendererSelect.addEventListener("change", () => {
+    renderer = rendererSelect.value == "webgl" ? webglRenderer : softwareRenderer;
+    gameCanvas.style.display = renderer == webglRenderer ? "" : "none";
+    softwareCanvas.style.display = renderer == softwareRenderer ? "" : "none";
+    rendererSelect.blur();
+});</code></pre>
+
+                    Kết quả, chỉnh qua software thì sẽ ra màu xám mặc định mà ta đã code ở hàm <code>SoftwareRenderer.render</code>:
+                    <div class="htmlPreview" id="htmlPreview49"></div>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>

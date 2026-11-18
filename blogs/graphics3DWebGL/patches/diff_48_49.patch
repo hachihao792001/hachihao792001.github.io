@@ -1,0 +1,125 @@
+--- "a/htmlPreviews\\htmlPreview48.html"
++++ "b/htmlPreviews\\htmlPreview49.html"
+@@ -15,7 +15,8 @@
+ 			display: inline-block;
+ 		}
+ 
+-		#gameCanvas {
++		#gameCanvas,
++		#softwareCanvas {
+ 			display: block;
+ 			max-width: 100%;
+ 			height: auto;
+@@ -152,6 +153,7 @@
+ 	<h1>Hanvas Engine</h1>
+ 	<div id="render">
+ 		<canvas id="gameCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff"></canvas>
++		<canvas id="softwareCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff; display: none"></canvas>
+ 		<div id="crosshair"></div>
+ 	</div>
+ 	<h2 id="fps">FPS: 0</h2>
+@@ -192,6 +194,15 @@
+ 		</div>
+ 	</div>
+ 	<div id="controls">
++		<div class="controlRow">
++			<label class="controlLabel" for="rendererSelect">Renderer:</label>
++			<span>
++				<select id="rendererSelect">
++					<option value="webgl">WebGL</option>
++					<option value="software">Software</option>
++				</select>
++			</span>
++		</div>
+ 		<div class="controlRow">
+ 			<label class="controlLabel" for="canvasResWidth">Canvas resolution:</label>
+ 			<span>
+@@ -1850,9 +1861,40 @@ void main(){
+ 			}
+ 		}
+ 
++		// ===== software.js =====
++		class SoftwareRenderer {
++			constructor(canvas) {
++				this.canvas = canvas;
++				this.ctx = canvas.getContext("2d");
++				this.resize();
++			}
++
++			resize() {
++				this.width = this.canvas.width;
++				this.height = this.canvas.height;
++				this.imageData = this.ctx.createImageData(this.width, this.height);
++				this.screenBuffer = this.imageData.data;
++			}
++
++			render(scene, camera) {
++				if (this.canvas.width != this.width || this.canvas.height != this.height) this.resize();
++				for (let i = 0; i < this.screenBuffer.length; i += 4) {
++					this.screenBuffer[i] = 240;
++					this.screenBuffer[i + 1] = 240;
++					this.screenBuffer[i + 2] = 240;
++					this.screenBuffer[i + 3] = 255;
++				}
++				this.ctx.putImageData(this.imageData, 0, 0);
++			}
++		}
++
+ 		// ===== index.js =====
+ 		const gameCanvas = (document.getElementById("gameCanvas"));
+-		const renderer = new WebGLRenderer(gameCanvas);
++		const softwareCanvas = (document.getElementById("softwareCanvas"));
++		const webglRenderer = new WebGLRenderer(gameCanvas);
++		const softwareRenderer = new SoftwareRenderer(softwareCanvas);
++		let renderer = webglRenderer;
++		const rendererSelect = (document.getElementById("rendererSelect"));
+ 
+ 		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 5, 0.2);
+ 		let keyStates = {};
+@@ -1894,7 +1936,7 @@ void main(){
+ 		const pointLightRangeText = (document.getElementById("pointRangeText"));
+ 
+ 		const useShadowCheckbox = (document.getElementById("useShadow"));
+-		renderer.useShadow = useShadowCheckbox.checked;
++		webglRenderer.useShadow = useShadowCheckbox.checked;
+ 
+ 		let brickTexture = new Texture(
+ 			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg"
+@@ -1988,7 +2030,7 @@ void main(){
+ 		});
+ 
+ 		useShadowCheckbox.addEventListener("change", () => {
+-			renderer.useShadow = useShadowCheckbox.checked;
++			webglRenderer.useShadow = useShadowCheckbox.checked;
+ 			useShadowCheckbox.blur();
+ 		});
+ 
+@@ -2001,6 +2043,8 @@ void main(){
+ 		function updateRenderResolution() {
+ 			gameCanvas.width = canvasRenderWidth;
+ 			gameCanvas.height = canvasRenderHeight;
++			softwareCanvas.width = canvasRenderWidth;
++			softwareCanvas.height = canvasRenderHeight;
+ 		}
+ 
+ 		function readAndApplyResolutionInput() {
+@@ -2026,8 +2070,17 @@ void main(){
+ 			}
+ 		}
+ 
+-		gameCanvas.addEventListener("mousedown", () => {
+-			if (document.pointerLockElement !== renderDiv) requestMouseLook();
++		for (let canvas of [gameCanvas, softwareCanvas]) {
++			canvas.addEventListener("mousedown", () => {
++				if (document.pointerLockElement !== renderDiv) requestMouseLook();
++			});
++		}
++
++		rendererSelect.addEventListener("change", () => {
++			renderer = rendererSelect.value == "webgl" ? webglRenderer : softwareRenderer;
++			gameCanvas.style.display = renderer == webglRenderer ? "" : "none";
++			softwareCanvas.style.display = renderer == softwareRenderer ? "" : "none";
++			rendererSelect.blur();
+ 		});
+ 
+ 		document.addEventListener("mousemove", (e) => {
