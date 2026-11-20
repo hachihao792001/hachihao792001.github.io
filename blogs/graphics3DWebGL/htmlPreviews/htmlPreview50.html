@@ -2089,14 +2089,17 @@ void main(){
 					if (!mesh) continue;
 					const modelMatrix = meshRenderer.transform.getModelMatrix();
 					const positions = mesh.positions;
+					const uvs = mesh.uvs;
 					const indices = mesh.indices;
-					for (let t = 0; t < indices.length; t += 3) {
+					for (let index = 0; index < indices.length; index += 3) {
 						let vertices = [];
-						for (let k = 0; k < 3; k++) {
-							const i = indices[t + k];
-							vertices.push(new Vector3(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]));
+						let triUVs = [];
+						for (let i = 0; i < 3; i++) {
+							const vertexIndex = indices[index + i];
+							vertices.push(new Vector3(positions[vertexIndex * 3], positions[vertexIndex * 3 + 1], positions[vertexIndex * 3 + 2]));
+							triUVs.push(new Vector2(uvs[vertexIndex * 2], uvs[vertexIndex * 2 + 1]));
 						}
-						let tri = new Triangle(vertices, [], meshRenderer.material.color);
+						let tri = new Triangle(vertices, triUVs, meshRenderer.material.color);
 						tri.mulMat4x4(modelMatrix);
 						objectTris.push(tri);
 					}

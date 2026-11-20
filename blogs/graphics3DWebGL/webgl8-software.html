@@ -355,7 +355,198 @@ class MathTriangle {
     }
 }</code></pre>
 
-                    
+                    Về lại <code>SoftwareRenderer</code>, mình sẽ copy paste lại 5 hàm chính trên vào trong nó. Nhưng hàm 
+                    <code>gameObjectToWorldSpaceTriangles</code> sẽ khá là khác, vì bây giờ <code>Mesh</code> không chứa danh sách tam giác nữa,
+                    mà chứa mảng các số <code>positions</code>, <code>uvs</code>, <code>indices</code>, với lại ta phải for theo <code>indices</code>
+                    chứ không đi từng đỉnh một. Lúc trước hàm này từ bốc các <code>GameObject</code> global và tạo mảng triangles từ đó, bây giờ ta
+                    dùng <code>scene.getAllComponentsOfType(MeshRenderer)</code> để lấy <code>MeshRenderer</code> của các <code>GameObject</code>
+                    một cách có thể thống. Như vậy hàm <code>gameObjectToWorldSpaceTriangles</code> sẽ như sau:
+                    <pre><code class="language-javascript">class SoftwareRenderer {
+    ...
+    gameObjectToWorldSpaceTriangles(scene) {
+        let objectTris = [];
+        for (let meshRenderer of scene.getAllComponentsOfType(MeshRenderer)) {
+            const mesh = meshRenderer.mesh;
+            if (!mesh) continue;
+            const modelMatrix = meshRenderer.transform.getModelMatrix();
+            const positions = mesh.positions;
+            const uvs = mesh.uvs;
+            const indices = mesh.indices;
+            // mỗi vòng for gom 3 đỉnh thành 1 tam giác
+            for (let index = 0; index < indices.length; index += 3) {
+                let vertices = [];
+                let triUVs = [];
+                // for qua 3 đỉnh
+                for (let i = 0; i < 3; i++) {
+                    const vertexIndex = indices[index + i];
+                    // 3 component của đỉnh
+                    vertices.push(new Vector3(positions[vertexIndex * 3], positions[vertexIndex * 3 + 1], positions[vertexIndex * 3 + 2]));
+                    // 2 component của uv
+                    triUVs.push(new Vector2(uvs[vertexIndex * 2], uvs[vertexIndex * 2 + 1]));
+                }
+                let tri = new Triangle(vertices, triUVs, meshRenderer.material.color);
+                tri.mulMat4x4(modelMatrix);
+                objectTris.push(tri);
+            }
+        }
+        return objectTris;
+    }
+}</code></pre>
+                    Tiếp theo là 3 hàm <code>worldSpaceToViewSpace</code>, <code>sortNearestFirst</code>, <code>viewSpaceToClipSpace</code>,
+                    y hệt hàm cũ, chỉ khác cái là mình phải pass camera vào chứ không được xài biến global tùm bậy:
+                    <pre><code class="language-javascript">class SoftwareRenderer {
+    ...
+    worldSpaceToViewSpace(objectTris, camera) {
+        const viewMat = camera.getViewMatrix();
+
+        let visibleTris = [];
+        for (let tri of objectTris) {
+            if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.transform.position)) < 0) {
+                tri.mulMat4x4(viewMat);
+                visibleTris.push(tri);
+            }
+        }
+
+        return visibleTris;
+    }
+
+    sortNearestFirst(visibleTris) {
+        for (let tri of visibleTris) {
+            const vertices = tri.vertices;
+            const centerX = (vertices[0].x + vertices[1].x + vertices[2].x) / 3;
+            const centerY = (vertices[0].y + vertices[1].y + vertices[2].y) / 3;
+            const centerZ = (vertices[0].z + vertices[1].z + vertices[2].z) / 3;
+            tri.viewDistanceSquared = centerX * centerX + centerY * centerY + centerZ * centerZ;
+        }
+        visibleTris.sort((a, b) => a.viewDistanceSquared - b.viewDistanceSquared);
+    }
+
+    viewSpaceToClipSpace(visibleTris, camera) {
+        const projectionMatrix = camera.getProjectionMatrix(this.width, this.height);
+        for (let tri of visibleTris) {
+            tri.mulMat4x4(projectionMatrix);
+            tri.perspectiveDivide();
+        }
+    }
+}</code></pre>
+                    Cuối cùng là hàm bự và quan trọng nhất, hàm <code>rasterizeClipSpaceTriangles</code>, hàm này cũng y hệt như cũ chỉ là
+                    bỏ bớt texture và ánh sáng ra (làm sau để diff đỡ bự):
+                    <pre><code class="language-javascript">class SoftwareRenderer {
+    ...
+    rasterizeClipSpaceTriangles(tris) {
+        const screenBuffer = this.screenBuffer;
+        const depthBuffer = this.depthBuffer;
+        const canvasWidth = this.width;
+        const canvasHeight = this.height;
+
+        for (let tri of tris) {
+            let vertices = tri.vertices;
+            for (let i = 0; i &lt; vertices.length; i++) {
+                vertices[i] = new Vector3(
+                    vertices[i].x * (canvasWidth / 2) + canvasWidth / 2,
+                    -vertices[i].y * (canvasHeight / 2) + canvasHeight / 2,
+                    vertices[i].z,
+                );
+            }
+
+            tri.calculateSignedDoubleArea();
+            const signedDoubleArea = tri.signedDoubleArea;
+
+            const bbox = tri.boundingBox(canvasWidth, canvasHeight);
+
+            let edgeFunctionRow01 = MathExtend.edgeFunction(tri.vertices[0], tri.vertices[1], new Vector3(bbox.minX, bbox.minY, 0));
+            let edgeFunctionRow12 = MathExtend.edgeFunction(tri.vertices[1], tri.vertices[2], new Vector3(bbox.minX, bbox.minY, 0));
+            let edgeFunctionRow20 = MathExtend.edgeFunction(tri.vertices[2], tri.vertices[0], new Vector3(bbox.minX, bbox.minY, 0));
+
+            const vertex0 = tri.vertices[0],
+                vertex1 = tri.vertices[1],
+                vertex2 = tri.vertices[2];
+            const vertex0Z = vertex0.z,
+                vertex1Z = vertex1.z,
+                vertex2Z = vertex2.z;
+
+            const edgeSlopeX01 = vertex0.y - vertex1.y;
+            const edgeSlopeX12 = vertex1.y - vertex2.y;
+            const edgeSlopeX20 = vertex2.y - vertex0.y;
+            const edgeSlopeY01 = vertex1.x - vertex0.x;
+            const edgeSlopeY12 = vertex2.x - vertex1.x;
+            const edgeSlopeY20 = vertex0.x - vertex2.x;
+
+            const triColor = tri.color;
+
+            for (let y = bbox.minY; y &lt;= bbox.maxY; y++) {
+                let edgeFunction01 = edgeFunctionRow01;
+                let edgeFunction12 = edgeFunctionRow12;
+                let edgeFunction20 = edgeFunctionRow20;
+                let pixelIndex = y * canvasWidth + bbox.minX;
+                for (let x = bbox.minX; x &lt;= bbox.maxX; x++) {
+                    if (edgeFunction01 &gt; 0 &amp;&amp; edgeFunction12 &gt; 0 &amp;&amp; edgeFunction20 &gt; 0) {
+                        const baryCoord0 = edgeFunction12 / signedDoubleArea;
+                        const baryCoord1 = edgeFunction20 / signedDoubleArea;
+                        const baryCoord2 = edgeFunction01 / signedDoubleArea;
+                        const z = vertex0Z * baryCoord0 + vertex1Z * baryCoord1 + vertex2Z * baryCoord2;
+
+                        if (z &lt; depthBuffer[pixelIndex]) {
+                            depthBuffer[pixelIndex] = z;
+
+                            const colorIndex = pixelIndex * 4;
+                            screenBuffer[colorIndex] = triColor.r;
+                            screenBuffer[colorIndex + 1] = triColor.g;
+                            screenBuffer[colorIndex + 2] = triColor.b;
+                        }
+                    }
+                    edgeFunction01 += edgeSlopeX01;
+                    edgeFunction12 += edgeSlopeX12;
+                    edgeFunction20 += edgeSlopeX20;
+                    pixelIndex++;
+                }
+                edgeFunctionRow01 += edgeSlopeY01;
+                edgeFunctionRow12 += edgeSlopeY12;
+                edgeFunctionRow20 += edgeSlopeY20;
+            }
+        }
+    }
+}</code></pre>
+
+                    Có hết 5 hàm, thì ta sẽ để chúng trong hàm render, ngoài ra ta thêm lại <code>depthBuffer</code> để 
+                    <code>rasterizeClipSpaceTriangles</code> xài, và thêm hàm <code>clearScreen</code> đàng hoàng:
+                    <pre><code class="language-javascript">class SoftwareRenderer {
+    constructor(canvas) { ... }
+
+    resize() {
+        this.width = this.canvas.width;
+        this.height = this.canvas.height;
+        this.imageData = this.ctx.createImageData(this.width, this.height);
+        this.screenBuffer = this.imageData.data;
+        this.depthBuffer = new Float64Array(this.width * this.height);          // <----------------------
+    }
+
+    render(scene, camera) {
+        if (this.canvas.width != this.width || this.canvas.height != this.height) this.resize();
+        this.clearScreen();
+
+        const objectTris = this.gameObjectToWorldSpaceTriangles(scene);
+        const visibleTris = this.worldSpaceToViewSpace(objectTris, camera);
+        this.sortNearestFirst(visibleTris);
+        this.viewSpaceToClipSpace(visibleTris, camera);
+        this.rasterizeClipSpaceTriangles(visibleTris);
+
+        this.ctx.putImageData(this.imageData, 0, 0);
+    }
+
+    clearScreen() {
+        for (let i = 0; i < this.screenBuffer.length; i += 4) {
+            this.screenBuffer[i] = 240;
+            this.screenBuffer[i + 1] = 240;
+            this.screenBuffer[i + 2] = 240;
+            this.screenBuffer[i + 3] = 255;
+        }
+        this.depthBuffer.fill(Infinity);                // <----------------------
+    }
+    ...
+}</code></pre>
+                    Kết quả (chuyển sang renderer software):
+                    <div class="htmlPreview" id="htmlPreview50" data-disabled="true"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
