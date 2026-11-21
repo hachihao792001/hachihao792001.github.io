@@ -157,7 +157,7 @@ rendererSelect.addEventListener("change", () => {
                     Phần này mình sẽ làm đủ hết các bước trên (trừ bước cắt near plane), và tạm thời chỉ vẽ 1 màu thôi chứ
                     chưa tính tới texture, ánh sáng, shadow, mình làm từ từ để diff đỡ bị nhiều 😳<br/><br/>
 
-                    Đầu tiên là mình mang về 3 class <code>MathExtend</code>, <code>BoundingBox</code> và <code>MathTriangle</code>,
+                    Đầu tiên là mình mang về 3 class <code>MathExtend</code>, <code>Plane</code>, <code>BoundingBox</code> và <code>MathTriangle</code>,
                     lúc này đã có vài hàm sẽ không còn được sử dụng, tuy nhiên mình vẫn sẽ giữ vì đây là 1 engine, sau này dùng nó để
                     làm cái khác có khi sẽ cần:
                     <pre style="max-height: 500px;"><code class="language-javascript">class MathExtend {
@@ -170,6 +170,46 @@ rendererSelect.addEventListener("change", () => {
         const dy = ay - by;
         const dz = az - bz;
         return dx * dx + dy * dy + dz * dz;
+    }
+}
+
+class Plane {
+    constructor(normal, P) {
+        this.normal = normal.normalize();
+        this.P = P;
+        this.D = Vector3.dot(this.normal, this.P);
+    }
+
+    isPointInFrontOfPlane(p) {
+        return Vector3.dot(p, this.normal) >= this.D;
+    }
+
+    intersectWithLine(A, B) {
+        let An = Vector3.dot(A, this.normal);
+        let Bn = Vector3.dot(B, this.normal);
+        let vectorAB = Vector3.sub(B, A);
+        let t = (this.D - An) / (Bn - An);
+        let vectorAM = Vector3.mul(vectorAB, t);
+        return [t, Vector3.add(A, vectorAM)];
+    }
+
+    distanceToPoint(p) {
+        return Vector3.dot(p, this.normal) - this.D;
+    }
+
+    isIntersectingWithTris(tris) {
+        for (let tri of tris) {
+            if (tri.isIntersectingPlane(this)) return true;
+        }
+        return false;
+    }
+
+    clipWithTris(tris) {
+        let clippedTris = [];
+        for (let tri of tris) {
+            clippedTris.push(...tri.clipAgainstPlane(this));
+        }
+        return clippedTris;
     }
 }
 
@@ -345,13 +385,99 @@ class MathTriangle {
         this.signedDoubleArea = MathExtend.edgeFunction(this.vertices[0], this.vertices[1], this.vertices[2]);
     }
 }</code></pre>
-                    Có lại <code>MathTriangle</code> rồi, thì ta lại cho <code>Triangle</code> kế thừa nó:
+                    Có lại <code>MathTriangle</code> rồi, thì ta lại cho <code>Triangle</code> kế thừa nó, đồng thời thêm lại hàm
+                    <code>clone</code> và hàm <code>clipAgainstPlane</code>:
                     <pre><code class="language-javascript">class Triangle extends MathTriangle {
-    constructor(vertices, uvs, color) {
+    constructor(vertices = [], uvs = [], color) {
         super(vertices);
         this.uvs = uvs;
         this.viewDistanceSquared = 0;
         this.color = color;
+    }
+
+    clone() {
+        let tri = new Triangle();
+        for (let i = 0; i < this.vertices.length; i++) {
+            tri.vertices[i] = this.vertices[i].clone();
+            tri.uvs[i] = this.uvs[i].clone();
+        }
+        tri.color = this.color;
+        return tri;
+    }
+
+    clipAgainstPlane(plane) {
+        let outTris = [];
+
+        let frontPoints = [];
+        let behindPoints = [];
+
+        for (let i = 0; i < this.vertices.length; i++) {
+            if (plane.isPointInFrontOfPlane(this.vertices[i])) {
+                frontPoints.push(i);
+            } else {
+                behindPoints.push(i);
+            }
+        }
+
+        if (frontPoints.length == 3) {
+            outTris.push(this.clone());
+        } else if (frontPoints.length == 1 && behindPoints.length == 2) {
+            if (behindPoints[0] == 0 && behindPoints[1] == 2) {
+                behindPoints[0] = 2;
+                behindPoints[1] = 0;
+            }
+
+            let f = this.vertices[frontPoints[0]];
+            let b0 = this.vertices[behindPoints[0]];
+            let b1 = this.vertices[behindPoints[1]];
+
+            let [t1, intersection1] = plane.intersectWithLine(f, b0);
+            let [t2, intersection2] = plane.intersectWithLine(f, b1);
+
+            let outTri = new Triangle();
+            outTri.vertices[0] = f;
+            outTri.vertices[1] = intersection1;
+            outTri.vertices[2] = intersection2;
+            outTri.uvs[0] = this.uvs[frontPoints[0]];
+            outTri.uvs[1] = Vector2.lerp(this.uvs[frontPoints[0]], this.uvs[behindPoints[0]], t1);
+            outTri.uvs[2] = Vector2.lerp(this.uvs[frontPoints[0]], this.uvs[behindPoints[1]], t2);
+            outTri.color = this.color;
+            outTris.push(outTri);
+        } else if (frontPoints.length == 2 && behindPoints.length == 1) {
+            if (frontPoints[0] == 0 && frontPoints[1] == 2) {
+                frontPoints[0] = 2;
+                frontPoints[1] = 0;
+            }
+
+            let f0 = this.vertices[frontPoints[0]];
+            let f1 = this.vertices[frontPoints[1]];
+            let b = this.vertices[behindPoints[0]];
+
+            let [t1, intersection1] = plane.intersectWithLine(f0, b);
+            let [t2, intersection2] = plane.intersectWithLine(f1, b);
+
+            let outTri1 = new Triangle();
+            outTri1.vertices[0] = f0;
+            outTri1.vertices[1] = f1;
+            outTri1.vertices[2] = intersection1;
+            outTri1.uvs[0] = this.uvs[frontPoints[0]];
+            outTri1.uvs[1] = this.uvs[frontPoints[1]];
+            outTri1.uvs[2] = Vector2.lerp(this.uvs[frontPoints[0]], this.uvs[behindPoints[0]], t1);
+            outTri1.color = this.color;
+            outTris.push(outTri1);
+
+            let outTri2 = new Triangle();
+            outTri2.vertices[0] = f1.clone();
+            outTri2.vertices[1] = intersection2;
+            outTri2.vertices[2] = intersection1.clone();
+            outTri2.uvs[0] = this.uvs[frontPoints[1]].clone();
+            outTri2.uvs[1] = Vector2.lerp(this.uvs[frontPoints[1]], this.uvs[behindPoints[0]], t2);
+            outTri2.uvs[2] = Vector2.lerp(this.uvs[frontPoints[0]], this.uvs[behindPoints[0]], t1);
+            outTri2.color = this.color;
+            outTris.push(outTri2);
+        }
+
+        return outTris;
     }
 }</code></pre>
 
@@ -398,12 +524,13 @@ class MathTriangle {
     ...
     worldSpaceToViewSpace(objectTris, camera) {
         const viewMat = camera.getViewMatrix();
+        const nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, camera.near));
 
         let visibleTris = [];
         for (let tri of objectTris) {
             if (Vector3.dot(tri.getNormal(), Vector3.sub(tri.getCenter(), camera.transform.position)) < 0) {
                 tri.mulMat4x4(viewMat);
-                visibleTris.push(tri);
+                visibleTris.push(...tri.clipAgainstPlane(nearPlane));
             }
         }
 
@@ -547,6 +674,7 @@ class MathTriangle {
 }</code></pre>
                     Kết quả (chuyển sang renderer software):
                     <div class="htmlPreview" id="htmlPreview50" data-disabled="true"></div>
+
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
