@@ -1,0 +1,214 @@
+--- "a/htmlPreviews\\htmlPreview51.html"
++++ "b/htmlPreviews\\htmlPreview52.html"
+@@ -1301,6 +1301,7 @@
+ 				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
+ 				this.color = color;
+ 				this.texture = null;
++				this.castShadow = true;
+ 			}
+ 
+ 			clone() {
+@@ -2251,6 +2252,9 @@ void main(){
+ 			constructor(canvas) {
+ 				this.canvas = canvas;
+ 				this.ctx = canvas.getContext("2d");
++				this.useShadow = true;
++				this.shadowMaps = new WeakMap();
++				this.shadowTri = new MathTriangle();
+ 				this.resize();
+ 			}
+ 
+@@ -2270,6 +2274,10 @@ void main(){
+ 				const pointLights = scene.getAllComponentsOfType(PointLight);
+ 
+ 				const objectTris = this.gameObjectToWorldSpaceTriangles(scene);
++				if (this.useShadow) {
++					dirLight.buildViewAndProjectionMatrix(camera);
++					this.buildShadowMap(dirLight, objectTris);
++				}
+ 				const visibleTris = this.worldSpaceToViewSpace(objectTris, camera);
+ 				this.sortNearestFirst(visibleTris);
+ 				this.viewSpaceToClipSpace(visibleTris, camera);
+@@ -2309,6 +2317,7 @@ void main(){
+ 						tri.mulMat4x4(modelMatrix);
+ 						tri.updateWorldVertices();
+ 						tri.texture = meshRenderer.material.texture;
++						tri.castShadow = meshRenderer.castShadow;
+ 						objectTris.push(tri);
+ 					}
+ 				}
+@@ -2452,6 +2461,11 @@ void main(){
+ 									const pixelWorldZ =
+ 										(perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
+ 
++									let shadowFactor = 1.0;
++									if (this.useShadow && this.isInShadow(dirLight, pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
++										shadowFactor = 0.2;
++									}
++
+ 									let totalPointLightDiffuse = 0;
+ 									for (let i = 0; i < pointLights.length; i++) {
+ 										const light = pointLights[i];
+@@ -2476,7 +2490,7 @@ void main(){
+ 										totalPointLightDiffuse += currentPointLightDiffuse * attenuation * light.intensity;
+ 									}
+ 
+-									const lightIntensity = Math.max(ambientLight, dirLightDiffuse + totalPointLightDiffuse);
++									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
+ 
+ 									let texR = triColor.r,
+ 										texG = triColor.g,
+@@ -2509,6 +2523,137 @@ void main(){
+ 					}
+ 				}
+ 			}
++
++			buildShadowMap(dirLight, tris) {
++				const shadowMapSize = dirLight.shadowMapSize;
++				let shadowMap = this.shadowMaps.get(dirLight);
++				if (!shadowMap) {
++					shadowMap = [];
++					for (let i = 0; i < shadowMapSize; i++) {
++						shadowMap.push(new Array(shadowMapSize));
++					}
++					this.shadowMaps.set(dirLight, shadowMap);
++				}
++
++				for (let i = 0; i < shadowMapSize; i++) {
++					for (let j = 0; j < shadowMapSize; j++) {
++						shadowMap[i][j] = Infinity;
++					}
++				}
++
++				const shadowTri = this.shadowTri;
++
++				for (let tri of tris) {
++					if (!tri.castShadow) continue;
++					if (Vector3.dot(tri.getWorldNormal(), dirLight.dir) >= 0) continue;
++
++					for (let i = 0; i < 3; i++) {
++						const sourceVertex = tri.vertices[i];
++						const shadowVertex = shadowTri.vertices[i];
++						shadowVertex.x = sourceVertex.x;
++						shadowVertex.y = sourceVertex.y;
++						shadowVertex.z = sourceVertex.z;
++						shadowVertex.w = sourceVertex.w;
++					}
++
++					shadowTri.mulMat4x4(dirLight.viewMatrix);
++					shadowTri.mulMat4x4(dirLight.projectionMatrix);
++					shadowTri.perspectiveDivide();
++
++					for (let i = 0; i < shadowTri.vertices.length; i++) {
++						shadowTri.vertices[i].x = ((shadowTri.vertices[i].x + 1) * shadowMapSize) / 2;
++						shadowTri.vertices[i].y = ((-shadowTri.vertices[i].y + 1) * shadowMapSize) / 2;
++					}
++
++					const bbox = shadowTri.boundingBox(shadowMapSize, shadowMapSize);
++
++					shadowTri.calculateSignedDoubleArea();
++
++					const vertex0 = shadowTri.vertices[0],
++						vertex1 = shadowTri.vertices[1],
++						vertex2 = shadowTri.vertices[2];
++					const vertex0X = vertex0.x,
++						vertex0Y = vertex0.y,
++						vertex0Z = vertex0.z;
++					const vertex1X = vertex1.x,
++						vertex1Y = vertex1.y,
++						vertex1Z = vertex1.z;
++					const vertex2X = vertex2.x,
++						vertex2Y = vertex2.y,
++						vertex2Z = vertex2.z;
++
++					const minX = bbox.minX,
++						maxX = bbox.maxX,
++						minY = bbox.minY,
++						maxY = bbox.maxY;
++
++					const signedDoubleArea = shadowTri.signedDoubleArea;
++
++					const edgeSlopeX01 = vertex0Y - vertex1Y;
++					const edgeSlopeX12 = vertex1Y - vertex2Y;
++					const edgeSlopeX20 = vertex2Y - vertex0Y;
++					const edgeSlopeY01 = vertex1X - vertex0X;
++					const edgeSlopeY12 = vertex2X - vertex1X;
++					const edgeSlopeY20 = vertex0X - vertex2X;
++
++					let edgeFunctionRow01 = edgeSlopeX01 * (minX - vertex0X) + edgeSlopeY01 * (minY - vertex0Y);
++					let edgeFunctionRow12 = edgeSlopeX12 * (minX - vertex1X) + edgeSlopeY12 * (minY - vertex1Y);
++					let edgeFunctionRow20 = edgeSlopeX20 * (minX - vertex2X) + edgeSlopeY20 * (minY - vertex2Y);
++
++					for (let y = minY; y <= maxY; y++) {
++						const shadowMapRow = shadowMap[y];
++
++						let edgeFunction01 = edgeFunctionRow01;
++						let edgeFunction12 = edgeFunctionRow12;
++						let edgeFunction20 = edgeFunctionRow20;
++						for (let x = minX; x <= maxX; x++) {
++							if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
++								const z = (edgeFunction12 * vertex0Z + edgeFunction20 * vertex1Z + edgeFunction01 * vertex2Z) / signedDoubleArea;
++								if (z < shadowMapRow[x]) {
++									shadowMapRow[x] = z;
++								}
++							}
++							edgeFunction01 += edgeSlopeX01;
++							edgeFunction12 += edgeSlopeX12;
++							edgeFunction20 += edgeSlopeX20;
++						}
++						edgeFunctionRow01 += edgeSlopeY01;
++						edgeFunctionRow12 += edgeSlopeY12;
++						edgeFunctionRow20 += edgeSlopeY20;
++					}
++				}
++			}
++
++			isInShadow(dirLight, pixelWorldPosX, pixelWorldPosY, pixelWorldPosZ, triWorldNormalX, triWorldNormalY, triWorldNormalZ) {
++				const dir = dirLight.dir;
++				let dotProduct = triWorldNormalX * dir.x + triWorldNormalY * dir.y + triWorldNormalZ * dir.z;
++				if (dotProduct >= 0) return false;
++
++				const shadowMapSize = dirLight.shadowMapSize;
++				let texelSize = dirLight.shadowDistance / shadowMapSize;
++				let normalOffset = texelSize * (1 - Math.abs(dotProduct));
++
++				let lightSpacePos = new Vector3(
++					pixelWorldPosX + triWorldNormalX * normalOffset,
++					pixelWorldPosY + triWorldNormalY * normalOffset,
++					pixelWorldPosZ + triWorldNormalZ * normalOffset,
++				);
++
++				lightSpacePos.mulMat4x4(dirLight.viewMatrix);
++				lightSpacePos.mulMat4x4(dirLight.projectionMatrix);
++
++				lightSpacePos.x /= lightSpacePos.w;
++				lightSpacePos.y /= lightSpacePos.w;
++				lightSpacePos.z /= lightSpacePos.w;
++
++				const x = Math.floor(((lightSpacePos.x + 1) * shadowMapSize) / 2);
++				const y = Math.floor(((-lightSpacePos.y + 1) * shadowMapSize) / 2);
++
++				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize) return false;
++
++				return lightSpacePos.z > this.shadowMaps.get(dirLight)[y][x] + dirLight.shadowBias;
++			}
++
+ 		}
+ 
+ 		// ===== index.js =====
+@@ -2560,6 +2705,7 @@ void main(){
+ 
+ 		const useShadowCheckbox = (document.getElementById("useShadow"));
+ 		webglRenderer.useShadow = useShadowCheckbox.checked;
++		softwareRenderer.useShadow = useShadowCheckbox.checked;
+ 
+ 		let brickTexture = new Texture(
+ 			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg"
+@@ -2654,6 +2800,7 @@ void main(){
+ 
+ 		useShadowCheckbox.addEventListener("change", () => {
+ 			webglRenderer.useShadow = useShadowCheckbox.checked;
++			softwareRenderer.useShadow = useShadowCheckbox.checked;
+ 			useShadowCheckbox.blur();
+ 		});
+ 
