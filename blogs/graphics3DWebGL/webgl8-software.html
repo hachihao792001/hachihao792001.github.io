@@ -675,6 +675,372 @@ class MathTriangle {
                     Kết quả (chuyển sang renderer software):
                     <div class="htmlPreview" id="htmlPreview50" data-disabled="true"></div>
 
+                    <h2>3. Texture và ánh sáng</h2>
+                    Như bạn nhớ ở series trước, để làm được texture và point light, thì ta phải giữ được tọa độ thế giới từ world space cho tới
+                    khi clip space, bằng cách lưu nó vào <code>Triangle</code> và biến đổi nó theo các đỉnh trong suốt render pipeline
+                    (đặc biệt là trong hàm <code>clipAgainstPlane</code>). Bây giờ ta cũng làm tương tự như vậy thôi, ta bê lại full class
+                    <code>Triangle</code> cũ về (có thêm lại texture nữa):
+                    <pre style="max-height: 500px;"><code class="language-javascript">class Triangle extends MathTriangle {
+    constructor(vertices = [], uvs = [], color) {
+        super(vertices);
+        this.uvs = uvs;
+        this.viewDistanceSquared = 0;
+        this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];  // <----------------------
+        this.color = color;
+        this.texture = null;                                                      // <----------------------
+    }
+
+    clone() {
+        let tri = new Triangle();
+        for (let i = 0; i < this.vertices.length; i++) {
+            tri.vertices[i] = this.vertices[i].clone();
+            tri.worldVertices[i] = this.worldVertices[i].clone();                 // <----------------------
+            tri.uvs[i] = this.uvs[i].clone();
+        }
+        tri.color = this.color;
+        tri.texture = this.texture;                                               // <----------------------
+        return tri;
+    }
+
+    clipAgainstPlane(plane) {
+        let outTris = [];
+
+        let frontPoints = [];
+        let behindPoints = [];
+
+        for (let i = 0; i < this.vertices.length; i++) {
+            if (plane.isPointInFrontOfPlane(this.vertices[i])) {
+                frontPoints.push(i);
+            } else {
+                behindPoints.push(i);
+            }
+        }
+
+        if (frontPoints.length == 3) {
+            outTris.push(this.clone());
+        } else if (frontPoints.length == 1 &amp;&amp; behindPoints.length == 2) {
+            if (behindPoints[0] == 0 &amp;&amp; behindPoints[1] == 2) {
+                behindPoints[0] = 2;
+                behindPoints[1] = 0;
+            }
+
+            let f = this.vertices[frontPoints[0]];
+            let b0 = this.vertices[behindPoints[0]];
+            let b1 = this.vertices[behindPoints[1]];
+
+            let [t1, intersection1] = plane.intersectWithLine(f, b0);
+            let [t2, intersection2] = plane.intersectWithLine(f, b1);
+
+            let outTri = new Triangle();
+            outTri.vertices[0] = f;
+            outTri.vertices[1] = intersection1;
+            outTri.vertices[2] = intersection2;
+            outTri.worldVertices[0] = this.worldVertices[frontPoints[0]];         // <----------------------
+            outTri.worldVertices[1] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);  // <----------------------
+            outTri.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[1]], t2);  // <----------------------
+            outTri.uvs[0] = this.uvs[frontPoints[0]];
+            outTri.uvs[1] = Vector2.lerp(this.uvs[frontPoints[0]], this.uvs[behindPoints[0]], t1);
+            outTri.uvs[2] = Vector2.lerp(this.uvs[frontPoints[0]], this.uvs[behindPoints[1]], t2);
+            outTri.color = this.color;
+            outTri.texture = this.texture;                                        // <----------------------
+            outTris.push(outTri);
+        } else if (frontPoints.length == 2 &amp;&amp; behindPoints.length == 1) {
+            if (frontPoints[0] == 0 &amp;&amp; frontPoints[1] == 2) {
+                frontPoints[0] = 2;
+                frontPoints[1] = 0;
+            }
+
+            let f0 = this.vertices[frontPoints[0]];
+            let f1 = this.vertices[frontPoints[1]];
+            let b = this.vertices[behindPoints[0]];
+
+            let [t1, intersection1] = plane.intersectWithLine(f0, b);
+            let [t2, intersection2] = plane.intersectWithLine(f1, b);
+
+            let outTri1 = new Triangle();
+            outTri1.vertices[0] = f0;
+            outTri1.vertices[1] = f1;
+            outTri1.vertices[2] = intersection1;
+            outTri1.worldVertices[0] = this.worldVertices[frontPoints[0]];        // <----------------------
+            outTri1.worldVertices[1] = this.worldVertices[frontPoints[1]];        // <----------------------
+            outTri1.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);  // <----------------------
+            outTri1.uvs[0] = this.uvs[frontPoints[0]];
+            outTri1.uvs[1] = this.uvs[frontPoints[1]];
+            outTri1.uvs[2] = Vector2.lerp(this.uvs[frontPoints[0]], this.uvs[behindPoints[0]], t1);
+            outTri1.color = this.color;
+            outTri1.texture = this.texture;                                       // <----------------------
+            outTris.push(outTri1);
+
+            let outTri2 = new Triangle();
+            outTri2.vertices[0] = f1.clone();
+            outTri2.vertices[1] = intersection2;
+            outTri2.vertices[2] = intersection1.clone();
+            outTri2.worldVertices[0] = this.worldVertices[frontPoints[1]].clone();  // <----------------------
+            outTri2.worldVertices[1] = Vector3.lerp(this.worldVertices[frontPoints[1]], this.worldVertices[behindPoints[0]], t2);  // <----------------------
+            outTri2.worldVertices[2] = Vector3.lerp(this.worldVertices[frontPoints[0]], this.worldVertices[behindPoints[0]], t1);  // <----------------------
+            outTri2.uvs[0] = this.uvs[frontPoints[1]].clone();
+            outTri2.uvs[1] = Vector2.lerp(this.uvs[frontPoints[1]], this.uvs[behindPoints[0]], t2);
+            outTri2.uvs[2] = Vector2.lerp(this.uvs[frontPoints[0]], this.uvs[behindPoints[0]], t1);
+            outTri2.color = this.color;
+            outTri2.texture = this.texture;                                       // <----------------------
+            outTris.push(outTri2);
+        }
+
+        return outTris;
+    }
+
+    updateWorldVertices() {
+        for (let i = 0; i < this.vertices.length; i++) {
+            this.worldVertices[i] = this.vertices[i].clone();
+        }
+    }
+
+    getWorldNormal() {
+        let v1 = Vector3.sub(this.worldVertices[0], this.worldVertices[1]);
+        let v2 = Vector3.sub(this.worldVertices[1], this.worldVertices[2]);
+        let normal = Vector3.cross(v1, v2);
+        normal.normalize();
+        return normal;
+    }
+
+    perspectiveDivide() {
+        for (let i = 0; i < this.vertices.length; i++) {
+            this.uvs[i] = Vector2.div(this.uvs[i], this.vertices[i].w);
+        }
+        super.perspectiveDivide();
+    }
+
+    getPointLightsThatCanAffectTri(pointLightRange, pointLights, outLights) {
+        let triWorldNormal = this.getWorldNormal();
+
+        const triWorldCenterX = (this.worldVertices[0].x + this.worldVertices[1].x + this.worldVertices[2].x) / 3;
+        const triWorldCenterY = (this.worldVertices[0].y + this.worldVertices[1].y + this.worldVertices[2].y) / 3;
+        const triWorldCenterZ = (this.worldVertices[0].z + this.worldVertices[1].z + this.worldVertices[2].z) / 3;
+
+        let triBoundingCircleRadius2 = 0;
+        for (let i = 0; i < 3; i++) {
+            const currentWorldVertex = this.worldVertices[i];
+            const currentRadius2 = MathExtend.hypotSquare(
+                currentWorldVertex.x,
+                currentWorldVertex.y,
+                currentWorldVertex.z,
+                triWorldCenterX,
+                triWorldCenterY,
+                triWorldCenterZ,
+            );
+            if (currentRadius2 &gt; triBoundingCircleRadius2) triBoundingCircleRadius2 = currentRadius2;
+        }
+        const totalRange = pointLightRange + Math.sqrt(triBoundingCircleRadius2);
+
+        let count = 0;
+        for (let i = 0; i < pointLights.length; i++) {
+            const lightPos = pointLights[i].transform.position;
+
+            const toLightX = lightPos.x - triWorldCenterX;
+            const toLightY = lightPos.y - triWorldCenterY;
+            const toLightZ = lightPos.z - triWorldCenterZ;
+            if (triWorldNormal.x * toLightX + triWorldNormal.y * toLightY + triWorldNormal.z * toLightZ <= 0) continue;
+
+            const lightDistance2 = MathExtend.hypotSquare(lightPos.x, lightPos.y, lightPos.z, triWorldCenterX, triWorldCenterY, triWorldCenterZ);
+            if (lightDistance2 &gt; totalRange * totalRange) continue;
+
+            outLights[count] = lightPos;
+            count++;
+            if (count == outLights.length) break;
+        }
+        return count;
+    }
+}</code></pre>
+                    Như vậy hàm <code>gameObjectToWorldSpaceTriangles</code> thêm lại 2 dòng cập nhật <code>worldVertices</code> và bốc
+                    texture của mesh cho tam giác, bây giờ nó đã giống như hàm cũ của series cũ:
+                    <pre><code class="language-javascript">class SoftwareRenderer {
+    ...
+    gameObjectToWorldSpaceTriangles(scene) {
+        let objectTris = [];
+        for (let meshRenderer of scene.getAllComponentsOfType(MeshRenderer)) {
+            ...
+            for (let index = 0; index < indices.length; index += 3) {
+                ...
+                let tri = new Triangle(vertices, triUVs, meshRenderer.material.color);
+                tri.mulMat4x4(modelMatrix);
+                tri.updateWorldVertices();                              // <----------------------
+                tri.texture = meshRenderer.material.texture;            // <----------------------
+                objectTris.push(tri);
+            }
+        }
+        return objectTris;
+    }
+    ...
+}</code></pre>
+                    Tiếp theo là hàm khủng bố <code>rasterizeClipSpaceTriangles</code>, giờ nó sẽ nhận vào 2 loại light, và nó sẽ làm
+                    các phép toán liên quan tới pháp tuyến, barycentric coordinate, texture, ... nói chung là nó y hệt như cũ, nói lại
+                    sẽ khá dài dòng 😅 (mình có chỉ mũi tên vô mấy chỗ có thay đổi, như trước giờ mình làm):
+                    <pre style="max-height: 500px;"><code class="language-javascript">class SoftwareRenderer {
+    ...
+    rasterizeClipSpaceTriangles(tris, dirLight, pointLights) {                    // <----------------------
+        const screenBuffer = this.screenBuffer;
+        const depthBuffer = this.depthBuffer;
+        const canvasWidth = this.width;
+        const canvasHeight = this.height;
+        const ambientLight = 0.1;                                                 // <----------------------
+
+        for (let tri of tris) {
+            let vertices = tri.vertices;
+            for (let i = 0; i < vertices.length; i++) {
+                vertices[i] = new Vector3(
+                    vertices[i].x * (canvasWidth / 2) + canvasWidth / 2,
+                    -vertices[i].y * (canvasHeight / 2) + canvasHeight / 2,
+                    vertices[i].z,
+                );
+            }
+
+            tri.calculateSignedDoubleArea();
+            const signedDoubleArea = tri.signedDoubleArea;
+
+            const triWorldNormal = tri.getWorldNormal();                          // <----------------------
+            const worldNormalX = triWorldNormal.x,                                // <----------------------
+                worldNormalY = triWorldNormal.y,                                  // <----------------------
+                worldNormalZ = triWorldNormal.z;                                  // <----------------------
+
+            const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;  // <----------------------
+
+            const bbox = tri.boundingBox(canvasWidth, canvasHeight);
+
+            let edgeFunctionRow01 = MathExtend.edgeFunction(tri.vertices[0], tri.vertices[1], new Vector3(bbox.minX, bbox.minY, 0));
+            let edgeFunctionRow12 = MathExtend.edgeFunction(tri.vertices[1], tri.vertices[2], new Vector3(bbox.minX, bbox.minY, 0));
+            let edgeFunctionRow20 = MathExtend.edgeFunction(tri.vertices[2], tri.vertices[0], new Vector3(bbox.minX, bbox.minY, 0));
+
+            const vertex0 = tri.vertices[0],
+                vertex1 = tri.vertices[1],
+                vertex2 = tri.vertices[2];
+            const vertex0Z = vertex0.z,
+                vertex1Z = vertex1.z,
+                vertex2Z = vertex2.z;
+
+            const edgeSlopeX01 = vertex0.y - vertex1.y;
+            const edgeSlopeX12 = vertex1.y - vertex2.y;
+            const edgeSlopeX20 = vertex2.y - vertex0.y;
+            const edgeSlopeY01 = vertex1.x - vertex0.x;
+            const edgeSlopeY12 = vertex2.x - vertex1.x;
+            const edgeSlopeY20 = vertex0.x - vertex2.x;
+
+            const uv0 = tri.uvs[0],                                               // <----------------------
+                uv1 = tri.uvs[1],                                                 // <----------------------
+                uv2 = tri.uvs[2];                                                 // <----------------------
+            const uv0U = uv0.u,                                                   // <----------------------
+                uv1U = uv1.u,                                                     // <----------------------
+                uv2U = uv2.u;                                                     // <----------------------
+            const uv0V = uv0.v,                                                   // <----------------------
+                uv1V = uv1.v,                                                     // <----------------------
+                uv2V = uv2.v;                                                     // <----------------------
+            const uv0W = uv0.w,                                                   // <----------------------
+                uv1W = uv1.w,                                                     // <----------------------
+                uv2W = uv2.w;                                                     // <----------------------
+
+            const world0 = tri.worldVertices[0],                                  // <----------------------
+                world1 = tri.worldVertices[1],                                    // <----------------------
+                world2 = tri.worldVertices[2];                                    // <----------------------
+            const perspectiveWorld0X = world0.x * uv0W,                           // <----------------------
+                perspectiveWorld0Y = world0.y * uv0W,                             // <----------------------
+                perspectiveWorld0Z = world0.z * uv0W;                             // <----------------------
+            const perspectiveWorld1X = world1.x * uv1W,                           // <----------------------
+                perspectiveWorld1Y = world1.y * uv1W,                             // <----------------------
+                perspectiveWorld1Z = world1.z * uv1W;                             // <----------------------
+            const perspectiveWorld2X = world2.x * uv2W,                           // <----------------------
+                perspectiveWorld2Y = world2.y * uv2W,                             // <----------------------
+                perspectiveWorld2Z = world2.z * uv2W;                             // <----------------------
+
+            const triColor = tri.color;
+            const texture = tri.texture;                                          // <----------------------
+            const texturePixels = texture ? texture.pixels : null;                // <----------------------
+            const textureWidth = texture ? texture.width : 0,                     // <----------------------
+                textureHeight = texture ? texture.height : 0;                     // <----------------------
+
+            for (let y = bbox.minY; y <= bbox.maxY; y++) {
+                let edgeFunction01 = edgeFunctionRow01;
+                let edgeFunction12 = edgeFunctionRow12;
+                let edgeFunction20 = edgeFunctionRow20;
+                let pixelIndex = y * canvasWidth + bbox.minX;
+                for (let x = bbox.minX; x <= bbox.maxX; x++) {
+                    if (edgeFunction01 &gt; 0 &amp;&amp; edgeFunction12 &gt; 0 &amp;&amp; edgeFunction20 &gt; 0) {
+                        const baryCoord0 = edgeFunction12 / signedDoubleArea;
+                        const baryCoord1 = edgeFunction20 / signedDoubleArea;
+                        const baryCoord2 = edgeFunction01 / signedDoubleArea;
+                        const z = vertex0Z * baryCoord0 + vertex1Z * baryCoord1 + vertex2Z * baryCoord2;
+
+                        if (z < depthBuffer[pixelIndex]) {
+                            depthBuffer[pixelIndex] = z;
+
+                            const pixelInvZ = uv0W * baryCoord0 + uv1W * baryCoord1 + uv2W * baryCoord2;  // <----------------------
+
+                            const pixelWorldX =                                   // <----------------------
+                                (perspectiveWorld0X * baryCoord0 + perspectiveWorld1X * baryCoord1 + perspectiveWorld2X * baryCoord2) / pixelInvZ;  // <----------------------
+                            const pixelWorldY =                                   // <----------------------
+                                (perspectiveWorld0Y * baryCoord0 + perspectiveWorld1Y * baryCoord1 + perspectiveWorld2Y * baryCoord2) / pixelInvZ;  // <----------------------
+                            const pixelWorldZ =                                   // <----------------------
+                                (perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;  // <----------------------
+
+                            let totalPointLightDiffuse = 0;                       // <----------------------
+                            for (let i = 0; i < pointLights.length; i++) {        // <----------------------
+                                const light = pointLights[i];                     // <----------------------
+                                const lightPos = light.transform.position;        // <----------------------
+                                const pointLightVecX = lightPos.x - pixelWorldX;  // <----------------------
+                                const pointLightVecY = lightPos.y - pixelWorldY;  // <----------------------
+                                const pointLightVecZ = lightPos.z - pixelWorldZ;  // <----------------------
+                                const normalDotLightVec = worldNormalX * pointLightVecX + worldNormalY * pointLightVecY + worldNormalZ * pointLightVecZ;  // <----------------------
+                                if (normalDotLightVec <= 0) continue;             // <---------------------- đèn nằm sau mặt
+
+                                const pointLightRangeSquare = light.range * light.range;  // <---------------------- range của từng đèn
+                                const distanceFromPixelToPointLight2 =            // <----------------------
+                                    pointLightVecX * pointLightVecX + pointLightVecY * pointLightVecY + pointLightVecZ * pointLightVecZ;  // <----------------------
+                                if (distanceFromPixelToPointLight2 &gt;= pointLightRangeSquare) continue;  // <----------------------
+
+                                const distance = Math.sqrt(distanceFromPixelToPointLight2);  // <----------------------
+                                const dot = normalDotLightVec / distance;         // <----------------------
+                                const currentPointLightDiffuse = (1 + dot) / 2;   // <----------------------
+                                const pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRangeSquare;  // <----------------------
+                                const inverseSquareDistance = 1 / (1 + 0.02 * distanceFromPixelToPointLight2);  // <----------------------
+                                const attenuation = (1 - pointLightDistanceRatio) * inverseSquareDistance;  // <----------------------
+                                totalPointLightDiffuse += currentPointLightDiffuse * attenuation * light.intensity;  // <---------------------- intensity của từng đèn
+                            }
+
+                            const lightIntensity = Math.max(ambientLight, dirLightDiffuse + totalPointLightDiffuse);  // <----------------------
+
+                            let texR = triColor.r,                                // <----------------------
+                                texG = triColor.g,                                // <----------------------
+                                texB = triColor.b;                                // <----------------------
+                            if (texturePixels) {                                  // <----------------------
+                                const pixelU = (uv0U * baryCoord0 + uv1U * baryCoord1 + uv2U * baryCoord2) / pixelInvZ;  // <----------------------
+                                const pixelV = (uv0V * baryCoord0 + uv1V * baryCoord1 + uv2V * baryCoord2) / pixelInvZ;  // <----------------------
+                                const texX = Math.floor(pixelU * (textureWidth - 1));  // <----------------------
+                                const texY = Math.floor(pixelV * (textureHeight - 1));  // <----------------------
+                                const texIndex = (texY * textureWidth + texX) * 4;  // <----------------------
+                                texR = texturePixels[texIndex];                   // <----------------------
+                                texG = texturePixels[texIndex + 1];               // <----------------------
+                                texB = texturePixels[texIndex + 2];               // <----------------------
+                            }
+
+                            const colorIndex = pixelIndex * 4;
+                            screenBuffer[colorIndex] = Math.min(255, texR * lightIntensity);  // <----------------------
+                            screenBuffer[colorIndex + 1] = Math.min(255, texG * lightIntensity);  // <----------------------
+                            screenBuffer[colorIndex + 2] = Math.min(255, texB * lightIntensity);  // <----------------------
+                        }
+                    }
+                    edgeFunction01 += edgeSlopeX01;
+                    edgeFunction12 += edgeSlopeX12;
+                    edgeFunction20 += edgeSlopeX20;
+                    pixelIndex++;
+                }
+                edgeFunctionRow01 += edgeSlopeY01;
+                edgeFunctionRow12 += edgeSlopeY12;
+                edgeFunctionRow20 += edgeSlopeY20;
+            }
+        }
+    }
+}</code></pre>
+
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview51" data-disabled="true"></div>
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
