@@ -1,0 +1,97 @@
+--- "a/htmlPreviews\\htmlPreview52.html"
++++ "b/htmlPreviews\\htmlPreview53.html"
+@@ -153,7 +153,8 @@
+ 	<h1>Hanvas Engine</h1>
+ 	<div id="render">
+ 		<canvas id="gameCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff"></canvas>
+-		<canvas id="softwareCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff; display: none"></canvas>
++		<canvas id="softwareCanvas" width="600" height="450"
++			style="border: 2px solid #aaa; background: #fff; display: none"></canvas>
+ 		<div id="crosshair"></div>
+ 	</div>
+ 	<h2 id="fps">FPS: 0</h2>
+@@ -2462,10 +2463,7 @@ void main(){
+ 									const pixelWorldZ =
+ 										(perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
+ 
+-									let shadowFactor = 1.0;
+-									if (this.useShadow && this.isInShadow(dirLight, pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
+-										shadowFactor = 0.2;
+-									}
++									const dirLightShadow = this.useShadow ? this.getDirLightShadow(dirLight, pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ) : 0;
+ 
+ 									let totalPointLightDiffuse = 0;
+ 									for (let i = 0; i < pointLights.length; i++) {
+@@ -2491,7 +2489,7 @@ void main(){
+ 										totalPointLightDiffuse += currentPointLightDiffuse * attenuation * light.intensity;
+ 									}
+ 
+-									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
++									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * (1 - dirLightShadow) + totalPointLightDiffuse);
+ 
+ 									let texR = triColor.r,
+ 										texG = triColor.g,
+@@ -2564,6 +2562,7 @@ void main(){
+ 					for (let i = 0; i < shadowTri.vertices.length; i++) {
+ 						shadowTri.vertices[i].x = ((shadowTri.vertices[i].x + 1) * shadowMapSize) / 2;
+ 						shadowTri.vertices[i].y = ((-shadowTri.vertices[i].y + 1) * shadowMapSize) / 2;
++						shadowTri.vertices[i].z = shadowTri.vertices[i].z * 0.5 + 0.5;
+ 					}
+ 
+ 					const bbox = shadowTri.boundingBox(shadowMapSize, shadowMapSize);
+@@ -2625,14 +2624,14 @@ void main(){
+ 				}
+ 			}
+ 
+-			isInShadow(dirLight, pixelWorldPosX, pixelWorldPosY, pixelWorldPosZ, triWorldNormalX, triWorldNormalY, triWorldNormalZ) {
++			getDirLightShadow(dirLight, pixelWorldPosX, pixelWorldPosY, pixelWorldPosZ, triWorldNormalX, triWorldNormalY, triWorldNormalZ) {
+ 				const dir = dirLight.dir;
+ 				let dotProduct = triWorldNormalX * dir.x + triWorldNormalY * dir.y + triWorldNormalZ * dir.z;
+-				if (dotProduct >= 0) return false;
++				if (dotProduct >= 0) return 0;
+ 
+ 				const shadowMapSize = dirLight.softwareShadowMapSize;
+-				let texelSize = dirLight.shadowDistance / shadowMapSize;
+-				let normalOffset = texelSize * (1 - Math.abs(dotProduct));
++				let shadowTexelSize = dirLight.shadowDistance / shadowMapSize;
++				let normalOffset = shadowTexelSize * (1 - Math.abs(dotProduct));
+ 
+ 				let lightSpacePos = new Vector3(
+ 					pixelWorldPosX + triWorldNormalX * normalOffset,
+@@ -2643,16 +2642,26 @@ void main(){
+ 				lightSpacePos.mulMat4x4(dirLight.viewMatrix);
+ 				lightSpacePos.mulMat4x4(dirLight.projectionMatrix);
+ 
+-				lightSpacePos.x /= lightSpacePos.w;
+-				lightSpacePos.y /= lightSpacePos.w;
+-				lightSpacePos.z /= lightSpacePos.w;
+-
+-				const x = Math.floor(((lightSpacePos.x + 1) * shadowMapSize) / 2);
+-				const y = Math.floor(((-lightSpacePos.y + 1) * shadowMapSize) / 2);
+-
+-				if (x < 0 || x >= shadowMapSize || y < 0 || y >= shadowMapSize) return false;
+-
+-				return lightSpacePos.z > this.shadowMaps.get(dirLight)[y][x] + dirLight.shadowBias;
++				const shadowMapCoordX = (lightSpacePos.x / lightSpacePos.w) * 0.5 + 0.5;
++				const shadowMapCoordY = (lightSpacePos.y / lightSpacePos.w) * 0.5 + 0.5;
++				const shadowMapCoordZ = (lightSpacePos.z / lightSpacePos.w) * 0.5 + 0.5;
++
++				if (shadowMapCoordX < 0 || shadowMapCoordX > 1 || shadowMapCoordY < 0 || shadowMapCoordY > 1 || shadowMapCoordZ > 1) return 0;
++
++				const shadowMap = this.shadowMaps.get(dirLight);
++				const texelSize = 1 / shadowMapSize;
++				let shadow = 0;
++				for (let x = -1; x <= 1; x++) {
++					for (let y = -1; y <= 1; y++) {
++						const sampleU = Math.floor((shadowMapCoordX + x * texelSize) * shadowMapSize);
++						const sampleV = Math.floor((1 - (shadowMapCoordY + y * texelSize)) * shadowMapSize);
++						const clampedSampleU = Math.min(shadowMapSize - 1, Math.max(0, sampleU));
++						const clampedSampleV = Math.min(shadowMapSize - 1, Math.max(0, sampleV));
++						const closestDepth = shadowMap[clampedSampleV][clampedSampleU];
++						shadow += shadowMapCoordZ > closestDepth + dirLight.shadowBias ? 1 : 0;
++					}
++				}
++				return shadow / 9;
+ 			}
+ 
+ 		}

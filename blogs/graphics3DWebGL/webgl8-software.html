@@ -1304,6 +1304,121 @@ let dirLight = sun.addComponent(new DirectionalLight(parseFloat(lightDirIntensit
 }</code></pre>
                     Kết quả:
                     <div class="htmlPreview" id="htmlPreview52" data-disabled="true"></div>
+
+                    <h2>5. Làm mờ viền bóng với PCF giống WebGL</h2>
+                    Ở series trước ta không có bước này, bây giờ thì mình quyết định thêm vào do performance cũng không ảnh hưởng bao nhiêu, với lại bóng mờ mờ nhìn khá đẹp 😁<br/><br/>
+
+                    Mình nhắc lại 1 chút ý tưởng của PCF: Sau khi đã chuyển 1 điểm trong thế giới qua 1 điểm trong clip space của nguồn sáng (sau khi xong render pipeline của nguồn sáng),
+                    thì thay vì ta so sánh độ sâu của điểm đó với độ sâu tương ứng trong shadow map. Thì ta sẽ so sánh nó với 9 texel xung quanh nó, và lấy phần trăm texel nằm trong shadow
+                    làm kết quả để nhân với ánh sáng.<br/><br/>
+
+                    Đầu tiên, là mình sẽ chuyển <code>z</code> ở clip space của nguồn sáng về [0; 1] để khớp với depth texture bên WebGL. Thật ra nếu không chuyển cũng không có gì sai đâu,
+                    chỉ là <code>shadowBias</code> mình lại phải chia làm 2 để nó nhìn ô kê ở 2 renderer, vì <code>shadowBias</code> có liên quan tới độ sâu. Mình chỉ cần thêm 1 dòng ở hàm
+                    <code>SoftwareRenderer.buildShadowMap</code>:
+                    <pre><code class="language-javascript">class SoftwareRenderer {
+    ...
+    buildShadowMap(dirLight, tris) {
+        ...
+        for (let tri of tris) {
+            ...
+            for (let i = 0; i &lt; shadowTri.vertices.length; i++) {
+                shadowTri.vertices[i].x = ((shadowTri.vertices[i].x + 1) * shadowMapSize) / 2;
+                shadowTri.vertices[i].y = ((-shadowTri.vertices[i].y + 1) * shadowMapSize) / 2;
+                shadowTri.vertices[i].z = shadowTri.vertices[i].z * 0.5 + 0.5;    // <---------------------- [0; 1] như depth texture
+            }
+            ...
+        }
+    }
+    ...
+}</code></pre>
+                    Tiếp theo, là mình sẽ đổi tên hàm <code>isInShadow</code> thành <code>getDirLightShadow</code> giống bên WebGL, và cho nó return số thập phân thay vì boolean. Ở khúc
+                    cuối thì ta sẽ thêm đoạn để làm PCF, trước tiên mình cho bạn xem loại đoạn đó trong fragment shader (kèm comment của blog 6):
+                    <pre><code class="language-hlsl">float getDirLightShadow() {
+    ...
+    vec4 lightSpacePos = uLightProjection * uLightView * vec4(offsetPosition, 1.0);
+	vec3 shadowMapCoord = lightSpacePos.xyz * 0.5 + 0.5;
+
+    if (shadowMapCoord.x < 0.0 || shadowMapCoord.x > 1.0 || shadowMapCoord.y < 0.0 || shadowMapCoord.y > 1.0 || shadowMapCoord.z > 1.0) return 0.0;
+
+    // dùng hàm textureSize để lấy kích thước 2048x2048, rồi tính texel size 2D = (1/2048, 1/2048)
+    vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
+    // loop qua 9 texel, nếu nằm trong bóng thì +1, không thì không cộng, sau đó chia 9 là ra được phần trăm
+    float shadow = 0.0;
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            float closestDepth = texture(uShadowMap, shadowMapCoord.xy + vec2(x, y) * texelSize).r;
+            shadow += shadowMapCoord.z > closestDepth + uShadowBias ? 1.0 : 0.0;
+        }
+    }
+    return shadow / 9.0;
+}</code></pre>
+                    Bên <code>getDirLightShadow</code> của software cũng tương tự. Tuy nhiên vì ta không có sẵn hàm <code>texture()</code> để sample nên ta phải nhân thêm
+                    <code>shadowMapSize</code> để lấy đúng pixel trong shadow map, ngoài ra do <code>y</code> của software renderer ngược lại với WebGL nên ta phải lật lại:
+                    <pre><code class="language-javascript">class SoftwareRenderer {
+    ...
+    getDirLightShadow(dirLight, pixelWorldPosX, pixelWorldPosY, pixelWorldPosZ, triWorldNormalX, triWorldNormalY, triWorldNormalZ) {
+        const dir = dirLight.dir;
+        let dotProduct = triWorldNormalX * dir.x + triWorldNormalY * dir.y + triWorldNormalZ * dir.z;
+        if (dotProduct >= 0) return 0;                  // trả về 0 thay vì false
+
+        const shadowMapSize = dirLight.softwareShadowMapSize;
+        let shadowTexelSize = dirLight.shadowDistance / shadowMapSize;              // đổi tên texelSize thành shadowTexelSize để ko trùng bên dưới
+        let normalOffset = shadowTexelSize * (1 - Math.abs(dotProduct));            // <----------------------
+
+        let lightSpacePos = new Vector3(
+            pixelWorldPosX + triWorldNormalX * normalOffset,
+            pixelWorldPosY + triWorldNormalY * normalOffset,
+            pixelWorldPosZ + triWorldNormalZ * normalOffset,
+        );
+
+        lightSpacePos.mulMat4x4(dirLight.viewMatrix);
+        lightSpacePos.mulMat4x4(dirLight.projectionMatrix);
+
+        // giống hệt bên fragment shader
+        const shadowMapCoordX = (lightSpacePos.x / lightSpacePos.w) * 0.5 + 0.5;
+        const shadowMapCoordY = (lightSpacePos.y / lightSpacePos.w) * 0.5 + 0.5;
+        const shadowMapCoordZ = (lightSpacePos.z / lightSpacePos.w) * 0.5 + 0.5;
+
+        if (shadowMapCoordX < 0 || shadowMapCoordX > 1 || shadowMapCoordY < 0 || shadowMapCoordY > 1 || shadowMapCoordZ > 1) return 0;
+
+        const shadowMap = this.shadowMaps.get(dirLight);
+        const texelSize = 1 / shadowMapSize;                // tính texelSize như bên fragment shader, ở đây có sẵn shadowMapSize thay vì xài hàm textureSize()
+        let shadow = 0;
+        for (let x = -1; x <= 1; x++) {
+            for (let y = -1; y <= 1; y++) {
+                const sampleU = Math.floor((shadowMapCoordX + x * texelSize) * shadowMapSize);          // nhân với shadowMapSize để sample pixel từ shadow map
+                const sampleV = Math.floor((1 - (shadowMapCoordY + y * texelSize)) * shadowMapSize);    // lật ngược y lại
+                const clampedSampleU = Math.min(shadowMapSize - 1, Math.max(0, sampleU));
+                const clampedSampleV = Math.min(shadowMapSize - 1, Math.max(0, sampleV));
+                const closestDepth = shadowMap[clampedSampleV][clampedSampleU];
+                shadow += shadowMapCoordZ > closestDepth + dirLight.shadowBias ? 1 : 0;
+            }
+        }
+        return shadow / 9;
+    }
+}</code></pre>
+
+                    Cuối cùng là ta cập nhật các chỗ sử dụng <code>isInShadow</code> thành <code>getDirLightShadow</code>:
+                    <pre><code class="language-javascript">rasterizeClipSpaceTriangles(tris, dirLight, pointLights) {
+    ...
+    for (let tri of tris) {
+        ...
+        
+        if (z < depthBuffer[pixelIndex]) {
+            ...
+            const dirLightShadow = this.useShadow ? this.getDirLightShadow(dirLight, pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ) : 0;  // <----------------------
+            ...
+            const lightIntensity = Math.max(ambientLight, dirLightDiffuse * (1 - dirLightShadow) + totalPointLightDiffuse);  // <----------------------
+            ...
+        }
+        ...
+    }
+}</code></pre>
+
+                    Kết quả:
+                    <div class="htmlPreview" id="htmlPreview53" data-disabled="true"></div>
+
+                    Thế là ta đã hoàn thành việc mang lại Software Rasterizer về 😳 Và số htmlPreview cũng là 53 như series trước, cái này là trùng hợp thật vì mình không nhắm tới như vậy.
                     <div id="graphics3D-nav-bottom"></div>
                 </div>
             </div>
