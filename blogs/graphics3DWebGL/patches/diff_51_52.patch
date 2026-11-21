@@ -1,6 +1,20 @@
 --- "a/htmlPreviews\\htmlPreview51.html"
 +++ "b/htmlPreviews\\htmlPreview52.html"
-@@ -1301,6 +1301,7 @@
+@@ -1253,10 +1253,11 @@
+ 		}
+ 
+ 		class DirectionalLight extends Component {
+-			constructor(intensity, shadowMapSize, shadowDistance, shadowBias) {
++			constructor(intensity, webglShadowMapSize, softwareShadowMapSize, shadowDistance, shadowBias) {
+ 				super();
+ 				this.intensity = intensity;
+-				this.shadowMapSize = shadowMapSize;
++				this.webglShadowMapSize = webglShadowMapSize;
++				this.softwareShadowMapSize = softwareShadowMapSize;
+ 				this.shadowDistance = shadowDistance;
+ 				this.shadowBias = shadowBias;
+ 				this.viewMatrix = null;
+@@ -1301,6 +1302,7 @@
  				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
  				this.color = color;
  				this.texture = null;
@@ -8,7 +22,25 @@
  			}
  
  			clone() {
-@@ -2251,6 +2252,9 @@ void main(){
+@@ -2096,7 +2098,7 @@ void main(){
+ 			}
+ 
+ 			getDirectionalShadowMap(light) {
+-				return this.getOrCreate(this.shadowMaps, light, () => new DirectionalShadowMap(this.gl, light.shadowMapSize));
++				return this.getOrCreate(this.shadowMaps, light, () => new DirectionalShadowMap(this.gl, light.webglShadowMapSize));
+ 			}
+ 
+ 			getPointLightShadowMap(light) {
+@@ -2138,7 +2140,7 @@ void main(){
+ 				this.getDirectionalShadowMap(dirLight).texture.bind(1);
+ 				program.set("uShadowMap", 1);
+ 				program.set("uShadowBias", dirLight.shadowBias);
+-				program.set("uShadowTexelSize", dirLight.shadowDistance / dirLight.shadowMapSize);
++				program.set("uShadowTexelSize", dirLight.shadowDistance / dirLight.webglShadowMapSize);
+ 
+ 				const pointLightData = new Float32Array(maxActiveLights * 3);
+ 				const pointLightIntensities = new Float32Array(maxActiveLights);
+@@ -2251,6 +2253,9 @@ void main(){
  			constructor(canvas) {
  				this.canvas = canvas;
  				this.ctx = canvas.getContext("2d");
@@ -18,7 +50,7 @@
  				this.resize();
  			}
  
-@@ -2270,6 +2274,10 @@ void main(){
+@@ -2270,6 +2275,10 @@ void main(){
  				const pointLights = scene.getAllComponentsOfType(PointLight);
  
  				const objectTris = this.gameObjectToWorldSpaceTriangles(scene);
@@ -29,7 +61,7 @@
  				const visibleTris = this.worldSpaceToViewSpace(objectTris, camera);
  				this.sortNearestFirst(visibleTris);
  				this.viewSpaceToClipSpace(visibleTris, camera);
-@@ -2309,6 +2317,7 @@ void main(){
+@@ -2309,6 +2318,7 @@ void main(){
  						tri.mulMat4x4(modelMatrix);
  						tri.updateWorldVertices();
  						tri.texture = meshRenderer.material.texture;
@@ -37,7 +69,7 @@
  						objectTris.push(tri);
  					}
  				}
-@@ -2452,6 +2461,11 @@ void main(){
+@@ -2452,6 +2462,11 @@ void main(){
  									const pixelWorldZ =
  										(perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
  
@@ -49,7 +81,7 @@
  									let totalPointLightDiffuse = 0;
  									for (let i = 0; i < pointLights.length; i++) {
  										const light = pointLights[i];
-@@ -2476,7 +2490,7 @@ void main(){
+@@ -2476,7 +2491,7 @@ void main(){
  										totalPointLightDiffuse += currentPointLightDiffuse * attenuation * light.intensity;
  									}
  
@@ -58,13 +90,13 @@
  
  									let texR = triColor.r,
  										texG = triColor.g,
-@@ -2509,6 +2523,137 @@ void main(){
+@@ -2509,6 +2524,137 @@ void main(){
  					}
  				}
  			}
 +
 +			buildShadowMap(dirLight, tris) {
-+				const shadowMapSize = dirLight.shadowMapSize;
++				const shadowMapSize = dirLight.softwareShadowMapSize;
 +				let shadowMap = this.shadowMaps.get(dirLight);
 +				if (!shadowMap) {
 +					shadowMap = [];
@@ -168,7 +200,7 @@
 +				let dotProduct = triWorldNormalX * dir.x + triWorldNormalY * dir.y + triWorldNormalZ * dir.z;
 +				if (dotProduct >= 0) return false;
 +
-+				const shadowMapSize = dirLight.shadowMapSize;
++				const shadowMapSize = dirLight.softwareShadowMapSize;
 +				let texelSize = dirLight.shadowDistance / shadowMapSize;
 +				let normalOffset = texelSize * (1 - Math.abs(dotProduct));
 +
@@ -196,7 +228,7 @@
  		}
  
  		// ===== index.js =====
-@@ -2560,6 +2705,7 @@ void main(){
+@@ -2560,6 +2706,7 @@ void main(){
  
  		const useShadowCheckbox = (document.getElementById("useShadow"));
  		webglRenderer.useShadow = useShadowCheckbox.checked;
@@ -204,7 +236,16 @@
  
  		let brickTexture = new Texture(
  			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg"
-@@ -2654,6 +2800,7 @@ void main(){
+@@ -2578,7 +2725,7 @@ void main(){
+ 
+ 		let sun = scene.add(new GameObject("Sun"));
+ 		sun.transform.lookRotation(new Vector3(-1, -1, -1).normalize());
+-		let dirLight = sun.addComponent(new DirectionalLight(parseFloat(lightDirIntensitySlider.value), 2048, 16, 0.0015));
++		let dirLight = sun.addComponent(new DirectionalLight(parseFloat(lightDirIntensitySlider.value), 2048, 1024, 16, 0.0015));
+ 
+ 		let ground = scene.add(new GameObject("Ground", new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30)));
+ 		ground.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(0, 255, 0), brickTexture)));
+@@ -2654,6 +2801,7 @@ void main(){
  
  		useShadowCheckbox.addEventListener("change", () => {
  			webglRenderer.useShadow = useShadowCheckbox.checked;

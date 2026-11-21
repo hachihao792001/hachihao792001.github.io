@@ -1079,7 +1079,7 @@ useShadowCheckbox.addEventListener("change", () => {
     webglRenderer.useShadow = useShadowCheckbox.checked;
     softwareRenderer.useShadow = useShadowCheckbox.checked;         // <----------------------
     useShadowCheckbox.blur();
-});</code></pre>
+});</code></pre><br/>
                     Ở series này, ở blog trước, việc quy định <code>GameObject</code> nào sẽ có cast shadow sẽ nằm trong <code>MeshRenderer</code>
                     (biến <code>castShadow</code>). Thông tin của mesh thì phải chuyển qua cho <code>Triangle</code>, cho nên trong <code>Triangle</code>
                     ta cũng thêm 1 biến <code>castShadow</code>:
@@ -1115,14 +1115,40 @@ useShadowCheckbox.addEventListener("change", () => {
         return objectTris;
     }
     ...
+}</code></pre><br/>
+                    Trước khi mình tiếp tục, thì bạn hãy để ý là hiện tại <code>shadowMapSize</code> đang là 2048x2048, kích cỡ này WebGL chịu được, tuy nhiên với Software Rasterizer
+                    thì chắc nổ máy. Cho nên ta phải set shadow map size riêng cho <code>SoftwareRenderer</code>, nhưng mà hiện tại shadowMapSize được quy định riêng cho từng
+                    <code>DirectionalLight</code> và <code>PointLight</code>. Cho nên bây giờ ta phải thêm 1 biến shadow map size nữa vào <code>DirectionalLight</code> (không cho
+                    <code>PointLight</code> vì mình ko có ý định làm point light shadow cho <code>SoftwareRenderer</code> for obvious reason😅).<br/><br/>
+
+                    Cho nên bây giờ trong <code>DirectionalLight</code>, mình đổi tên <code>shadowMapSize</code> thành <code>webglShadowMapSize</code>, và
+                    thêm <code>softwareShadowMapSize</code> ngay sau nó trong constructor:
+                    <pre><code class="language-javascript">class DirectionalLight extends Component {
+    constructor(intensity, webglShadowMapSize, softwareShadowMapSize, shadowDistance, shadowBias) {  // <----------------------
+        super();
+        this.intensity = intensity;
+        this.webglShadowMapSize = webglShadowMapSize;                             // <----------------------
+        this.softwareShadowMapSize = softwareShadowMapSize;                       // <----------------------
+        this.shadowDistance = shadowDistance;
+        this.shadowBias = shadowBias;
+        this.viewMatrix = null;
+        this.projectionMatrix = null;
+    }
+    ...
 }</code></pre>
-                    Ở <code>WebGLRenderer</code> nó chứa hàm <code>buildDirectionalShadowMap</code>, như vậy là <code>SoftwareRenderer</code>
+                    Mình truyền <code>1024</code> cho <code>softwareShadowMapSize</code>, mình ko cho xuống <code>512</code> như cũ vì nó sẽ khá xấu mà hiệu quả cũng ko bao nhiêu:
+                    <pre><code class="language-javascript">let sun = scene.add(new GameObject("Sun"));
+sun.transform.lookRotation(new Vector3(-1, -1, -1).normalize());
+let dirLight = sun.addComponent(new DirectionalLight(parseFloat(lightDirIntensitySlider.value), 2048, 1024, 16, 0.0015));  // <----------------------</code></pre>
+
+                    Thế là xong phần chia ra 2 shadow map size, bây giờ tới lúc build shadow map và sử dụng nó. Ở <code>WebGLRenderer</code> nó chứa hàm
+                    <code>buildDirectionalShadowMap</code>, như vậy là <code>SoftwareRenderer</code>
                     cũng sẽ tương tự, sẽ có hàm <code>buildShadowMap</code>, ngoài ra còn chứa thêm hàm <code>isInShadow</code> nữa.
                     Hai hàm đều y hệt như cũ, trừ <code>buildShadowMap</code> bây giờ thì check tạo hoặc cập nhật shadow map trong mảng <code>shadowMaps</code>:
                     <pre style="max-height: 500px;"><code class="language-javascript">class SoftwareRenderer {
     ...
     buildShadowMap(dirLight, tris) {
-        const shadowMapSize = dirLight.shadowMapSize;
+        const shadowMapSize = dirLight.softwareShadowMapSize;
         let shadowMap = this.shadowMaps.get(dirLight);
         if (!shadowMap) {
             shadowMap = [];
@@ -1226,7 +1252,7 @@ useShadowCheckbox.addEventListener("change", () => {
         let dotProduct = triWorldNormalX * dir.x + triWorldNormalY * dir.y + triWorldNormalZ * dir.z;
         if (dotProduct >= 0) return false;
 
-        const shadowMapSize = dirLight.shadowMapSize;
+        const shadowMapSize = dirLight.softwareShadowMapSize;
         let texelSize = dirLight.shadowDistance / shadowMapSize;
         let normalOffset = texelSize * (1 - Math.abs(dotProduct));
 
