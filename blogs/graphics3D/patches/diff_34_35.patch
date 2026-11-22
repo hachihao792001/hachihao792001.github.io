@@ -99,7 +99,7 @@
  			constructor() {
  				this.imageData = ctx.createImageData(canvas.width, canvas.height);
 @@ -951,7 +986,7 @@
- 									let lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
+ 									let lightIntensity = Math.max(ambientLight, dirLightDiffuse * (inShadow ? shadowFactor : 1.0) + totalPointLightDiffuse);
  
  									let texColor = tri.color;
 -									if (imgPixels != null) {

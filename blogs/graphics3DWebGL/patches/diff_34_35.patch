@@ -9,14 +9,11 @@
  
  in vec2 vUV;
  in vec3 vWorldNormal;
-@@ -1362,13 +1364,19 @@ in vec3 vWorldPosition;
- out vec4 outColor;
+@@ -1365,13 +1367,16 @@ float getDirLightShadow() {
+ 	float dotProduct = dot(vWorldNormal, uDirLightDir);
+ 	if (dotProduct >= 0.0) return 0.0;
  
- float getDirLightShadow() {
 -	vec4 lightSpacePos = uLightProjection * uLightView * vec4(vWorldPosition, 1.0);
-+	float dotProduct = dot(vWorldNormal, uDirLightDir);
-+	if (dotProduct >= 0.0) return 0.0;
-+
 +	float normalOffset = uShadowTexelSize * (1.0 - abs(dotProduct));
 +	vec3 offsetPosition = vWorldPosition + vWorldNormal * normalOffset;
 +
@@ -26,12 +23,12 @@
  	if (shadowMapCoord.x < 0.0 || shadowMapCoord.x > 1.0 || shadowMapCoord.y < 0.0 || shadowMapCoord.y > 1.0 || shadowMapCoord.z > 1.0) return 0.0;
  
  	float closestDepth = texture(uShadowMap, shadowMapCoord.xy).r;
--	return shadowMapCoord.z > closestDepth ? 1.0 : 0.0;
-+	return shadowMapCoord.z > closestDepth + uShadowBias ? 1.0 : 0.0;
+-	return shadowMapCoord.z > closestDepth ? -dotProduct : 0.0;
++	return shadowMapCoord.z > closestDepth + uShadowBias ? -dotProduct : 0.0;
  }
  
  void main(){
-@@ -1483,6 +1491,8 @@ void main(){
+@@ -1486,6 +1491,8 @@ void main(){
  		const uLightView = gl.getUniformLocation(program, "uLightView");
  		const uLightProjection = gl.getUniformLocation(program, "uLightProjection");
  		const uUseShadow = gl.getUniformLocation(program, "uUseShadow");
@@ -40,7 +37,7 @@
  
  		const uShadowModel = gl.getUniformLocation(shadowProgram, "uModel");
  		const uShadowLightView = gl.getUniformLocation(shadowProgram, "uView");
-@@ -1533,6 +1543,7 @@ void main(){
+@@ -1536,6 +1543,7 @@ void main(){
  		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
  		let shadowMapSize = 2048;
  		let shadowMapDistance = 16;
@@ -48,7 +45,7 @@
  		let dirLightDefaultDir = new Vector3(-1, -1, -1);
  		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
  		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
-@@ -1632,6 +1643,8 @@ void main(){
+@@ -1635,6 +1643,8 @@ void main(){
  			gl.activeTexture(gl.TEXTURE1);
  			gl.bindTexture(gl.TEXTURE_2D, dirLight.shadowMapTexture);
  			gl.uniform1i(uShadowMap, 1);

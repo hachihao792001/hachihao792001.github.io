@@ -266,20 +266,32 @@ for (let light of pointLights) {
 }
 
 dirLight.buildShadowMap(objectTris);</code></pre>
-                    Hàm <code>isInShadow</code> thì ta để trong hàm <code>processTriangles</code> của <code>Rasterizer</code>, cụ thể là ngay sau khi tính xong được <code>pixelWorldPos</code>. Khi một pixel ở trong shadow
-                    thì ta nhân nó với một <code>shadowFactor</code> nào đó nhỏ hơn 1 để giảm độ sáng xuống (tùy bạn chỉnh). Lưu ý là chỉ nhân phần sáng của Directional Light thôi,
+                    Hàm <code>isInShadow</code> thì ta để trong hàm <code>processTriangles</code> của <code>Rasterizer</code>, cụ thể là ngay sau khi tính xong được <code>pixelWorldPos</code>.
+                    Khi một pixel ở trong shadow thì ta nhân <code>dirLightDiffuse</code> với một <code>shadowFactor</code> nào đó nhỏ hơn 1 để giảm độ sáng xuống.
+                    Shadow factor cũng sẽ phải tỉ lệ với tích vô hướng
+                    giữa pháp tuyến tam giác và tia sáng như <code>dirLightDiffuse</code>, tuy nhiên nó khác ở chỗ là ta chỉ quan tâm tới shadow factor khi ánh sáng
+                    đang chiếu vào mặt trước tam giác, vì khi nó chiếu vào mặt sau thì <code>isInShadow</code> đã trả về false rồi.
+                    Như vậy là ta chỉ quan tâm tới trường hợp -1 <= dot <= 0, từ 0 trở lên thì ko có bóng, nên shadow factor = 1, còn trong khoảng [-1; 0] thì nó tăng dần từ 1 số
+                    nào đó nhỏ nhỏ tới 1, mình sẽ chọn số đó là 0.2. Cho nên ta phải tìm công thức nào đó mà map từ [-1; 0] sang [0.2; 1], nhìn thì ta cũng suy ra
+                    được: nhân dot với 0.8 rồi cộng 1. Như vậy, hàm <code>processTriangles</code> sẽ như sau:
+                    <pre><code class="language-javascript">processTriangles(tris) {
+    ...
+    let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
+    let shadowFactor = 1 + 0.8 * Vector3.dot(triWorldNormal, dirLight.dir);
+    ...
+}</code></pre>
+                    Có được <code>shadowFactor</code> rồi thì ta nhân vào ánh sáng thôi. Lưu ý là chỉ nhân với phần sáng của Directional Light thôi,
                     shadow map này là của Directional Light, pixel nằm trong bóng nghĩa là Directional Light không chiếu tới được nó, chứ point light thì vẫn chiếu tới bình thường.
-                    Nếu nhân luôn cả point light thì khi bạn kéo cường độ Directional Light về 0, bóng vẫn còn đó, vì nó đang làm tối ánh sáng của point light:
+                    Nếu nhân luôn cả point light thì khi bạn kéo cường độ Directional Light về 0, bạn vẫn sẽ thấy bóng, vì nó đang làm tối luôn ánh sáng của point light:
                     <pre><code class="language-javascript">if (z < this.depthBuffer[y][x]) {
     ...
     pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
 
     let inShadow = dirLight.isInShadow(pixelWorldPos, triWorldNormal);
-    let shadowFactor = inShadow ? 0.2 : 1.0;
 
     ...
 
-    let lightIntensity = dirLightDiffuse * shadowFactor + pointLightDiffuse;
+    let lightIntensity = dirLightDiffuse * (inShadow ? shadowFactor : 1.0) + pointLightDiffuse;    // nằm trong bóng thì mới nhân shadowFactor
 
     ...
 }</code></pre>

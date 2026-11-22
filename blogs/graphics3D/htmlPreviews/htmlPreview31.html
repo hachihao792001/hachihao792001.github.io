@@ -788,6 +788,7 @@
 
 					let triWorldNormal = tri.getWorldNormal();
 					let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
+					let shadowFactor = 1 + 0.8 * Vector3.dot(triWorldNormal, dirLight.dir);
 					const bbox = tri.boundingBox();
 
 					let edgeFunctionRow01 = edgeFunction(
@@ -833,7 +834,6 @@
 									pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
 
 									let inShadow = dirLight.isInShadow(pixelWorldPos, triWorldNormal);
-									let shadowFactor = inShadow ? 0.2 : 1.0;
 
 									let totalPointLightDiffuse = 0;
 									const pointLightRangeSquare = pointLightRange * pointLightRange;
@@ -850,7 +850,7 @@
 									}
 									totalPointLightDiffuse *= pointLightIntensity;
 
-									let lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
+									let lightIntensity = Math.max(ambientLight, dirLightDiffuse * (inShadow ? shadowFactor : 1.0) + totalPointLightDiffuse);
 
 									let texColor = tri.color;
 									if (imgPixels != null) {

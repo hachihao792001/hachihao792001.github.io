@@ -526,35 +526,45 @@ uniform bool uUseShadow;            // <----------------------
 
 ...
 
-// hàm này chính là hàm isInShadow của series trước, hàm này trả về 1.0 nếu pixel hiện tại nằm trong bóng, 0.0 nếu không
+// hàm này chính là hàm isInShadow của series trước, hàm này trả về độ đậm của bóng ở pixel hiện tại, 0.0 nếu không nằm trong bóng
 float getDirLightShadow() {
+    // mặt quay lưng với đèn thì không có bóng, giống series trước
+    float dotProduct = dot(vWorldNormal, uDirLightDir);
+    if (dotProduct >= 0.0) return 0.0;
+
     // đưa điểm này qua render pipeline của camera nguồn sáng, giống hệt lúc build shadow map
     vec4 lightSpacePos = uLightProjection * uLightView * vec4(vWorldPosition, 1.0);     // vWorldPosition ta đã có sẵn
-    // chuyển từ NDC [-1; 1] qua [0; 1] cho cả x, y, z luôn. xy thì để làm uv trên texture shadow map, z thì để so sánh với depth trong shadow map
+    // chuyển từ NDC [-1; 1] qua [0; 1] cho cả x, y, z luôn. xy thì để làm uv trên texture shadow map, z thì để so sánh với depth trong shadow map (giải thích bên dưới)
     vec3 shadowMapCoord = lightSpacePos.xyz * 0.5 + 0.5;
 
     // nằm ngoài shadow map thì coi như không có bóng
     if (shadowMapCoord.x < 0.0 || shadowMapCoord.x > 1.0 || shadowMapCoord.y < 0.0 || shadowMapCoord.y > 1.0 || shadowMapCoord.z > 1.0) return 0.0;
 
     float closestDepth = texture(uShadowMap, shadowMapCoord.xy).r;      // lấy depth của pixel trong shadow map, bằng uv mà ta vừa tính ra (shadowMapCoord.xy)
-    // so sánh giữa depth của pixel hiện tại (dưới góc nhìn của nguồn sáng) và depth của pixel trong shadow map
-    return shadowMapCoord.z > closestDepth ? 1.0 : 0.0;
+    // so sánh giữa depth của pixel hiện tại (dưới góc nhìn của nguồn sáng) và depth của pixel trong shadow map, nằm trong bóng thì trả về -dotProduct (giải thích bên dưới)
+    return shadowMapCoord.z > closestDepth ? -dotProduct : 0.0;
 }
 
 ...</code></pre>
                     Ta cần x, y trong [0; 1] để làm uv lấy mẫu texture, và z cũng phải nằm trong [0; 1]
                     để so sánh với depth của pixel trong shadow map. Cho nên ta * 0.5 + 0.5 cho 3 cái cùng lúc cho tiện.<br/><br/>
 
-                    Hàm <code>getDirLightShadow</code> trả về 1.0 nếu pixel hiện tại nằm trong bóng, 0.0 nếu không. Dù glsl có boolean để viết lại y như <code>isInShadow</code>
-                    của series trước, nhưng mình dùng float, vì lúc sử dụng hàm ta có thể trừ trực tiếp để xét điều kiện, thay vì phải dùng <code>if</code> (GPU ghét if).
-                    Ngoài ra còn 1 lí do nữa mình sẽ nói sau.<br/><br/>
+                    Hàm <code>getDirLightShadow</code> trả về độ đậm của bóng ở pixel hiện tại, 0.0 nếu không nằm trong bóng. Dù glsl có boolean để viết lại y như <code>isInShadow</code>
+                    của series trước, nhưng mình dùng float, vì lúc sử dụng hàm ta có thể trừ trực tiếp để xét điều kiện, thay vì phải dùng <code>if</code> (GPU ghét if),
+                    và để trả về được độ đậm của bóng. Ngoài ra còn 1 lí do nữa mình sẽ nói sau.<br/><br/>
+
+                    Nằm trong bóng thì hàm trả về <code>-dotProduct</code> thay vì 1.0. Series trước, pixel nằm trong bóng thì <code>dirLightDiffuse</code>
+                    được nhân với <code>shadowFactor</code> tỉ lệ với tích vô hướng giữa pháp tuyến tam giác và tia sáng (xem
+                    <a href="/blogs/graphics3D/graphics3D11-shadow.html">blog #11 của series trước</a>). Ở đây hàm trả về độ đậm của bóng, rồi lấy
+                    <code>1.0 - dirLightShadow</code> nhân vào <code>dirLightDiffuse</code>, nên độ đậm cũng tỉ lệ với tích vô hướng: tia sáng chiếu thẳng vào mặt
+                    (dot = -1) thì bóng đậm nhất là 1, tia sáng càng song song với mặt thì bóng càng nhạt, tới dot = 0 thì bằng 0.<br/><br/>
 
                     Ở hàm main của fragment shader ta sử dụng hàm <code>getDirLightShadow</code> như sau:
                     <pre><code class="language-glsl">void main(){
     vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
     float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
     float dirLightShadow = uUseShadow ? getDirLightShadow() : 0.0;          // <----------------------
-    dirLightDiffuse *= 1.0 - dirLightShadow;                                // nằm trong bóng thì diffuse = 0
+    dirLightDiffuse *= 1.0 - dirLightShadow;                                // nằm trong bóng thì diffuse giảm theo độ đậm của bóng
     ...
 }</code></pre>
 
@@ -614,7 +624,7 @@ float getDirLightShadow() {
 
     vec4 lightSpacePos = uLightProjection * uLightView * vec4(offsetPosition, 1.0);
     ...
-    return shadowMapCoord.z > closestDepth + uShadowBias ? 1.0 : 0.0;       // cộng uShadowBias vào depth của shadow map trước khi so sánh
+    return shadowMapCoord.z > closestDepth + uShadowBias ? -dotProduct : 0.0;       // cộng uShadowBias vào depth của shadow map trước khi so sánh
 }</code></pre>
                     Tạo 2 uniform <code>uShadowBias</code> và <code>uShadowTexelSize</code> và truyền vào GPU từ CPU:
                     <pre><code class="language-javascript">const uShadowBias = gl.getUniformLocation(program, "uShadowBias");
@@ -660,7 +670,7 @@ gl.uniform1f(uShadowTexelSize, shadowMapDistance / shadowMapSize);  // xem lại
             shadow += shadowMapCoord.z > closestDepth + uShadowBias ? 1.0 : 0.0;
         }
     }
-    return shadow / 9.0;
+    return shadow / 9.0 * -dotProduct;   // vẫn nhân -dotProduct như trước
 }</code></pre>
 
                     Có một chỗ cần để ý: PCF liên quan tới những texel hàng xóm, nếu như shadow bias nhỏ thì shadow acne sẽ quay lại, vì ta

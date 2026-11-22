@@ -1376,7 +1376,7 @@ float getDirLightShadow() {
 	if (shadowMapCoord.x < 0.0 || shadowMapCoord.x > 1.0 || shadowMapCoord.y < 0.0 || shadowMapCoord.y > 1.0 || shadowMapCoord.z > 1.0) return 0.0;
 
 	float closestDepth = texture(uShadowMap, shadowMapCoord.xy).r;
-	return shadowMapCoord.z > closestDepth + uShadowBias ? 1.0 : 0.0;
+	return shadowMapCoord.z > closestDepth + uShadowBias ? -dotProduct : 0.0;
 }
 
 void main(){

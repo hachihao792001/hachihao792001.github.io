@@ -33,7 +33,7 @@
  
  				const x = Math.floor((lightSpacePos.x + 1) * shadowMapSize / 2);
  				const y = Math.floor((-lightSpacePos.y + 1) * shadowMapSize / 2);
-@@ -907,20 +917,29 @@
+@@ -907,21 +917,30 @@
  			}
  
  			processTriangles(tris) {
@@ -55,20 +55,22 @@
  
  					tri.calculateSignedDoubleArea();
 +					const signedDoubleArea = tri.signedDoubleArea;
- 
--					let triWorldNormal = tri.getWorldNormal();
--					let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
--					const bbox = tri.boundingBox();
++
 +					const triWorldNormal = tri.getWorldNormal();
 +					const worldNormalX = triWorldNormal.x, worldNormalY = triWorldNormal.y, worldNormalZ = triWorldNormal.z;
 +
 +					const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
-+
++					const shadowFactor = 1 + 0.8 * Vector3.dot(triWorldNormal, dirLight.dir);
+ 
+-					let triWorldNormal = tri.getWorldNormal();
+-					let dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
+-					let shadowFactor = 1 + 0.8 * Vector3.dot(triWorldNormal, dirLight.dir);
+-					const bbox = tri.boundingBox();
 +					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
  
  					let edgeFunctionRow01 = edgeFunction(
  						tri.vertices[0],
-@@ -935,85 +954,107 @@
+@@ -936,84 +955,104 @@
  						tri.vertices[0],
  						new Vector3(bbox[0], bbox[2], 0));
  
@@ -140,11 +142,7 @@
 +									const pixelWorldZ = (perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
  
 -									let inShadow = useShadow ? dirLight.isInShadow(pixelWorldPos, triWorldNormal) : false;
--									let shadowFactor = inShadow ? 0.2 : 1.0;
-+									let shadowFactor = 1.0;
-+									if (useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
-+										shadowFactor = 0.2;
-+									}
++									const inShadow = useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ);
  
  									let totalPointLightDiffuse = 0;
 -									const pointLightRangeSquare = pointLightRange * pointLightRange;
@@ -177,7 +175,7 @@
  									}
  									totalPointLightDiffuse *= pointLightIntensity;
  
--									let lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
+-									let lightIntensity = Math.max(ambientLight, dirLightDiffuse * (inShadow ? shadowFactor : 1.0) + totalPointLightDiffuse);
 -
 -									let texColor = tri.color;
 -									if (tri.texture && tri.texture.pixels) {
@@ -192,7 +190,7 @@
 -										const texY = Math.floor(pixelUV.v * (tri.texture.height - 1));
 -										const texIndex = (texY * tri.texture.width + texX) * 4;
 -										texColor = new Color(tri.texture.pixels[texIndex], tri.texture.pixels[texIndex + 1], tri.texture.pixels[texIndex + 2]);
-+									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
++									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * (inShadow ? shadowFactor : 1.0) + totalPointLightDiffuse);
 +
 +									let texR = triColor.r, texG = triColor.g, texB = triColor.b;
 +									if (texturePixels) {

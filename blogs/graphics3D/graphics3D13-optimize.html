@@ -378,10 +378,7 @@ const textureWidth = texture ? texture.width : 0, textureHeight = texture ? text
                 const pixelWorldY = (perspectiveWorld0Y * baryCoord0 + perspectiveWorld1Y * baryCoord1 + perspectiveWorld2Y * baryCoord2) / pixelInvZ;
                 const pixelWorldZ = (perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
 
-                let shadowFactor = 1.0;
-				if (useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
-					shadowFactor = 0.5;
-				}
+                const inShadow = useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ);
 
 				let totalPointLightDiffuse = 0;
 				for (let i = 0; i < pointLights.length; i++) {
@@ -403,7 +400,7 @@ const textureWidth = texture ? texture.width : 0, textureHeight = texture ? text
 				}
 				totalPointLightDiffuse *= pointLightIntensity;
 
-				const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
+				const lightIntensity = Math.max(ambientLight, dirLightDiffuse * (inShadow ? shadowFactor : 1.0) + totalPointLightDiffuse);
 
                 let texR = triColor.r, texG = triColor.g, texB = triColor.b;
                 if (texturePixels) {

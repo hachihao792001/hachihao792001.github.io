@@ -51,7 +51,7 @@
  
  				for (let tri of tris) {
  					let vertices = tri.vertices;
-@@ -975,6 +1012,7 @@
+@@ -976,6 +1013,7 @@
  					const perspectiveWorld2X = world2.x * uv2W, perspectiveWorld2Y = world2.y * uv2W, perspectiveWorld2Z = world2.z * uv2W;
  
  					const pointLightRangeSquare = pointLightRange * pointLightRange;
@@ -59,8 +59,8 @@
  
  					const triColor = tri.color;
  					const texture = tri.texture;
-@@ -1008,8 +1046,8 @@
- 									}
+@@ -1006,8 +1044,8 @@
+ 									const inShadow = useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ);
  
  									let totalPointLightDiffuse = 0;
 -									for (let i = 0; i < pointLights.length; i++) {
@@ -70,7 +70,7 @@
  										const pointLightVecX = lightPos.x - pixelWorldX;
  										const pointLightVecY = lightPos.y - pixelWorldY;
  										const pointLightVecZ = lightPos.z - pixelWorldZ;
-@@ -1067,6 +1105,14 @@
+@@ -1065,6 +1103,14 @@
  			return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
  		}
  

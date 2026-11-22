@@ -148,7 +148,7 @@
  				this.shadowMap = [];
  				for (let i = 0; i < shadowMapSize; i++) {
  					let row = [];
-@@ -810,19 +934,12 @@
+@@ -808,19 +932,12 @@
  		}
  
  		// ===== mesh.js =====
@@ -171,7 +171,7 @@
  				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
  				this.color = color;
  				this.texture = null;
-@@ -840,55 +957,6 @@
+@@ -838,55 +955,6 @@
  				return tri;
  			}
  
@@ -227,7 +227,7 @@
  			clipAgainstPlane(plane) {
  				let outTris = [];
  
-@@ -906,8 +974,6 @@
+@@ -904,8 +972,6 @@
  				if (frontPoints.length == 3) {
  					outTris.push(this.clone());
  				} else if (frontPoints.length == 1 && behindPoints.length == 2) {
@@ -236,7 +236,7 @@
  					if (behindPoints[0] == 0 && behindPoints[1] == 2) {
  						behindPoints[0] = 2;
  						behindPoints[1] = 0;
-@@ -920,6 +986,7 @@
+@@ -918,6 +984,7 @@
  					let [t1, intersection1] = plane.intersectWithLine(f, b0);
  					let [t2, intersection2] = plane.intersectWithLine(f, b1);
  
@@ -244,7 +244,7 @@
  					outTri.vertices[0] = f;
  					outTri.vertices[1] = intersection1;
  					outTri.vertices[2] = intersection2;
-@@ -933,9 +1000,6 @@
+@@ -931,9 +998,6 @@
  					outTri.texture = this.texture;
  					outTris.push(outTri);
  				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
@@ -254,7 +254,7 @@
  					if (frontPoints[0] == 0 && frontPoints[1] == 2) {
  						frontPoints[0] = 2;
  						frontPoints[1] = 0;
-@@ -948,6 +1012,7 @@
+@@ -946,6 +1010,7 @@
  					let [t1, intersection1] = plane.intersectWithLine(f0, b);
  					let [t2, intersection2] = plane.intersectWithLine(f1, b);
  
@@ -262,7 +262,7 @@
  					outTri1.vertices[0] = f0;
  					outTri1.vertices[1] = f1;
  					outTri1.vertices[2] = intersection1;
-@@ -961,6 +1026,7 @@
+@@ -959,6 +1024,7 @@
  					outTri1.texture = this.texture;
  					outTris.push(outTri1);
  
@@ -270,7 +270,7 @@
  					outTri2.vertices[0] = f1.clone();
  					outTri2.vertices[1] = intersection2;
  					outTri2.vertices[2] = intersection1.clone();
-@@ -978,25 +1044,30 @@
+@@ -976,25 +1042,30 @@
  				return outTris;
  			}
  
@@ -314,7 +314,7 @@
  				const triWorldCenterX = (this.worldVertices[0].x + this.worldVertices[1].x + this.worldVertices[2].x) / 3;
  				const triWorldCenterY = (this.worldVertices[0].y + this.worldVertices[1].y + this.worldVertices[2].y) / 3;
  				const triWorldCenterZ = (this.worldVertices[0].z + this.worldVertices[1].z + this.worldVertices[2].z) / 3;
-@@ -1016,8 +1087,6 @@
+@@ -1014,8 +1085,6 @@
  				}
  				const totalRange = pointLightRange + Math.sqrt(triBoundingCircleRadius2);
  

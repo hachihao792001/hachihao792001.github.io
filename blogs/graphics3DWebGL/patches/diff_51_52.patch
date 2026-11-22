@@ -69,28 +69,33 @@
  						objectTris.push(tri);
  					}
  				}
-@@ -2452,6 +2462,11 @@ void main(){
+@@ -2375,6 +2385,7 @@ void main(){
+ 						worldNormalZ = triWorldNormal.z;
+ 
+ 					const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
++					const shadowFactor = 1 + 0.8 * Vector3.dot(triWorldNormal, dirLight.dir);
+ 
+ 					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
+ 
+@@ -2452,6 +2463,8 @@ void main(){
  									const pixelWorldZ =
  										(perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
  
-+									let shadowFactor = 1.0;
-+									if (this.useShadow && this.isInShadow(dirLight, pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
-+										shadowFactor = 0.2;
-+									}
++									const inShadow = this.useShadow && this.isInShadow(dirLight, pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ);
 +
  									let totalPointLightDiffuse = 0;
  									for (let i = 0; i < pointLights.length; i++) {
  										const light = pointLights[i];
-@@ -2476,7 +2491,7 @@ void main(){
+@@ -2476,7 +2489,7 @@ void main(){
  										totalPointLightDiffuse += currentPointLightDiffuse * attenuation * light.intensity;
  									}
  
 -									const lightIntensity = Math.max(ambientLight, dirLightDiffuse + totalPointLightDiffuse);
-+									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
++									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * (inShadow ? shadowFactor : 1.0) + totalPointLightDiffuse);
  
  									let texR = triColor.r,
  										texG = triColor.g,
-@@ -2509,6 +2524,137 @@ void main(){
+@@ -2509,6 +2522,137 @@ void main(){
  					}
  				}
  			}
@@ -228,7 +233,7 @@
  		}
  
  		// ===== index.js =====
-@@ -2560,6 +2706,7 @@ void main(){
+@@ -2560,6 +2704,7 @@ void main(){
  
  		const useShadowCheckbox = (document.getElementById("useShadow"));
  		webglRenderer.useShadow = useShadowCheckbox.checked;
@@ -236,7 +241,7 @@
  
  		let brickTexture = new Texture(
  			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg"
-@@ -2578,7 +2725,7 @@ void main(){
+@@ -2578,7 +2723,7 @@ void main(){
  
  		let sun = scene.add(new GameObject("Sun"));
  		sun.transform.lookRotation(new Vector3(-1, -1, -1).normalize());
@@ -245,7 +250,7 @@
  
  		let ground = scene.add(new GameObject("Ground", new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30)));
  		ground.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(0, 255, 0), brickTexture)));
-@@ -2654,6 +2801,7 @@ void main(){
+@@ -2654,6 +2799,7 @@ void main(){
  
  		useShadowCheckbox.addEventListener("change", () => {
  			webglRenderer.useShadow = useShadowCheckbox.checked;

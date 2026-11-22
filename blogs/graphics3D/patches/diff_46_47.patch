@@ -34,7 +34,7 @@
  				const activeLights = new Array(maxActiveLights);
  
  				for (let tri of tris) {
-@@ -1198,7 +1201,7 @@
+@@ -1196,7 +1199,7 @@
  			}
  
  			drawCall() {
@@ -43,7 +43,7 @@
  			}
  		}
  
-@@ -1562,7 +1565,7 @@
+@@ -1560,7 +1563,7 @@
  		// ===== index.js =====
  		const gameCanvas = (document.getElementById("gameCanvas"));
  		const ctx = (gameCanvas.getContext("2d"));
@@ -52,7 +52,7 @@
  		const fov = 60;
  		let znear = 0.01,
  			zfar = 1000;
-@@ -1673,7 +1676,7 @@
+@@ -1671,7 +1674,7 @@
  				tri.perspectiveDivide();
  			}
  

@@ -1564,7 +1564,7 @@ float getDirLightShadow() {
 			shadow += shadowMapCoord.z > closestDepth + uShadowBias ? 1.0 : 0.0;
 		}
 	}
-	return shadow / 9.0;
+	return shadow / 9.0 * -dotProduct;
 }
 
 bool isInPointLightShadow(samplerCube pointShadowMap, vec3 lightPosition, vec3 pixelWorldPos) {

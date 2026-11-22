@@ -1364,6 +1364,7 @@
 						worldNormalZ = triWorldNormal.z;
 
 					const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
+					const shadowFactor = 1 + 0.8 * Vector3.dot(triWorldNormal, dirLight.dir);
 
 					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
 
@@ -1444,10 +1445,7 @@
 									const pixelWorldZ =
 										(perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
 
-									let shadowFactor = 1.0;
-									if (useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
-										shadowFactor = 0.2;
-									}
+									const inShadow = useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ);
 
 									let totalPointLightDiffuse = 0;
 									for (let i = 0; i < activeLightCount; i++) {
@@ -1469,7 +1467,7 @@
 									}
 									totalPointLightDiffuse *= pointLightIntensity;
 
-									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
+									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * (inShadow ? shadowFactor : 1.0) + totalPointLightDiffuse);
 
 									let texR = triColor.r,
 										texG = triColor.g,

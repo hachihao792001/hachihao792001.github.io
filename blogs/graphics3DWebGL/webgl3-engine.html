@@ -96,7 +96,7 @@ rasterize(visibleTris);									// vòng lặp pixel: depth buffer, ánh sáng, 
 					Việc build shadow map là một lần render riêng từ góc nhìn của đèn. Sounds complicated on GPU, nên ta bỏ luôn, bỏ các thứ sau: 
 					các hằng số <code>shadowMapSize</code>, <code>shadowBias</code>, <code>shadowMapDistance</code>, phần shadow trong
 					<code>DirectionalLight</code> (<code>buildShadowMap</code>, <code>isInShadow</code>, view/projection matrix của đèn), <code>Mat4x4.Orthographic</code>
-					và <code>Camera.getFrustumCenter</code> (chỉ shadow dùng), <code>shadowFactor</code> trong vòng lặp pixel, và checkbox Shadow.
+					và <code>Camera.getFrustumCenter</code> (chỉ shadow dùng), <code>shadowFactor</code> của mỗi tam giác cùng <code>inShadow</code> trong vòng lặp pixel, và checkbox Shadow.
 					<div class="htmlPreview" id="htmlPreview17" data-disabled="true"></div>
 
 					<h3>c. Bỏ texture</h3>

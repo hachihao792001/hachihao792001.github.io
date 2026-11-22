@@ -210,28 +210,33 @@
  				const screenBuffer = this.screenBuffer;
  				const depthBuffer = this.depthBuffer;
  				const canvasWidth = this.canvasWidth;
-@@ -1421,11 +1255,6 @@
+@@ -1341,7 +1175,6 @@
+ 						worldNormalZ = triWorldNormal.z;
+ 
+ 					const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
+-					const shadowFactor = 1 + 0.8 * Vector3.dot(triWorldNormal, dirLight.dir);
+ 
+ 					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
+ 
+@@ -1422,8 +1255,6 @@
  									const pixelWorldZ =
  										(perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
  
--									let shadowFactor = 1.0;
--									if (useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
--										shadowFactor = 0.2;
--									}
+-									const inShadow = useShadow && dirLight.isInShadow(pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ);
 -
  									let totalPointLightDiffuse = 0;
  									for (let i = 0; i < activeLightCount; i++) {
  										const lightPos = activeLights[i];
-@@ -1446,7 +1275,7 @@
+@@ -1444,7 +1275,7 @@
  									}
  									totalPointLightDiffuse *= pointLightIntensity;
  
--									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
+-									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * (inShadow ? shadowFactor : 1.0) + totalPointLightDiffuse);
 +									const lightIntensity = Math.max(ambientLight, dirLightDiffuse + totalPointLightDiffuse);
  
  									let texR = triColor.r,
  										texG = triColor.g,
-@@ -1924,9 +1753,6 @@
+@@ -1922,9 +1753,6 @@
  		const pointLightRangeText = (document.getElementById("pointRangeText"));
  		let pointLightRange = parseFloat(pointLightRangeSlider.value);
  
@@ -241,7 +246,7 @@
  		let brickTexture = new Texture(
  			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
  		);
-@@ -1974,13 +1800,6 @@
+@@ -1972,13 +1800,6 @@
  			return objectTris;
  		}
  
@@ -255,7 +260,7 @@
  		function worldSpaceToViewSpace(objectTris) {
  			const viewMat = camera.getViewMatrix();
  
-@@ -2015,7 +1834,7 @@
+@@ -2013,7 +1834,7 @@
  
  		function rasterize(visibleTris) {
  			rasterizer.clearScreen();
@@ -264,7 +269,7 @@
  			rasterizer.drawCall();
  
  			let x = rasterizer.screenCenterX,
-@@ -2040,7 +1859,6 @@
+@@ -2038,7 +1859,6 @@
  
  			updateGameObjectTransforms();
  			let objectTris = gameObjectToWorldSpaceTriangles();
@@ -272,7 +277,7 @@
  			let visibleTris = worldSpaceToViewSpace(objectTris);
  			sortNearestFirst(visibleTris);
  			viewSpaceToClipSpace(visibleTris);
-@@ -2071,10 +1889,6 @@
+@@ -2069,10 +1889,6 @@
  			pointLightRangeText.textContent = pointLightRange.toFixed(0);
  		});
  

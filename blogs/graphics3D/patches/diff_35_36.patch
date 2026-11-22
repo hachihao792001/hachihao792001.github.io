@@ -33,15 +33,15 @@
  				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
  				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
  				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance);
-@@ -965,7 +975,7 @@
+@@ -966,7 +976,7 @@
  									);
  									pixelWorldPos = Vector3.div(pixelWorldPos, pixelInvZ);
  
 -									let inShadow = dirLight.isInShadow(pixelWorldPos, triWorldNormal);
 +									let inShadow = useShadow ? dirLight.isInShadow(pixelWorldPos, triWorldNormal) : false;
- 									let shadowFactor = inShadow ? 0.2 : 1.0;
  
  									let totalPointLightDiffuse = 0;
+ 									const pointLightRangeSquare = pointLightRange * pointLightRange;
 @@ -1045,7 +1055,7 @@
  		const fov = 60;
  		let znear = 0.01, zfar = 1000;

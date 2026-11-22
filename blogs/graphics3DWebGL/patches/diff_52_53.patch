@@ -10,28 +10,33 @@
  		<div id="crosshair"></div>
  	</div>
  	<h2 id="fps">FPS: 0</h2>
-@@ -2462,10 +2463,7 @@ void main(){
+@@ -2385,7 +2386,6 @@ void main(){
+ 						worldNormalZ = triWorldNormal.z;
+ 
+ 					const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
+-					const shadowFactor = 1 + 0.8 * Vector3.dot(triWorldNormal, dirLight.dir);
+ 
+ 					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
+ 
+@@ -2463,7 +2463,7 @@ void main(){
  									const pixelWorldZ =
  										(perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
  
--									let shadowFactor = 1.0;
--									if (this.useShadow && this.isInShadow(dirLight, pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
--										shadowFactor = 0.2;
--									}
+-									const inShadow = this.useShadow && this.isInShadow(dirLight, pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ);
 +									const dirLightShadow = this.useShadow ? this.getDirLightShadow(dirLight, pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ) : 0;
  
  									let totalPointLightDiffuse = 0;
  									for (let i = 0; i < pointLights.length; i++) {
-@@ -2491,7 +2489,7 @@ void main(){
+@@ -2489,7 +2489,7 @@ void main(){
  										totalPointLightDiffuse += currentPointLightDiffuse * attenuation * light.intensity;
  									}
  
--									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
+-									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * (inShadow ? shadowFactor : 1.0) + totalPointLightDiffuse);
 +									const lightIntensity = Math.max(ambientLight, dirLightDiffuse * (1 - dirLightShadow) + totalPointLightDiffuse);
  
  									let texR = triColor.r,
  										texG = triColor.g,
-@@ -2564,6 +2562,7 @@ void main(){
+@@ -2562,6 +2562,7 @@ void main(){
  					for (let i = 0; i < shadowTri.vertices.length; i++) {
  						shadowTri.vertices[i].x = ((shadowTri.vertices[i].x + 1) * shadowMapSize) / 2;
  						shadowTri.vertices[i].y = ((-shadowTri.vertices[i].y + 1) * shadowMapSize) / 2;
@@ -39,7 +44,7 @@
  					}
  
  					const bbox = shadowTri.boundingBox(shadowMapSize, shadowMapSize);
-@@ -2625,14 +2624,14 @@ void main(){
+@@ -2623,14 +2624,14 @@ void main(){
  				}
  			}
  
@@ -58,7 +63,7 @@
  
  				let lightSpacePos = new Vector3(
  					pixelWorldPosX + triWorldNormalX * normalOffset,
-@@ -2643,16 +2642,26 @@ void main(){
+@@ -2641,16 +2642,26 @@ void main(){
  				lightSpacePos.mulMat4x4(dirLight.viewMatrix);
  				lightSpacePos.mulMat4x4(dirLight.projectionMatrix);
  
@@ -91,7 +96,7 @@
 +						shadow += shadowMapCoordZ > closestDepth + dirLight.shadowBias ? 1 : 0;
 +					}
 +				}
-+				return shadow / 9;
++				return shadow / 9 * -dotProduct;
  			}
  
  		}

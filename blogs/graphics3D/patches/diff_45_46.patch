@@ -440,7 +440,7 @@
  				let frustumCenter = Vector3.zero;
  				let lightPos = Vector3.sub(frustumCenter, Vector3.mul(this.dir, shadowMapDistance));
  				this.viewMatrix = Mat4x4.View(right, up, this.dir, lightPos);
-@@ -1089,7 +1358,7 @@
+@@ -1087,7 +1356,7 @@
  
  				let count = 0;
  				for (let i = 0; i < pointLights.length; i++) {
@@ -449,7 +449,7 @@
  
  					const toLightX = lightPos.x - triWorldCenterX;
  					const toLightY = lightPos.y - triWorldCenterY;
-@@ -1371,11 +1640,11 @@
+@@ -1369,11 +1638,11 @@
  			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
  
  			let objectTris = [];
@@ -464,7 +464,7 @@
  
  			if (useShadow) {
  				dirLight.buildViewAndProjectionMatrix();
-@@ -1384,7 +1653,7 @@
+@@ -1382,7 +1651,7 @@
  
  			let visibleTris = [];
  			for (let tri of objectTris) {

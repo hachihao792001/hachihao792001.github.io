@@ -98,7 +98,7 @@
  			}
  
  			updateResolution(canvasWidth, canvasHeight) {
-@@ -1896,6 +1952,10 @@
+@@ -1894,6 +1950,10 @@
  		const mobileControls = (document.getElementById("mobileControls"));
  		const mobileControlsButton = (document.getElementById("mobileControlsButton"));
  
@@ -109,7 +109,7 @@
  		let lookInput = { x: 0, y: 0 };
  		let lookSpeed = 450;
  
-@@ -2152,6 +2212,16 @@
+@@ -2150,6 +2210,16 @@
  			mobileControlsButton.blur();
  		});
  

@@ -37,7 +37,7 @@
  			}
  
  			processTriangles(tris) {
-@@ -956,6 +945,7 @@
+@@ -957,6 +946,7 @@
  						let edgeFunction01 = edgeFunctionRow01;
  						let edgeFunction12 = edgeFunctionRow12;
  						let edgeFunction20 = edgeFunctionRow20;
@@ -45,7 +45,7 @@
  						for (let x = bbox[0]; x <= bbox[1]; x++) {
  							if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
  								const baryCoord0 = edgeFunction12 / tri.signedDoubleArea;
-@@ -963,8 +953,8 @@
+@@ -964,8 +954,8 @@
  								const baryCoord2 = edgeFunction01 / tri.signedDoubleArea;
  								const z = tri.vertices[0].z * baryCoord0 + tri.vertices[1].z * baryCoord1 + tri.vertices[2].z * baryCoord2;
  

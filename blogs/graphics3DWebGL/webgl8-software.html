@@ -1287,16 +1287,16 @@ let dirLight = sun.addComponent(new DirectionalLight(parseFloat(lightDirIntensit
 
         for (let tri of tris) {
             ...
+            const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
+            const shadowFactor = 1 + 0.8 * Vector3.dot(triWorldNormal, dirLight.dir);    // tính 1 lần cho mỗi tam giác như series trước
+            ...
             if (z < depthBuffer[pixelIndex]) {
                 ...
-                let shadowFactor = 1.0;
-                if (this.useShadow && this.isInShadow(dirLight, pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ)) {
-                    shadowFactor = 0.2;
-                }
+                const inShadow = this.useShadow && this.isInShadow(dirLight, pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ);
 
                 ...
 
-                const lightIntensity = Math.max(ambientLight, dirLightDiffuse * shadowFactor + totalPointLightDiffuse);
+                const lightIntensity = Math.max(ambientLight, dirLightDiffuse * (inShadow ? shadowFactor : 1.0) + totalPointLightDiffuse);
                 ...
             }
         }
@@ -1350,7 +1350,7 @@ let dirLight = sun.addComponent(new DirectionalLight(parseFloat(lightDirIntensit
             shadow += shadowMapCoord.z > closestDepth + uShadowBias ? 1.0 : 0.0;
         }
     }
-    return shadow / 9.0;
+    return shadow / 9.0 * -dotProduct;   // nhân -dotProduct để bóng nhạt dần khi tia sáng gần song song với mặt phẳng (xem blog 6)
 }</code></pre>
                     Bên <code>getDirLightShadow</code> của software cũng tương tự. Tuy nhiên vì ta không có sẵn hàm <code>texture()</code> để sample nên ta phải nhân thêm
                     <code>shadowMapSize</code> để lấy đúng pixel trong shadow map, ngoài ra do <code>y</code> của software renderer ngược lại với WebGL nên ta phải lật lại:
@@ -1394,16 +1394,19 @@ let dirLight = sun.addComponent(new DirectionalLight(parseFloat(lightDirIntensit
                 shadow += shadowMapCoordZ > closestDepth + dirLight.shadowBias ? 1 : 0;
             }
         }
-        return shadow / 9;
+        return shadow / 9 * -dotProduct;     // <---------------------- như bên fragment shader
     }
 }</code></pre>
 
-                    Cuối cùng là ta cập nhật các chỗ sử dụng <code>isInShadow</code> thành <code>getDirLightShadow</code>:
+                    Cuối cùng là ta cập nhật các chỗ sử dụng <code>isInShadow</code> thành <code>getDirLightShadow</code>, và bỏ dòng <code>shadowFactor</code>
+                    tính cho mỗi tam giác ở phần 4, vì giờ <code>getDirLightShadow</code> đã tự nhân <code>-dotProduct</code> rồi:
                     <pre><code class="language-javascript">rasterizeClipSpaceTriangles(tris, dirLight, pointLights) {
     ...
     for (let tri of tris) {
         ...
-        
+        const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
+        const shadowFactor = 1 + 0.8 * Vector3.dot(triWorldNormal, dirLight.dir);    // <---------------------- bỏ
+        ...
         if (z < depthBuffer[pixelIndex]) {
             ...
             const dirLightShadow = this.useShadow ? this.getDirLightShadow(dirLight, pixelWorldX, pixelWorldY, pixelWorldZ, worldNormalX, worldNormalY, worldNormalZ) : 0;  // <----------------------
