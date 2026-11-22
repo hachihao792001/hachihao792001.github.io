@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview14.html"
 +++ "b/htmlPreviews\\htmlPreview15.html"
-@@ -3,13 +3,285 @@
+@@ -3,13 +3,290 @@
  
  <head>
  	<meta charset="UTF-8" />
@@ -116,6 +116,13 @@
 +			gap: 2px;
 +		}
 +
++		#mobileControls {
++			-webkit-user-select: none;
++			user-select: none;
++			-webkit-touch-callout: none;
++			-webkit-tap-highlight-color: transparent;
++		}
++
 +		#mobileControls button {
 +			width: 40px;
 +			height: 40px;
@@ -124,8 +131,6 @@
 +			font-family: inherit;
 +			font-size: 12px;
 +			touch-action: none;
-+			-webkit-user-select: none;
-+			user-select: none;
 +		}
 +	</style>
 +	<meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -290,7 +295,7 @@
  		class Vector3 {
  			constructor(x = 0, y = 0, z = 0, w = 1) {
  				this.x = x;
-@@ -18,10 +290,23 @@
+@@ -18,10 +295,23 @@
  				this.w = w;
  			}
  
@@ -314,7 +319,7 @@
  			static add(vec1, vec2) {
  				return new Vector3(vec1.x + vec2.x, vec1.y + vec2.y, vec1.z + vec2.z);
  			}
-@@ -41,25 +326,155 @@
+@@ -41,25 +331,155 @@
  				return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
  			}
  			static cross(v1, v2) {
@@ -476,7 +481,7 @@
  		class Quaternion {
  			constructor(a = 1, b = 0, c = 0, d = 0) {
  				this.a = a;
-@@ -68,21 +483,49 @@
+@@ -68,21 +488,49 @@
  				this.d = d;
  			}
  
@@ -535,7 +540,7 @@
  
  				const cosA = Math.cos(a);
  				const sinA = Math.sin(a);
-@@ -95,7 +538,7 @@
+@@ -95,7 +543,7 @@
  					cosC * cosB * cosA - sinC * sinB * sinA,
  					-cosC * cosB * sinA - sinC * sinB * cosA,
  					-cosC * sinB * cosA + sinC * cosB * sinA,
@@ -544,7 +549,7 @@
  				);
  			}
  
-@@ -114,253 +557,1708 @@
+@@ -114,253 +562,1711 @@
  			rotateVector(v) {
  				const qVec = new Quaternion(0, v.x, v.y, v.z);
  				const res = Quaternion.multiply(Quaternion.multiply(this, qVec), this.conjugate());
@@ -615,17 +620,8 @@
 +					if (tri.isIntersectingPlane(this)) return true;
 +				}
 +				return false;
- 			}
- 
--			static Multiply(m1, m2) {
--				let result = new Mat4x4();
--				for (let r = 0; r < 4; r++) {
--					for (let c = 0; c < 4; c++) {
--						result.m[r][c] =
--							m1.m[r][0] * m2.m[0][c] +
--							m1.m[r][1] * m2.m[1][c] +
--							m1.m[r][2] * m2.m[2][c] +
--							m1.m[r][3] * m2.m[3][c];
++			}
++
 +			clipWithTris(tris) {
 +				let clippedTris = [];
 +				for (let tri of tris) {
@@ -663,8 +659,17 @@
 +					Math.max(bbox1.minY, bbox2.minY),
 +					Math.min(bbox1.maxY, bbox2.maxY),
 +				);
-+			}
-+
+ 			}
+ 
+-			static Multiply(m1, m2) {
+-				let result = new Mat4x4();
+-				for (let r = 0; r < 4; r++) {
+-					for (let c = 0; c < 4; c++) {
+-						result.m[r][c] =
+-							m1.m[r][0] * m2.m[0][c] +
+-							m1.m[r][1] * m2.m[1][c] +
+-							m1.m[r][2] * m2.m[2][c] +
+-							m1.m[r][3] * m2.m[3][c];
 +			static isOverlap(bbox1, bbox2) {
 +				return (
 +					((bbox1.minX < bbox2.maxX && bbox1.maxX > bbox2.minX) || (bbox2.minX < bbox1.maxX && bbox2.maxX > bbox1.minX)) &&
@@ -1010,7 +1015,8 @@
 +				return (this.r + this.g + this.b) / 3.0 / 255.0;
 +			}
 +		}
-+
+ 
+-			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 +		class Texture {
 +			constructor(url = "") {
 +				this.pixels = null;
@@ -1019,7 +1025,8 @@
 +				if (url) this.load(url);
 +			}
  
--			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+-			cube1.rotate(0, 50 * dt, 0);
+-			cube2.rotate(50 * dt, 0, 0);
 +			async load(url) {
 +				const img = new Image();
 +				img.crossOrigin = "anonymous";
@@ -1041,8 +1048,9 @@
 +			}
 +		}
  
--			cube1.rotate(0, 50 * dt, 0);
--			cube2.rotate(50 * dt, 0, 0);
+-			gl.bindVertexArray(vertexArray);
+-			cube1.draw();
+-			cube2.draw();
 +		// ===== engine.js =====
 +		let maxActiveLights = 16;
 +		let ambientLight = 0.2;
@@ -1050,18 +1058,15 @@
 +		let shadowBias = 0.0015;
 +		let shadowMapDistance = 16;
  
--			gl.bindVertexArray(vertexArray);
--			cube1.draw();
--			cube2.draw();
+-			requestAnimationFrame(update);
+-		}
 +		class Transform {
 +			constructor(localPosition = Vector3.zero.clone(), localEulerAngles = Vector3.zero.clone(), localScale = Vector3.one.clone(), name = "Transform") {
 +				this.localPosition = localPosition;
 +				this.localRotation = Quaternion.buildQuaternionEuler(localEulerAngles);
 +				this.localScale = localScale;
 +				this.name = name;
- 
--			requestAnimationFrame(update);
--		}
++
 +				this._parent = null;
 +				this._children = [];
 +				this.gameObject = null;
@@ -2405,6 +2410,7 @@
 +
 +		window.addEventListener("keydown", (e) => {
 +			keyStates[e.key] = true;
++			if (e.key == " " && (document.pointerLockElement === renderDiv || e.target === document.body)) e.preventDefault();
 +		});
 +		window.addEventListener("keyup", (e) => {
 +			keyStates[e.key] = false;
@@ -2423,6 +2429,8 @@
 +			helpPopup.style.display = "none";
 +			helpCloseButton.blur();
 +		});
++
++		mobileControls.addEventListener("contextmenu", (e) => e.preventDefault());
  
 -		requestAnimationFrame(update);
 +		const keyButtons = mobileControls.querySelectorAll("button[data-key]");

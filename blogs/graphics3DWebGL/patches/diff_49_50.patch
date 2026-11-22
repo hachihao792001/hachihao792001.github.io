@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview49.html"
 +++ "b/htmlPreviews\\htmlPreview50.html"
-@@ -620,6 +620,232 @@
+@@ -625,6 +625,232 @@
  			}
  		}
  
@@ -233,7 +233,7 @@
  		// ===== graphics.js =====
  		class Color {
  			constructor(r, g, b) {
-@@ -1067,16 +1293,97 @@
+@@ -1072,16 +1298,97 @@
  		}
  
  		// ===== mesh.js =====
@@ -338,7 +338,7 @@
  			}
  		}
  
-@@ -1892,17 +2199,163 @@ void main(){
+@@ -1897,17 +2204,163 @@ void main(){
  				this.height = this.canvas.height;
  				this.imageData = this.ctx.createImageData(this.width, this.height);
  				this.screenBuffer = this.imageData.data;

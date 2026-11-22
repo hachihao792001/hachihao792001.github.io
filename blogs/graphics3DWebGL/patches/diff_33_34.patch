@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview33.html"
 +++ "b/htmlPreviews\\htmlPreview34.html"
-@@ -234,7 +234,11 @@
+@@ -239,7 +239,11 @@
  		</div>
  		<div class="controlRow">
  			<label class="controlLabel" for="showShadowMap">Show shadow map:</label>
@@ -13,7 +13,7 @@
  		</div>
  	</div>
  
-@@ -1355,16 +1359,36 @@ uniform int uPointLightCount;
+@@ -1360,16 +1364,36 @@ uniform int uPointLightCount;
  uniform float uPointLightIntensity;
  uniform float uPointLightRange;
  
@@ -50,7 +50,7 @@
  
  	float pointLightRangeSquare = uPointLightRange * uPointLightRange;
  	float totalPointLightDiffuse = 0.0;
-@@ -1476,6 +1500,11 @@ void main(){
+@@ -1481,6 +1505,11 @@ void main(){
  		const uPointLightIntensity = gl.getUniformLocation(program, "uPointLightIntensity");
  		const uPointLightRange = gl.getUniformLocation(program, "uPointLightRange");
  
@@ -62,7 +62,7 @@
  		const uShadowModel = gl.getUniformLocation(shadowProgram, "uModel");
  		const uShadowLightView = gl.getUniformLocation(shadowProgram, "uView");
  		const uShadowLightProjection = gl.getUniformLocation(shadowProgram, "uProjection");
-@@ -1544,6 +1573,8 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
+@@ -1549,6 +1578,8 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
  		let viewFromLight = false;
  		const showShadowMapCheckbox = (document.getElementById("showShadowMap"));
  		let showShadowMap = showShadowMapCheckbox.checked;
@@ -71,7 +71,7 @@
  
  		let brickTexture = new Texture(
  			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
-@@ -1589,7 +1620,9 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
+@@ -1594,7 +1625,9 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
  			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
  
  			dirLight.buildViewAndProjectionMatrix();
@@ -82,7 +82,7 @@
  
  			if (viewFromLight) {
  				gl.uniformMatrix4fv(uView, false, dirLight.viewMatrix.toColumnMajor());
-@@ -1616,6 +1649,14 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
+@@ -1621,6 +1654,14 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
  			gl.uniform1f(uPointLightRange, pointLightRange);
  			gl.uniform1f(uAmbientLight, 0.1);
  
@@ -97,7 +97,7 @@
  			ground.drawWithChildren();
  			for (let light of pointLights) {
  				light.drawWithChildren();
-@@ -1695,6 +1736,11 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
+@@ -1700,6 +1741,11 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
  			showShadowMapCheckbox.blur();
  		});
  

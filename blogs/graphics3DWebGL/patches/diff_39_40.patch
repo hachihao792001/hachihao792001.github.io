@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview39.html"
 +++ "b/htmlPreviews\\htmlPreview40.html"
-@@ -949,16 +949,16 @@
+@@ -954,16 +954,16 @@
  
  			draw() {
  				if (this.mesh.vertexCount == 0) return;
@@ -22,7 +22,7 @@
  
  				gl.bindVertexArray(this.mesh.vertexArray);
  				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
-@@ -973,26 +973,26 @@
+@@ -978,26 +978,26 @@
  				}
  			}
  
@@ -56,7 +56,7 @@
  					}
  				}
  			}
-@@ -1034,16 +1034,16 @@
+@@ -1039,16 +1039,16 @@
  				gl.viewport(0, 0, shadowMapSize, shadowMapSize);
  				gl.clear(gl.DEPTH_BUFFER_BIT);
  
@@ -78,7 +78,7 @@
  			}
  		}
  		class PointLight extends GameObject {
-@@ -1081,27 +1081,27 @@
+@@ -1086,27 +1086,27 @@
  			}
  
  			buildShadowMaps(gameObjects, projection) {
@@ -111,7 +111,7 @@
  			}
  		}
  
-@@ -1372,6 +1372,79 @@
+@@ -1377,6 +1377,79 @@
  			}
  		}
  
@@ -191,7 +191,7 @@
  		// ===== index.js =====
  		const gameCanvas = (document.getElementById("gameCanvas"));
  		const gl = (gameCanvas.getContext("webgl2"));
-@@ -1534,74 +1607,14 @@ in vec2 vUV;
+@@ -1539,74 +1612,14 @@ in vec2 vUV;
  void main(){
  	if (uUseTexture && texture(uTexture, vUV).a < 0.5) discard;
  }`;
@@ -273,7 +273,7 @@
  
  		gl.enable(gl.DEPTH_TEST);
  		gl.enable(gl.CULL_FACE);
-@@ -1612,7 +1625,7 @@ const uPointLightShadowUseTexture = gl.getUniformLocation(pointShadowProgram, "u
+@@ -1617,7 +1630,7 @@ const uPointLightShadowUseTexture = gl.getUniformLocation(pointShadowProgram, "u
  		let znear = 0.01,
  			zfar = 1000;
  		let projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
@@ -282,7 +282,7 @@
  		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 5, 0.2);
  		let keyStates = {};
  
-@@ -1719,11 +1732,11 @@ const uPointLightShadowUseTexture = gl.getUniformLocation(pointShadowProgram, "u
+@@ -1724,11 +1737,11 @@ const uPointLightShadowUseTexture = gl.getUniformLocation(pointShadowProgram, "u
  				}
  			}
  
@@ -298,7 +298,7 @@
  
  			const pointLightData = new Float32Array(maxActiveLights * 3);
  			const pointLightCount = Math.min(pointLights.length, maxActiveLights);
-@@ -1733,31 +1746,31 @@ const uPointLightShadowUseTexture = gl.getUniformLocation(pointShadowProgram, "u
+@@ -1738,31 +1751,31 @@ const uPointLightShadowUseTexture = gl.getUniformLocation(pointShadowProgram, "u
  				pointLightData[i * 3 + 1] = lightPos.y;
  				pointLightData[i * 3 + 2] = lightPos.z;
  			}
@@ -346,7 +346,7 @@
  			gl.activeTexture(gl.TEXTURE0);
  
  			ground.drawWithChildren();
-@@ -1823,7 +1836,7 @@ const uPointLightShadowUseTexture = gl.getUniformLocation(pointShadowProgram, "u
+@@ -1828,7 +1841,7 @@ const uPointLightShadowUseTexture = gl.getUniformLocation(pointShadowProgram, "u
  			gameCanvas.height = canvasRenderHeight;
  
  			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);

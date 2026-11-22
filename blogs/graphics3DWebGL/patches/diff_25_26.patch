@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview25.html"
 +++ "b/htmlPreviews\\htmlPreview26.html"
-@@ -942,6 +942,15 @@
+@@ -947,6 +947,15 @@
  				this.vertices = vertices;
  				this.uv = uv;
  				this.color = color;
@@ -16,7 +16,7 @@
  			}
  		}
  
-@@ -970,15 +979,18 @@
+@@ -975,15 +984,18 @@
  			uploadToGPU() {
  				if (this.tris.length == 0) return;
  
@@ -41,7 +41,7 @@
  					}
  				}
  				this.vertexCount = this.tris.length * 3;
-@@ -989,9 +1001,11 @@
+@@ -994,9 +1006,11 @@
  				gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
  				gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
  				gl.enableVertexAttribArray(aPosition);
@@ -55,7 +55,7 @@
  				gl.bindVertexArray(null);
  			}
  		}
-@@ -1199,11 +1213,14 @@ uniform mat4 uView;
+@@ -1204,11 +1218,14 @@ uniform mat4 uView;
  uniform mat4 uProjection;
  in vec3 aPosition;
  in vec2 aUV;
@@ -70,7 +70,7 @@
  }`;
  		const fragmentShaderSource = `#version 300 es
  precision highp float;
-@@ -1211,14 +1228,18 @@ precision highp float;
+@@ -1216,14 +1233,18 @@ precision highp float;
  uniform sampler2D uTexture;
  uniform bool uUseTexture;
  uniform vec3 uColor;
@@ -90,7 +90,7 @@
  }`;
  		function compileShader(type, source) {
  			const shader = gl.createShader(type);
-@@ -1243,12 +1264,15 @@ void main(){
+@@ -1248,12 +1269,15 @@ void main(){
  
  		const aPosition = gl.getAttribLocation(program, "aPosition");
  		const aUV = gl.getAttribLocation(program, "aUV");
@@ -106,7 +106,7 @@
  
  		gl.enable(gl.DEPTH_TEST);
  		gl.enable(gl.CULL_FACE);
-@@ -1333,12 +1357,16 @@ void main(){
+@@ -1338,12 +1362,16 @@ void main(){
  			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
  			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
  			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);

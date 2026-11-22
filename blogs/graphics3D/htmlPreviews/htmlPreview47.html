@@ -1720,6 +1720,7 @@
 
 		window.addEventListener("keydown", (e) => {
 			keyStates[e.key] = true;
+			if (e.key == " " && (document.pointerLockElement === gameCanvas || e.target === document.body)) e.preventDefault();
 		});
 		window.addEventListener("keyup", (e) => {
 			keyStates[e.key] = false;

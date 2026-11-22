@@ -144,7 +144,7 @@
  
  			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
  			rasterizer.updateResolution(gameCanvas.width, gameCanvas.height);
-@@ -1871,23 +1928,62 @@
+@@ -1871,26 +1928,65 @@
  			canvasRenderHeight = readResolution(canvasResHeightInput, 16, 1440, canvasRenderHeight);
  			canvasResWidthInput.value = canvasRenderWidth.toString();
  			canvasResHeightInput.value = canvasRenderHeight.toString();
@@ -213,4 +213,8 @@
 +
  		window.addEventListener("keydown", (e) => {
  			keyStates[e.key] = true;
+-			if (e.key == " " && (document.pointerLockElement === gameCanvas || e.target === document.body)) e.preventDefault();
++			if (e.key == " " && (document.pointerLockElement === renderDiv || e.target === document.body)) e.preventDefault();
  		});
+ 		window.addEventListener("keyup", (e) => {
+ 			keyStates[e.key] = false;

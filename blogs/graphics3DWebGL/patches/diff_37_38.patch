@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview37.html"
 +++ "b/htmlPreviews\\htmlPreview38.html"
-@@ -973,26 +973,26 @@
+@@ -978,26 +978,26 @@
  				}
  			}
  
@@ -34,7 +34,7 @@
  					}
  				}
  			}
-@@ -1038,7 +1038,7 @@
+@@ -1043,7 +1043,7 @@
  				gl.uniformMatrix4fv(uShadowLightView, false, this.viewMatrix.toColumnMajor());
  				gl.uniformMatrix4fv(uShadowLightProjection, false, this.projectionMatrix.toColumnMajor());
  				for (let gameObject of gameObjects) {
@@ -43,7 +43,7 @@
  				}
  
  				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-@@ -1046,6 +1046,65 @@
+@@ -1051,6 +1051,65 @@
  				gl.useProgram(program);
  			}
  		}
@@ -109,7 +109,7 @@
  		// ===== mesh.js =====
  		class Triangle {
  			constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
-@@ -1317,6 +1376,9 @@
+@@ -1322,6 +1381,9 @@
  		const gameCanvas = (document.getElementById("gameCanvas"));
  		const gl = (gameCanvas.getContext("webgl2"));
  
@@ -119,7 +119,7 @@
  		const vertexShaderSource = `#version 300 es
  uniform mat4 uModel;
  uniform mat4 uNormalMatrix;
-@@ -1346,7 +1408,7 @@ uniform vec3 uDirLightDir;
+@@ -1351,7 +1413,7 @@ uniform vec3 uDirLightDir;
  uniform float uDirLightIntensity;
  uniform float uAmbientLight;
  
@@ -128,7 +128,7 @@
  uniform int uPointLightCount;
  uniform float uPointLightIntensity;
  uniform float uPointLightRange;
-@@ -1358,6 +1420,12 @@ uniform bool uUseShadow;
+@@ -1363,6 +1425,12 @@ uniform bool uUseShadow;
  uniform float uShadowBias;
  uniform float uShadowTexelSize;
  
@@ -141,7 +141,7 @@
  in vec2 vUV;
  in vec3 vWorldNormal;
  in vec3 vWorldPosition;
-@@ -1386,6 +1454,19 @@ float getDirLightShadow() {
+@@ -1391,6 +1459,19 @@ float getDirLightShadow() {
  	return shadow / 9.0 * -dotProduct;
  }
  
@@ -161,7 +161,7 @@
  void main(){
  	vec4 textureColor = texture(uTexture, vUV);
  	if (uUseTexture && textureColor.a < 0.5) discard;
-@@ -1400,6 +1481,19 @@ void main(){
+@@ -1405,6 +1486,19 @@ void main(){
  		vec3 pointLightVec = uPointLightPositions[i] - vWorldPosition;
  		if (dot(vWorldNormal, pointLightVec) <= 0.0) continue;
  
@@ -181,7 +181,7 @@
  		float distanceFromPixelToPointLight2 = dot(pointLightVec, pointLightVec);
  		if (distanceFromPixelToPointLight2 >= pointLightRangeSquare) continue;
  
-@@ -1464,6 +1558,7 @@ void main(){
+@@ -1469,6 +1563,7 @@ void main(){
  
  		const program = createProgram(vertexShaderSource, fragmentShaderSource);
  		const shadowProgram = createProgram(shadowVertexShaderSource, shadowFragmentShaderSource);
@@ -189,7 +189,7 @@
  		gl.useProgram(program);
  
  		const aPosition = gl.getAttribLocation(program, "aPosition");
-@@ -1490,12 +1585,22 @@ void main(){
+@@ -1495,12 +1590,22 @@ void main(){
  		const uUseShadow = gl.getUniformLocation(program, "uUseShadow");
  		const uShadowBias = gl.getUniformLocation(program, "uShadowBias");
  		const uShadowTexelSize = gl.getUniformLocation(program, "uShadowTexelSize");
@@ -212,7 +212,7 @@
  
  		gl.enable(gl.DEPTH_TEST);
  		gl.enable(gl.CULL_FACE);
-@@ -1553,7 +1658,9 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
+@@ -1558,7 +1663,9 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
  		const pointLightRangeSlider = (document.getElementById("pointRange"));
  		const pointLightRangeText = (document.getElementById("pointRangeText"));
  		let pointLightRange = parseFloat(pointLightRangeSlider.value);
@@ -223,7 +223,7 @@
  
  		const useShadowCheckbox = (document.getElementById("useShadow"));
  		let useShadow = useShadowCheckbox.checked;
-@@ -1578,8 +1685,8 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
+@@ -1583,8 +1690,8 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
  		);
  		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
  		let pointLights = [
@@ -234,7 +234,7 @@
  		];
  		let shadowCasters = [ground, woodTower];
  
-@@ -1602,8 +1709,13 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
+@@ -1607,8 +1714,13 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
  			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
  
  			dirLight.buildViewAndProjectionMatrix();
@@ -248,7 +248,7 @@
  			}
  
  			gl.uniformMatrix4fv(uView, false, camera.getViewMatrix().toColumnMajor());
-@@ -1632,6 +1744,17 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
+@@ -1637,6 +1749,17 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
  			gl.activeTexture(gl.TEXTURE1);
  			gl.bindTexture(gl.TEXTURE_2D, dirLight.shadowMapTexture);
  			gl.uniform1i(uShadowMap, 1);

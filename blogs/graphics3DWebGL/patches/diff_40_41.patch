@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview40.html"
 +++ "b/htmlPreviews\\htmlPreview41.html"
-@@ -960,8 +960,7 @@
+@@ -965,8 +965,7 @@
  				program.set("uUseTexture", this.texture != null);
  				program.set("uColor", this.color);
  
@@ -10,7 +10,7 @@
  			}
  
  			drawWithChildren() {
-@@ -984,8 +983,7 @@
+@@ -989,8 +988,7 @@
  				}
  				depthProgram.set("uUseTexture", this.texture != null);
  
@@ -20,7 +20,7 @@
  			}
  
  			drawDepthWithChildren(depthProgram) {
-@@ -1164,18 +1162,8 @@
+@@ -1169,18 +1167,8 @@
  				}
  				this.vertexCount = this.tris.length * 3;
  
@@ -41,7 +41,7 @@
  			}
  		}
  
-@@ -1445,6 +1433,61 @@
+@@ -1450,6 +1438,61 @@
  			}
  		}
  
@@ -103,7 +103,7 @@
  		// ===== index.js =====
  		const gameCanvas = (document.getElementById("gameCanvas"));
  		const gl = (gameCanvas.getContext("webgl2"));
-@@ -1459,7 +1502,7 @@ uniform mat4 uView;
+@@ -1464,7 +1507,7 @@ uniform mat4 uView;
  uniform mat4 uProjection;
  layout(location = 0) in vec3 aPosition;
  layout(location = 1) in vec2 aUV;
@@ -112,7 +112,7 @@
  out vec2 vUV;
  out vec3 vWorldPosition;
  out vec3 vWorldNormal;
-@@ -1612,10 +1655,6 @@ void main(){
+@@ -1617,10 +1660,6 @@ void main(){
  		const pointShadowProgram = new ShaderProgram(gl, shadowVertexShaderSource, shadowFragmentShaderSource);
  		program.use();
  

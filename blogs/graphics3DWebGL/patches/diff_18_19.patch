@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview18.html"
 +++ "b/htmlPreviews\\htmlPreview19.html"
-@@ -181,34 +181,6 @@
+@@ -186,34 +186,6 @@
  				<input id="canvasResHeight" value="450" size="4" />
  			</span>
  		</div>
@@ -35,7 +35,7 @@
  	</div>
  
  	<div id="helpPopup" style="display: none">
-@@ -234,13 +206,6 @@
+@@ -239,13 +211,6 @@
  			static edgeFunction(v0, v1, p) {
  				return (v0.y - v1.y) * (p.x - v0.x) + (v1.x - v0.x) * (p.y - v0.y);
  			}
@@ -49,7 +49,7 @@
  		}
  
  		class Vector2 {
-@@ -780,9 +745,6 @@
+@@ -785,9 +750,6 @@
  		}
  
  		// ===== engine.js =====
@@ -59,7 +59,7 @@
  		class Transform {
  			constructor(localPosition = Vector3.zero.clone(), localEulerAngles = Vector3.zero.clone(), localScale = Vector3.one.clone(), name = "Transform") {
  				this.localPosition = localPosition;
-@@ -1055,7 +1017,6 @@
+@@ -1060,7 +1022,6 @@
  					transformedTri.mulMat4x4(scaleMat);
  					transformedTri.rotate(rotation);
  					transformedTri.mulMat4x4(translationMat);
@@ -67,7 +67,7 @@
  					transformedTri.color = this.color;
  					transformedTris.push(transformedTri);
  				}
-@@ -1073,13 +1034,6 @@
+@@ -1078,13 +1039,6 @@
  			}
  		}
  
@@ -81,7 +81,7 @@
  		class Rasterizer {
  			constructor(canvasWidth, canvasHeight, ctx) {
  				this.ctx = ctx;
-@@ -1118,12 +1072,11 @@
+@@ -1123,12 +1077,11 @@
  				this.depthBuffer.fill(Infinity);
  			}
  
@@ -95,7 +95,7 @@
  
  				for (let tri of tris) {
  					let vertices = tri.vertices;
-@@ -1138,13 +1091,6 @@
+@@ -1143,13 +1096,6 @@
  					tri.calculateSignedDoubleArea();
  					const signedDoubleArea = tri.signedDoubleArea;
  
@@ -109,7 +109,7 @@
  					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
  
  					let edgeFunctionRow01 = MathExtend.edgeFunction(tri.vertices[0], tri.vertices[1], new Vector3(bbox.minX, bbox.minY, 0));
-@@ -1165,29 +1111,6 @@
+@@ -1170,29 +1116,6 @@
  					const edgeSlopeY12 = vertex2.x - vertex1.x;
  					const edgeSlopeY20 = vertex0.x - vertex2.x;
  
@@ -139,7 +139,7 @@
  					const triColor = tri.color;
  
  					for (let y = bbox.minY; y <= bbox.maxY; y++) {
-@@ -1205,41 +1128,10 @@
+@@ -1210,41 +1133,10 @@
  								if (z < depthBuffer[pixelIndex]) {
  									depthBuffer[pixelIndex] = z;
  
@@ -184,7 +184,7 @@
  								}
  							}
  							edgeFunction01 += edgeSlopeX01;
-@@ -1266,7 +1158,6 @@
+@@ -1271,7 +1163,6 @@
  
  				this.uv = uv;
  				this.viewDistanceSquared = 0;
@@ -192,7 +192,7 @@
  				this.color = color;
  			}
  
-@@ -1274,7 +1165,6 @@
+@@ -1279,7 +1170,6 @@
  				let tri = new Triangle();
  				for (let i = 0; i < this.vertices.length; i++) {
  					tri.vertices[i] = this.vertices[i].clone();
@@ -200,7 +200,7 @@
  					tri.uv[i] = this.uv[i].clone();
  				}
  				tri.color = this.color;
-@@ -1314,9 +1204,6 @@
+@@ -1319,9 +1209,6 @@
  					outTri.vertices[0] = f;
  					outTri.vertices[1] = intersection1;
  					outTri.vertices[2] = intersection2;
@@ -210,7 +210,7 @@
  					outTri.uv[0] = this.uv[frontPoints[0]];
  					outTri.uv[1] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
  					outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
-@@ -1339,9 +1226,6 @@
+@@ -1344,9 +1231,6 @@
  					outTri1.vertices[0] = f0;
  					outTri1.vertices[1] = f1;
  					outTri1.vertices[2] = intersection1;
@@ -220,7 +220,7 @@
  					outTri1.uv[0] = this.uv[frontPoints[0]];
  					outTri1.uv[1] = this.uv[frontPoints[1]];
  					outTri1.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
-@@ -1352,9 +1236,6 @@
+@@ -1357,9 +1241,6 @@
  					outTri2.vertices[0] = f1.clone();
  					outTri2.vertices[1] = intersection2;
  					outTri2.vertices[2] = intersection1.clone();
@@ -230,7 +230,7 @@
  					outTri2.uv[0] = this.uv[frontPoints[1]].clone();
  					outTri2.uv[1] = Vector2.lerp(this.uv[frontPoints[1]], this.uv[behindPoints[0]], t2);
  					outTri2.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
-@@ -1365,67 +1246,12 @@
+@@ -1370,67 +1251,12 @@
  				return outTris;
  			}
  
@@ -298,7 +298,7 @@
  		}
  
  		class Mesh {
-@@ -1677,22 +1503,6 @@
+@@ -1682,22 +1508,6 @@
  		let lookInput = { x: 0, y: 0 };
  		let lookSpeed = 450;
  
@@ -321,7 +321,7 @@
  		let cubeMesh = new Cube();
  		let woodTower = new GameObject(
  			new Vector3(0, -0.17, 0),
-@@ -1715,10 +1525,6 @@
+@@ -1720,10 +1530,6 @@
  			if (lookInput.x != 0 || lookInput.y != 0) {
  				camera.updateRotation(lookInput.x * dt * lookSpeed, lookInput.y * dt * lookSpeed);
  			}
@@ -332,7 +332,7 @@
  		}
  
  		function gameObjectToWorldSpaceTriangles() {
-@@ -1766,7 +1572,7 @@
+@@ -1771,7 +1577,7 @@
  
  		function rasterize(visibleTris) {
  			rasterizer.clearScreen();
@@ -341,7 +341,7 @@
  			rasterizer.drawCall();
  
  			let x = rasterizer.screenCenterX,
-@@ -1801,26 +1607,6 @@
+@@ -1806,26 +1612,6 @@
  
  		update();
  

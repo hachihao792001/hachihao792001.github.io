@@ -30,7 +30,7 @@
  		.slider-value {
  			display: inline-block;
  			min-width: 3em;
-@@ -134,6 +152,7 @@
+@@ -139,6 +157,7 @@
  	<h1>Hanvas Engine</h1>
  	<div id="render">
  		<canvas id="gameCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff"></canvas>
@@ -38,7 +38,7 @@
  	</div>
  	<h2 id="fps">FPS: 0</h2>
  	<div>
-@@ -1047,9 +1066,6 @@
+@@ -1052,9 +1071,6 @@
  				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
  
  				this.clearScreen();
@@ -48,7 +48,7 @@
  			}
  
  			updateResolution(canvasWidth, canvasHeight) {
-@@ -1062,9 +1078,6 @@
+@@ -1067,9 +1083,6 @@
  				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
  
  				this.clearScreen();
@@ -58,7 +58,7 @@
  			}
  
  			clearScreen() {
-@@ -1574,13 +1587,6 @@
+@@ -1579,13 +1592,6 @@
  			rasterizer.clearScreen();
  			rasterizer.rasterizeClipSpaceTriangles(visibleTris);
  			rasterizer.drawCall();

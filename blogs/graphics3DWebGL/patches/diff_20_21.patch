@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview20.html"
 +++ "b/htmlPreviews\\htmlPreview21.html"
-@@ -375,8 +375,8 @@
+@@ -380,8 +380,8 @@
  				let matrix = new Mat4x4();
  				matrix.m[0][0] = (h / w) * fovMultiplier;
  				matrix.m[1][1] = fovMultiplier;
@@ -11,7 +11,7 @@
  				matrix.m[3][2] = 1.0;
  				return matrix;
  			}
-@@ -425,6 +425,44 @@
+@@ -430,6 +430,44 @@
  				matrix.m[3][3] = 1;
  				return matrix;
  			}
@@ -56,7 +56,7 @@
  		}
  
  		class Quaternion {
-@@ -939,6 +977,11 @@
+@@ -944,6 +982,11 @@
  				return Mat4x4.Translation(position.x, position.y, position.z);
  			}
  
@@ -68,7 +68,7 @@
  			getViewMatrix() {
  				return Mat4x4.ViewFromPosRot(this.position, this.rotation);
  			}
-@@ -1051,6 +1094,23 @@
+@@ -1056,6 +1099,23 @@
  				}
  				return transformedTris;
  			}
@@ -92,7 +92,7 @@
  		}
  
  		class Rasterizer {
-@@ -1270,6 +1330,9 @@
+@@ -1275,6 +1335,9 @@
  		class Mesh {
  			constructor(tris = []) {
  				this.tris = tris;
@@ -102,7 +102,7 @@
  			}
  
  			setTriangles(tris, color = new Color(255, 255, 255)) {
-@@ -1283,6 +1346,31 @@
+@@ -1288,6 +1351,31 @@
  						),
  					);
  				}
@@ -134,7 +134,7 @@
  			}
  		}
  
-@@ -1481,12 +1569,63 @@
+@@ -1486,12 +1574,63 @@
  
  		// ===== index.js =====
  		const gameCanvas = (document.getElementById("gameCanvas"));
@@ -200,7 +200,7 @@
  		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 5, 0.2);
  		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
  		let keyStates = {};
-@@ -1589,6 +1728,17 @@
+@@ -1594,6 +1733,17 @@
  			rasterizer.drawCall();
  		}
  
@@ -218,7 +218,7 @@
  		function update(time = performance.now()) {
  			dt = (time - lastTime) / 1000;
  			lastTime = time;
-@@ -1602,11 +1752,7 @@
+@@ -1607,11 +1757,7 @@
  			}
  
  			updateGameObjectTransforms();
@@ -231,7 +231,7 @@
  
  			requestAnimationFrame(update);
  		}
-@@ -1624,7 +1770,7 @@
+@@ -1629,7 +1775,7 @@
  			gameCanvas.height = canvasRenderHeight;
  
  			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);

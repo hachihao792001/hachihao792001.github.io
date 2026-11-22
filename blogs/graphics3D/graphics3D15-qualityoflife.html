@@ -476,7 +476,9 @@ document.addEventListener("mousemove", (e) => {				// đổi gameCanvas thành d
 					Cho nên khi mấy nút đó được nhấn, mình chỉ cần ghi vào đúng cái <code>keyStates</code> đó, không cần phải sửa
                     <code>Camera</code> một chút nào 😳
 
-                    <pre><code class="language-javascript">const keyButtons = mobileControls.querySelectorAll("button[data-key]");
+                    <pre><code class="language-javascript">mobileControls.addEventListener("contextmenu", (e) => e.preventDefault());	// giải thích bên dưới
+
+const keyButtons = mobileControls.querySelectorAll("button[data-key]");
 keyButtons.forEach((button) => {
 	const key = (button.getAttribute("data-key"));		// sử dụng data-key ở trên
 	button.addEventListener("pointerdown", (e) => {
@@ -495,6 +497,21 @@ keyButtons.forEach((button) => {
                     href="https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events">pointer event</a> chứ không
                     phải <code>mousedown</code>/<code>touchstart</code>, vì pointer event gộp chung chuột, cảm ứng và
                     bút thành một API.<br/><br/>
+
+                    Trên điện thoại, nhấn giữ 1 nút thì trình duyệt sẽ làm mấy việc mặc định của nó: bôi đen chữ hoặc
+                    mở menu lên. Nhấn giữ là việc ta làm liên tục để di chuyển, nên phải tắt
+                    hết: dòng <code>contextmenu</code> ở trên chặn cái menu, còn lại là CSS cho cả khung <code>#mobileControls</code>:
+                    <pre><code class="language-css">#mobileControls {
+	-webkit-user-select: none;					/* không cho bôi đen chữ */
+	user-select: none;
+	-webkit-touch-callout: none;				/* menu nhấn giữ của iOS */
+	-webkit-tap-highlight-color: transparent;	/* khung tô màu lúc chạm */
+}
+
+#mobileControls button {
+	...
+	touch-action: none;		/* không cho trình duyệt dùng thao tác chạm trên nút để cuộn hay zoom trang */
+}</code></pre>
 
                     Phần nhìn xung quanh: Với chuột, mình có sẵn <code>movementX</code> và <code>movementY</code> của chuột trong event 
 					<a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/mousemove_event"><code>mousemove</code></a>. Còn với

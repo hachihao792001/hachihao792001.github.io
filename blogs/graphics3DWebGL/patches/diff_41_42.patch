@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview41.html"
 +++ "b/htmlPreviews\\htmlPreview42.html"
-@@ -948,7 +948,7 @@
+@@ -953,7 +953,7 @@
  			}
  
  			draw() {
@@ -9,7 +9,7 @@
  				program.set("uModel", this.transform.getModelMatrix());
  				program.set("uNormalMatrix", this.transform.getNormalMatrix());
  
-@@ -973,7 +973,7 @@
+@@ -978,7 +978,7 @@
  			}
  
  			drawDepth(depthProgram) {
@@ -18,7 +18,7 @@
  				depthProgram.set("uModel", this.transform.getModelMatrix());
  
  				if (this.texture) {
-@@ -1105,225 +1105,181 @@
+@@ -1110,225 +1110,181 @@
  
  		// ===== mesh.js =====
  		class Triangle {
@@ -336,7 +336,7 @@
  				const vertices = [];
  				const uvs = [];
  				const triangles = [];
-@@ -1351,12 +1307,11 @@
+@@ -1356,12 +1312,11 @@
  							triVertices.push(vertexCoord);
  							triUVs.push(vertexUV);
  						}
@@ -351,7 +351,7 @@
  			}
  		}
  
-@@ -1457,15 +1412,27 @@
+@@ -1462,15 +1417,27 @@
  				this.glBuffer = gl.createBuffer();
  				gl.bindBuffer(gl.ARRAY_BUFFER, this.glBuffer);
  				gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
@@ -381,7 +381,7 @@
  
  				this.glVertexArray = gl.createVertexArray();
  				gl.bindVertexArray(this.glVertexArray);
-@@ -1474,17 +1441,14 @@
+@@ -1479,17 +1446,14 @@
  					gl.enableVertexAttribArray(attribute.location);
  					gl.vertexAttribPointer(attribute.location, attribute.componentCount, gl.FLOAT, false, layout.stride, attribute.offset);
  				}
@@ -401,7 +401,7 @@
  			}
  		}
  
-@@ -1727,15 +1691,17 @@ void main(){
+@@ -1732,15 +1696,17 @@ void main(){
  			gl
  		);
  

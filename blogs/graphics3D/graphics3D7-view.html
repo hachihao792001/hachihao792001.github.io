@@ -469,10 +469,15 @@
                         
 window.addEventListener('keydown', (e) => {
     keyStates[e.key] = true;
+    if (e.key == ' ' && (document.pointerLockElement === canvas || e.target === document.body)) e.preventDefault();
 });
 window.addEventListener('keyup', (e) => {
     keyStates[e.key] = false;
 });</code></pre>
+                    Phím space ta dùng để bay lên, nhưng mặc định của trình duyệt thì bấm space là cuộn trang xuống, nên nếu trang đủ dài thì bạn sẽ vừa bay lên
+                    vừa bị cuộn trang.
+                    Vì vậy lúc chuột đang bị khóa vào canvas, hoặc không có ô input nào đang được chọn (<code>e.target</code> là <code>body</code>), thì ta chặn hành động
+                    mặc định đó bằng <code>e.preventDefault()</code>.<br/><br/>
                     Ở hàm <code>update</code> thì gọi hàm <code>updateMovement</code> ở frame hiện tại (trước khi tính view matrix):
                     <pre><code class="language-javascript">function update(time = performance.now()) {
                         

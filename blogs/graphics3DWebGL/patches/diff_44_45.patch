@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview44.html"
 +++ "b/htmlPreviews\\htmlPreview45.html"
-@@ -931,46 +931,87 @@
+@@ -936,46 +936,87 @@
  		class GameObject {
  			static incrementingID = 0;
  
@@ -102,7 +102,7 @@
  				if (glTexture) {
  					glTexture.bind(0);
  					depthProgram.set("uTexture", 0);
-@@ -979,14 +1020,25 @@
+@@ -984,14 +1025,25 @@
  
  				this.mesh.vertexArray.draw();
  			}
@@ -134,7 +134,7 @@
  			}
  		}
  
-@@ -1011,15 +1063,15 @@
+@@ -1016,15 +1068,15 @@
  				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance * 2);
  			}
  
@@ -153,7 +153,7 @@
  				}
  
  				RenderTarget.bindCanvas(gl);
-@@ -1036,8 +1088,8 @@
+@@ -1041,8 +1093,8 @@
  				[new Vector3(0, 0, -1), new Vector3(0, -1, 0), new Vector3(-1, 0, 0)],
  			];
  
@@ -164,7 +164,7 @@
  
  				this.cubemap = TextureCube.depth(gl, pointShadowMapSize);
  
-@@ -1047,7 +1099,7 @@
+@@ -1052,7 +1104,7 @@
  				}
  			}
  
@@ -173,7 +173,7 @@
  				pointShadowProgram.use();
  				gl.frontFace(gl.CCW);
  
-@@ -1059,8 +1111,8 @@
+@@ -1064,8 +1116,8 @@
  
  					this.targets[face].bind();
  					gl.clear(gl.DEPTH_BUFFER_BIT);
@@ -184,7 +184,7 @@
  					}
  				}
  
-@@ -1732,23 +1784,25 @@ void main(){
+@@ -1737,23 +1789,25 @@ void main(){
  			gl
  		);
  
@@ -223,7 +223,7 @@
  
  		let lastTime = performance.now();
  		let dt = 0;
-@@ -1768,6 +1822,9 @@ void main(){
+@@ -1773,6 +1827,9 @@ void main(){
  		function render() {
  			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
  
@@ -233,7 +233,7 @@
  			dirLight.buildViewAndProjectionMatrix();
  			const shadowPointLightCount = Math.min(pointLights.length, maxShadowPointLights);
  			const pointLightShadowProjectionMat = Mat4x4.Projection(90, 1, 1, pointShadowNear, pointLightRange);
-@@ -1816,11 +1873,9 @@ void main(){
+@@ -1821,11 +1878,9 @@ void main(){
  			program.set("uShadowBias", shadowBias);
  			program.set("uShadowTexelSize", shadowMapDistance / shadowMapSize);
  

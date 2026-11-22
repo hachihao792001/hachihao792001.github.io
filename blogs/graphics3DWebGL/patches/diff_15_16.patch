@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview15.html"
 +++ "b/htmlPreviews\\htmlPreview16.html"
-@@ -134,12 +134,6 @@
+@@ -139,12 +139,6 @@
  	<h1>Hanvas Engine</h1>
  	<div id="render">
  		<canvas id="gameCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff"></canvas>
@@ -13,7 +13,7 @@
  	</div>
  	<h2 id="fps">FPS: 0</h2>
  	<div>
-@@ -180,10 +174,6 @@
+@@ -185,10 +179,6 @@
  	</div>
  	<div id="controls">
  		<div class="controlRow">
@@ -24,7 +24,7 @@
  			<label class="controlLabel" for="canvasResWidth">Canvas resolution:</label>
  			<span>
  				<input id="canvasResWidth" value="600" size="4" />
-@@ -191,14 +181,6 @@
+@@ -196,14 +186,6 @@
  				<input id="canvasResHeight" value="450" size="4" />
  			</span>
  		</div>
@@ -39,7 +39,7 @@
  		<div class="controlRow">
  			<label class="controlLabel" for="dirIntensity">Directional light intensity:</label>
  			<span>
-@@ -809,10 +791,6 @@
+@@ -814,10 +796,6 @@
  				this.g = g;
  				this.b = b;
  			}
@@ -50,7 +50,7 @@
  		}
  
  		class Texture {
-@@ -1300,9 +1278,8 @@
+@@ -1305,9 +1283,8 @@
  		}
  
  		class Rasterizer {
@@ -61,7 +61,7 @@
  
  				this.canvasWidth = canvasWidth;
  				this.canvasHeight = canvasHeight;
-@@ -1501,26 +1478,8 @@
+@@ -1506,26 +1483,8 @@
  				}
  			}
  
@@ -90,7 +90,7 @@
  			}
  		}
  
-@@ -1913,8 +1872,7 @@
+@@ -1918,8 +1877,7 @@
  		// ===== index.js =====
  		const gameCanvas = (document.getElementById("gameCanvas"));
  		const ctx = (gameCanvas.getContext("2d"));
@@ -100,7 +100,7 @@
  		const fov = 60;
  		let znear = 0.01,
  			zfar = 1000;
-@@ -1923,20 +1881,11 @@
+@@ -1928,20 +1886,11 @@
  		let nearPlane = new Plane(Vector3.forward, new Vector3(0, 0, znear));
  		let keyStates = {};
  
@@ -121,7 +121,7 @@
  		let canvasRenderWidth = 600;
  		let canvasRenderHeight = 450;
  
-@@ -2065,7 +2014,7 @@
+@@ -2070,7 +2019,7 @@
  		function rasterize(visibleTris) {
  			rasterizer.clearScreen();
  			rasterizer.rasterizeClipSpaceTriangles(visibleTris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow);
@@ -130,7 +130,7 @@
  
  			let x = rasterizer.screenCenterX,
  				y = rasterizer.screenCenterY;
-@@ -2131,8 +2080,8 @@
+@@ -2136,8 +2085,8 @@
  		}
  
  		function updateRenderResolution() {
@@ -141,7 +141,7 @@
  
  			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
  			rasterizer.updateResolution(gameCanvas.width, gameCanvas.height);
-@@ -2143,21 +2092,10 @@
+@@ -2148,21 +2097,10 @@
  			canvasRenderHeight = readResolution(canvasResHeightInput, 16, 1440, canvasRenderHeight);
  			canvasResWidthInput.value = canvasRenderWidth.toString();
  			canvasResHeightInput.value = canvasRenderHeight.toString();
@@ -164,7 +164,7 @@
  		async function requestMouseLook() {
  			try {
  				await renderDiv.requestPointerLock({
-@@ -2172,8 +2110,6 @@
+@@ -2177,8 +2115,6 @@
  			}
  		}
  
@@ -173,7 +173,7 @@
  		gameCanvas.addEventListener("mousedown", () => {
  			if (document.pointerLockElement !== renderDiv) requestMouseLook();
  		});
-@@ -2184,21 +2120,6 @@
+@@ -2189,21 +2125,6 @@
  			}
  		});
  
@@ -194,4 +194,4 @@
 -
  		window.addEventListener("keydown", (e) => {
  			keyStates[e.key] = true;
- 		});
+ 			if (e.key == " " && (document.pointerLockElement === renderDiv || e.target === document.body)) e.preventDefault();

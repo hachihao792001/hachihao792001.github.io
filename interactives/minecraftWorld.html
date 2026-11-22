@@ -110,6 +110,13 @@
 			}
 		}
 
+		#mobileControls {
+			-webkit-user-select: none;
+			user-select: none;
+			-webkit-touch-callout: none;
+			-webkit-tap-highlight-color: transparent;
+		}
+
 		#mobileControls .row {
 			display: flex;
 			flex-wrap: wrap;
@@ -141,8 +148,6 @@
 			font-family: inherit;
 			font-size: 12px;
 			touch-action: none;
-			-webkit-user-select: none;
-			user-select: none;
 		}
 	</style>
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -2720,8 +2725,7 @@ void main(){
 		let renderer = webglRenderer;
 		const rendererSelect = (document.getElementById("rendererSelect"));
 
-		let camera = new Camera(new Vector3(50, 60, 10), Vector3.zero, 5, 0.2);
-		camera.transform.lookRotation(Vector3.sub(new Vector3(0, 25, 0), camera.transform.position).normalize());
+		let camera = new Camera(new Vector3(-28, 25, 57), new Vector3(0, -120, 0), 5, 0.2);
 		let keyStates = {};
 
 		const renderDiv = (document.getElementById("render"));
@@ -2917,6 +2921,7 @@ void main(){
 
 		window.addEventListener("keydown", (e) => {
 			keyStates[e.key] = true;
+			if (e.key == " " && (document.pointerLockElement === renderDiv || e.target === document.body)) e.preventDefault();
 		});
 		window.addEventListener("keyup", (e) => {
 			keyStates[e.key] = false;
@@ -2935,6 +2940,8 @@ void main(){
 			helpPopup.style.display = "none";
 			helpCloseButton.blur();
 		});
+
+		mobileControls.addEventListener("contextmenu", (e) => e.preventDefault());
 
 		const keyButtons = mobileControls.querySelectorAll("button[data-key]");
 		keyButtons.forEach((button) => {

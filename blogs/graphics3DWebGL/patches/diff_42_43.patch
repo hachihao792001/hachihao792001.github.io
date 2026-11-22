@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview42.html"
 +++ "b/htmlPreviews\\htmlPreview43.html"
-@@ -630,7 +630,7 @@
+@@ -635,7 +635,7 @@
  				this.width = 0;
  				this.height = 0;
  				this.gl = gl;
@@ -9,7 +9,7 @@
  				if (url) this.load(url);
  			}
  
-@@ -653,13 +653,7 @@
+@@ -658,13 +658,7 @@
  				this.width = img.width;
  				this.height = img.height;
  
@@ -24,7 +24,7 @@
  			}
  		}
  
-@@ -952,12 +946,12 @@
+@@ -957,12 +951,12 @@
  				program.set("uModel", this.transform.getModelMatrix());
  				program.set("uNormalMatrix", this.transform.getNormalMatrix());
  
@@ -41,7 +41,7 @@
  				program.set("uColor", this.color);
  
  				this.mesh.vertexArray.draw();
-@@ -976,12 +970,12 @@
+@@ -981,12 +975,12 @@
  				if (!this.mesh) return;
  				depthProgram.set("uModel", this.transform.getModelMatrix());
  
@@ -58,7 +58,7 @@
  
  				this.mesh.vertexArray.draw();
  			}
-@@ -1003,17 +997,11 @@
+@@ -1008,17 +1002,11 @@
  				this.viewMatrix = null;
  				this.projectionMatrix = null;
  
@@ -78,7 +78,7 @@
  				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
  			}
  
-@@ -1057,22 +1045,13 @@
+@@ -1062,22 +1050,13 @@
  			constructor(pos, eulerAngles, scale, color, mesh, texture = null, name = "") {
  				super(pos, eulerAngles, scale, color, mesh, texture, name);
  
@@ -103,7 +103,7 @@
  					this.framebuffers.push(framebuffer);
  				}
  				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-@@ -1452,6 +1431,57 @@
+@@ -1457,6 +1436,57 @@
  			}
  		}
  
@@ -161,7 +161,7 @@
  		// ===== index.js =====
  		const gameCanvas = (document.getElementById("gameCanvas"));
  		const gl = (gameCanvas.getContext("webgl2"));
-@@ -1760,13 +1790,11 @@ void main(){
+@@ -1765,13 +1795,11 @@ void main(){
  			program.set("uUseShadow", useShadow);
  			program.set("uLightView", dirLight.viewMatrix);
  			program.set("uLightProjection", dirLight.projectionMatrix);
@@ -177,7 +177,7 @@
  				pointShadowMapUnits.push(2 + i);
  			}
  			program.set("uPointShadowMaps", pointShadowMapUnits);
-@@ -1776,7 +1804,6 @@ void main(){
+@@ -1781,7 +1809,6 @@ void main(){
  			program.set("uPointLightShadowProjectionMain", pointLightShadowProjectionMat);
  			program.set("uShadowBias", shadowBias);
  			program.set("uShadowTexelSize", shadowMapDistance / shadowMapSize);

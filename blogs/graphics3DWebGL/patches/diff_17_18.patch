@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview17.html"
 +++ "b/htmlPreviews\\htmlPreview18.html"
-@@ -779,35 +779,6 @@
+@@ -784,35 +784,6 @@
  			}
  		}
  
@@ -36,7 +36,7 @@
  		// ===== engine.js =====
  		let maxActiveLights = 16;
  		let ambientLight = 0.2;
-@@ -1065,14 +1036,13 @@
+@@ -1070,14 +1041,13 @@
  		class GameObject {
  			static incrementingID = 0;
  
@@ -52,7 +52,7 @@
  			}
  
  			getTransformedTriangles() {
-@@ -1087,7 +1057,6 @@
+@@ -1092,7 +1062,6 @@
  					transformedTri.mulMat4x4(translationMat);
  					transformedTri.updateWorldVertices();
  					transformedTri.color = this.color;
@@ -60,7 +60,7 @@
  					transformedTris.push(transformedTri);
  				}
  				return transformedTris;
-@@ -1199,12 +1168,6 @@
+@@ -1204,12 +1173,6 @@
  					const uv0 = tri.uv[0],
  						uv1 = tri.uv[1],
  						uv2 = tri.uv[2];
@@ -73,7 +73,7 @@
  					const uv0W = uv0.w,
  						uv1W = uv1.w,
  						uv2W = uv2.w;
-@@ -1226,10 +1189,6 @@
+@@ -1231,10 +1194,6 @@
  					const activeLightCount = pointLightIntensity > 0 ? tri.getPointLightsThatCanAffectTri(pointLightRange, pointLights, activeLights) : 0;
  
  					const triColor = tri.color;
@@ -84,7 +84,7 @@
  
  					for (let y = bbox.minY; y <= bbox.maxY; y++) {
  						let edgeFunction01 = edgeFunctionRow01;
-@@ -1277,24 +1236,10 @@
+@@ -1282,24 +1241,10 @@
  
  									const lightIntensity = Math.max(ambientLight, dirLightDiffuse + totalPointLightDiffuse);
  
@@ -112,7 +112,7 @@
  								}
  							}
  							edgeFunction01 += edgeSlopeX01;
-@@ -1323,7 +1268,6 @@
+@@ -1328,7 +1273,6 @@
  				this.viewDistanceSquared = 0;
  				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
  				this.color = color;
@@ -120,7 +120,7 @@
  			}
  
  			clone() {
-@@ -1334,7 +1278,6 @@
+@@ -1339,7 +1283,6 @@
  					tri.uv[i] = this.uv[i].clone();
  				}
  				tri.color = this.color;
@@ -128,7 +128,7 @@
  				return tri;
  			}
  
-@@ -1378,7 +1321,6 @@
+@@ -1383,7 +1326,6 @@
  					outTri.uv[1] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
  					outTri.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[1]], t2);
  					outTri.color = this.color;
@@ -136,7 +136,7 @@
  					outTris.push(outTri);
  				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
  					if (frontPoints[0] == 0 && frontPoints[1] == 2) {
-@@ -1404,7 +1346,6 @@
+@@ -1409,7 +1351,6 @@
  					outTri1.uv[1] = this.uv[frontPoints[1]];
  					outTri1.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
  					outTri1.color = this.color;
@@ -144,7 +144,7 @@
  					outTris.push(outTri1);
  
  					let outTri2 = new Triangle();
-@@ -1418,7 +1359,6 @@
+@@ -1423,7 +1364,6 @@
  					outTri2.uv[1] = Vector2.lerp(this.uv[frontPoints[1]], this.uv[behindPoints[0]], t2);
  					outTri2.uv[2] = Vector2.lerp(this.uv[frontPoints[0]], this.uv[behindPoints[0]], t1);
  					outTri2.color = this.color;
@@ -152,7 +152,7 @@
  					outTris.push(outTri2);
  				}
  
-@@ -1753,13 +1693,6 @@
+@@ -1758,13 +1698,6 @@
  		const pointLightRangeText = (document.getElementById("pointRangeText"));
  		let pointLightRange = parseFloat(pointLightRangeSlider.value);
  
@@ -166,7 +166,7 @@
  		let cubeMesh = new Cube();
  		let woodTower = new GameObject(
  			new Vector3(0, -0.17, 0),
-@@ -1767,12 +1700,11 @@
+@@ -1772,12 +1705,11 @@
  			new Vector3(1, 1, 1),
  			new Color(255, 255, 255),
  			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj"),

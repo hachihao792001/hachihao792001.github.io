@@ -41,7 +41,7 @@
  		@media (max-width: 480px) {
  			#controls {
  				grid-template-columns: max-content;
-@@ -93,11 +127,11 @@
+@@ -98,11 +132,11 @@
  		}
  	</style>
  	<meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -55,7 +55,7 @@
  	<div id="render">
  		<canvas id="gameCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff"></canvas>
  		<p id="asciiParagraph"
-@@ -109,6 +143,8 @@
+@@ -114,6 +148,8 @@
  	</div>
  	<h2 id="fps">FPS: 0</h2>
  	<div>
@@ -64,7 +64,7 @@
  		<button id="mobileControlsButton"
  			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Mobile
  			controls</button>
-@@ -197,6 +233,23 @@
+@@ -202,6 +238,23 @@
  		</div>
  	</div>
  
@@ -88,7 +88,7 @@
  	<script>
  		// ===== math.js =====
  		class MathExtend {
-@@ -1260,6 +1313,9 @@
+@@ -1265,6 +1318,9 @@
  				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
  
  				this.clearScreen();
@@ -98,7 +98,7 @@
  			}
  
  			updateResolution(canvasWidth, canvasHeight) {
-@@ -1894,6 +1950,10 @@
+@@ -1899,6 +1955,10 @@
  		const mobileControls = (document.getElementById("mobileControls"));
  		const mobileControlsButton = (document.getElementById("mobileControlsButton"));
  
@@ -109,7 +109,7 @@
  		let lookInput = { x: 0, y: 0 };
  		let lookSpeed = 450;
  
-@@ -2150,6 +2210,16 @@
+@@ -2156,6 +2216,16 @@
  			mobileControlsButton.blur();
  		});
  
@@ -123,6 +123,6 @@
 +			helpCloseButton.blur();
 +		});
 +
+ 		mobileControls.addEventListener("contextmenu", (e) => e.preventDefault());
+ 
  		const keyButtons = mobileControls.querySelectorAll("button[data-key]");
- 		keyButtons.forEach((button) => {
- 			const key = (button.getAttribute("data-key"));

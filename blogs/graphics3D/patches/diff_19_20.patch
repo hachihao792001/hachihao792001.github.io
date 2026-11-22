@@ -591,7 +591,7 @@
  
  		let lastTime = performance.now();
  		let dt = 0;
-@@ -116,31 +624,79 @@
+@@ -116,31 +624,80 @@
  			dt = (time - lastTime) / 1000;
  			lastTime = time;
  
@@ -676,6 +676,7 @@
 +
 +		window.addEventListener('keydown', (e) => {
 +			keyStates[e.key] = true;
++			if (e.key == ' ' && (document.pointerLockElement === canvas || e.target === document.body)) e.preventDefault();
 +		});
 +		window.addEventListener('keyup', (e) => {
 +			keyStates[e.key] = false;

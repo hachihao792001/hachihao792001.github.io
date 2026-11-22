@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview50.html"
 +++ "b/htmlPreviews\\htmlPreview51.html"
-@@ -1298,16 +1298,20 @@
+@@ -1303,16 +1303,20 @@
  				super(vertices);
  				this.uvs = uvs;
  				this.viewDistanceSquared = 0;
@@ -21,7 +21,7 @@
  				return tri;
  			}
  
-@@ -1344,10 +1348,14 @@
+@@ -1349,10 +1353,14 @@
  					outTri.vertices[0] = f;
  					outTri.vertices[1] = intersection1;
  					outTri.vertices[2] = intersection2;
@@ -36,7 +36,7 @@
  					outTris.push(outTri);
  				} else if (frontPoints.length == 2 && behindPoints.length == 1) {
  					if (frontPoints[0] == 0 && frontPoints[1] == 2) {
-@@ -1366,25 +1374,95 @@
+@@ -1371,25 +1379,95 @@
  					outTri1.vertices[0] = f0;
  					outTri1.vertices[1] = f1;
  					outTri1.vertices[2] = intersection1;
@@ -132,7 +132,7 @@
  		}
  
  		class Mesh {
-@@ -2206,11 +2284,14 @@ void main(){
+@@ -2211,11 +2289,14 @@ void main(){
  				if (this.canvas.width != this.width || this.canvas.height != this.height) this.resize();
  				this.clearScreen();
  
@@ -148,7 +148,7 @@
  
  				this.ctx.putImageData(this.imageData, 0, 0);
  			}
-@@ -2244,6 +2325,8 @@ void main(){
+@@ -2249,6 +2330,8 @@ void main(){
  						}
  						let tri = new Triangle(vertices, triUVs, meshRenderer.material.color);
  						tri.mulMat4x4(modelMatrix);
@@ -157,7 +157,7 @@
  						objectTris.push(tri);
  					}
  				}
-@@ -2284,11 +2367,12 @@ void main(){
+@@ -2289,11 +2372,12 @@ void main(){
  				}
  			}
  
@@ -171,7 +171,7 @@
  
  				for (let tri of tris) {
  					let vertices = tri.vertices;
-@@ -2303,6 +2387,13 @@ void main(){
+@@ -2308,6 +2392,13 @@ void main(){
  					tri.calculateSignedDoubleArea();
  					const signedDoubleArea = tri.signedDoubleArea;
  
@@ -185,7 +185,7 @@
  					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
  
  					let edgeFunctionRow01 = MathExtend.edgeFunction(tri.vertices[0], tri.vertices[1], new Vector3(bbox.minX, bbox.minY, 0));
-@@ -2323,7 +2414,37 @@ void main(){
+@@ -2328,7 +2419,37 @@ void main(){
  					const edgeSlopeY12 = vertex2.x - vertex1.x;
  					const edgeSlopeY20 = vertex0.x - vertex2.x;
  
@@ -223,7 +223,7 @@
  
  					for (let y = bbox.minY; y <= bbox.maxY; y++) {
  						let edgeFunction01 = edgeFunctionRow01;
-@@ -2338,12 +2459,64 @@ void main(){
+@@ -2343,12 +2464,64 @@ void main(){
  								const z = vertex0Z * baryCoord0 + vertex1Z * baryCoord1 + vertex2Z * baryCoord2;
  
  								if (z < depthBuffer[pixelIndex]) {

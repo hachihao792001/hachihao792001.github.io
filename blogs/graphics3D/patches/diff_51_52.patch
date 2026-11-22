@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview51.html"
 +++ "b/htmlPreviews\\htmlPreview52.html"
-@@ -3,10 +3,100 @@
+@@ -3,10 +3,105 @@
  
  <head>
  	<meta charset="UTF-8" />
@@ -81,6 +81,13 @@
 +			gap: 2px;
 +		}
 +
++		#mobileControls {
++			-webkit-user-select: none;
++			user-select: none;
++			-webkit-touch-callout: none;
++			-webkit-tap-highlight-color: transparent;
++		}
++
 +		#mobileControls button {
 +			width: 40px;
 +			height: 40px;
@@ -89,8 +96,6 @@
 +			font-family: inherit;
 +			font-size: 12px;
 +			touch-action: none;
-+			-webkit-user-select: none;
-+			user-select: none;
 +		}
 +	</style>
 +	<meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -102,7 +107,7 @@
  	<h1>3D Engine</h1>
  	<div id="render">
  		<canvas id="gameCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff"></canvas>
-@@ -19,49 +109,94 @@
+@@ -19,49 +114,94 @@
  	</div>
  	<h2 id="fps">FPS: 0</h2>
  	<div>
@@ -124,6 +129,26 @@
 -			x
 -			<input id="asciiResHeight" value="195" size="4" />
 -		</span>
+-	</div>
+-	<div>
+-		Directional light intensity:
+-		<input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" />
+-		<span id="dirIntensityText" class="slider-value">1.0</span>
+-	</div>
+-	<div>
+-		Directional light rotate speed:
+-		<input type="range" id="dirRotateSpeed" min="0" max="50" step="0.1" value="10" />
+-		<span id="dirRotateSpeedText" class="slider-value">10</span>
+-	</div>
+-	<div>
+-		Point light intensity:
+-		<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
+-		<span id="pointIntensityText" class="slider-value">1.0</span>
+-	</div>
+-	<div>
+-		Point light range:
+-		<input type="range" id="pointRange" min="0" max="60" step="1" value="14" />
+-		<span id="pointRangeText" class="slider-value">14</span>
 +		<button id="mobileControlsButton"
 +			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Mobile
 +			controls</button>
@@ -157,26 +182,6 @@
 +			</div>
 +		</div>
  	</div>
--	<div>
--		Directional light intensity:
--		<input type="range" id="dirIntensity" min="0" max="5" step="0.1" value="1" />
--		<span id="dirIntensityText" class="slider-value">1.0</span>
--	</div>
--	<div>
--		Directional light rotate speed:
--		<input type="range" id="dirRotateSpeed" min="0" max="50" step="0.1" value="10" />
--		<span id="dirRotateSpeedText" class="slider-value">10</span>
--	</div>
--	<div>
--		Point light intensity:
--		<input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1" />
--		<span id="pointIntensityText" class="slider-value">1.0</span>
--	</div>
--	<div>
--		Point light range:
--		<input type="range" id="pointRange" min="0" max="60" step="1" value="14" />
--		<span id="pointRangeText" class="slider-value">14</span>
--	</div>
 -	<div>
 -		Shadow:
 -		<input type="checkbox" id="useShadow" checked="checked" />
@@ -238,7 +243,7 @@
  	<script>
  		// ===== math.js =====
  		class MathExtend {
-@@ -1137,6 +1272,9 @@
+@@ -1137,6 +1277,9 @@
  				this.depthBuffer = new Float64Array(this.canvasWidth * this.canvasHeight);
  
  				this.clearScreen();
@@ -248,7 +253,7 @@
  			}
  
  			clearScreen() {
-@@ -1753,6 +1891,12 @@
+@@ -1753,6 +1896,12 @@
  		let frames = 0,
  			fpsTimeCounter = 0;
  
@@ -261,7 +266,7 @@
  		const lightDirIntensitySlider = (document.getElementById("dirIntensity"));
  		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
  		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
-@@ -1799,6 +1943,10 @@
+@@ -1799,6 +1948,10 @@
  
  		function updateGameObjectTransforms() {
  			camera.updateMovement(dt, keyStates);
@@ -272,7 +277,7 @@
  			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
  			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
  			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);
-@@ -1858,6 +2006,13 @@
+@@ -1858,6 +2011,13 @@
  			rasterizer.clearScreen();
  			rasterizer.rasterizeClipSpaceTriangles(visibleTris, dirLight, pointLightIntensity, pointLights, pointLightRange, useShadow);
  			rasterizer.drawCall(useASCII);
@@ -286,7 +291,7 @@
  		}
  
  		function update(time = performance.now()) {
-@@ -1990,6 +2145,50 @@
+@@ -1991,6 +2151,52 @@
  		window.addEventListener("keyup", (e) => {
  			keyStates[e.key] = false;
  		});
@@ -294,6 +299,8 @@
 +			mobileControls.style.display = mobileControls.style.display == "none" ? "" : "none";
 +			mobileControlsButton.blur();
 +		});
++
++		mobileControls.addEventListener("contextmenu", (e) => e.preventDefault());
 +
 +		const keyButtons = mobileControls.querySelectorAll("button[data-key]");
 +		keyButtons.forEach((button) => {

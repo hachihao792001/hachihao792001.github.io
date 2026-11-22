@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview51.html"
 +++ "b/htmlPreviews\\htmlPreview52.html"
-@@ -1253,10 +1253,11 @@
+@@ -1258,10 +1258,11 @@
  		}
  
  		class DirectionalLight extends Component {
@@ -14,7 +14,7 @@
  				this.shadowDistance = shadowDistance;
  				this.shadowBias = shadowBias;
  				this.viewMatrix = null;
-@@ -1301,6 +1302,7 @@
+@@ -1306,6 +1307,7 @@
  				this.worldVertices = [this.vertices[0].clone(), this.vertices[1].clone(), this.vertices[2].clone()];
  				this.color = color;
  				this.texture = null;
@@ -22,7 +22,7 @@
  			}
  
  			clone() {
-@@ -2106,7 +2108,7 @@ void main(){
+@@ -2111,7 +2113,7 @@ void main(){
  			}
  
  			getDirectionalShadowMap(light) {
@@ -31,7 +31,7 @@
  			}
  
  			getPointLightShadowMap(light) {
-@@ -2148,7 +2150,7 @@ void main(){
+@@ -2153,7 +2155,7 @@ void main(){
  				this.getDirectionalShadowMap(dirLight).texture.bind(1);
  				program.set("uShadowMap", 1);
  				program.set("uShadowBias", dirLight.shadowBias);
@@ -40,7 +40,7 @@
  
  				const pointLightData = new Float32Array(maxActiveLights * 3);
  				const pointLightIntensities = new Float32Array(maxActiveLights);
-@@ -2269,6 +2271,9 @@ void main(){
+@@ -2274,6 +2276,9 @@ void main(){
  			constructor(canvas) {
  				this.canvas = canvas;
  				this.ctx = canvas.getContext("2d");
@@ -50,7 +50,7 @@
  				this.resize();
  			}
  
-@@ -2288,6 +2293,10 @@ void main(){
+@@ -2293,6 +2298,10 @@ void main(){
  				const pointLights = scene.getAllComponentsOfType(PointLight);
  
  				const objectTris = this.gameObjectToWorldSpaceTriangles(scene);
@@ -61,7 +61,7 @@
  				const visibleTris = this.worldSpaceToViewSpace(objectTris, camera);
  				this.sortNearestFirst(visibleTris);
  				this.viewSpaceToClipSpace(visibleTris, camera);
-@@ -2327,6 +2336,7 @@ void main(){
+@@ -2332,6 +2341,7 @@ void main(){
  						tri.mulMat4x4(modelMatrix);
  						tri.updateWorldVertices();
  						tri.texture = meshRenderer.material.texture;
@@ -69,7 +69,7 @@
  						objectTris.push(tri);
  					}
  				}
-@@ -2393,6 +2403,7 @@ void main(){
+@@ -2398,6 +2408,7 @@ void main(){
  						worldNormalZ = triWorldNormal.z;
  
  					const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
@@ -77,7 +77,7 @@
  
  					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
  
-@@ -2468,6 +2479,8 @@ void main(){
+@@ -2473,6 +2484,8 @@ void main(){
  									const pixelWorldZ =
  										(perspectiveWorld0Z * baryCoord0 + perspectiveWorld1Z * baryCoord1 + perspectiveWorld2Z * baryCoord2) / pixelInvZ;
  
@@ -86,7 +86,7 @@
  									let totalPointLightDiffuse = 0;
  									for (let i = 0; i < pointLights.length; i++) {
  										const light = pointLights[i];
-@@ -2492,7 +2505,7 @@ void main(){
+@@ -2497,7 +2510,7 @@ void main(){
  										totalPointLightDiffuse += currentPointLightDiffuse * attenuation * light.intensity;
  									}
  
@@ -95,7 +95,7 @@
  
  									let texR = triColor.r,
  										texG = triColor.g,
-@@ -2530,6 +2543,153 @@ void main(){
+@@ -2535,6 +2548,153 @@ void main(){
  					}
  				}
  			}
@@ -249,7 +249,7 @@
  		}
  
  		// ===== index.js =====
-@@ -2581,6 +2741,7 @@ void main(){
+@@ -2586,6 +2746,7 @@ void main(){
  
  		const useShadowCheckbox = (document.getElementById("useShadow"));
  		webglRenderer.useShadow = useShadowCheckbox.checked;
@@ -257,7 +257,7 @@
  
  		let brickTexture = new Texture(
  			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg"
-@@ -2599,7 +2760,7 @@ void main(){
+@@ -2604,7 +2765,7 @@ void main(){
  
  		let sun = scene.add(new GameObject("Sun"));
  		sun.transform.lookRotation(new Vector3(-1, -1, -1).normalize());
@@ -266,7 +266,7 @@
  
  		let ground = scene.add(new GameObject("Ground", new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30)));
  		ground.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(0, 255, 0), brickTexture)));
-@@ -2675,6 +2836,7 @@ void main(){
+@@ -2680,6 +2841,7 @@ void main(){
  
  		useShadowCheckbox.addEventListener("change", () => {
  			webglRenderer.useShadow = useShadowCheckbox.checked;

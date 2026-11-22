@@ -119,7 +119,7 @@
  						vertices[i].mulMat4x4(projectionMatrix);
  						vertices[i] = Vector3.div(vertices[i], vertices[i].w);
  						vertices[i] = new Vector3(
-@@ -396,6 +474,24 @@
+@@ -396,6 +474,25 @@
  
  		update();
  
@@ -137,6 +137,7 @@
 +
 +		window.addEventListener('keydown', (e) => {
 +			keyStates[e.key] = true;
++			if (e.key == ' ' && (document.pointerLockElement === canvas || e.target === document.body)) e.preventDefault();
 +		});
 +		window.addEventListener('keyup', (e) => {
 +			keyStates[e.key] = false;

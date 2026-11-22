@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview23.html"
 +++ "b/htmlPreviews\\htmlPreview24.html"
-@@ -582,6 +582,45 @@
+@@ -587,6 +587,45 @@
  			}
  		}
  
@@ -46,7 +46,7 @@
  		// ===== engine.js =====
  		class Transform {
  			constructor(localPosition = Vector3.zero.clone(), localEulerAngles = Vector3.zero.clone(), localScale = Vector3.one.clone(), name = "Transform") {
-@@ -841,19 +880,28 @@
+@@ -846,19 +885,28 @@
  		class GameObject {
  			static incrementingID = 0;
  
@@ -76,7 +76,7 @@
  				gl.bindVertexArray(this.mesh.vertexArray);
  				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
  			}
-@@ -902,13 +950,15 @@
+@@ -907,13 +955,15 @@
  			uploadToGPU() {
  				if (this.tris.length == 0) return;
  
@@ -96,7 +96,7 @@
  					}
  				}
  				this.vertexCount = this.tris.length * 3;
-@@ -919,7 +969,9 @@
+@@ -924,7 +974,9 @@
  				gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
  				gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
  				gl.enableVertexAttribArray(aPosition);
@@ -107,7 +107,7 @@
  				gl.bindVertexArray(null);
  			}
  		}
-@@ -1122,22 +1174,31 @@
+@@ -1127,22 +1179,31 @@
  		const gl = (gameCanvas.getContext("webgl2"));
  
  		const vertexShaderSource = `#version 300 es
@@ -141,7 +141,7 @@
  }`;
  		function compileShader(type, source) {
  			const shader = gl.createShader(type);
-@@ -1161,9 +1222,12 @@ void main(){
+@@ -1166,9 +1227,12 @@ void main(){
  		gl.useProgram(program);
  
  		const aPosition = gl.getAttribLocation(program, "aPosition");
@@ -154,7 +154,7 @@
  		const uColor = gl.getUniformLocation(program, "uColor");
  
  		gl.enable(gl.DEPTH_TEST);
-@@ -1204,6 +1268,19 @@ void main(){
+@@ -1209,6 +1273,19 @@ void main(){
  		let lookInput = { x: 0, y: 0 };
  		let lookSpeed = 450;
  
@@ -174,7 +174,7 @@
  		let cubeMesh = new Cube();
  		let woodTower = new GameObject(
  			new Vector3(0, -0.17, 0),
-@@ -1211,11 +1288,13 @@ void main(){
+@@ -1216,11 +1293,13 @@ void main(){
  			new Vector3(1, 1, 1),
  			new Color(255, 255, 255),
  			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj"),
@@ -191,7 +191,7 @@
  		];
  
  		let lastTime = performance.now();
-@@ -1237,6 +1316,7 @@ void main(){
+@@ -1242,6 +1321,7 @@ void main(){
  				light.drawWithChildren();
  			}
  			woodTower.drawWithChildren();

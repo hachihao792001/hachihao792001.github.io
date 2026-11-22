@@ -1857,7 +1857,7 @@
  			let objectTris = [];
  			objectTris.push(...ground.getTransformedTriangles());
  			for (let light of pointLights) {
-@@ -1297,22 +1325,22 @@
+@@ -1297,23 +1325,23 @@
  			useShadow = shadowCheckbox.checked;
  		});
  
@@ -1880,6 +1880,8 @@
 -		window.addEventListener('keydown', (e) => {
 +		window.addEventListener("keydown", (e) => {
  			keyStates[e.key] = true;
+-			if (e.key == ' ' && (document.pointerLockElement === canvas || e.target === document.body)) e.preventDefault();
++			if (e.key == " " && (document.pointerLockElement === gameCanvas || e.target === document.body)) e.preventDefault();
  		});
 -		window.addEventListener('keyup', (e) => {
 +		window.addEventListener("keyup", (e) => {
