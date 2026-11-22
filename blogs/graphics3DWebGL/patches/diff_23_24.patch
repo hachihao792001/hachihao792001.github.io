@@ -107,7 +107,7 @@
  				gl.bindVertexArray(null);
  			}
  		}
-@@ -1122,22 +1174,29 @@
+@@ -1122,22 +1174,31 @@
  		const gl = (gameCanvas.getContext("webgl2"));
  
  		const vertexShaderSource = `#version 300 es
@@ -134,12 +134,14 @@
  
  void main(){
 -	outColor = vec4(uColor, 1.0);
-+	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
++	vec4 textureColor = texture(uTexture, vUV);
++	if (uUseTexture && textureColor.a < 0.5) discard;
++	vec3 color = uUseTexture ? textureColor.rgb : uColor;
 +	outColor = vec4(color, 1.0);
  }`;
  		function compileShader(type, source) {
  			const shader = gl.createShader(type);
-@@ -1161,9 +1220,12 @@ void main(){
+@@ -1161,9 +1222,12 @@ void main(){
  		gl.useProgram(program);
  
  		const aPosition = gl.getAttribLocation(program, "aPosition");
@@ -152,7 +154,7 @@
  		const uColor = gl.getUniformLocation(program, "uColor");
  
  		gl.enable(gl.DEPTH_TEST);
-@@ -1204,6 +1266,15 @@ void main(){
+@@ -1204,6 +1268,19 @@ void main(){
  		let lookInput = { x: 0, y: 0 };
  		let lookSpeed = 450;
  
@@ -164,11 +166,15 @@
 +			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/Wood_Tower_Col.jpg",
 +			gl
 +		);
++		let leafTexture = new Texture(
++			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/leaf.png",
++			gl
++		);
 +
  		let cubeMesh = new Cube();
  		let woodTower = new GameObject(
  			new Vector3(0, -0.17, 0),
-@@ -1211,11 +1282,12 @@ void main(){
+@@ -1211,11 +1288,13 @@ void main(){
  			new Vector3(1, 1, 1),
  			new Color(255, 255, 255),
  			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj"),
@@ -176,6 +182,7 @@
  		);
 -		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh);
 +		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
++		let leaf = new GameObject(new Vector3(0, 1.75, -5), Vector3.zero, new Vector3(2, 2, 2), new Color(255, 255, 255), cubeMesh, leafTexture);
  		let pointLights = [
 -			new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, "Point light 1"),
 -			new GameObject(new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, "Point light 2"),
@@ -184,3 +191,11 @@
  		];
  
  		let lastTime = performance.now();
+@@ -1237,6 +1316,7 @@ void main(){
+ 				light.drawWithChildren();
+ 			}
+ 			woodTower.drawWithChildren();
++			leaf.drawWithChildren();
+ 		}
+ 
+ 		function update(time = performance.now()) {
