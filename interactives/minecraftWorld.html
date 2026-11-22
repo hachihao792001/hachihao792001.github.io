@@ -212,9 +212,9 @@
 		<div class="controlRow">
 			<label class="controlLabel" for="canvasResWidth">Canvas resolution:</label>
 			<span>
-				<input id="canvasResWidth" value="600" size="4" />
+				<input id="canvasResWidth" value="1024" size="4" />
 				x
-				<input id="canvasResHeight" value="450" size="4" />
+				<input id="canvasResHeight" value="768" size="4" />
 			</span>
 		</div>
 		<div class="controlRow">
@@ -2740,8 +2740,8 @@ void main(){
 		const canvasResWidthInput = (document.getElementById("canvasResWidth"));
 		const canvasResHeightInput = (document.getElementById("canvasResHeight"));
 
-		let canvasRenderWidth = 600;
-		let canvasRenderHeight = 450;
+		let canvasRenderWidth = 1024;
+		let canvasRenderHeight = 768;
 
 		canvasResWidthInput.value = canvasRenderWidth.toString();
 		canvasResHeightInput.value = canvasRenderHeight.toString();
@@ -2797,9 +2797,11 @@ void main(){
 
 		let sun = scene.add(new GameObject("Sun"));
 		sun.transform.lookRotation(new Vector3(-1, -1, -1).normalize());
-		let dirLight = sun.addComponent(new DirectionalLight(parseFloat(lightDirIntensitySlider.value), 2048, 1024, 128, 0.0005));
+		let dirLight = sun.addComponent(new DirectionalLight(parseFloat(lightDirIntensitySlider.value), 2048, 1024, 128, 0.0006));
 
-		let playerLight = scene.add(new GameObject("Player light", camera.transform.position.clone()));
+		let pointLightMaterial = new Material();
+		let playerLight = scene.add(new GameObject("Player light", camera.transform.position.clone(), Vector3.zero, new Vector3(0.05, 0.05, 0.05)));
+		playerLight.addComponent(new MeshRenderer(Primitives.cube(), pointLightMaterial, false));
 		playerLight.addComponent(new PointLight(parseFloat(pointLightIntensitySlider.value), parseFloat(pointLightRangeSlider.value), 512, 0.05, 0.03));
 
 		let lastTime = performance.now();
@@ -2810,7 +2812,7 @@ void main(){
 			if (lookInput.x != 0 || lookInput.y != 0) {
 				camera.updateRotation(lookInput.x * dt * lookSpeed, lookInput.y * dt * lookSpeed);
 			}
-			playerLight.transform.position = camera.transform.position.clone();
+			playerLight.transform.position = Vector3.add(camera.transform.position, camera.transform.transformDirection(new Vector3(0.8, -0.5, 1.5)));
 
 			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
 			sun.transform.rotation = Quaternion.multiply(q, sun.transform.rotation);
