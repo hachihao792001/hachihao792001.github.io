@@ -1952,7 +1952,9 @@ bool isInPointLightShadow(samplerCube pointShadowMap, mat4 shadowProjection, flo
 }
 
 void main(){
-	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
+	vec4 textureColor = texture(uTexture, vUV);
+	if (uUseTexture && textureColor.a < 0.5) discard;
+	vec3 color = uUseTexture ? textureColor.rgb : uColor;
 	float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
 	float dirLightShadow = uUseShadow ? getDirLightShadow() : 0.0;
 	dirLightDiffuse *= 1.0 - dirLightShadow;
@@ -1997,14 +1999,22 @@ uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec2 aUV;
+out vec2 vUV;
 
 void main(){
 	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+	vUV = aUV;
 }`;
 		const shadowFragmentShaderSource = `#version 300 es
 precision highp float;
 
+uniform sampler2D uTexture;
+uniform bool uUseTexture;
+in vec2 vUV;
+
 void main(){
+	if (uUseTexture && texture(uTexture, vUV).a < 0.5) discard;
 }`;
 		class DirectionalShadowMap {
 			constructor(gl, size) {
@@ -2203,6 +2213,14 @@ void main(){
 				const vertexArray = this.getVertexArray(meshRenderer.mesh);
 				if (!vertexArray) return;
 				depthProgram.set("uModel", meshRenderer.transform.getModelMatrix());
+
+				const glTexture = this.getTexture(meshRenderer.material.texture);
+				if (glTexture) {
+					glTexture.bind(0);
+					depthProgram.set("uTexture", 0);
+				}
+				depthProgram.set("uUseTexture", glTexture != null);
+
 				vertexArray.draw();
 			}
 
@@ -2441,8 +2459,6 @@ void main(){
 								const z = vertex0Z * baryCoord0 + vertex1Z * baryCoord1 + vertex2Z * baryCoord2;
 
 								if (z < depthBuffer[pixelIndex]) {
-									depthBuffer[pixelIndex] = z;
-
 									const pixelInvZ = uv0W * baryCoord0 + uv1W * baryCoord1 + uv2W * baryCoord2;
 
 									const pixelWorldX =
@@ -2480,7 +2496,8 @@ void main(){
 
 									let texR = triColor.r,
 										texG = triColor.g,
-										texB = triColor.b;
+										texB = triColor.b,
+										texA = 255;
 									if (texturePixels) {
 										const pixelU = (uv0U * baryCoord0 + uv1U * baryCoord1 + uv2U * baryCoord2) / pixelInvZ;
 										const pixelV = (uv0V * baryCoord0 + uv1V * baryCoord1 + uv2V * baryCoord2) / pixelInvZ;
@@ -2490,12 +2507,16 @@ void main(){
 										texR = texturePixels[texIndex];
 										texG = texturePixels[texIndex + 1];
 										texB = texturePixels[texIndex + 2];
+										texA = texturePixels[texIndex + 3];
 									}
 
-									const colorIndex = pixelIndex * 4;
-									screenBuffer[colorIndex] = Math.min(255, texR * lightIntensity);
-									screenBuffer[colorIndex + 1] = Math.min(255, texG * lightIntensity);
-									screenBuffer[colorIndex + 2] = Math.min(255, texB * lightIntensity);
+									if (texA >= 128) {
+										depthBuffer[pixelIndex] = z;
+										const colorIndex = pixelIndex * 4;
+										screenBuffer[colorIndex] = Math.min(255, texR * lightIntensity);
+										screenBuffer[colorIndex + 1] = Math.min(255, texG * lightIntensity);
+										screenBuffer[colorIndex + 2] = Math.min(255, texB * lightIntensity);
+									}
 								}
 							}
 							edgeFunction01 += edgeSlopeX01;

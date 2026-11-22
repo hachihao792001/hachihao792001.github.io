@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview43.html"
 +++ "b/htmlPreviews\\htmlPreview44.html"
-@@ -990,11 +990,7 @@
+@@ -998,11 +998,7 @@
  				this.projectionMatrix = null;
  
  				this.shadowMapTexture = Texture2D.depth(gl, shadowMapSize);
@@ -13,7 +13,7 @@
  			}
  
  			buildViewAndProjectionMatrix() {
-@@ -1008,8 +1004,7 @@
+@@ -1016,8 +1012,7 @@
  			}
  
  			buildShadowMap(gameObjects) {
@@ -23,7 +23,7 @@
  				gl.clear(gl.DEPTH_BUFFER_BIT);
  
  				shadowProgram.use();
-@@ -1019,8 +1014,7 @@
+@@ -1027,8 +1022,7 @@
  					gameObject.drawDepthWithChildren(shadowProgram);
  				}
  
@@ -33,7 +33,7 @@
  				program.use();
  			}
  		}
-@@ -1039,19 +1033,14 @@
+@@ -1047,19 +1041,14 @@
  
  				this.cubemap = TextureCube.depth(gl, pointShadowMapSize);
  
@@ -55,7 +55,7 @@
  				gl.frontFace(gl.CCW);
  
  				pointShadowProgram.set("uProjection", projection);
-@@ -1060,7 +1049,7 @@
+@@ -1068,7 +1057,7 @@
  					let view = Mat4x4.View(right, up, forward, this.transform.position);
  					pointShadowProgram.set("uView", view);
  
@@ -64,7 +64,7 @@
  					gl.clear(gl.DEPTH_BUFFER_BIT);
  					for (let gameObject of gameObjects) {
  						gameObject.drawDepthWithChildren(pointShadowProgram);
-@@ -1068,8 +1057,7 @@
+@@ -1076,8 +1065,7 @@
  				}
  
  				gl.frontFace(gl.CW);
@@ -74,7 +74,7 @@
  				program.use();
  			}
  		}
-@@ -1474,6 +1462,29 @@
+@@ -1482,6 +1470,29 @@
  			}
  		}
  
@@ -104,7 +104,7 @@
  		// ===== index.js =====
  		const gameCanvas = (document.getElementById("gameCanvas"));
  		const gl = (gameCanvas.getContext("webgl2"));
-@@ -1851,7 +1862,7 @@ void main(){
+@@ -1869,7 +1880,7 @@ void main(){
  
  			projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
  			program.set("uProjection", projectionMatrix);

@@ -34,7 +34,7 @@
  			</span>
  		</div>
  	</div>
-@@ -1293,7 +1307,7 @@ void main(){
+@@ -1295,7 +1309,7 @@ void main(){
  			zfar = 1000;
  		let projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
  		gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
@@ -43,7 +43,7 @@
  		let keyStates = {};
  
  		const renderDiv = (document.getElementById("render"));
-@@ -1325,11 +1339,18 @@ void main(){
+@@ -1327,11 +1341,18 @@ void main(){
  		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
  		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
  		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
@@ -63,7 +63,7 @@
  		let brickTexture = new Texture(
  			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
  			gl
-@@ -1341,9 +1362,9 @@ void main(){
+@@ -1343,9 +1364,9 @@ void main(){
  
  		let cubeMesh = new Cube();
  		let woodTower = new GameObject(
@@ -76,7 +76,7 @@
  			new Color(255, 255, 255),
  			new ObjMesh("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj"),
  			woodTexture
-@@ -1413,6 +1434,16 @@ void main(){
+@@ -1415,6 +1436,16 @@ void main(){
  			lightDirRotateSpeedText.textContent = dirLightRotateSpeed.toFixed(2);
  		});
  

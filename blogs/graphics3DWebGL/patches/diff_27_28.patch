@@ -40,7 +40,7 @@
  }`;
  		const fragmentShaderSource = `#version 300 es
  precision highp float;
-@@ -1264,6 +1274,7 @@ void main(){
+@@ -1266,6 +1276,7 @@ void main(){
  		const aUV = gl.getAttribLocation(program, "aUV");
  		const aNormal = gl.getAttribLocation(program, "aNormal");
  		const uModel = gl.getUniformLocation(program, "uModel");

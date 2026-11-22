@@ -239,28 +239,42 @@ let shadowMapDistance = 16;</code></pre><br/>
 					Ta có được frame buffer (được bind texture shadow) để render vào rồi, tiếp theo ta sẽ lo tới việc render. 
                     Render ra canvas thì ta cần texture, ánh sáng, đủ thứ, còn render ra shadow map thì chỉ cần depth, nên ta sẽ phải dùng một cặp shader khác
                     với cặp shader đã có sẵn. Mà cặp shader khác thì đồng nghĩa là 1 program khác, cái này mình sẽ nói tới sau, giờ thì mình tập trung vào 2 shader mới trước.<br/>
-					Đầu tiên, vertex shader chỉ lấy vào tọa độ và 3 matrix để nhân:
+					Đầu tiên, vertex shader chỉ lấy vào tọa độ và 3 matrix để nhân, cộng thêm UV để chuyển cho fragment shader (lí do ở dưới):
                     <pre><code class="language-glsl">#version 300 es
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 layout(location = 0) in vec3 aPosition;         // giải thích bên dưới
+layout(location = 1) in vec2 aUV;
+out vec2 vUV;
 
 void main(){
 	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+	vUV = aUV;
 }</code></pre>
                     Có một chỗ lạ là <code>layout(location = 0)</code>, cái này dùng để xác nhận là "địa chỉ" của <code>aPosition</code> luôn là 0.
                     Lí do cụ thể: VAO không nhớ "attribute tên là <code>aPosition</code>", nó nhớ "attribute số mấy" (số mà <code>gl.getAttribLocation</code> trả về).
                     Số này do GPU tự gán lúc link program, và không ai đảm bảo 2 program khác nhau sẽ gán <code>aPosition</code> cùng một số. Nếu lệch số thì shadow program
                     sẽ đọc nhầm UV hoặc normal làm tọa độ. <code>layout(location = 0)</code> ép cả 2 program dùng số 0 cho <code>aPosition</code>, nên ta dùng lại được
-                    VAO của mesh mà không cần tạo thêm. Cái <code>layout(location = 0)</code> này thì vertex shader chính cũng phải có.<br/><br/>
+                    VAO của mesh mà không cần tạo thêm. <code>aUV</code> cũng vậy, ta ép nó dùng số 1 bằng <code>layout(location = 1)</code>. 2 cái <code>layout</code> này
+                    thì vertex shader chính cũng phải có:
+                    <pre><code class="language-glsl">layout(location = 0) in vec3 aPosition;     // <----------------------
+layout(location = 1) in vec2 aUV;           // <----------------------
+in vec3 aNormal;</code></pre>
 
-                    Còn fragment shader, ta không cần làm gì luôn, vì depth thì GPU tự ghi sau khi rasterize, không cần ta xuất ra:
+                    Còn fragment shader thì không cần xuất màu gì cả, vì depth thì GPU tự ghi sau khi rasterize. Chỉ có 1 lưu ý: pixel trong suốt của texture
+                    (như cục lá ở <a href="webgl4-texture.html">blog #4</a>) thì phải <code>discard</code> giống fragment shader chính, không thì chỗ trong suốt vẫn
+                    ghi depth vào shadow map, và cục lá sẽ đổ bóng như 1 cục cube bình thường. Đó là lí do vertex shader phải chuyển UV qua cho fragment shader:
                     <pre><code class="language-glsl">#version 300 es
 precision highp float;
 
+uniform sampler2D uTexture;
+uniform bool uUseTexture;
+in vec2 vUV;
+
 void main(){
-    // không xuất màu gì cả, depth thì GPU tự ghi
+    // không xuất màu gì cả, depth thì GPU tự ghi, chỉ bỏ pixel trong suốt
+    if (uUseTexture && texture(uTexture, vUV).a < 0.5) discard;
 }</code></pre>
 
                     Bây giờ ta có tới 4 shader, tương ứng với 2 program, nên mình gom đoạn tạo program thành một hàm:
@@ -283,10 +297,12 @@ gl.useProgram(program);</code></pre>
                     Program khác nhau sẽ xài uniform khác nhau, nên ta phải tạo riêng các biến chứa địa chỉ cho shadow program:
 					<pre><code class="language-javascript">const uShadowModel = gl.getUniformLocation(shadowProgram, "uModel");
 const uShadowLightView = gl.getUniformLocation(shadowProgram, "uView");
-const uShadowLightProjection = gl.getUniformLocation(shadowProgram, "uProjection");</code></pre>
+const uShadowLightProjection = gl.getUniformLocation(shadowProgram, "uProjection");
+const uShadowTexture = gl.getUniformLocation(shadowProgram, "uTexture");
+const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");</code></pre>
 
                     Vì tính chất trên, cho nên trong <code>GameObject</code> ta cũng phải có 1 hàm vẽ riêng cho shadow map <code>drawDepth</code>. Hàm vẽ này
-                    chỉ set model matrix của shadow program rồi vẽ. Ngoài ra cũng có thêm hàm <code>drawDepthWithChildren</code> để vẽ từ cha tới con như hàm <code>drawWithChildren</code>:
+                    chỉ set model matrix và texture (giống hệt <code>draw</code>, nhưng là uniform của shadow program) rồi vẽ. Ngoài ra cũng có thêm hàm <code>drawDepthWithChildren</code> để vẽ từ cha tới con như hàm <code>drawWithChildren</code>:
                     <pre><code class="language-javascript">class GameObject {
     ...
     // mình để lại hàm draw ở đây để bạn so sánh
@@ -310,6 +326,14 @@ const uShadowLightProjection = gl.getUniformLocation(shadowProgram, "uProjection
     drawDepth() {
         if (this.mesh.vertexCount == 0) return;
         gl.uniformMatrix4fv(uShadowModel, false, this.transform.getModelMatrix().toColumnMajor());
+
+        if (this.texture) {
+            gl.activeTexture(gl.TEXTURE0);
+            gl.uniform1i(uShadowTexture, 0);
+            gl.bindTexture(gl.TEXTURE_2D, this.texture.glTexture);
+        }
+        gl.uniform1i(uShadowUseTexture, this.texture ? 1 : 0);
+
         gl.bindVertexArray(this.mesh.vertexArray);
         gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
     }
@@ -561,7 +585,9 @@ float getDirLightShadow() {
 
                     Ở hàm main của fragment shader ta sử dụng hàm <code>getDirLightShadow</code> như sau:
                     <pre><code class="language-glsl">void main(){
-    vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
+    vec4 textureColor = texture(uTexture, vUV);
+    if (uUseTexture && textureColor.a < 0.5) discard;
+    vec3 color = uUseTexture ? textureColor.rgb : uColor;
     float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
     float dirLightShadow = uUseShadow ? getDirLightShadow() : 0.0;          // <----------------------
     dirLightDiffuse *= 1.0 - dirLightShadow;                                // nằm trong bóng thì diffuse giảm theo độ đậm của bóng
@@ -948,8 +974,8 @@ let pointShadowMapSize = 512;</code></pre>
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffers[face]);
             gl.clear(gl.DEPTH_BUFFER_BIT);
             for (let gameObject of gameObjects) {
-                // hàm này lúc trước không nhận tham số gì, giờ ta cho nhận tham số là uniform model matrix mà ta muốn truyền
-                gameObject.drawDepthWithChildren(uPointLightShadowModel);
+                // hàm này lúc trước không nhận tham số gì, giờ ta cho nhận tham số là các uniform mà ta muốn truyền
+                gameObject.drawDepthWithChildren(uPointLightShadowModel, uPointLightShadowTexture, uPointLightShadowUseTexture);
             }
         }
 
@@ -969,27 +995,40 @@ const pointShadowProgram = createProgram(shadowVertexShaderSource, shadowFragmen
 const uPointLightShadowModel = gl.getUniformLocation(pointShadowProgram, "uModel");
 const uPointLightShadowView = gl.getUniformLocation(pointShadowProgram, "uView");
 const uPointLightShadowProjection = gl.getUniformLocation(pointShadowProgram, "uProjection");
+const uPointLightShadowTexture = gl.getUniformLocation(pointShadowProgram, "uTexture");
+const uPointLightShadowUseTexture = gl.getUniformLocation(pointShadowProgram, "uUseTexture");
 ...
 let pointShadowNear = 0.05;</code></pre>
                     Hàm <code>gameObject.drawDepthWithChildren()</code> (và hàm <code>gameObject.draw()</code>) lúc trước không có tham số gì.
-                    Nhưng giờ có thêm program của point light, có uniform model matrix riêng, nên hàm này ta phải cho truyền vào uniform model matrix để cả 2 đều xài dc:
+                    Nhưng giờ có thêm program của point light, có uniform model matrix và texture riêng, nên hàm này ta phải cho truyền vào 3 uniform đó để cả 2 đều xài dc.
+                    Tên tham số mình đặt trùng tên biến global <code>uTexture</code>, <code>uUseTexture</code> của program chính, nên đoạn bind texture copy y nguyên từ
+                    <code>draw</code> qua là chạy dc:
                     <pre><code class="language-javascript">class GameObject {
     ...
-    drawDepth(uModel) {
+    drawDepth(uModel, uTexture, uUseTexture) {
         ...
         gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
+
+        if (this.texture) {
+            gl.activeTexture(gl.TEXTURE0);
+            gl.uniform1i(uTexture, 0);
+            gl.bindTexture(gl.TEXTURE_2D, this.texture.glTexture);
+        }
+        gl.uniform1i(uUseTexture, this.texture ? 1 : 0);
         ...
     }
 
-    drawDepthWithChildren(uModel) {
-        this.drawDepth(uModel);
+    drawDepthWithChildren(uModel, uTexture, uUseTexture) {
+        this.drawDepth(uModel, uTexture, uUseTexture);
         for (let child of this.transform.children) {
             if (child.gameObject != null) {
-                child.gameObject.drawDepthWithChildren(uModel);
+                child.gameObject.drawDepthWithChildren(uModel, uTexture, uUseTexture);
             }
         }
-    }    
+    }
 }</code></pre>
+                    Chỗ gọi trong <code>buildShadowMap</code> của <code>DirectionalLight</code> thì truyền
+                    <code>gameObject.drawDepthWithChildren(uShadowModel, uShadowTexture, uShadowUseTexture)</code>.
                     <h3>c. Dùng cube shadow map ở fragment shader chính</h3>
                     OK khởi tạo ban đầu và việc buid 6 shadow map mỗi frame đã xong, bây giờ ta phải xử lí việc thật sự render shadow. Mình cũng xin nhắc lại những gì
                     mà ta làm với Directional Light shadow mỗi frame, nguyên văn: "với mỗi pixel ta đưa tọa độ thế giới của nó qua view và projection matrix của camera nguồn sáng

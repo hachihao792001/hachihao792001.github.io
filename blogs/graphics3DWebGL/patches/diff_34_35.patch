@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview34.html"
 +++ "b/htmlPreviews\\htmlPreview35.html"
-@@ -1355,6 +1355,8 @@ uniform sampler2D uShadowMap;
+@@ -1363,6 +1363,8 @@ uniform sampler2D uShadowMap;
  uniform mat4 uLightView;
  uniform mat4 uLightProjection;
  uniform bool uUseShadow;
@@ -9,7 +9,7 @@
  
  in vec2 vUV;
  in vec3 vWorldNormal;
-@@ -1365,13 +1367,16 @@ float getDirLightShadow() {
+@@ -1373,13 +1375,16 @@ float getDirLightShadow() {
  	float dotProduct = dot(vWorldNormal, uDirLightDir);
  	if (dotProduct >= 0.0) return 0.0;
  
@@ -28,7 +28,7 @@
  }
  
  void main(){
-@@ -1486,6 +1491,8 @@ void main(){
+@@ -1504,6 +1509,8 @@ void main(){
  		const uLightView = gl.getUniformLocation(program, "uLightView");
  		const uLightProjection = gl.getUniformLocation(program, "uLightProjection");
  		const uUseShadow = gl.getUniformLocation(program, "uUseShadow");
@@ -37,7 +37,7 @@
  
  		const uShadowModel = gl.getUniformLocation(shadowProgram, "uModel");
  		const uShadowLightView = gl.getUniformLocation(shadowProgram, "uView");
-@@ -1536,6 +1543,7 @@ void main(){
+@@ -1556,6 +1563,7 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
  		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
  		let shadowMapSize = 2048;
  		let shadowMapDistance = 16;
@@ -45,7 +45,7 @@
  		let dirLightDefaultDir = new Vector3(-1, -1, -1);
  		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
  		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
-@@ -1635,6 +1643,8 @@ void main(){
+@@ -1655,6 +1663,8 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
  			gl.activeTexture(gl.TEXTURE1);
  			gl.bindTexture(gl.TEXTURE_2D, dirLight.shadowMapTexture);
  			gl.uniform1i(uShadowMap, 1);

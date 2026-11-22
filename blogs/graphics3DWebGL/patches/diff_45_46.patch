@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview45.html"
 +++ "b/htmlPreviews\\htmlPreview46.html"
-@@ -1034,10 +1034,13 @@
+@@ -1042,10 +1042,13 @@
  			}
  		}
  
@@ -17,7 +17,7 @@
  				this.viewMatrix = null;
  				this.projectionMatrix = null;
  
-@@ -1045,14 +1048,18 @@
+@@ -1053,14 +1056,18 @@
  				this.shadowTarget = new RenderTarget(gl, this.shadowMapTexture);
  			}
  
@@ -39,7 +39,7 @@
  			}
  
  			buildShadowMap(shadowCasters) {
-@@ -1736,12 +1743,6 @@ void main(){
+@@ -1754,12 +1761,6 @@ void main(){
  		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
  		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
  		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
@@ -52,7 +52,7 @@
  		let dirLightRotateSpeed = parseFloat(lightDirRotateSpeedSlider.value);
  
  		const pointLightIntensitySlider = (document.getElementById("pointIntensity"));
-@@ -1774,6 +1775,10 @@ void main(){
+@@ -1792,6 +1793,10 @@ void main(){
  		ObjLoader.load("https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/models/wooden watch tower2.obj")
  			.then((mesh) => (towerRenderer.mesh = mesh));
  
@@ -63,7 +63,7 @@
  		let ground = scene.add(new GameObject("Ground", new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30)));
  		ground.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(0, 255, 0), brickTexture)));
  
-@@ -1796,9 +1801,7 @@ void main(){
+@@ -1814,9 +1819,7 @@ void main(){
  			}
  
  			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
@@ -74,7 +74,7 @@
  		}
  
  		function render() {
-@@ -1820,8 +1823,17 @@ void main(){
+@@ -1838,8 +1841,17 @@ void main(){
  			program.set("uView", camera.getViewMatrix());
  			program.set("uProjection", projectionMatrix);
  
@@ -92,7 +92,7 @@
  
  			const pointLightData = new Float32Array(maxActiveLights * 3);
  			const pointLightCount = Math.min(pointLights.length, maxActiveLights);
-@@ -1835,13 +1847,7 @@ void main(){
+@@ -1853,13 +1865,7 @@ void main(){
  			program.set("uPointLightCount", pointLightCount);
  			program.set("uPointLightIntensity", pointLightIntensity);
  			program.set("uPointLightRange", pointLightRange);
@@ -106,7 +106,7 @@
  			const pointShadowMapUnits = [];
  			for (let i = 0; i < maxShadowPointLights; i++) {
  				if (i < shadowPointLightCount) pointLights[i].cubemap.bind(2 + i);
-@@ -1852,8 +1858,6 @@ void main(){
+@@ -1870,8 +1876,6 @@ void main(){
  			program.set("uPointShadowMapSize", pointShadowMapSize);
  			program.set("uPointShadowBias", pointShadowBias);
  			program.set("uPointLightShadowProjectionMain", pointLightShadowProjectionMat);

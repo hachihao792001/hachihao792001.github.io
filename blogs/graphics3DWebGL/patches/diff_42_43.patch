@@ -41,7 +41,24 @@
  				program.set("uColor", this.color);
  
  				this.mesh.vertexArray.draw();
-@@ -995,17 +989,11 @@
+@@ -976,12 +970,12 @@
+ 				if (!this.mesh) return;
+ 				depthProgram.set("uModel", this.transform.getModelMatrix());
+ 
+-				if (this.texture) {
+-					gl.activeTexture(gl.TEXTURE0);
++				const glTexture = this.texture ? this.texture.glTexture : null;
++				if (glTexture) {
++					glTexture.bind(0);
+ 					depthProgram.set("uTexture", 0);
+-					gl.bindTexture(gl.TEXTURE_2D, this.texture.glTexture);
+ 				}
+-				depthProgram.set("uUseTexture", this.texture != null);
++				depthProgram.set("uUseTexture", glTexture != null);
+ 
+ 				this.mesh.vertexArray.draw();
+ 			}
+@@ -1003,17 +997,11 @@
  				this.viewMatrix = null;
  				this.projectionMatrix = null;
  
@@ -61,7 +78,7 @@
  				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
  			}
  
-@@ -1049,22 +1037,13 @@
+@@ -1057,22 +1045,13 @@
  			constructor(pos, eulerAngles, scale, color, mesh, texture = null, name = "") {
  				super(pos, eulerAngles, scale, color, mesh, texture, name);
  
@@ -86,7 +103,7 @@
  					this.framebuffers.push(framebuffer);
  				}
  				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-@@ -1444,6 +1423,57 @@
+@@ -1452,6 +1431,57 @@
  			}
  		}
  
@@ -144,7 +161,7 @@
  		// ===== index.js =====
  		const gameCanvas = (document.getElementById("gameCanvas"));
  		const gl = (gameCanvas.getContext("webgl2"));
-@@ -1742,13 +1772,11 @@ void main(){
+@@ -1760,13 +1790,11 @@ void main(){
  			program.set("uUseShadow", useShadow);
  			program.set("uLightView", dirLight.viewMatrix);
  			program.set("uLightProjection", dirLight.projectionMatrix);
@@ -160,7 +177,7 @@
  				pointShadowMapUnits.push(2 + i);
  			}
  			program.set("uPointShadowMaps", pointShadowMapUnits);
-@@ -1758,7 +1786,6 @@ void main(){
+@@ -1776,7 +1804,6 @@ void main(){
  			program.set("uPointLightShadowProjectionMain", pointLightShadowProjectionMat);
  			program.set("uShadowBias", shadowBias);
  			program.set("uShadowTexelSize", shadowMapDistance / shadowMapSize);

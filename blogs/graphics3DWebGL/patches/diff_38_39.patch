@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview38.html"
 +++ "b/htmlPreviews\\htmlPreview39.html"
-@@ -1453,10 +1453,11 @@ bool isInPointLightShadow(samplerCube pointShadowMap, vec3 lightPosition, vec3 p
+@@ -1461,10 +1461,11 @@ bool isInPointLightShadow(samplerCube pointShadowMap, vec3 lightPosition, vec3 p
  
  	vec3 absLightToPixel = abs(lightToPixel);
  	float viewZ = max(absLightToPixel.x, max(absLightToPixel.y, absLightToPixel.z));
@@ -14,7 +14,7 @@
  }
  
  void main(){
-@@ -1638,7 +1639,7 @@ void main(){
+@@ -1660,7 +1661,7 @@ const uPointLightShadowUseTexture = gl.getUniformLocation(pointShadowProgram, "u
  		let pointLightRange = parseFloat(pointLightRangeSlider.value);
  		let pointShadowNear = 0.05;
  		let pointShadowMapSize = 512;

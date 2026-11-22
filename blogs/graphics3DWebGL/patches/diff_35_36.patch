@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview35.html"
 +++ "b/htmlPreviews\\htmlPreview36.html"
-@@ -1375,8 +1375,15 @@ float getDirLightShadow() {
+@@ -1383,8 +1383,15 @@ float getDirLightShadow() {
  
  	if (shadowMapCoord.x < 0.0 || shadowMapCoord.x > 1.0 || shadowMapCoord.y < 0.0 || shadowMapCoord.y > 1.0 || shadowMapCoord.z > 1.0) return 0.0;
  
@@ -18,7 +18,7 @@
  }
  
  void main(){
-@@ -1543,7 +1550,7 @@ void main(){
+@@ -1563,7 +1570,7 @@ const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
  		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
  		let shadowMapSize = 2048;
  		let shadowMapDistance = 16;

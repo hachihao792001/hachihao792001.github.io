@@ -34,7 +34,7 @@
  		<div class="controlRow">
  			<label class="controlLabel" for="canvasResWidth">Canvas resolution:</label>
  			<span>
-@@ -1850,9 +1861,40 @@ void main(){
+@@ -1868,9 +1879,40 @@ void main(){
  			}
  		}
  
@@ -76,7 +76,7 @@
  
  		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 5, 0.2);
  		let keyStates = {};
-@@ -1894,7 +1936,7 @@ void main(){
+@@ -1912,7 +1954,7 @@ void main(){
  		const pointLightRangeText = (document.getElementById("pointRangeText"));
  
  		const useShadowCheckbox = (document.getElementById("useShadow"));
@@ -85,7 +85,7 @@
  
  		let brickTexture = new Texture(
  			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg"
-@@ -1988,7 +2030,7 @@ void main(){
+@@ -2006,7 +2048,7 @@ void main(){
  		});
  
  		useShadowCheckbox.addEventListener("change", () => {
@@ -94,7 +94,7 @@
  			useShadowCheckbox.blur();
  		});
  
-@@ -2001,6 +2043,8 @@ void main(){
+@@ -2019,6 +2061,8 @@ void main(){
  		function updateRenderResolution() {
  			gameCanvas.width = canvasRenderWidth;
  			gameCanvas.height = canvasRenderHeight;
@@ -103,7 +103,7 @@
  		}
  
  		function readAndApplyResolutionInput() {
-@@ -2026,8 +2070,17 @@ void main(){
+@@ -2044,8 +2088,17 @@ void main(){
  			}
  		}
  

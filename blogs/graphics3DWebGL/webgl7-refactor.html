@@ -94,9 +94,13 @@ const uPointLightShadowProjectionMain = gl.getUniformLocation(program, "uPointLi
 const uShadowModel = gl.getUniformLocation(shadowProgram, "uModel");
 const uShadowLightView = gl.getUniformLocation(shadowProgram, "uView");
 const uShadowLightProjection = gl.getUniformLocation(shadowProgram, "uProjection");
+const uShadowTexture = gl.getUniformLocation(shadowProgram, "uTexture");
+const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
 const uPointLightShadowModel = gl.getUniformLocation(pointShadowProgram, "uModel");
 const uPointLightShadowView = gl.getUniformLocation(pointShadowProgram, "uView");
-const uPointLightShadowProjection = gl.getUniformLocation(pointShadowProgram, "uProjection");</code></pre>
+const uPointLightShadowProjection = gl.getUniformLocation(pointShadowProgram, "uProjection");
+const uPointLightShadowTexture = gl.getUniformLocation(pointShadowProgram, "uTexture");
+const uPointLightShadowUseTexture = gl.getUniformLocation(pointShadowProgram, "uUseTexture");</code></pre>
 
                     Not the cleanest code in the world. Phần này mình sẽ gom mấy cái uniform lại cho từng program một, còn attribute mình để sau.<br/><br/>
                     Đầu tiên, bạn có biết là thật ra mình có thể extract uniform ra từ program không 😳 từ việc extract đó mình có thể tạo các biến chứa địa
@@ -260,10 +264,17 @@ const aNormal = gl.getAttribLocation(program.glProgram, "aNormal");
         gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
     }
 
-    // thay vì nhận vào uModel thì nhận vào program luôn
+    // thay vì nhận vào 3 location uModel, uTexture, uUseTexture thì nhận vào program luôn
     drawDepth(depthProgram) {
         if (this.mesh.vertexCount == 0) return;
         depthProgram.set("uModel", this.transform.getModelMatrix());        // <----------------------
+
+        if (this.texture) {
+            gl.activeTexture(gl.TEXTURE0);
+            depthProgram.set("uTexture", 0);                                // <----------------------
+            gl.bindTexture(gl.TEXTURE_2D, this.texture.glTexture);
+        }
+        depthProgram.set("uUseTexture", this.texture != null);              // <----------------------
         ...
     }
 
@@ -286,7 +297,7 @@ const aNormal = gl.getAttribLocation(program.glProgram, "aNormal");
         shadowProgram.set("uView", this.viewMatrix);                // <----------------------
         shadowProgram.set("uProjection", this.projectionMatrix);    // <----------------------
         for (let gameObject of gameObjects) {
-            gameObject.drawDepthWithChildren(shadowProgram);        // truyền program thay vì location của uModel
+            gameObject.drawDepthWithChildren(shadowProgram);        // truyền program thay vì 3 location
         }
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -405,18 +416,18 @@ function updateRenderResolution() {
         { name: "aNormal", location: 2, componentCount: 3 },
     ]);
 }</code></pre>
-                    Trong 2 vertex shader, ta có set <code>layout(location = 0)</code> cho <code>aPosition</code> để xác nhận index của <code>aPosition</code>
-                    luôn là 0 ở mọi program, làm như vậy để biến <code>aPosition</code> dùng được cho cả program chính và shadow program.
+                    Trong 2 vertex shader, ta có set <code>layout(location = 0)</code> cho <code>aPosition</code> và <code>layout(location = 1)</code> cho <code>aUV</code>
+                    để xác nhận index của 2 attribute đó luôn là 0 và 1 ở mọi program, làm như vậy để 2 biến đó dùng được cho cả program chính và shadow program.
                     Chữ layout đó chính là <code>VertexLayout</code> 😳, như vậy bây giờ ta hiểu full nghĩa của đoạn đó là
-                    "trong 1 vertex layout, index của <code>aPosition</code> là 0". Như vậy, để cho chắc ăn thì ta sẽ set luôn location cho <code>aUV</code>
-                    và <code>aNormal</code> trong vertex shader chính:
+                    "trong 1 vertex layout, index của <code>aPosition</code> là 0". Như vậy, để cho chắc ăn thì ta sẽ set luôn location cho
+                    <code>aNormal</code> trong vertex shader chính:
                     <pre><code class="language-glsl">#version 300 es
 uniform mat4 uModel;
 uniform mat4 uNormalMatrix;
 uniform mat4 uView;
 uniform mat4 uProjection;
 layout(location = 0) in vec3 aPosition;
-layout(location = 1) in vec2 aUV;           // <----------------------
+layout(location = 1) in vec2 aUV;
 layout(location = 2) in vec3 aNormal;       // <----------------------
 out vec2 vUV;
 out vec3 vWorldPosition;
@@ -1041,7 +1052,7 @@ ObjLoader.load("https://raw.githubusercontent.com/.../wooden watch tower2.obj")
         this.glTexture = new Texture2D(this.gl, this.width, this.height, new Uint8Array(this.pixels.buffer));   
     }
 }</code></pre>
-                    <code>Texture.glTexture</code> đổi kiểu thì hàm <code>GameObject.draw</code> phải cập nhật:
+                    <code>Texture.glTexture</code> đổi kiểu thì 2 hàm <code>GameObject.draw</code> và <code>GameObject.drawDepth</code> phải cập nhật:
                     <pre><code class="language-javascript">class GameObject {
     ...
     draw() {
@@ -1054,6 +1065,19 @@ ObjLoader.load("https://raw.githubusercontent.com/.../wooden watch tower2.obj")
         }
         program.set("uUseTexture", glTexture != null);          // <----------------------
         program.set("uColor", this.color);
+
+        this.mesh.vertexArray.draw();
+    }
+    ...
+    drawDepth(depthProgram) {
+        ...
+
+        const glTexture = this.texture ? this.texture.glTexture : null;     // <----------------------
+        if (glTexture) {                                                     // <----------------------
+            glTexture.bind(0);                                               // <----------------------
+            depthProgram.set("uTexture", 0);
+        }
+        depthProgram.set("uUseTexture", glTexture != null);                 // <----------------------
 
         this.mesh.vertexArray.draw();
     }
@@ -1342,10 +1366,18 @@ ObjLoader.load("https://raw.githubusercontent.com/.../wooden watch tower2.obj")
         this.mesh.vertexArray.draw();
     }
 
-    // y hệt drawDepth cũ
+    // y hệt drawDepth cũ, cũng chỉ khác chỗ lấy texture
     drawDepth(depthProgram) {
         if (!this.mesh) return;
         depthProgram.set("uModel", this.transform.getModelMatrix());
+
+        const glTexture = this.material.texture ? this.material.texture.glTexture : null;
+        if (glTexture) {
+            glTexture.bind(0);
+            depthProgram.set("uTexture", 0);
+        }
+        depthProgram.set("uUseTexture", glTexture != null);
+
         this.mesh.vertexArray.draw();
     }
 }</code></pre>
@@ -1991,6 +2023,14 @@ class PointLightShadowMap {
         const vertexArray = this.getVertexArray(meshRenderer.mesh);
         if (!vertexArray) return;
         depthProgram.set("uModel", meshRenderer.transform.getModelMatrix());
+
+        const glTexture = this.getTexture(meshRenderer.material.texture);
+        if (glTexture) {
+            glTexture.bind(0);
+            depthProgram.set("uTexture", 0);
+        }
+        depthProgram.set("uUseTexture", glTexture != null);
+
         vertexArray.draw();
     }
 

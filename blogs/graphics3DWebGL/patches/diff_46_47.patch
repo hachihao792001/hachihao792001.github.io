@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview46.html"
 +++ "b/htmlPreviews\\htmlPreview47.html"
-@@ -1077,7 +1077,7 @@
+@@ -1085,7 +1085,7 @@
  				program.use();
  			}
  		}
@@ -9,7 +9,7 @@
  			static faces = [
  				[new Vector3(1, 0, 0), new Vector3(0, -1, 0), new Vector3(0, 0, -1)],
  				[new Vector3(-1, 0, 0), new Vector3(0, -1, 0), new Vector3(0, 0, 1)],
-@@ -1087,10 +1087,15 @@
+@@ -1095,10 +1095,15 @@
  				[new Vector3(0, 0, -1), new Vector3(0, -1, 0), new Vector3(-1, 0, 0)],
  			];
  
@@ -28,7 +28,7 @@
  
  				this.targets = [];
  				for (let face = 0; face < 6; face++) {
-@@ -1098,11 +1103,15 @@
+@@ -1106,11 +1111,15 @@
  				}
  			}
  
@@ -46,7 +46,7 @@
  				for (let face = 0; face < 6; face++) {
  					let [forward, up, right] = PointLight.faces[face];
  					let view = Mat4x4.View(right, up, forward, this.transform.position);
-@@ -1391,7 +1400,13 @@
+@@ -1399,7 +1408,13 @@
  						else gl.uniform3f(location, value.x, value.y, value.z);
  						break;
  					case gl.FLOAT_MAT4:
@@ -61,7 +61,7 @@
  						break;
  					case gl.INT:
  					case gl.BOOL:
-@@ -1581,9 +1596,9 @@ uniform float uDirLightIntensity;
+@@ -1589,9 +1604,9 @@ uniform float uDirLightIntensity;
  uniform float uAmbientLight;
  
  uniform vec3 uPointLightPositions[${maxActiveLights}];
@@ -73,7 +73,7 @@
  
  uniform sampler2D uShadowMap;
  uniform mat4 uLightView;
-@@ -1594,9 +1609,9 @@ uniform float uShadowTexelSize;
+@@ -1602,9 +1617,9 @@ uniform float uShadowTexelSize;
  
  uniform samplerCube uPointShadowMaps[${maxShadowPointLights}];
  uniform int uShadowPointLightCount;
@@ -86,7 +86,7 @@
  
  in vec2 vUV;
  in vec3 vWorldNormal;
-@@ -1626,15 +1641,15 @@ float getDirLightShadow() {
+@@ -1634,15 +1649,15 @@ float getDirLightShadow() {
  	return shadow / 9.0 * -dotProduct;
  }
  
@@ -106,7 +106,7 @@
  	float currentDepth = clipSpaceCoord.z / clipSpaceCoord.w * 0.5 + 0.5;
  	float closestDepth = texture(pointShadowMap, lightToPixel).r;
  	return currentDepth > closestDepth;
-@@ -1646,7 +1661,6 @@ void main(){
+@@ -1656,7 +1671,6 @@ void main(){
  	float dirLightShadow = uUseShadow ? getDirLightShadow() : 0.0;
  	dirLightDiffuse *= 1.0 - dirLightShadow;
  
@@ -114,7 +114,7 @@
  	float totalPointLightDiffuse = 0.0;
  	for (int i = 0; i < uPointLightCount; i++) {
  		vec3 pointLightVec = uPointLightPositions[i] - vWorldPosition;
-@@ -1655,16 +1669,17 @@ void main(){
+@@ -1665,16 +1679,17 @@ void main(){
  		if (uUseShadow && i < uShadowPointLightCount){
  			bool isInShadow = false;
  			switch(i){
@@ -136,7 +136,7 @@
  		float distanceFromPixelToPointLight2 = dot(pointLightVec, pointLightVec);
  		if (distanceFromPixelToPointLight2 >= pointLightRangeSquare) continue;
  
-@@ -1674,9 +1689,8 @@ void main(){
+@@ -1684,9 +1699,8 @@ void main(){
  		float pointLightDistanceRatio = distanceFromPixelToPointLight2 / pointLightRangeSquare;
  		float inverseSquareDistance = 1.0 / (1.0 + 0.02 * distanceFromPixelToPointLight2);
  		float attenuation = (1.0 - pointLightDistanceRatio) * inverseSquareDistance;
@@ -147,7 +147,7 @@
  
  	float lightIntensity = max(uAmbientLight, dirLightDiffuse + totalPointLightDiffuse);
  
-@@ -1747,13 +1761,8 @@ void main(){
+@@ -1765,13 +1779,8 @@ void main(){
  
  		const pointLightIntensitySlider = (document.getElementById("pointIntensity"));
  		const pointLightIntensityText = (document.getElementById("pointIntensityText"));
@@ -161,7 +161,7 @@
  
  		const useShadowCheckbox = (document.getElementById("useShadow"));
  		let useShadow = useShadowCheckbox.checked;
-@@ -1783,12 +1792,13 @@ void main(){
+@@ -1801,12 +1810,13 @@ void main(){
  		ground.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(0, 255, 0), brickTexture)));
  
  		let pointLights = [
@@ -177,7 +177,7 @@
  		}
  
  		let lastTime = performance.now();
-@@ -1809,14 +1819,14 @@ void main(){
+@@ -1827,14 +1837,14 @@ void main(){
  
  			const meshRenderers = scene.getAllComponentsOfType(MeshRenderer);
  			const shadowCasters = meshRenderers.filter((meshRenderer) => meshRenderer.castShadow);
@@ -195,7 +195,7 @@
  				}
  			}
  
-@@ -1836,28 +1846,40 @@ void main(){
+@@ -1854,28 +1864,40 @@ void main(){
  			program.set("uShadowTexelSize", dirLight.shadowDistance / dirLight.shadowMapSize);
  
  			const pointLightData = new Float32Array(maxActiveLights * 3);
@@ -242,7 +242,7 @@
  
  			for (let meshRenderer of meshRenderers) {
  				meshRenderer.draw();
-@@ -1895,13 +1917,19 @@ void main(){
+@@ -1913,13 +1935,19 @@ void main(){
  		});
  
  		pointLightIntensitySlider.addEventListener("input", () => {

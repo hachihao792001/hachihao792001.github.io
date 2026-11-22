@@ -34,7 +34,7 @@
  		// ===== mesh.js =====
  		class Triangle {
  			constructor(vertices = [], uv = [], color = new Color(255, 255, 255)) {
-@@ -1266,6 +1286,15 @@ void main(){
+@@ -1268,6 +1288,15 @@ void main(){
  		let lookInput = { x: 0, y: 0 };
  		let lookSpeed = 450;
  
@@ -50,7 +50,26 @@
  		let brickTexture = new Texture(
  			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
  			gl
-@@ -1298,6 +1327,10 @@ void main(){
+@@ -1276,10 +1305,6 @@ void main(){
+ 			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/Wood_Tower_Col.jpg",
+ 			gl
+ 		);
+-		let leafTexture = new Texture(
+-			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/leaf.png",
+-			gl
+-		);
+ 
+ 		let cubeMesh = new Cube();
+ 		let woodTower = new GameObject(
+@@ -1291,7 +1316,6 @@ void main(){
+ 			woodTexture
+ 		);
+ 		let ground = new GameObject(new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30), new Color(0, 255, 0), cubeMesh, brickTexture);
+-		let leaf = new GameObject(new Vector3(0, 1.75, -5), Vector3.zero, new Vector3(2, 2, 2), new Color(255, 255, 255), cubeMesh, leafTexture);
+ 		let pointLights = [
+ 			new GameObject(new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 1"),
+ 			new GameObject(new Vector3(0, 2, -5), Vector3.zero, new Vector3(0.1, 0.1, 0.1), new Color(255, 255, 255), cubeMesh, null, "Point light 2"),
+@@ -1305,6 +1329,10 @@ void main(){
  			if (lookInput.x != 0 || lookInput.y != 0) {
  				camera.updateRotation(lookInput.x * dt * lookSpeed, lookInput.y * dt * lookSpeed);
  			}
@@ -61,7 +80,15 @@
  		}
  
  		function render() {
-@@ -1331,6 +1364,16 @@ void main(){
+@@ -1316,7 +1344,6 @@ void main(){
+ 				light.drawWithChildren();
+ 			}
+ 			woodTower.drawWithChildren();
+-			leaf.drawWithChildren();
+ 		}
+ 
+ 		function update(time = performance.now()) {
+@@ -1339,6 +1366,16 @@ void main(){
  
  		update();
  

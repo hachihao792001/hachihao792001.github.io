@@ -338,7 +338,7 @@
  			}
  		}
  
-@@ -1874,17 +2181,163 @@ void main(){
+@@ -1892,17 +2199,163 @@ void main(){
  				this.height = this.canvas.height;
  				this.imageData = this.ctx.createImageData(this.width, this.height);
  				this.screenBuffer = this.imageData.data;

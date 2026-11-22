@@ -20,7 +20,7 @@
  			</span>
  		</div>
  	</div>
-@@ -1282,7 +1282,7 @@ void main(){
+@@ -1284,7 +1284,7 @@ void main(){
  			zfar = 1000;
  		let projectionMatrix = Mat4x4.Projection(fov, gameCanvas.height, gameCanvas.width, znear, zfar);
  		gl.uniformMatrix4fv(uProjection, false, projectionMatrix.toColumnMajor());
@@ -29,7 +29,7 @@
  		let keyStates = {};
  
  		const renderDiv = (document.getElementById("render"));
-@@ -1314,7 +1314,7 @@ void main(){
+@@ -1316,7 +1316,7 @@ void main(){
  		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
  		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
  		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
@@ -38,7 +38,7 @@
  		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
  		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
  		let dirLightRotateSpeed = parseFloat(lightDirRotateSpeedSlider.value);
-@@ -1330,9 +1330,9 @@ void main(){
+@@ -1332,9 +1332,9 @@ void main(){
  
  		let cubeMesh = new Cube();
  		let woodTower = new GameObject(

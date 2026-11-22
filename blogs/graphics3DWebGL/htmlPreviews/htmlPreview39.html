@@ -973,18 +973,26 @@
 				}
 			}
 
-			drawDepth(uModel) {
+			drawDepth(uModel, uTexture, uUseTexture) {
 				if (this.mesh.vertexCount == 0) return;
 				gl.uniformMatrix4fv(uModel, false, this.transform.getModelMatrix().toColumnMajor());
+
+				if (this.texture) {
+					gl.activeTexture(gl.TEXTURE0);
+					gl.uniform1i(uTexture, 0);
+					gl.bindTexture(gl.TEXTURE_2D, this.texture.glTexture);
+				}
+				gl.uniform1i(uUseTexture, this.texture ? 1 : 0);
+
 				gl.bindVertexArray(this.mesh.vertexArray);
 				gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
 			}
 
-			drawDepthWithChildren(uModel) {
-				this.drawDepth(uModel);
+			drawDepthWithChildren(uModel, uTexture, uUseTexture) {
+				this.drawDepth(uModel, uTexture, uUseTexture);
 				for (let child of this.transform.children) {
 					if (child.gameObject != null) {
-						child.gameObject.drawDepthWithChildren(uModel);
+						child.gameObject.drawDepthWithChildren(uModel, uTexture, uUseTexture);
 					}
 				}
 			}
@@ -1030,7 +1038,7 @@
 				gl.uniformMatrix4fv(uShadowLightView, false, this.viewMatrix.toColumnMajor());
 				gl.uniformMatrix4fv(uShadowLightProjection, false, this.projectionMatrix.toColumnMajor());
 				for (let gameObject of gameObjects) {
-					gameObject.drawDepthWithChildren(uShadowModel);
+					gameObject.drawDepthWithChildren(uShadowModel, uShadowTexture, uShadowUseTexture);
 				}
 
 				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -1086,7 +1094,7 @@
 					gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffers[face]);
 					gl.clear(gl.DEPTH_BUFFER_BIT);
 					for (let gameObject of gameObjects) {
-						gameObject.drawDepthWithChildren(uPointLightShadowModel);
+						gameObject.drawDepthWithChildren(uPointLightShadowModel, uPointLightShadowTexture, uPointLightShadowUseTexture);
 					}
 				}
 
@@ -1377,7 +1385,7 @@ uniform mat4 uNormalMatrix;
 uniform mat4 uView;
 uniform mat4 uProjection;
 layout(location = 0) in vec3 aPosition;
-in vec2 aUV;
+layout(location = 1) in vec2 aUV;
 in vec3 aNormal;
 out vec2 vUV;
 out vec3 vWorldPosition;
@@ -1461,7 +1469,9 @@ bool isInPointLightShadow(samplerCube pointShadowMap, vec3 lightPosition, vec3 p
 }
 
 void main(){
-	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
+	vec4 textureColor = texture(uTexture, vUV);
+	if (uUseTexture && textureColor.a < 0.5) discard;
+	vec3 color = uUseTexture ? textureColor.rgb : uColor;
 	float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
 	float dirLightShadow = uUseShadow ? getDirLightShadow() : 0.0;
 	dirLightDiffuse *= 1.0 - dirLightShadow;
@@ -1507,14 +1517,22 @@ uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec2 aUV;
+out vec2 vUV;
 
 void main(){
 	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+	vUV = aUV;
 }`;
 		const shadowFragmentShaderSource = `#version 300 es
 precision highp float;
 
+uniform sampler2D uTexture;
+uniform bool uUseTexture;
+in vec2 vUV;
+
 void main(){
+	if (uUseTexture && texture(uTexture, vUV).a < 0.5) discard;
 }`;
 		function compileShader(type, source) {
 			const shader = gl.createShader(type);
@@ -1577,9 +1595,13 @@ void main(){
 		const uShadowModel = gl.getUniformLocation(shadowProgram, "uModel");
 		const uShadowLightView = gl.getUniformLocation(shadowProgram, "uView");
 		const uShadowLightProjection = gl.getUniformLocation(shadowProgram, "uProjection");
+const uShadowTexture = gl.getUniformLocation(shadowProgram, "uTexture");
+const uShadowUseTexture = gl.getUniformLocation(shadowProgram, "uUseTexture");
 		const uPointLightShadowModel = gl.getUniformLocation(pointShadowProgram, "uModel");
 		const uPointLightShadowView = gl.getUniformLocation(pointShadowProgram, "uView");
 		const uPointLightShadowProjection = gl.getUniformLocation(pointShadowProgram, "uProjection");
+const uPointLightShadowTexture = gl.getUniformLocation(pointShadowProgram, "uTexture");
+const uPointLightShadowUseTexture = gl.getUniformLocation(pointShadowProgram, "uUseTexture");
 
 		gl.enable(gl.DEPTH_TEST);
 		gl.enable(gl.CULL_FACE);

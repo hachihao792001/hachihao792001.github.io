@@ -1954,7 +1954,9 @@ bool isInPointLightShadow(samplerCube pointShadowMap, mat4 shadowProjection, flo
 }
 
 void main(){
-	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
+	vec4 textureColor = texture(uTexture, vUV);
+	if (uUseTexture && textureColor.a < 0.5) discard;
+	vec3 color = uUseTexture ? textureColor.rgb : uColor;
 	float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
 	float dirLightShadow = uUseShadow ? getDirLightShadow() : 0.0;
 	dirLightDiffuse *= 1.0 - dirLightShadow;
@@ -1999,14 +2001,22 @@ uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec2 aUV;
+out vec2 vUV;
 
 void main(){
 	gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+	vUV = aUV;
 }`;
 		const shadowFragmentShaderSource = `#version 300 es
 precision highp float;
 
+uniform sampler2D uTexture;
+uniform bool uUseTexture;
+in vec2 vUV;
+
 void main(){
+	if (uUseTexture && texture(uTexture, vUV).a < 0.5) discard;
 }`;
 		class DirectionalShadowMap {
 			constructor(gl, size) {
@@ -2205,6 +2215,14 @@ void main(){
 				const vertexArray = this.getVertexArray(meshRenderer.mesh);
 				if (!vertexArray) return;
 				depthProgram.set("uModel", meshRenderer.transform.getModelMatrix());
+
+				const glTexture = this.getTexture(meshRenderer.material.texture);
+				if (glTexture) {
+					glTexture.bind(0);
+					depthProgram.set("uTexture", 0);
+				}
+				depthProgram.set("uUseTexture", glTexture != null);
+
 				vertexArray.draw();
 			}
 
@@ -2452,8 +2470,6 @@ void main(){
 								const z = vertex0Z * baryCoord0 + vertex1Z * baryCoord1 + vertex2Z * baryCoord2;
 
 								if (z < depthBuffer[pixelIndex]) {
-									depthBuffer[pixelIndex] = z;
-
 									const pixelInvZ = uv0W * baryCoord0 + uv1W * baryCoord1 + uv2W * baryCoord2;
 
 									const pixelWorldX =
@@ -2493,7 +2509,8 @@ void main(){
 
 									let texR = triColor.r,
 										texG = triColor.g,
-										texB = triColor.b;
+										texB = triColor.b,
+										texA = 255;
 									if (texturePixels) {
 										const pixelU = (uv0U * baryCoord0 + uv1U * baryCoord1 + uv2U * baryCoord2) / pixelInvZ;
 										const pixelV = (uv0V * baryCoord0 + uv1V * baryCoord1 + uv2V * baryCoord2) / pixelInvZ;
@@ -2503,12 +2520,16 @@ void main(){
 										texR = texturePixels[texIndex];
 										texG = texturePixels[texIndex + 1];
 										texB = texturePixels[texIndex + 2];
+										texA = texturePixels[texIndex + 3];
 									}
 
-									const colorIndex = pixelIndex * 4;
-									screenBuffer[colorIndex] = Math.min(255, texR * lightIntensity);
-									screenBuffer[colorIndex + 1] = Math.min(255, texG * lightIntensity);
-									screenBuffer[colorIndex + 2] = Math.min(255, texB * lightIntensity);
+									if (texA >= 128) {
+										depthBuffer[pixelIndex] = z;
+										const colorIndex = pixelIndex * 4;
+										screenBuffer[colorIndex] = Math.min(255, texR * lightIntensity);
+										screenBuffer[colorIndex + 1] = Math.min(255, texG * lightIntensity);
+										screenBuffer[colorIndex + 2] = Math.min(255, texB * lightIntensity);
+									}
 								}
 							}
 							edgeFunction01 += edgeSlopeX01;
@@ -2588,6 +2609,14 @@ void main(){
 
 					const signedDoubleArea = shadowTri.signedDoubleArea;
 
+					const texture = tri.texture;
+					const texturePixels = texture ? texture.pixels : null;
+					const textureWidth = texture ? texture.width : 0,
+						textureHeight = texture ? texture.height : 0;
+					const uv0 = tri.uvs[0],
+						uv1 = tri.uvs[1],
+						uv2 = tri.uvs[2];
+
 					const edgeSlopeX01 = vertex0Y - vertex1Y;
 					const edgeSlopeX12 = vertex1Y - vertex2Y;
 					const edgeSlopeX20 = vertex2Y - vertex0Y;
@@ -2609,7 +2638,15 @@ void main(){
 							if (edgeFunction01 > 0 && edgeFunction12 > 0 && edgeFunction20 > 0) {
 								const z = (edgeFunction12 * vertex0Z + edgeFunction20 * vertex1Z + edgeFunction01 * vertex2Z) / signedDoubleArea;
 								if (z < shadowMapRow[x]) {
-									shadowMapRow[x] = z;
+									let texA = 255;
+									if (texturePixels) {
+										const pixelU = (edgeFunction12 * uv0.u + edgeFunction20 * uv1.u + edgeFunction01 * uv2.u) / signedDoubleArea;
+										const pixelV = (edgeFunction12 * uv0.v + edgeFunction20 * uv1.v + edgeFunction01 * uv2.v) / signedDoubleArea;
+										const texX = Math.floor(pixelU * (textureWidth - 1));
+										const texY = Math.floor(pixelV * (textureHeight - 1));
+										texA = texturePixels[(texY * textureWidth + texX) * 4 + 3];
+									}
+									if (texA >= 128) shadowMapRow[x] = z;
 								}
 							}
 							edgeFunction01 += edgeSlopeX01;

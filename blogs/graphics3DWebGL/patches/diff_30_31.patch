@@ -61,7 +61,7 @@
  			}
  		}
  		// ===== mesh.js =====
-@@ -1377,6 +1410,7 @@ void main(){
+@@ -1379,6 +1412,7 @@ void main(){
  		const lightDirIntensityText = (document.getElementById("dirIntensityText"));
  		const lightDirRotateSpeedSlider = (document.getElementById("dirRotateSpeed"));
  		const lightDirRotateSpeedText = (document.getElementById("dirRotateSpeedText"));
@@ -69,7 +69,7 @@
  		let dirLightDefaultDir = new Vector3(-1, -1, -1);
  		let dirLight = new DirectionalLight(dirLightDefaultDir, parseFloat(lightDirIntensitySlider.value));
  		let dirLightRotation = Quaternion.buildQuaternionEuler(Vector3.zero);
-@@ -1390,6 +1424,9 @@ void main(){
+@@ -1392,6 +1426,9 @@ void main(){
  		let pointLightRange = parseFloat(pointLightRangeSlider.value);
  		let maxActiveLights = 16;
  
@@ -79,7 +79,7 @@
  		let brickTexture = new Texture(
  			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg",
  			gl
-@@ -1431,7 +1468,15 @@ void main(){
+@@ -1433,7 +1470,15 @@ void main(){
  
  		function render() {
  			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -96,7 +96,7 @@
  
  			gl.uniform3f(uDirLightDir, dirLight.dir.x, dirLight.dir.y, dirLight.dir.z);
  			gl.uniform1f(uDirLightIntensity, dirLight.intensity);
-@@ -1497,6 +1542,11 @@ void main(){
+@@ -1499,6 +1544,11 @@ void main(){
  			pointLightRangeText.textContent = pointLightRange.toFixed(0);
  		});
  

@@ -132,7 +132,7 @@
  		}
  
  		class Mesh {
-@@ -2188,11 +2266,14 @@ void main(){
+@@ -2206,11 +2284,14 @@ void main(){
  				if (this.canvas.width != this.width || this.canvas.height != this.height) this.resize();
  				this.clearScreen();
  
@@ -148,7 +148,7 @@
  
  				this.ctx.putImageData(this.imageData, 0, 0);
  			}
-@@ -2226,6 +2307,8 @@ void main(){
+@@ -2244,6 +2325,8 @@ void main(){
  						}
  						let tri = new Triangle(vertices, triUVs, meshRenderer.material.color);
  						tri.mulMat4x4(modelMatrix);
@@ -157,7 +157,7 @@
  						objectTris.push(tri);
  					}
  				}
-@@ -2266,11 +2349,12 @@ void main(){
+@@ -2284,11 +2367,12 @@ void main(){
  				}
  			}
  
@@ -171,7 +171,7 @@
  
  				for (let tri of tris) {
  					let vertices = tri.vertices;
-@@ -2285,6 +2369,13 @@ void main(){
+@@ -2303,6 +2387,13 @@ void main(){
  					tri.calculateSignedDoubleArea();
  					const signedDoubleArea = tri.signedDoubleArea;
  
@@ -185,7 +185,7 @@
  					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
  
  					let edgeFunctionRow01 = MathExtend.edgeFunction(tri.vertices[0], tri.vertices[1], new Vector3(bbox.minX, bbox.minY, 0));
-@@ -2305,7 +2396,37 @@ void main(){
+@@ -2323,7 +2414,37 @@ void main(){
  					const edgeSlopeY12 = vertex2.x - vertex1.x;
  					const edgeSlopeY20 = vertex0.x - vertex2.x;
  
@@ -223,10 +223,16 @@
  
  					for (let y = bbox.minY; y <= bbox.maxY; y++) {
  						let edgeFunction01 = edgeFunctionRow01;
-@@ -2322,10 +2443,59 @@ void main(){
- 								if (z < depthBuffer[pixelIndex]) {
- 									depthBuffer[pixelIndex] = z;
+@@ -2338,12 +2459,64 @@ void main(){
+ 								const z = vertex0Z * baryCoord0 + vertex1Z * baryCoord1 + vertex2Z * baryCoord2;
  
+ 								if (z < depthBuffer[pixelIndex]) {
+-									depthBuffer[pixelIndex] = z;
+-
+-									const colorIndex = pixelIndex * 4;
+-									screenBuffer[colorIndex] = triColor.r;
+-									screenBuffer[colorIndex + 1] = triColor.g;
+-									screenBuffer[colorIndex + 2] = triColor.b;
 +									const pixelInvZ = uv0W * baryCoord0 + uv1W * baryCoord1 + uv2W * baryCoord2;
 +
 +									const pixelWorldX =
@@ -264,7 +270,8 @@
 +
 +									let texR = triColor.r,
 +										texG = triColor.g,
-+										texB = triColor.b;
++										texB = triColor.b,
++										texA = 255;
 +									if (texturePixels) {
 +										const pixelU = (uv0U * baryCoord0 + uv1U * baryCoord1 + uv2U * baryCoord2) / pixelInvZ;
 +										const pixelV = (uv0V * baryCoord0 + uv1V * baryCoord1 + uv2V * baryCoord2) / pixelInvZ;
@@ -274,15 +281,16 @@
 +										texR = texturePixels[texIndex];
 +										texG = texturePixels[texIndex + 1];
 +										texB = texturePixels[texIndex + 2];
++										texA = texturePixels[texIndex + 3];
 +									}
 +
- 									const colorIndex = pixelIndex * 4;
--									screenBuffer[colorIndex] = triColor.r;
--									screenBuffer[colorIndex + 1] = triColor.g;
--									screenBuffer[colorIndex + 2] = triColor.b;
-+									screenBuffer[colorIndex] = Math.min(255, texR * lightIntensity);
-+									screenBuffer[colorIndex + 1] = Math.min(255, texG * lightIntensity);
-+									screenBuffer[colorIndex + 2] = Math.min(255, texB * lightIntensity);
++									if (texA >= 128) {
++										depthBuffer[pixelIndex] = z;
++										const colorIndex = pixelIndex * 4;
++										screenBuffer[colorIndex] = Math.min(255, texR * lightIntensity);
++										screenBuffer[colorIndex + 1] = Math.min(255, texG * lightIntensity);
++										screenBuffer[colorIndex + 2] = Math.min(255, texB * lightIntensity);
++									}
  								}
  							}
  							edgeFunction01 += edgeSlopeX01;

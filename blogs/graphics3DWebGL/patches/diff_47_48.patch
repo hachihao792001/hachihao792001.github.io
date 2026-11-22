@@ -37,7 +37,7 @@
  			}
  
  			getFrustumCenter(zNear, zFar) {
-@@ -990,28 +993,6 @@
+@@ -990,36 +993,6 @@
  				this.material = material;
  				this.castShadow = castShadow;
  			}
@@ -61,12 +61,20 @@
 -			drawDepth(depthProgram) {
 -				if (!this.mesh) return;
 -				depthProgram.set("uModel", this.transform.getModelMatrix());
+-
+-				const glTexture = this.material.texture ? this.material.texture.glTexture : null;
+-				if (glTexture) {
+-					glTexture.bind(0);
+-					depthProgram.set("uTexture", 0);
+-				}
+-				depthProgram.set("uUseTexture", glTexture != null);
+-
 -				this.mesh.vertexArray.draw();
 -			}
  		}
  
  		class Scene {
-@@ -1043,50 +1024,23 @@
+@@ -1051,50 +1024,23 @@
  				this.shadowBias = shadowBias;
  				this.viewMatrix = null;
  				this.projectionMatrix = null;
@@ -119,7 +127,7 @@
  			constructor(intensity, range, shadowMapSize, shadowNear, shadowBias) {
  				super();
  				this.intensity = intensity;
-@@ -1094,40 +1048,11 @@
+@@ -1102,40 +1048,11 @@
  				this.shadowMapSize = shadowMapSize;
  				this.shadowNear = shadowNear;
  				this.shadowBias = shadowBias;
@@ -160,7 +168,7 @@
  		}
  
  		// ===== mesh.js =====
-@@ -1150,7 +1075,6 @@
+@@ -1158,7 +1075,6 @@
  				this.uvs = uvs;
  				this.normals = normals;
  				this.indices = indices;
@@ -168,7 +176,7 @@
  			}
  
  			get vertexCount() {
-@@ -1191,27 +1115,6 @@
+@@ -1199,27 +1115,6 @@
  					vertexCount <= 65536 ? new Uint16Array(indices) : new Uint32Array(indices),
  				);
  			}
@@ -196,7 +204,7 @@
  		}
  
  		class Primitives {
-@@ -1559,10 +1462,7 @@
+@@ -1567,10 +1462,7 @@
  			}
  		}
  
@@ -208,9 +216,9 @@
  		const maxActiveLights = 16;
  		const maxShadowPointLights = 4;
  
-@@ -1710,21 +1610,250 @@ precision highp float;
- 
+@@ -1728,21 +1620,258 @@ in vec2 vUV;
  void main(){
+ 	if (uUseTexture && texture(uTexture, vUV).a < 0.5) discard;
  }`;
 -		const program = new ShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
 -		const shadowProgram = new ShaderProgram(gl, shadowVertexShaderSource, shadowFragmentShaderSource);
@@ -424,6 +432,14 @@
 +				const vertexArray = this.getVertexArray(meshRenderer.mesh);
 +				if (!vertexArray) return;
 +				depthProgram.set("uModel", meshRenderer.transform.getModelMatrix());
++
++				const glTexture = this.getTexture(meshRenderer.material.texture);
++				if (glTexture) {
++					glTexture.bind(0);
++					depthProgram.set("uTexture", 0);
++				}
++				depthProgram.set("uUseTexture", glTexture != null);
++
 +				vertexArray.draw();
 +			}
 +
@@ -474,7 +490,7 @@
  		let camera = new Camera(new Vector3(0, 10, -10), new Vector3(-25, 0, 0), 5, 0.2);
  		let keyStates = {};
  
-@@ -1765,15 +1894,13 @@ void main(){
+@@ -1783,15 +1912,13 @@ void main(){
  		const pointLightRangeText = (document.getElementById("pointRangeText"));
  
  		const useShadowCheckbox = (document.getElementById("useShadow"));
@@ -493,7 +509,7 @@
  		);
  
  		let scene = new Scene();
-@@ -1814,78 +1941,6 @@ void main(){
+@@ -1832,78 +1959,6 @@ void main(){
  			sun.transform.rotation = Quaternion.multiply(q, sun.transform.rotation);
  		}
  
@@ -572,7 +588,7 @@
  		function update(time = performance.now()) {
  			dt = (time - lastTime) / 1000;
  			lastTime = time;
-@@ -1899,7 +1954,7 @@ void main(){
+@@ -1917,7 +1972,7 @@ void main(){
  			}
  
  			updateGameObjectTransforms();
@@ -581,7 +597,7 @@
  
  			requestAnimationFrame(update);
  		}
-@@ -1933,7 +1988,7 @@ void main(){
+@@ -1951,7 +2006,7 @@ void main(){
  		});
  
  		useShadowCheckbox.addEventListener("change", () => {
@@ -590,7 +606,7 @@
  			useShadowCheckbox.blur();
  		});
  
-@@ -1946,10 +2001,6 @@ void main(){
+@@ -1964,10 +2019,6 @@ void main(){
  		function updateRenderResolution() {
  			gameCanvas.width = canvasRenderWidth;
  			gameCanvas.height = canvasRenderHeight;

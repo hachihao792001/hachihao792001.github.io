@@ -70,7 +70,7 @@
  }`;
  		const fragmentShaderSource = `#version 300 es
  precision highp float;
-@@ -1211,12 +1228,16 @@ precision highp float;
+@@ -1211,14 +1228,18 @@ precision highp float;
  uniform sampler2D uTexture;
  uniform bool uUseTexture;
  uniform vec3 uColor;
@@ -81,14 +81,16 @@
  out vec4 outColor;
  
  void main(){
- 	vec3 color = uUseTexture ? texture(uTexture, vUV).rgb : uColor;
+ 	vec4 textureColor = texture(uTexture, vUV);
+ 	if (uUseTexture && textureColor.a < 0.5) discard;
+ 	vec3 color = uUseTexture ? textureColor.rgb : uColor;
 -	outColor = vec4(color, 1.0);
 +	float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
 +	outColor = vec4(color * dirLightDiffuse, 1.0);
  }`;
  		function compileShader(type, source) {
  			const shader = gl.createShader(type);
-@@ -1241,12 +1262,15 @@ void main(){
+@@ -1243,12 +1264,15 @@ void main(){
  
  		const aPosition = gl.getAttribLocation(program, "aPosition");
  		const aUV = gl.getAttribLocation(program, "aUV");
@@ -104,7 +106,7 @@
  
  		gl.enable(gl.DEPTH_TEST);
  		gl.enable(gl.CULL_FACE);
-@@ -1331,12 +1355,16 @@ void main(){
+@@ -1333,12 +1357,16 @@ void main(){
  			let q = Quaternion.buildQuaternionEuler(new Vector3(0, dt * dirLightRotateSpeed, 0));
  			dirLightRotation = Quaternion.multiply(q, dirLightRotation);
  			dirLight.dir = dirLightRotation.rotateVector(dirLightDefaultDir);

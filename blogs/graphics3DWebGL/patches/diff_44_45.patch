@@ -1,6 +1,6 @@
 --- "a/htmlPreviews\\htmlPreview44.html"
 +++ "b/htmlPreviews\\htmlPreview45.html"
-@@ -931,54 +931,106 @@
+@@ -931,46 +931,87 @@
  		class GameObject {
  			static incrementingID = 0;
  
@@ -96,6 +96,14 @@
  			drawDepth(depthProgram) {
  				if (!this.mesh) return;
  				depthProgram.set("uModel", this.transform.getModelMatrix());
+ 
+-				const glTexture = this.texture ? this.texture.glTexture : null;
++				const glTexture = this.material.texture ? this.material.texture.glTexture : null;
+ 				if (glTexture) {
+ 					glTexture.bind(0);
+ 					depthProgram.set("uTexture", 0);
+@@ -979,14 +1020,25 @@
+ 
  				this.mesh.vertexArray.draw();
  			}
 +		}
@@ -126,7 +134,7 @@
  			}
  		}
  
-@@ -1003,15 +1055,15 @@
+@@ -1011,15 +1063,15 @@
  				this.projectionMatrix = Mat4x4.Orthographic(shadowMapDistance, 0.1, shadowMapDistance * 2);
  			}
  
@@ -145,7 +153,7 @@
  				}
  
  				RenderTarget.bindCanvas(gl);
-@@ -1028,8 +1080,8 @@
+@@ -1036,8 +1088,8 @@
  				[new Vector3(0, 0, -1), new Vector3(0, -1, 0), new Vector3(-1, 0, 0)],
  			];
  
@@ -156,7 +164,7 @@
  
  				this.cubemap = TextureCube.depth(gl, pointShadowMapSize);
  
-@@ -1039,7 +1091,7 @@
+@@ -1047,7 +1099,7 @@
  				}
  			}
  
@@ -165,7 +173,7 @@
  				pointShadowProgram.use();
  				gl.frontFace(gl.CCW);
  
-@@ -1051,8 +1103,8 @@
+@@ -1059,8 +1111,8 @@
  
  					this.targets[face].bind();
  					gl.clear(gl.DEPTH_BUFFER_BIT);
@@ -176,7 +184,7 @@
  					}
  				}
  
-@@ -1714,23 +1766,25 @@ void main(){
+@@ -1732,23 +1784,25 @@ void main(){
  			gl
  		);
  
@@ -215,7 +223,7 @@
  
  		let lastTime = performance.now();
  		let dt = 0;
-@@ -1750,6 +1804,9 @@ void main(){
+@@ -1768,6 +1822,9 @@ void main(){
  		function render() {
  			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
  
@@ -225,7 +233,7 @@
  			dirLight.buildViewAndProjectionMatrix();
  			const shadowPointLightCount = Math.min(pointLights.length, maxShadowPointLights);
  			const pointLightShadowProjectionMat = Mat4x4.Projection(90, 1, 1, pointShadowNear, pointLightRange);
-@@ -1798,11 +1855,9 @@ void main(){
+@@ -1816,11 +1873,9 @@ void main(){
  			program.set("uShadowBias", shadowBias);
  			program.set("uShadowTexelSize", shadowMapDistance / shadowMapSize);
  
