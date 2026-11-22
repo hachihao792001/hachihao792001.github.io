@@ -10,6 +10,11 @@
         "description": "Hanvas Engine with fully working portal mechanic."
     },
     {
+        "title": "My old minecraft world in Hanvas Engine (WebGL)",
+        "route": "/interactives/minecraftWorld.html",
+        "description": "My old minecraft world in Hanvas Engine after the WebGL series (so it can actually load with high fps). You can see the tour of the base in this video: https://www.youtube.com/watch?v=x59LxccVksU"
+    },
+    {
         "title": "3D Physics Engine",
         "route": "/interactives/physicsEngine3D.html",
         "description": "A simple 3D physics engine. This is built before Hanvas Engine so it isn't very performant."

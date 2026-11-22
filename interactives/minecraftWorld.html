@@ -152,8 +152,8 @@
 <body>
 	<h1>Hanvas Engine</h1>
 	<div id="render">
-		<canvas id="gameCanvas" width="600" height="450" style="border: 2px solid #aaa; background: #fff"></canvas>
-		<canvas id="softwareCanvas" width="600" height="450"
+		<canvas id="gameCanvas" width="1024" height="768" style="border: 2px solid #aaa; background: #fff"></canvas>
+		<canvas id="softwareCanvas" width="1024" height="768"
 			style="border: 2px solid #aaa; background: #fff; display: none"></canvas>
 		<div id="crosshair"></div>
 	</div>
@@ -238,6 +238,13 @@
 			<span>
 				<input type="range" id="pointRange" min="0" max="60" step="1" value="14" />
 				<span id="pointRangeText" class="slider-value">14</span>
+			</span>
+		</div>
+		<div class="controlRow">
+			<label class="controlLabel" for="ambientLight">Ambient light:</label>
+			<span>
+				<input type="range" id="ambientLight" min="0" max="1" step="0.01" value="0.2" />
+				<span id="ambientLightText" class="slider-value">0.2</span>
 			</span>
 		</div>
 		<div class="controlRow">
@@ -1937,7 +1944,7 @@ float getDirLightShadow() {
 			shadow += shadowMapCoord.z > closestDepth + uShadowBias ? 1.0 : 0.0;
 		}
 	}
-	return shadow / 9.0 * -dotProduct;
+	return shadow / 9.0;
 }
 
 bool isInPointLightShadow(samplerCube pointShadowMap, mat4 shadowProjection, float shadowMapSize, float shadowBias, vec3 lightPosition, vec3 pixelWorldPos) {
@@ -1958,7 +1965,7 @@ void main(){
 	vec4 textureColor = texture(uTexture, vUV);
 	if (uUseTexture && textureColor.a < 0.5) discard;
 	vec3 color = uUseTexture ? textureColor.rgb : uColor;
-	float dirLightDiffuse = (1.0 - (dot(vWorldNormal, uDirLightDir) + 1.0) / 2.0) * uDirLightIntensity;
+	float dirLightDiffuse = max(0.0, -dot(vWorldNormal, uDirLightDir)) * uDirLightIntensity;
 	float dirLightShadow = uUseShadow ? getDirLightShadow() : 0.0;
 	dirLightDiffuse *= 1.0 - dirLightShadow;
 
@@ -2052,6 +2059,7 @@ void main(){
 				this.canvas = canvas;
 
 				this.useShadow = true;
+				this.ambientLight = 0.2;
 
 				this.program = new ShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
 				this.shadowProgram = new ShaderProgram(gl, shadowVertexShaderSource, shadowFragmentShaderSource);
@@ -2141,7 +2149,7 @@ void main(){
 				program.set("uView", camera.getViewMatrix());
 				program.set("uProjection", camera.getProjectionMatrix(this.canvas.width, this.canvas.height));
 
-				program.set("uAmbientLight", 0.1);
+				program.set("uAmbientLight", this.ambientLight);
 				program.set("uUseShadow", this.useShadow);
 
 				program.set("uDirLightDir", dirLight.dir);
@@ -2273,6 +2281,7 @@ void main(){
 				this.canvas = canvas;
 				this.ctx = canvas.getContext("2d");
 				this.useShadow = true;
+				this.ambientLight = 0.2;
 				this.shadowMaps = new WeakMap();
 				this.shadowTri = new MathTriangle();
 				this.resize();
@@ -2383,7 +2392,7 @@ void main(){
 				const depthBuffer = this.depthBuffer;
 				const canvasWidth = this.width;
 				const canvasHeight = this.height;
-				const ambientLight = 0.1;
+				const ambientLight = this.ambientLight;
 
 				for (let tri of tris) {
 					let vertices = tri.vertices;
@@ -2403,7 +2412,7 @@ void main(){
 						worldNormalY = triWorldNormal.y,
 						worldNormalZ = triWorldNormal.z;
 
-					const dirLightDiffuse = (1 - (Vector3.dot(triWorldNormal, dirLight.dir) + 1) / 2) * dirLight.intensity;
+					const dirLightDiffuse = Math.max(0, -Vector3.dot(triWorldNormal, dirLight.dir)) * dirLight.intensity;
 
 					const bbox = tri.boundingBox(canvasWidth, canvasHeight);
 
@@ -2698,7 +2707,7 @@ void main(){
 						shadow += shadowMapCoordZ > closestDepth + dirLight.shadowBias ? 1 : 0;
 					}
 				}
-				return shadow / 9 * -dotProduct;
+				return shadow / 9;
 			}
 
 		}
@@ -2751,6 +2760,11 @@ void main(){
 		const pointLightRangeSlider = (document.getElementById("pointRange"));
 		const pointLightRangeText = (document.getElementById("pointRangeText"));
 
+		const ambientLightSlider = (document.getElementById("ambientLight"));
+		const ambientLightText = (document.getElementById("ambientLightText"));
+		webglRenderer.ambientLight = parseFloat(ambientLightSlider.value);
+		softwareRenderer.ambientLight = parseFloat(ambientLightSlider.value);
+
 		const useShadowCheckbox = (document.getElementById("useShadow"));
 		webglRenderer.useShadow = useShadowCheckbox.checked;
 		softwareRenderer.useShadow = useShadowCheckbox.checked;
@@ -2768,7 +2782,7 @@ void main(){
 
 		let sun = scene.add(new GameObject("Sun"));
 		sun.transform.lookRotation(new Vector3(-1, -1, -1).normalize());
-		let dirLight = sun.addComponent(new DirectionalLight(parseFloat(lightDirIntensitySlider.value), 2048, 1024, 64, 0.0005));
+		let dirLight = sun.addComponent(new DirectionalLight(parseFloat(lightDirIntensitySlider.value), 2048, 1024, 128, 0.0005));
 
 		let playerLight = scene.add(new GameObject("Player light", camera.transform.position.clone()));
 		playerLight.addComponent(new PointLight(parseFloat(pointLightIntensitySlider.value), parseFloat(pointLightRangeSlider.value), 512, 0.05, 0.03));
@@ -2831,6 +2845,13 @@ void main(){
 				light.range = range;
 			}
 			pointLightRangeText.textContent = range.toFixed(0);
+		});
+
+		ambientLightSlider.addEventListener("input", () => {
+			const ambientLight = parseFloat(ambientLightSlider.value);
+			webglRenderer.ambientLight = ambientLight;
+			softwareRenderer.ambientLight = ambientLight;
+			ambientLightText.textContent = ambientLight.toFixed(2);
 		});
 
 		useShadowCheckbox.addEventListener("change", () => {
