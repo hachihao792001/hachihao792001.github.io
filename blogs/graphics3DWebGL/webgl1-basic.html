@@ -53,7 +53,7 @@
                     <h1>WebGL cơ bản (phần 1)</h1>
 
 					Trước khi đụng vào engine, blog này mình sẽ nói tới các khái niệm cơ bản của WebGL, vì nó khá là khó hiểu nếu bạn chưa từng đụng vào nó.
-					Cuối blog thì ta sẽ vẽ được 1 cục cube có màu được nội suy giữa các đỉnh, có perspective, và xoay được 😳
+					Cuối blog thì ta sẽ vẽ được 1 cục cube có màu được nội suy giữa các đỉnh, có perspective, và được xoay một góc 😳
 
 					<h2>1. WebGL là gì</h2>
 
@@ -132,11 +132,12 @@ void main() {
 							Hiện tại ta chưa có phép biến đổi nào nên tọa độ này dùng thẳng luôn.</li>
 						<li>Trong hàm main, <code>gl_Position</code> chính là đầu ra của shader (vị trí đỉnh trong clip space).
 						Ta chưa biết làm gì nên dùng luôn <code>aPosition</code> để truyền vào, nhưng vì <code>gl_Position</code> là <code>vec4</code> nên cần thêm
-						1 số <code>1.0</code> ở sau. Số này chính là <code>w</code>, để shader có thể perspective divide (sẽ nói sau).</li>
+						1 số <code>1.0</code> ở sau. Số này chính là <code>w</code>, để GPU có thể perspective divide (sẽ nói sau).</li>
 					</ul><br/>
 					<b>Fragment shader</b>:
 			<pre><code class="language-glsl">#version 300 es
 precision highp float;
+
 out vec4 outColor;
 
 void main() {
@@ -166,6 +167,7 @@ void main() {
 
 const fragmentShaderSource = `#version 300 es
 precision highp float;
+
 out vec4 outColor;
 
 void main() {
@@ -214,8 +216,8 @@ gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);					// bind vùng nhớ vào ARRAY
 gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);		// chuyển dữ liệu vào vùng nhớ đang được bind trong ARRAY_BUFFER (vertexBuffer)</code></pre>
 					
 					Bạn hãy tưởng tượng <code>gl.ARRAY_BUFFER</code> là một cái "khe", trong khe có gì thì WebGL sẽ làm việc với nó. Ta nhét vùng nhớ 
-					<code>vertexBuffer</code> vào khe, thế là sau này WebGL sẽ làm việc với <code>vertexBuffer</code>. Thông thường thì ta chỉ nhét vùng nhớ
-					vào khe 1 lần duy nhất cho cả chương trình, ta sẽ chuẩn bị hết mọi thứ trước để nhét vào lúc đầu rồi bốc ra dùng, chứ không update khe liên tục.
+					<code>vertexBuffer</code> vào khe, thế là sau này WebGL sẽ làm việc với <code>vertexBuffer</code>. Muốn làm gì với vùng nhớ nào (đổ dữ liệu
+					vào, cập nhật dữ liệu) thì ta phải nhét nó vào khe trước, nên khi có nhiều vùng nhớ (ví dụ nhiều cục cube) thì ta sẽ đổi cái trong khe qua lại liên tục.
 					Ngoài <code>gl.ARRAY_BUFFER</code> thì sẽ có những loại buffer khác, mình sẽ nói sau.<br/>
 					Về hàm <code>gl.bufferData</code>, nó
 					có tham số cuối là <code>gl.STATIC_DRAW</code>, nghĩa là ta chỉ nạp dữ liệu vào 1 lần rồi dùng nó để vẽ nhiều lần, ngoài ra còn những mode khác,
@@ -318,11 +320,11 @@ void main(){
 					Do you see where I'm getting with this? Ý 2 và ý 3 chính là <code>stride</code> và <code>offset</code> trong hàm <code>vertexAttribPointer</code> 😳<br/><br/>
 					Như vậy đoạn code "đưa vertex buffer vào shader" sẽ như sau:
 					<pre><code class="language-javascript">const aPosition = gl.getAttribLocation(program, "aPosition");
-	gl.enableVertexAttribArray(aPosition);
-	gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 24, 0);		// <--------------------------
-	const aColor = gl.getAttribLocation(program, "aColor");
-	gl.enableVertexAttribArray(aColor);
-	gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 24, 12);			// <--------------------------</code></pre>
+gl.enableVertexAttribArray(aPosition);
+gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 24, 0);		// <--------------------------
+const aColor = gl.getAttribLocation(program, "aColor");				// <--------------------------
+gl.enableVertexAttribArray(aColor);									// <--------------------------
+gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 24, 12);			// <--------------------------</code></pre>
 					Kết quả:
 					<div class="htmlPreview" id="htmlPreview4"></div>
 
@@ -448,7 +450,7 @@ gl.uniform1f(uAspect, gameCanvas.width / gameCanvas.height);		// set giá trị 
 					<ul>
 						<li><code>uniform1f</code> nghĩa là set 1 số float. Tương tự có <code>uniform2f</code>, <code>uniform3f</code>, <code>uniform4f</code>
 							cho vec2, vec3, vec4, và <code>uniformMatrix4fv</code> cho ma trận 4x4 (chắc chắn sẽ dùng sau này).</li>
-						<li>Tính chất state: <code>getUniformLocation</code> nhận program làm tham số nên gọi lúc nào cũng được, nhưng <code>uniform1f</code> thì không,
+						<li>Tính chất state: <code>getUniformLocation</code> nhận program làm tham số nên gọi lúc nào cũng được (miễn là sau <code>gl.linkProgram</code>), nhưng <code>uniform1f</code> thì không,
 							nó set uniform cho program <b>đang được dùng</b>. Nên dòng <code>uniform1f</code> phải nằm sau <code>gl.useProgram(program)</code>, đặt trước thì
 							uniform không được set, và <code>gl.getError()</code> sẽ trả về <code>INVALID_OPERATION</code>.</li>
 						<li>Giá trị uniform được program giữ lại cho tới khi ta set giá trị khác, nên set 1 lần là đủ.</li>
@@ -515,7 +517,7 @@ for (let i = 0; i < corners.length; i++) {
 					
 					<h2>8. Perspective và Depth buffer</h2>
 					<h3>a. w và perspective divide</h3>
-					Ở phần 3a mình có nói số <code>1.0</code> ở cuối <code>gl_Position</code> là <code>w</code>, "để shader có thể perspective divide (sẽ nói sau)".
+					Ở phần 3a mình có nói số <code>1.0</code> ở cuối <code>gl_Position</code> là <code>w</code>, "để GPU có thể perspective divide (sẽ nói sau)".
 					Bây giờ là lúc mình nói hê hê.<br/><br/>
 
 					Sau khi vertex shader chạy xong, GPU lấy <code>gl_Position</code> = (x, y, z, w) và <b>tự động chia x, y, z cho w</b>.

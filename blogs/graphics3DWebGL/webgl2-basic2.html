@@ -71,9 +71,10 @@ function update(time = performance.now()) {
 	requestAnimationFrame(update);
 }
 
-update();</code></pre>
+requestAnimationFrame(update);</code></pre>
 					Về phần xoay, ta cũng tạo một Quaternion bắt đầu, rồi mỗi frame sẽ xoay nó bằng cách nhân 1 quaternion khác với nó, và dùng nó
-					để xoay các đỉnh gốc:
+					để xoay các đỉnh gốc. Quaternion bắt đầu này thay cho đoạn xoay <code>rotatedCorners</code> ở blog trước, nên đoạn đó bị bỏ, và lúc
+					đầu <code>vertexData</code> lấy tọa độ thẳng từ <code>corners</code> (dù sao mỗi frame cũng sẽ bị ghi đè):
 					<pre><code class="language-javascript">let currentRotation = Quaternion.buildQuaternionEuler(new Vector3(40, 50, 30));
 ...
 
@@ -151,10 +152,9 @@ gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, triangles, gl.STATIC_DRAW);</code></pre>
 					<h3>c. Vertex Array Object</h3>
 					Những gì ta phải làm để vẽ, sau khi chuyển dữ liệu vào vertex buffer:
 					<ol>
-						<li>Lấy địa chỉ từng attribute một</li>
-						<li>Với mỗi attribute, gọi <code>enableVertexAttribArray</code> và <code>vertexAttribPointer</code> để truyền dữ liệu cho
-						attribute</li>
-						<li>Truyền dữ liệu cho index buffer để GPU biết lấy đỉnh theo thứ tự nào để vẽ các tam giác</li>
+						<li>Với mỗi attribute, gọi <code>enableVertexAttribArray</code> và <code>vertexAttribPointer</code> để chỉ cho
+						attribute cách lấy dữ liệu từ vertex buffer</li>
+						<li>Bind index buffer vào khe <code>gl.ELEMENT_ARRAY_BUFFER</code> để GPU biết lấy đỉnh theo thứ tự nào để vẽ các tam giác</li>
 					</ol>
 					Tất cả những thứ trên đều là state toàn cục của WebGL. Với 1 cube thì set 1 lần lúc đầu là xong, nhưng engine
 					của ta sẽ có nhiều GameObject, mỗi cái có buffer riêng, và trước mỗi lần vẽ ta sẽ phải set lại toàn bộ đống state đó cho đúng object đang vẽ.<br/><br/>
@@ -214,7 +214,8 @@ gl.bindVertexArray(null);						// unbind VAO, tránh lỡ tay sửa nó ở đâ
 						<li>Nó ghi nhớ attribute nào được enable. Và với mỗi attribute, nó ghi nhớ: format (số component, kiểu, stride, offset) và <b>buffer nào đang nằm trong khe
 							<code>gl.ARRAY_BUFFER</code> lúc gọi <code>vertexAttribPointer</code></b>.</li>
 						<li>Nó ghi nhớ buffer nào đang nằm trong khe <code>gl.ELEMENT_ARRAY_BUFFER</code>.</li>
-						<li>Nó <b>không</b> ghi nhớ giùm dữ liệu cho khe <code>gl.ARRAY_BUFFER</code>.</li>
+						<li>Nó <b>không</b> ghi nhớ khe <code>gl.ARRAY_BUFFER</code> đang chứa buffer nào, bind VAO không làm thay đổi khe này.</li>
+						<li>Nó không chứa dữ liệu, dữ liệu vẫn nằm trong các buffer.</li>
 					</ul>
 					Hệ quả là trong code trên:
 					<ul>
@@ -495,7 +496,9 @@ void main(){
 
 					Phía JavaScript thì quay về giống phần 9, nhưng đơn giản hơn: 1 <code>vertexData</code> chứa tọa độ gốc và màu, 1 vertex buffer, 1 VAO cho cả 2 cube.
 					Vertex buffer giờ không bao giờ đổi nữa nên quay về <code>gl.STATIC_DRAW</code>, và <code>bufferSubData</code> biến mất:
-					<pre><code class="language-javascript">const vertexBuffer = gl.createBuffer();
+					<pre><code class="language-javascript">const uModel = gl.getUniformLocation(program, "uModel");		// <--------------------------
+...
+const vertexBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);		// <--------------------------
 ...
