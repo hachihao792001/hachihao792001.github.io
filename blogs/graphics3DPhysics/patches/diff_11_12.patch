@@ -1,0 +1,81 @@
+--- "a/htmlPreviews\\htmlPreview11.html"
++++ "b/htmlPreviews\\htmlPreview12.html"
+@@ -258,6 +258,13 @@
+ 				<span id="maxFpsText" class="slider-value">144</span>
+ 			</span>
+ 		</div>
++		<div class="controlRow">
++			<label class="controlLabel" for="stiffness">Stiffness:</label>
++			<span>
++				<input type="range" id="stiffness" min="50" max="20000" step="50" value="2000" />
++				<span id="stiffnessText" class="slider-value">2000</span>
++			</span>
++		</div>
+ 	</div>
+ 
+ 	<div id="helpPopup" style="display: none">
+@@ -2792,6 +2799,7 @@ void main(){
+ 				this.gravity = gravity;
+ 				this.fixedDeltaTime = 1 / 60;
+ 				this.timeAccumulator = 0;
++				this.stiffness = 2000;
+ 			}
+ 
+ 			update(scene, dt) {
+@@ -2813,7 +2821,7 @@ void main(){
+ 					for (let j = i + 1; j < colliders.length; j++) {
+ 						if (colliders[i].rigidbody == null && colliders[j].rigidbody == null) continue;
+ 						let contact = this.findContact(colliders[i], colliders[j]);
+-						if (contact != null) this.resolveContact(colliders[i], colliders[j], contact);
++						if (contact != null) this.resolveContact(colliders[i], colliders[j], contact, dt);
+ 					}
+ 				}
+ 
+@@ -2858,22 +2866,12 @@ void main(){
+ 				return new Contact(closestPoint, Vector3.div(offset, distance), sphere.worldRadius - distance);
+ 			}
+ 
+-			resolveContact(colliderA, colliderB, contact) {
++			resolveContact(colliderA, colliderB, contact, dt) {
+ 				let rigidbodyA = colliderA.rigidbody;
+ 				let rigidbodyB = colliderB.rigidbody;
+-				let movableCount = (rigidbodyA != null ? 1 : 0) + (rigidbodyB != null ? 1 : 0);
+-				let pushDistance = contact.depth / movableCount;
+-
+-				if (rigidbodyA != null) {
+-					rigidbodyA.transform.position = Vector3.sub(rigidbodyA.transform.position, Vector3.mul(contact.normal, pushDistance));
+-					let speedTowardB = Vector3.dot(rigidbodyA.velocity, contact.normal);
+-					if (speedTowardB > 0) rigidbodyA.velocity = Vector3.sub(rigidbodyA.velocity, Vector3.mul(contact.normal, speedTowardB));
+-				}
+-				if (rigidbodyB != null) {
+-					rigidbodyB.transform.position = Vector3.add(rigidbodyB.transform.position, Vector3.mul(contact.normal, pushDistance));
+-					let speedTowardA = -Vector3.dot(rigidbodyB.velocity, contact.normal);
+-					if (speedTowardA > 0) rigidbodyB.velocity = Vector3.add(rigidbodyB.velocity, Vector3.mul(contact.normal, speedTowardA));
+-				}
++				let velocityChange = Vector3.mul(contact.normal, this.stiffness * contact.depth * dt);
++				if (rigidbodyA != null) rigidbodyA.velocity = Vector3.sub(rigidbodyA.velocity, velocityChange);
++				if (rigidbodyB != null) rigidbodyB.velocity = Vector3.add(rigidbodyB.velocity, velocityChange);
+ 			}
+ 		}
+ 
+@@ -2929,6 +2927,8 @@ void main(){
+ 		const maxFpsSlider = (document.getElementById("maxFps"));
+ 		const maxFpsText = (document.getElementById("maxFpsText"));
+ 		let maxFps = parseFloat(maxFpsSlider.value);
++		const stiffnessSlider = (document.getElementById("stiffness"));
++		const stiffnessText = (document.getElementById("stiffnessText"));
+ 		webglRenderer.useShadow = useShadowCheckbox.checked;
+ 		softwareRenderer.useShadow = useShadowCheckbox.checked;
+ 
+@@ -3072,6 +3072,11 @@ void main(){
+ 			maxFpsText.textContent = maxFps.toFixed(0);
+ 		});
+ 
++		stiffnessSlider.addEventListener("input", () => {
++			physicsWorld.stiffness = parseFloat(stiffnessSlider.value);
++			stiffnessText.textContent = physicsWorld.stiffness.toFixed(0);
++		});
++
+ 		function readResolution(input, min, max, current) {
+ 			let value = parseInt(input.value);
+ 			if (isNaN(value)) return current;

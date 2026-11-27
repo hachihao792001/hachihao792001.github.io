@@ -1,0 +1,132 @@
+--- "a/htmlPreviews\\htmlPreview15.html"
++++ "b/htmlPreviews\\htmlPreview16.html"
+@@ -202,6 +202,12 @@
+ 			</div>
+ 		</div>
+ 	</div>
++	<div id="pushControls">
++		<button data-key="pushCenter"
++			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 8px">Push center</button>
++		<button data-key="pushOffCenter"
++			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 8px">Push off-center</button>
++	</div>
+ 	<div id="controls">
+ 		<div class="controlRow">
+ 			<label class="controlLabel" for="rendererSelect">Renderer:</label>
+@@ -2760,12 +2766,19 @@ void main(){
+ 				this.useGravity = useGravity;
+ 				this.velocity = new Vector3(0, 0, 0);
+ 				this.angularVelocity = new Vector3(0, 0, 0);
++				this.force = new Vector3(0, 0, 0);
++			}
++
++			addForce(force) {
++				this.force = Vector3.add(this.force, force);
+ 			}
+ 
+ 			integrateForces(dt, gravity) {
+ 				if (this.useGravity) {
+ 					this.velocity = Vector3.add(this.velocity, Vector3.mul(gravity, dt));
+ 				}
++				this.velocity = Vector3.add(this.velocity, Vector3.mul(this.force, this.inverseMass * dt));
++				this.force = new Vector3(0, 0, 0);
+ 			}
+ 
+ 			integrateVelocity(dt) {
+@@ -2823,9 +2836,10 @@ void main(){
+ 				this.correctionPercent = 0.2;
+ 			}
+ 
+-			update(scene, dt) {
++			update(scene, dt, fixedUpdate) {
+ 				this.timeAccumulator += Math.min(dt, 0.1);
+ 				while (this.timeAccumulator >= this.fixedDeltaTime) {
++					fixedUpdate();
+ 					this.step(scene, this.fixedDeltaTime);
+ 					this.timeAccumulator -= this.fixedDeltaTime;
+ 				}
+@@ -3012,6 +3026,10 @@ void main(){
+ 
+ 		let ballMaterial = new Material(new Color(255, 90, 90));
+ 		let physicsObjects = [];
++		let pushableObjects = [];
++		let pushArrows = [];
++		let pushStrength = 2;
++		let offCenterPushPoint = new Vector3(0, 0, -0.5);
+ 
+ 		function spawnPhysicsObjects() {
+ 			for (let i = 0; i < 12; i++) {
+@@ -3025,9 +3043,9 @@ void main(){
+ 
+ 			let cube = scene.add(new GameObject("Cube", new Vector3(-3, 3.5, -4.5), Vector3.zero, Vector3.one));
+ 			cube.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+-			let cubeRigidbody = cube.addComponent(new Rigidbody(1, false));
+-			cubeRigidbody.angularVelocity = new Vector3(0, 2, 0);
++			cube.addComponent(new Rigidbody(1, false));
+ 			physicsObjects.push(cube);
++			pushableObjects = [cube];
+ 		}
+ 
+ 		function resetPhysicsObjects() {
+@@ -3061,6 +3079,42 @@ void main(){
+ 		let lastTime = performance.now();
+ 		let dt = 0;
+ 
++		function fixedUpdate() {
++			for (let pushableObject of pushableObjects) {
++				let rigidbody = pushableObject.getComponent(Rigidbody);
++				let force = Vector3.mul(pushableObject.transform.transformDirection(Vector3.right), pushStrength);
++				if (keyStates["pushCenter"]) rigidbody.addForce(force);
++				if (keyStates["pushOffCenter"]) rigidbody.addForce(force);
++			}
++		}
++
++		function placeLine(line, from, to, thickness) {
++			let direction = Vector3.sub(to, from);
++			let forward = direction.clone().normalize();
++			line.transform.position = Vector3.div(Vector3.add(from, to), 2);
++			line.transform.lookRotation(forward, Math.abs(forward.y) > 0.99 ? Vector3.forward : Vector3.up);
++			line.transform.localScale = new Vector3(thickness, thickness, direction.magnitude());
++		}
++
++		function updatePushArrows() {
++			while (pushArrows.length < pushableObjects.length) {
++				let arrow = scene.add(new GameObject("Push arrow"));
++				arrow.addComponent(new MeshRenderer(null, new Material(new Color(255, 0, 0)), false));
++				pushArrows.push(arrow);
++			}
++			for (let i = 0; i < pushableObjects.length; i++) {
++				let transform = pushableObjects[i].transform;
++				let arrowRenderer = pushArrows[i].getComponent(MeshRenderer);
++				let isPushing = keyStates["pushCenter"] || keyStates["pushOffCenter"];
++				arrowRenderer.mesh = isPushing ? cubeMesh : null;
++				if (!isPushing) continue;
++
++				let pushPoint = keyStates["pushOffCenter"] ? transform.transformPoint(offCenterPushPoint) : transform.position;
++				let forceDirection = transform.transformDirection(Vector3.right);
++				placeLine(pushArrows[i], Vector3.sub(pushPoint, Vector3.mul(forceDirection, 1.5)), pushPoint, 0.08);
++			}
++		}
++
+ 		function updateGameObjectTransforms() {
+ 			camera.updateMovement(dt, keyStates);
+ 			if (lookInput.x != 0 || lookInput.y != 0) {
+@@ -3088,7 +3142,8 @@ void main(){
+ 			}
+ 
+ 			updateGameObjectTransforms();
+-			physicsWorld.update(scene, dt);
++			physicsWorld.update(scene, dt, fixedUpdate);
++			updatePushArrows();
+ 			physicsInfo.textContent = `Max penetration: ${physicsWorld.maxPenetration.toFixed(3)}`;
+ 			renderer.render(scene, camera);
+ 
+@@ -3223,7 +3278,7 @@ void main(){
+ 
+ 		mobileControls.addEventListener("contextmenu", (e) => e.preventDefault());
+ 
+-		const keyButtons = mobileControls.querySelectorAll("button[data-key]");
++		const keyButtons = document.querySelectorAll("button[data-key]");
+ 		keyButtons.forEach((button) => {
+ 			const key = (button.getAttribute("data-key"));
+ 			button.addEventListener("pointerdown", (e) => {

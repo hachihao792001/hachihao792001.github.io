@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="Sequential impulses: lặp solver, cộng dồn impulse, ma sát Coulomb, Baumgarte và warm starting.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="../graphics3D/graphics3D.css">
+    <link rel="stylesheet" href="concept.css">
+    <style>
+        .blog-content ul li a {
+            display: inline;
+            font-weight: inherit;
+            margin-bottom: 0;
+        }
+    </style>
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Physics #7: Sequential impulses và ma sát</title>
+</head>
+
+<body data-graphics3D-id="physics7">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Sequential impulses và ma sát</h1>
+
+					Blog trước kết thúc với một cột 5 cái hộp đổ sập sau 2 giây, vì mỗi điểm chạm chỉ được xử lý một lần, và xử lý điểm này thì làm hỏng điểm khác. Blog này
+					biến hàm xử lý va chạm thành một <b>solver</b>, cách mà Box2D và nhiều engine khác dùng, có tên là <b>sequential impulses</b> (Erin Catto, tác giả Box2D,
+					trình bày nó trong bài nói <a href="https://box2d.org/files/ErinCatto_SequentialImpulses_GDC2006.pdf">Fast and Simple Physics using Sequential Impulses</a>).
+					Mình sẽ thêm từng mảnh một, và thêm luôn ma sát, thứ mà tới giờ engine vẫn chưa có.
+
+					<h2>1. Lặp lại nhiều lần</h2>
+					Ý tưởng đơn giản nhất: đã xử lý một lượt mà điểm sau làm hỏng điểm trước, thì xử lý lại cả lượt thêm vài lần nữa. Mỗi lượt, mỗi điểm chạm sửa lại vận tốc
+					của nó dựa trên vận tốc <b>hiện tại</b> (đã bị các điểm khác thay đổi), cái sai do điểm khác gây ra ở lượt trước sẽ được sửa ở lượt này, và sau vài lượt
+					mọi điểm chạm cùng gần đúng một lúc. Muốn lặp lại được thì phải tìm hết các điểm chạm trước, lưu lại, rồi mới xử lý:
+					<pre><code class="language-javascript">step(scene, dt) {
+	...
+	let colliders = scene.getAllComponentsOfType(Collider);
+	let manifolds = [];
+	for (let i = 0; i < colliders.length; i++) {
+		for (let j = i + 1; j < colliders.length; j++) {
+			if (colliders[i].rigidbody == null && colliders[j].rigidbody == null) continue;
+			let contacts = ContactManifold.findContacts(colliders[i], colliders[j]);
+			if (contacts.length > 0) manifolds.push({ colliderA: colliders[i], colliderB: colliders[j], contacts: contacts });
+		}
+	}
+
+	for (let iteration = 0; iteration < this.iterations; iteration++) {			// <---------------------
+		for (let manifold of manifolds) {
+			for (let contact of manifold.contacts) {
+				this.resolveContact(manifold.colliderA, manifold.colliderB, contact);
+			}
+		}
+	}
+
+	this.maxPenetration = 0;
+	for (let manifold of manifolds) {
+		for (let contact of manifold.contacts) {
+			this.maxPenetration = Math.max(this.maxPenetration, contact.depth);
+			this.correctPositions(manifold.colliderA, manifold.colliderB, contact);
+		}
+	}
+	...
+}</code></pre>
+					Mỗi cặp vật có chạm nhau được gom thành một object <code>{ colliderA, colliderB, contacts }</code> (một manifold). <code>resolveContact</code> giữ nguyên,
+					chỉ được gọi <code>iterations</code> lần cho mỗi điểm. Sửa độ lún thì vẫn làm 1 lần sau cùng. Số lượt mặc định là 10 (<code>this.iterations = 10</code> trong
+					constructor), có slider <b>Solver iterations</b> từ 1 tới 30 để thử:
+					<pre><code class="language-javascript">&lt;div class=&quot;controlRow&quot;&gt;
+	&lt;label class=&quot;controlLabel&quot; for=&quot;iterations&quot;&gt;Solver iterations:&lt;/label&gt;
+	&lt;span&gt;
+		&lt;input type=&quot;range&quot; id=&quot;iterations&quot; min=&quot;1&quot; max=&quot;30&quot; step=&quot;1&quot; value=&quot;10&quot; /&gt;
+		&lt;span id=&quot;iterationsText&quot; class=&quot;slider-value&quot;&gt;10&lt;/span&gt;
+	&lt;/span&gt;
+&lt;/div&gt;
+...
+iterationsSlider.addEventListener("input", () => {
+	physicsWorld.iterations = parseInt(iterationsSlider.value);
+	iterationsText.textContent = physicsWorld.iterations.toString();
+});</code></pre>
+					Kết quả, nhìn cột hộp và dòng Max penetration, rồi thử kéo Solver iterations về 1 và bấm Reset:
+					<div class="htmlPreview" id="htmlPreview37" data-disabled="true"></div>
+					Với 10 lượt, trong giây đầu độ lún lớn nhất chỉ còn khoảng 0.02 tới 0.04 (lúc 1 lượt là 0.15 tới 0.26), cột hộp đứng lâu hơn hẳn, nhưng vẫn nghiêng dần và đổ
+					sau khoảng 2 giây. Cái hộp trên dốc vẫn trượt xuống vì chưa có ma sát.
+
+					<h2>2. Cộng dồn impulse</h2>
+					Có một chỗ trong <code>resolveContact</code> không còn đúng khi lặp: dòng <code>if (normalVelocity > 0) return;</code>, tức là mỗi lần chỉ được đẩy 2 vật ra,
+					không bao giờ được kéo lại. Khi xử lý một lần thì đúng: mặt chạm chỉ đẩy chứ không hút. Nhưng khi lặp, có lúc một lượt đẩy quá tay (vì lúc đó các điểm khác
+					chưa được sửa), lượt sau đáng lẽ phải bớt lại một phần, mà code không cho.<br/><br/>
+
+					Cái đúng là: <b>tổng</b> impulse mà một điểm chạm cho ra trong cả bước không được âm (không hút), còn từng lần sửa thì được âm, miễn là tổng vẫn không âm.
+					Vậy mỗi điểm chạm cần nhớ tổng impulse của nó trong bước này, <code>normalImpulse</code>. Mỗi lượt tính lượng cần thêm, cộng vào tổng, kẹp tổng về
+					không âm, rồi chỉ áp dụng phần chênh lệch thật sự.<br/><br/>
+
+					Còn restitution: nó định nghĩa vận tốc tách ra mong muốn dựa trên vận tốc lao vào <b>lúc bắt đầu bước</b>. Khi lặp, vận tốc thay đổi sau mỗi lượt, nên mình tính
+					vận tốc mong muốn đó một lần trước khi lặp, lưu vào <code>contact.bias</code>. Vì vậy <code>resolveContact</code> được tách làm 2: <code>prepareManifold</code>
+					chạy 1 lần trước vòng lặp, <code>solveManifold</code> chạy mỗi lượt:
+					<pre><code class="language-javascript">class Contact {
+	constructor(point, normal, depth) {
+		...
+		this.normalImpulse = 0;					// <---------------------
+	}
+}
+...
+step(scene, dt) {
+	...
+	for (let manifold of manifolds) {
+		this.prepareManifold(manifold);
+	}
+	for (let iteration = 0; iteration < this.iterations; iteration++) {
+		for (let manifold of manifolds) {
+			this.solveManifold(manifold);
+		}
+	}
+	...
+}
+...
+getRelativeVelocity(rigidbodyA, rigidbodyB, point) {
+	return Vector3.sub(this.getPointVelocity(rigidbodyB, point), this.getPointVelocity(rigidbodyA, point));
+}
+
+applyImpulse(rigidbodyA, rigidbodyB, impulse, point) {
+	if (rigidbodyA != null) rigidbodyA.applyImpulseAtPosition(Vector3.mul(impulse, -1), point);
+	if (rigidbodyB != null) rigidbodyB.applyImpulseAtPosition(impulse, point);
+}
+
+prepareManifold(manifold) {
+	let rigidbodyA = manifold.colliderA.rigidbody;
+	let rigidbodyB = manifold.colliderB.rigidbody;
+	let restitution = Math.max(manifold.colliderA.restitution, manifold.colliderB.restitution);
+
+	for (let contact of manifold.contacts) {
+		contact.normalMass = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.normal);
+		let normalVelocity = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.normal);
+		contact.bias = normalVelocity < -1 ? -restitution * normalVelocity : 0;
+	}
+}
+
+solveManifold(manifold) {
+	let rigidbodyA = manifold.colliderA.rigidbody;
+	let rigidbodyB = manifold.colliderB.rigidbody;
+
+	for (let contact of manifold.contacts) {
+		let normalVelocity = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.normal);
+		let oldNormalImpulse = contact.normalImpulse;
+		contact.normalImpulse = Math.max(0, oldNormalImpulse + (contact.bias - normalVelocity) * contact.normalMass);
+		this.applyImpulse(rigidbodyA, rigidbodyB, Vector3.mul(contact.normal, contact.normalImpulse - oldNormalImpulse), contact.point);
+	}
+}</code></pre>
+					<ul>
+						<li><code>contact.bias</code> là vận tốc tách ra mong muốn theo pháp tuyến: \(-e \cdot v_n\) như blog 2. Mình chỉ cho nảy khi lao vào nhanh hơn 1 m/s. Một vật
+						nằm yên trên mặt đất cũng có vận tốc lao vào nhỏ mỗi bước (trọng lực cộng thêm 9.81 / 60 ≈ 0.16 m/s), nếu bắt nó nảy với vận tốc đó thì vật có restitution
+						sẽ rung bần bật mãi.</li>
+						<li>Lượng impulse cần thêm: muốn \(v_n\) từ giá trị hiện tại thành <code>bias</code> thì cần đổi một lượng <code>bias - normalVelocity</code>, nhân với
+						khối lượng hiệu dụng ra impulse (blog 5). Công thức blog 5 là trường hợp riêng của dòng này khi <code>bias</code> \(= -e \cdot v_n\) và tổng cũ bằng 0.</li>
+						<li><code>Math.max(0, ...)</code> kẹp tổng, <code>contact.normalImpulse - oldNormalImpulse</code> là phần thực sự áp dụng lượt này, có thể âm.</li>
+						<li><code>getRelativeVelocity</code> và <code>applyImpulse</code> chỉ gom lại 2 đoạn code dùng nhiều lần (vật tĩnh thì bỏ qua như cũ).</li>
+					</ul>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview38" data-disabled="true"></div>
+					Nhìn bằng mắt thì không khác demo trước, mình đo cột hộp cũng ra gần như y hệt. Trong scene này, các lượt sau hiếm khi cần kéo lại. Mình vẫn thêm nó ở đây vì
+					2 phần sau cần chính cái tổng <code>normalImpulse</code> này.
+
+					<h2>3. Ma sát</h2>
+					Tới giờ mọi thứ trượt trên nhau như trên băng: cái hộp trên dốc trượt xuống mãi, quả bóng không lăn mà trượt. Ma sát là lực cản sự trượt giữa 2 bề mặt, theo
+					hướng nằm trong mặt chạm (tiếp tuyến), ngược với hướng trượt. Mô hình mà gần như mọi engine dùng là
+					<a href="https://en.wikipedia.org/wiki/Friction#Dry_friction">ma sát Coulomb</a>: lực ma sát mạnh tới đâu cũng được để giữ 2 bề mặt không trượt, nhưng
+					không vượt quá \(\mu\) lần lực ép 2 bề mặt vào nhau. \(\mu\) là hệ số ma sát, gỗ trên gỗ khoảng 0.3 tới 0.5. Vật nằm trên dốc nghiêng góc \(\alpha\) thì không
+					trượt khi \(\mu > \tan\alpha\); dốc của ta nghiêng 20 độ, \(\tan 20° \approx 0.36\).<br/><br/>
+
+					Với impulse thì y hệt: mỗi điểm chạm có thêm impulse ma sát theo hướng tiếp tuyến, tính sao cho vận tốc trượt về 0, nhưng tổng của nó bị kẹp trong khoảng
+					\([-\mu J_n, \mu J_n]\), với \(J_n\) là tổng impulse theo pháp tuyến của điểm đó. Đây là lý do cần cộng dồn: giới hạn của ma sát phụ thuộc vào tổng impulse
+					pháp tuyến, thứ mà phần 2 vừa có.<br/><br/>
+
+					Mặt chạm là mặt phẳng, trượt có thể theo bất kỳ hướng nào trong mặt phẳng đó, nên mình chọn 2 hướng tiếp tuyến vuông góc với nhau và với pháp tuyến, xử lý ma
+					sát theo từng hướng như với pháp tuyến:
+					<pre><code class="language-javascript">class Collider extends Component {
+	constructor(restitution = 0, friction = 0.5) {				// <---------------------
+		super();
+		this.restitution = restitution;
+		this.friction = friction;
+	}
+	...
+}
+...
+class Contact {
+	constructor(point, normal, depth) {
+		...
+		this.normalImpulse = 0;
+		this.tangentImpulse1 = 0;								// <---------------------
+		this.tangentImpulse2 = 0;								// <---------------------
+	}
+}
+...
+prepareManifold(manifold) {
+	...
+	manifold.friction = Math.sqrt(manifold.colliderA.friction * manifold.colliderB.friction);		// <---------------------
+
+	for (let contact of manifold.contacts) {
+		let n = contact.normal;
+		contact.tangent1 = Math.abs(n.x) >= 0.57735 ? new Vector3(n.y, -n.x, 0).normalize() : new Vector3(0, n.z, -n.y).normalize();
+		contact.tangent2 = Vector3.cross(n, contact.tangent1);
+
+		contact.normalMass = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.normal);
+		contact.tangentMass1 = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.tangent1);
+		contact.tangentMass2 = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.tangent2);
+		...
+	}
+}
+
+solveManifold(manifold) {
+	...
+	for (let contact of manifold.contacts) {
+		let maxFriction = manifold.friction * contact.normalImpulse;
+
+		let tangentVelocity1 = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.tangent1);
+		let oldTangentImpulse1 = contact.tangentImpulse1;
+		contact.tangentImpulse1 = Math.max(-maxFriction, Math.min(maxFriction, oldTangentImpulse1 - tangentVelocity1 * contact.tangentMass1));
+		this.applyImpulse(rigidbodyA, rigidbodyB, Vector3.mul(contact.tangent1, contact.tangentImpulse1 - oldTangentImpulse1), contact.point);
+
+		let tangentVelocity2 = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.tangent2);
+		let oldTangentImpulse2 = contact.tangentImpulse2;
+		contact.tangentImpulse2 = Math.max(-maxFriction, Math.min(maxFriction, oldTangentImpulse2 - tangentVelocity2 * contact.tangentMass2));
+		this.applyImpulse(rigidbodyA, rigidbodyB, Vector3.mul(contact.tangent2, contact.tangentImpulse2 - oldTangentImpulse2), contact.point);
+
+		let normalVelocity = ...		// phần pháp tuyến như cũ
+		...
+	}
+}</code></pre>
+					<ul>
+						<li>Mọi collider mặc định có ma sát 0.5 (tham số thứ 2, sau restitution; <code>SphereCollider</code>, <code>BoxCollider</code>,
+						<code>ConvexHullCollider</code> và <code>ConvexCollider</code> đều nhận thêm tham số <code>friction</code> và truyền lên). 2 bề mặt khác nhau thì mình
+						lấy căn bậc hai của tích 2 hệ số, giống Box2D: một mặt trơn (gần 0) làm cả cặp trơn.</li>
+						<li><code>tangent1</code>: một vector bất kỳ vuông góc với pháp tuyến. \((n_y, -n_x, 0) \cdot \vec{n} = n_y n_x - n_x n_y = 0\), nên nó luôn vuông góc,
+						nhưng khi \(n_x\) và \(n_y\) đều gần 0 (pháp tuyến gần trục z) thì vector này gần 0, chuẩn hóa sẽ sai. Khi đó dùng \((0, n_z, -n_y)\), cũng vuông góc. Ngưỡng
+						0.57735 là \(1/\sqrt{3}\): một vector đơn vị luôn có ít nhất một thành phần có độ lớn ≥ \(1/\sqrt{3}\), nên chọn nhánh theo \(n_x\) thì nhánh nào cũng có
+						một thành phần đủ lớn.</li>
+						<li><code>tangent2</code> = pháp tuyến × <code>tangent1</code>, vuông góc với cả 2.</li>
+						<li>Khối lượng hiệu dụng theo hướng tiếp tuyến dùng lại <code>calculateEffectiveMass</code> với hướng khác, đây là lý do blog 5 cho hàm này nhận hướng.</li>
+						<li>Ma sát xử lý trước pháp tuyến trong mỗi lượt và dùng tổng impulse pháp tuyến hiện có (từ lượt trước) làm giới hạn. Lượng cần thêm là
+						<code>-tangentVelocity * tangentMass</code>: muốn vận tốc trượt về 0.</li>
+					</ul>
+					Kết quả, nhìn cái hộp trên dốc và cột hộp:
+					<div class="htmlPreview" id="htmlPreview39" data-disabled="true"></div>
+					Cái hộp trên dốc đứng yên, vì 0.5 > 0.36. Các quả bóng giờ lăn chứ không trượt (ma sát ở điểm chạm tạo torque làm chúng xoay). Cột hộp đứng được lâu hơn
+					nữa, nhưng vẫn nghiêng dần và đổ sau khoảng 7 giây.
+
+					<h2>4. Sửa độ lún bằng vận tốc</h2>
+					Lý do cột hộp nghiêng dần: hàm <code>correctPositions</code> của blog 2 chỉ dời vị trí theo pháp tuyến, không bao giờ xoay vật. Một cái hộp hơi nghiêng có
+					một góc lún sâu hơn góc kia, dời thẳng lên thì hết lún ở góc sâu nhưng góc kia lại hở, hộp vẫn nghiêng như cũ. Lỗi nhỏ cộng dồn qua hàng trăm bước, cột hộp
+					nghiêng dần.<br/><br/>
+
+					Cách sửa phổ biến: đừng sửa vị trí trực tiếp nữa, mà yêu cầu solver tạo ra một vận tốc tách ra vừa đủ để xóa một phần độ lún trong bước tới. Muốn xóa
+					\(\beta\) phần độ lún (\(\beta\) = 0.2 như 20% cũ) trong <code>dt</code> giây thì cần vận tốc tách ra \(\frac{\beta}{dt} \cdot depth\). Cộng nó vào
+					<code>bias</code> (vận tốc tách ra mong muốn). Vì solver đặt impulse đúng tại điểm chạm, impulse sửa độ lún này cũng làm vật xoay, góc nào lún sâu được đẩy
+					mạnh hơn. Cách này gọi là <a href="https://en.wikipedia.org/wiki/Baumgarte_stabilization">Baumgarte stabilization</a>:
+					<pre><code class="language-javascript">constructor(gravity = new Vector3(0, -9.81, 0)) {
+	...
+	this.allowedPenetration = 0.01;
+	this.baumgarte = 0.2;									// <--------------------- thay cho correctionPercent
+	this.iterations = 10;
+}
+...
+for (let manifold of manifolds) {
+	this.prepareManifold(manifold, dt);					// <--------------------- truyền thêm dt
+}
+...
+prepareManifold(manifold, dt) {
+	...
+		contact.bias = (this.baumgarte / dt) * Math.max(0, contact.depth - this.allowedPenetration);		// <---------------------
+		if (normalVelocity < -1) contact.bias += -restitution * normalVelocity;							// <---------------------
+	...
+}</code></pre>
+					Hàm <code>correctPositions</code> bị xóa, vòng lặp cuối <code>step</code> giờ chỉ còn tính <code>maxPenetration</code>. Phần chừa lại 0.01 giữ nguyên ý nghĩa
+					như blog 2. Kết quả:
+					<div class="htmlPreview" id="htmlPreview40" data-disabled="true"></div>
+					Cột hộp đứng vững. Mình chạy 10 giây: hộp trên cùng thấp hơn lúc đặt khoảng 0.06 rồi đứng yên, phần lớn trong đó là phần lún 0.01 được chừa lại ở mỗi lớp
+					tiếp xúc (5 lớp: đất với hộp 1, hộp 1 với hộp 2, ...), cộng với khe hở 0.001 giữa các hộp lúc đặt. Vận tốc góc lớn nhất của các hộp chỉ còn khoảng
+					0.05 rad/s.
+
+					<h2>5. Warm starting</h2>
+					5 hộp thì đứng được, nhưng đích cuối series là một cái tháp 18 tầng. Thử cao hơn: mình đổi cột thành 10 hộp (chỉ đổi số 5 trong vòng lặp tạo cột thành 10).
+					Kết quả, nhìn cột hộp ở góc trái phía sau (phần trên cùng của cột có thể nằm ngoài khung hình), rồi thử kéo Solver iterations lên 30 và bấm Reset:
+					<div class="htmlPreview" id="htmlPreview41" data-disabled="true"></div>
+					Với 10 lượt, cột 10 hộp đổ sập trong vòng 5 giây. Với 30 lượt thì nó đứng được lâu hơn, nhưng tới giây thứ 10 thì cũng đã đổ.<br/><br/>
+
+					Lý do: hộp dưới cùng phải đỡ sức nặng của 9 hộp phía trên, tức là tổng impulse ở các điểm chạm của nó mỗi bước phải lớn gấp nhiều lần của hộp trên cùng. Mỗi bước,
+					mọi tổng impulse bắt đầu lại từ 0. Mỗi lượt lặp, một điểm chạm chỉ phản ứng với vận tốc mà các điểm chạm ngay cạnh nó gây ra ở lượt đó, nên sức nặng của các hộp phía
+					trên được "truyền" xuống từ từ, mỗi lượt đi được một đoạn. Cột càng cao thì càng cần nhiều lượt mới truyền tới đáy, thiếu lượt thì hộp dưới bị đỡ thiếu, lún vào,
+					cột nghiêng, rồi đổ. Tăng số lượt thì đỡ hơn (như bạn vừa thử), nhưng mỗi lượt đều tốn thời gian: mình thử tháp Jenga 18 tầng của blog sau với 30 lượt, mỗi bước tốn gấp hơn 3 lần, mà sau 15 giây vẫn có khối bị xê dịch hơn 1 mét.<br/><br/>
+
+					Nhưng một cái tháp nằm yên thì impulse ở bước này gần như y hệt bước trước. Vậy thay vì bắt đầu từ 0, ta bắt đầu từ tổng impulse của bước trước, áp dụng nó ngay
+					trong <code>prepareManifold</code>, rồi để các lượt lặp chỉnh lại phần chênh lệch nhỏ. Cách này gọi là <b>warm starting</b>. Đây cũng là lý do thứ hai cần
+					cộng dồn: impulse bắt đầu từ một giá trị lớn có thể phải giảm xuống, và chỉ có cách cộng dồn mới cho phép giảm.<br/><br/>
+
+					Khó nhất là nhận ra điểm chạm nào ở bước này là điểm chạm nào ở bước trước, vì mỗi bước <code>findContacts</code> tạo ra các <code>Contact</code> mới. Mình nhận
+					ra bằng 2 thứ:
+					<ul>
+						<li>Cùng cặp vật: lưu các manifold của bước trước vào một <code>Map</code>, key là id của 2 GameObject.</li>
+						<li>Cùng chỗ trên vật: một góc của hộp trên chạm vào hộp dưới thì vị trí của điểm chạm <b>trong hệ tọa độ của vật A</b> gần như không đổi qua các bước, dù cả
+						2 hộp có di chuyển. <code>Contact</code> lưu thêm <code>localPointA</code>, 2 điểm chạm cách nhau dưới 0.05 (trong hệ tọa độ local) thì coi là một.</li>
+					</ul>
+					<pre><code class="language-javascript">class Contact {
+	constructor(point, normal, depth, colliderA) {											// <---------------------
+		this.point = point;
+		this.normal = normal;
+		this.depth = depth;
+		this.localPointA = colliderA.transform.inverseTransformPoint(point);				// <---------------------
+		...
+	}
+}
+...
+class PhysicsWorld {
+	constructor(gravity = new Vector3(0, -9.81, 0)) {
+		...
+		this.manifolds = new Map();															// <---------------------
+	}
+
+	step(scene, dt) {
+		...
+		let newManifolds = new Map();
+		for (let i = 0; i < colliders.length; i++) {
+			for (let j = i + 1; j < colliders.length; j++) {
+				if (colliders[i].rigidbody == null && colliders[j].rigidbody == null) continue;
+				let contacts = ContactManifold.findContacts(colliders[i], colliders[j]);
+				if (contacts.length == 0) continue;
+
+				let key = colliders[i].gameObject.id + "-" + colliders[j].gameObject.id;
+				let oldManifold = this.manifolds.get(key);
+				if (oldManifold != null) {
+					for (let contact of contacts) {
+						for (let oldContact of oldManifold.contacts) {
+							if (Vector3.sub(contact.localPointA, oldContact.localPointA).magnitude() < 0.05) {
+								contact.normalImpulse = oldContact.normalImpulse;
+								contact.tangentImpulse1 = oldContact.tangentImpulse1;
+								contact.tangentImpulse2 = oldContact.tangentImpulse2;
+								break;
+							}
+						}
+					}
+				}
+				newManifolds.set(key, { colliderA: colliders[i], colliderB: colliders[j], contacts: contacts });
+			}
+		}
+		this.manifolds = newManifolds;
+		let manifolds = [...newManifolds.values()];
+		...
+	}
+	...
+	prepareManifold(manifold, dt) {
+		...
+		for (let contact of manifold.contacts) {
+			...
+			let warmStartImpulse = Vector3.add(Vector3.mul(n, contact.normalImpulse), Vector3.add(Vector3.mul(contact.tangent1, contact.tangentImpulse1), Vector3.mul(contact.tangent2, contact.tangentImpulse2)));
+			this.applyImpulse(rigidbodyA, rigidbodyB, warmStartImpulse, contact.point);
+		}
+	}
+}</code></pre>
+					<code>Contact</code> nhận thêm <code>colliderA</code> để tính điểm local, nên <code>findContacts</code> và <code>findFaceContacts</code> truyền thêm
+					<code>colliderA</code> vào chỗ tạo <code>Contact</code>. Điểm chạm mới không khớp với điểm cũ nào thì bắt đầu từ 0 như trước. Kết quả:
+					<div class="htmlPreview" id="htmlPreview42" data-disabled="true"></div>
+					Cột 10 hộp giờ đứng vững với 10 lượt như mặc định. Sức nặng của các hộp phía trên được dồn qua nhiều bước chứ không phải chỉ trong 10 lượt của một bước. Mình cũng thử
+					cái tháp Jenga 18 tầng của blog sau với engine trước và sau warm starting: trước thì đổ sập, sau thì đứng vững 15 giây mà không khối nào xê dịch quá khoảng 0.05.
+					Có ma sát, có solver lặp, có warm starting, engine đã sẵn sàng cho cái tháp Jenga ở blog sau.
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3DPhysics.js"></script>
+    <script src="concept.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

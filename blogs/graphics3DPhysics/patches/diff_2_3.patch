@@ -1,0 +1,101 @@
+--- "a/htmlPreviews\\htmlPreview2.html"
++++ "b/htmlPreviews\\htmlPreview3.html"
+@@ -166,6 +166,8 @@
+ 	<div>
+ 		<button id="helpButton"
+ 			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Help</button>
++		<button id="resetButton"
++			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Reset</button>
+ 		<button id="mobileControlsButton"
+ 			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Mobile
+ 			controls</button>
+@@ -2708,6 +2710,27 @@ void main(){
+ 
+ 		}
+ 
++		// ===== physics.js =====
++		class Rigidbody extends Component {
++			constructor() {
++				super();
++				this.velocity = new Vector3(0, 0, 0);
++			}
++
++			integrateVelocity(dt) {
++				this.transform.position = Vector3.add(this.transform.position, Vector3.mul(this.velocity, dt));
++			}
++		}
++
++		class PhysicsWorld {
++			step(scene, dt) {
++				let rigidbodies = scene.getAllComponentsOfType(Rigidbody);
++				for (let rigidbody of rigidbodies) {
++					rigidbody.integrateVelocity(dt);
++				}
++			}
++		}
++
+ 		// ===== index.js =====
+ 		const gameCanvas = (document.getElementById("gameCanvas"));
+ 		const softwareCanvas = (document.getElementById("softwareCanvas"));
+@@ -2740,6 +2763,7 @@ void main(){
+ 		const helpButton = (document.getElementById("helpButton"));
+ 		const helpPopup = (document.getElementById("helpPopup"));
+ 		const helpCloseButton = (document.getElementById("helpCloseButton"));
++		const resetButton = (document.getElementById("resetButton"));
+ 
+ 		let lookInput = { x: 0, y: 0 };
+ 		let lookSpeed = 450;
+@@ -2769,8 +2793,23 @@ void main(){
+ 		let scene = new Scene();
+ 
+ 		let cubeMesh = Primitives.cube();
+-		let box = scene.add(new GameObject("Box", new Vector3(0, 5, 0), Vector3.zero, Vector3.one));
+-		box.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
++		let physicsObjects = [];
++		let box;
++		let boxRigidbody;
++
++		function spawnPhysicsObjects() {
++			box = scene.add(new GameObject("Box", new Vector3(0, 5, 0), Vector3.zero, Vector3.one));
++			box.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
++			boxRigidbody = box.addComponent(new Rigidbody());
++			boxRigidbody.velocity = new Vector3(1, 0, 0);
++			physicsObjects.push(box);
++		}
++
++		function resetPhysicsObjects() {
++			scene.roots = scene.roots.filter((gameObject) => !physicsObjects.includes(gameObject));
++			physicsObjects = [];
++			spawnPhysicsObjects();
++		}
+ 
+ 		let sun = scene.add(new GameObject("Sun"));
+ 		sun.transform.lookRotation(new Vector3(-1, -1, -1).normalize());
+@@ -2789,6 +2828,10 @@ void main(){
+ 			light.addComponent(new PointLight(parseFloat(pointLightIntensitySlider.value), parseFloat(pointLightRangeSlider.value), 512, 0.05, 0.03));
+ 		}
+ 
++		spawnPhysicsObjects();
++
++		let physicsWorld = new PhysicsWorld();
++
+ 		let lastTime = performance.now();
+ 		let dt = 0;
+ 
+@@ -2815,6 +2858,7 @@ void main(){
+ 			}
+ 
+ 			updateGameObjectTransforms();
++			physicsWorld.step(scene, dt);
+ 			renderer.render(scene, camera);
+ 
+ 			requestAnimationFrame(update);
+@@ -2931,6 +2975,8 @@ void main(){
+ 			helpCloseButton.blur();
+ 		});
+ 
++		resetButton.addEventListener("click", resetPhysicsObjects);
++
+ 		mobileControls.addEventListener("contextmenu", (e) => e.preventDefault());
+ 
+ 		const keyButtons = mobileControls.querySelectorAll("button[data-key]");

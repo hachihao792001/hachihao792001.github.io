@@ -14,6 +14,13 @@
         "isSeries": true
     },
     {
+        "title": "Physics Engine cho Hanvas Engine",
+        "route": "/blogs/graphics3DPhysics/physics-intro.html",
+        "date": "27/11/2026",
+        "isWritten": true,
+        "isSeries": true
+    },
+    {
         "title": "Cách làm Portal mechanic trong HTML Canvas engine",
         "route": "/blogs/portalblog/portalblog.html",
         "date": "19/9/2026",

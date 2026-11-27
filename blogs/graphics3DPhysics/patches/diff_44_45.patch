@@ -1,0 +1,75 @@
+--- "a/htmlPreviews\\htmlPreview44.html"
++++ "b/htmlPreviews\\htmlPreview45.html"
+@@ -266,6 +266,10 @@
+ 				<span id="iterationsText" class="slider-value">10</span>
+ 			</span>
+ 		</div>
++		<div class="controlRow">
++			<label class="controlLabel" for="useBroadPhase">Broad phase:</label>
++			<span><input type="checkbox" id="useBroadPhase" checked="checked" /></span>
++		</div>
+ 	</div>
+ 
+ 	<div id="helpPopup" style="display: none">
+@@ -2856,6 +2860,16 @@ void main(){
+ 			getFaces() {
+ 				return null;
+ 			}
++
++			getAABB() {
++				let minX = this.support(Vector3.left).x;
++				let maxX = this.support(Vector3.right).x;
++				let minY = this.support(Vector3.down).y;
++				let maxY = this.support(Vector3.up).y;
++				let minZ = this.support(Vector3.back).z;
++				let maxZ = this.support(Vector3.forward).z;
++				return [new Vector3(minX, minY, minZ), new Vector3(maxX, maxY, maxZ)];
++			}
+ 		}
+ 
+ 		class SphereCollider extends Collider {
+@@ -3291,6 +3305,7 @@ void main(){
+ 				this.baumgarte = 0.2;
+ 				this.iterations = 10;
+ 				this.manifolds = new Map();
++				this.useBroadPhase = true;
+ 			}
+ 
+ 			update(scene, dt, fixedUpdate) {
+@@ -3309,10 +3324,16 @@ void main(){
+ 				}
+ 
+ 				let colliders = scene.getAllComponentsOfType(Collider);
++				let aabbs = colliders.map((collider) => collider.getAABB());
+ 				let newManifolds = new Map();
+ 				for (let i = 0; i < colliders.length; i++) {
+ 					for (let j = i + 1; j < colliders.length; j++) {
+ 						if (colliders[i].rigidbody == null && colliders[j].rigidbody == null) continue;
++						if (this.useBroadPhase) {
++							let [minA, maxA] = aabbs[i];
++							let [minB, maxB] = aabbs[j];
++							if (minA.x > maxB.x || minB.x > maxA.x || minA.y > maxB.y || minB.y > maxA.y || minA.z > maxB.z || minB.z > maxA.z) continue;
++						}
+ 						let contacts = ContactManifold.findContacts(colliders[i], colliders[j]);
+ 						if (contacts.length == 0) continue;
+ 
+@@ -3485,6 +3506,7 @@ void main(){
+ 		let maxFps = parseFloat(maxFpsSlider.value);
+ 		const iterationsSlider = (document.getElementById("iterations"));
+ 		const iterationsText = (document.getElementById("iterationsText"));
++		const useBroadPhaseCheckbox = (document.getElementById("useBroadPhase"));
+ 		webglRenderer.useShadow = useShadowCheckbox.checked;
+ 		softwareRenderer.useShadow = useShadowCheckbox.checked;
+ 
+@@ -3646,6 +3668,11 @@ void main(){
+ 			iterationsText.textContent = physicsWorld.iterations.toString();
+ 		});
+ 
++		useBroadPhaseCheckbox.addEventListener("change", () => {
++			physicsWorld.useBroadPhase = useBroadPhaseCheckbox.checked;
++			useBroadPhaseCheckbox.blur();
++		});
++
+ 		function readResolution(input, min, max, current) {
+ 			let value = parseInt(input.value);
+ 			if (isNaN(value)) return current;

@@ -1,0 +1,66 @@
+--- "a/htmlPreviews\\htmlPreview30.html"
++++ "b/htmlPreviews\\htmlPreview31.html"
+@@ -2810,6 +2810,17 @@ void main(){
+ 				return rotation.rotateVector(Vector3.scale(localVector, this.localInverseInertia));
+ 			}
+ 
++			getPointVelocity(point) {
++				let r = Vector3.sub(point, this.transform.position);
++				return Vector3.add(this.velocity, Vector3.cross(this.angularVelocity, r));
++			}
++
++			applyImpulseAtPosition(impulse, position) {
++				this.velocity = Vector3.add(this.velocity, Vector3.mul(impulse, this.inverseMass));
++				let r = Vector3.sub(position, this.transform.position);
++				this.angularVelocity = Vector3.add(this.angularVelocity, this.applyInverseInertia(Vector3.cross(r, impulse)));
++			}
++
+ 			addForceAtPosition(force, position) {
+ 				this.addForce(force);
+ 				let r = Vector3.sub(position, this.transform.position);
+@@ -3191,25 +3202,36 @@ void main(){
+ 				return rigidbody != null ? rigidbody.inverseMass : 0;
+ 			}
+ 
+-			getVelocity(rigidbody) {
+-				return rigidbody != null ? rigidbody.velocity : new Vector3(0, 0, 0);
++			getPointVelocity(rigidbody, point) {
++				return rigidbody != null ? rigidbody.getPointVelocity(point) : new Vector3(0, 0, 0);
++			}
++
++			calculateEffectiveMass(rigidbodyA, rigidbodyB, point, direction) {
++				let k = this.getInverseMass(rigidbodyA) + this.getInverseMass(rigidbodyB);
++				if (rigidbodyA != null) {
++					let rA = Vector3.sub(point, rigidbodyA.transform.position);
++					k += Vector3.dot(Vector3.cross(rigidbodyA.applyInverseInertia(Vector3.cross(rA, direction)), rA), direction);
++				}
++				if (rigidbodyB != null) {
++					let rB = Vector3.sub(point, rigidbodyB.transform.position);
++					k += Vector3.dot(Vector3.cross(rigidbodyB.applyInverseInertia(Vector3.cross(rB, direction)), rB), direction);
++				}
++				return 1 / k;
+ 			}
+ 
+ 			resolveContact(colliderA, colliderB, contact) {
+ 				let rigidbodyA = colliderA.rigidbody;
+ 				let rigidbodyB = colliderB.rigidbody;
+-				let inverseMassA = this.getInverseMass(rigidbodyA);
+-				let inverseMassB = this.getInverseMass(rigidbodyB);
+ 
+-				let relativeVelocity = Vector3.sub(this.getVelocity(rigidbodyB), this.getVelocity(rigidbodyA));
++				let relativeVelocity = Vector3.sub(this.getPointVelocity(rigidbodyB, contact.point), this.getPointVelocity(rigidbodyA, contact.point));
+ 				let normalVelocity = Vector3.dot(relativeVelocity, contact.normal);
+ 				if (normalVelocity > 0) return;
+ 
+ 				let restitution = Math.max(colliderA.restitution, colliderB.restitution);
+-				let impulseMagnitude = -(1 + restitution) * normalVelocity / (inverseMassA + inverseMassB);
+-				let impulse = Vector3.mul(contact.normal, impulseMagnitude);
+-				if (rigidbodyA != null) rigidbodyA.velocity = Vector3.sub(rigidbodyA.velocity, Vector3.mul(impulse, inverseMassA));
+-				if (rigidbodyB != null) rigidbodyB.velocity = Vector3.add(rigidbodyB.velocity, Vector3.mul(impulse, inverseMassB));
++				let effectiveMass = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.normal);
++				let impulse = Vector3.mul(contact.normal, -(1 + restitution) * normalVelocity * effectiveMass);
++				if (rigidbodyA != null) rigidbodyA.applyImpulseAtPosition(Vector3.mul(impulse, -1), contact.point);
++				if (rigidbodyB != null) rigidbodyB.applyImpulseAtPosition(impulse, contact.point);
+ 			}
+ 
+ 			correctPositions(colliderA, colliderB, contact) {

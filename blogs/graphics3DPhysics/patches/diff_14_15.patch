@@ -1,0 +1,48 @@
+--- "a/htmlPreviews\\htmlPreview14.html"
++++ "b/htmlPreviews\\htmlPreview15.html"
+@@ -2753,19 +2753,30 @@ void main(){
+ 
+ 		// ===== physics.js =====
+ 		class Rigidbody extends Component {
+-			constructor(mass = 1) {
++			constructor(mass = 1, useGravity = true) {
+ 				super();
+ 				this.mass = mass;
+ 				this.inverseMass = 1 / mass;
++				this.useGravity = useGravity;
+ 				this.velocity = new Vector3(0, 0, 0);
++				this.angularVelocity = new Vector3(0, 0, 0);
+ 			}
+ 
+ 			integrateForces(dt, gravity) {
+-				this.velocity = Vector3.add(this.velocity, Vector3.mul(gravity, dt));
++				if (this.useGravity) {
++					this.velocity = Vector3.add(this.velocity, Vector3.mul(gravity, dt));
++				}
+ 			}
+ 
+ 			integrateVelocity(dt) {
+ 				this.transform.position = Vector3.add(this.transform.position, Vector3.mul(this.velocity, dt));
++
++				let angularSpeed = this.angularVelocity.magnitude();
++				if (angularSpeed > 0) {
++					let axis = Vector3.div(this.angularVelocity, angularSpeed);
++					let deltaRotation = Quaternion.buildQuaternionAxisRadian(axis, angularSpeed * dt);
++					this.transform.rotation = Quaternion.multiply(deltaRotation, this.transform.rotation);
++				}
+ 			}
+ 		}
+ 
+@@ -3011,6 +3022,12 @@ void main(){
+ 				ball.addComponent(new Rigidbody());
+ 				physicsObjects.push(ball);
+ 			}
++
++			let cube = scene.add(new GameObject("Cube", new Vector3(-3, 3.5, -4.5), Vector3.zero, Vector3.one));
++			cube.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
++			let cubeRigidbody = cube.addComponent(new Rigidbody(1, false));
++			cubeRigidbody.angularVelocity = new Vector3(0, 2, 0);
++			physicsObjects.push(cube);
+ 		}
+ 
+ 		function resetPhysicsObjects() {

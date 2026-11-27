@@ -1,0 +1,118 @@
+--- "a/htmlPreviews\\htmlPreview31.html"
++++ "b/htmlPreviews\\htmlPreview32.html"
+@@ -2858,6 +2858,10 @@ void main(){
+ 			get rigidbody() {
+ 				return this.gameObject.getComponent(Rigidbody);
+ 			}
++
++			getFaces() {
++				return null;
++			}
+ 		}
+ 
+ 		class SphereCollider extends Collider {
+@@ -2882,15 +2886,27 @@ void main(){
+ 		}
+ 
+ 		class ConvexCollider extends Collider {
+-			constructor(localVertices, restitution) {
++			constructor(localVertices, localFaces, restitution) {
+ 				super(restitution);
+ 				this.localVertices = localVertices;
++				this.localFaces = localFaces;
+ 			}
+ 
+ 			getVertices() {
+ 				return this.localVertices.map((v) => this.transform.transformPoint(v));
+ 			}
+ 
++			getFaces() {
++				let vertices = this.getVertices();
++				let faces = [];
++				for (let localFace of this.localFaces) {
++					let faceVertices = localFace.map((i) => vertices[i]);
++					let normal = Vector3.cross(Vector3.sub(faceVertices[1], faceVertices[0]), Vector3.sub(faceVertices[2], faceVertices[0])).normalize();
++					faces.push({ normal: normal, vertices: faceVertices });
++				}
++				return faces;
++			}
++
+ 			support(direction) {
+ 				let localDirection = Vector3.scale(this.transform.inverseTransformDirection(direction), this.transform.lossyScale);
+ 				let best = this.localVertices[0];
+@@ -2925,25 +2941,70 @@ void main(){
+ 				new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, -0.5, -0.5), new Vector3(0.5, 0.5, -0.5), new Vector3(-0.5, 0.5, -0.5),
+ 				new Vector3(-0.5, -0.5, 0.5), new Vector3(0.5, -0.5, 0.5), new Vector3(0.5, 0.5, 0.5), new Vector3(-0.5, 0.5, 0.5),
+ 			];
++			static faces = [
++				[0, 3, 2, 1], [4, 5, 6, 7], [0, 4, 7, 3], [1, 2, 6, 5], [0, 1, 5, 4], [3, 7, 6, 2],
++			];
+ 
+ 			constructor(restitution = 0) {
+-				super(BoxCollider.corners, restitution);
++				super(BoxCollider.corners, BoxCollider.faces, restitution);
+ 			}
+ 		}
+ 
+ 		class ConvexHullCollider extends ConvexCollider {
+ 			constructor(mesh, restitution = 0) {
+-				super(ConvexHullCollider.findUniqueVertices(mesh), restitution);
++				let [vertices, faces] = ConvexHullCollider.buildFacesFromMesh(mesh);
++				super(vertices, faces, restitution);
+ 			}
+ 
+-			static findUniqueVertices(mesh) {
++			static buildFacesFromMesh(mesh) {
+ 				let vertices = [];
++				let meshToHull = [];
+ 				let p = mesh.positions;
+ 				for (let i = 0; i < mesh.vertexCount; i++) {
+ 					let vertex = new Vector3(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]);
+-					if (!vertices.some((v) => Vector3.sub(v, vertex).magnitude() < 1e-5)) vertices.push(vertex);
++					let index = vertices.findIndex((v) => Vector3.sub(v, vertex).magnitude() < 1e-5);
++					if (index < 0) {
++						index = vertices.length;
++						vertices.push(vertex);
++					}
++					meshToHull.push(index);
++				}
++
++				let faces = [];
++				for (let i = 0; i < mesh.indices.length; i += 3) {
++					let a = meshToHull[mesh.indices[i]];
++					let b = meshToHull[mesh.indices[i + 1]];
++					let c = meshToHull[mesh.indices[i + 2]];
++					let normal = Vector3.cross(Vector3.sub(vertices[b], vertices[a]), Vector3.sub(vertices[c], vertices[a])).normalize();
++					let face = faces.find((f) => Vector3.dot(f.normal, normal) > 0.9999 && Math.abs(Vector3.dot(f.normal, Vector3.sub(vertices[a], vertices[f.indices[0]]))) < 1e-5);
++					if (face == null) {
++						face = { normal: normal, indices: [] };
++						faces.push(face);
++					}
++					for (let index of [a, b, c]) {
++						if (!face.indices.includes(index)) face.indices.push(index);
++					}
++				}
++
++				let hullCenter = new Vector3(0, 0, 0);
++				for (let v of vertices) hullCenter = Vector3.add(hullCenter, v);
++				hullCenter = Vector3.div(hullCenter, vertices.length);
++
++				for (let face of faces) {
++					if (Vector3.dot(face.normal, Vector3.sub(vertices[face.indices[0]], hullCenter)) < 0) face.normal = Vector3.mul(face.normal, -1);
++					let faceCenter = new Vector3(0, 0, 0);
++					for (let index of face.indices) faceCenter = Vector3.add(faceCenter, vertices[index]);
++					faceCenter = Vector3.div(faceCenter, face.indices.length);
++					let axisU = Vector3.sub(vertices[face.indices[0]], faceCenter).normalize();
++					let axisV = Vector3.cross(face.normal, axisU);
++					let angleOf = (index) => {
++						let offset = Vector3.sub(vertices[index], faceCenter);
++						return Math.atan2(Vector3.dot(offset, axisV), Vector3.dot(offset, axisU));
++					};
++					face.indices.sort((i, j) => angleOf(i) - angleOf(j));
+ 				}
+-				return vertices;
++
++				return [vertices, faces.map((f) => f.indices)];
+ 			}
+ 		}
+ 

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="Thêm Rigidbody vào Hanvas Engine: vận tốc, trọng lực, Euler hiện và bán ẩn, và fixed time step.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="../graphics3D/graphics3D.css">
+    <link rel="stylesheet" href="concept.css">
+    <style>
+        .blog-content ul li a {
+            display: inline;
+            font-weight: inherit;
+            margin-bottom: 0;
+        }
+    </style>
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Physics #1: Chuyển động và time step</title>
+</head>
+
+<body data-graphics3D-id="physics1">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Chuyển động và time step</h1>
+
+					Ở cuối series WebGL, Hanvas Engine đã vẽ được một scene khá đầy đủ: texture, ánh sáng, bóng đổ, và 2 renderer (WebGL và Software) switch qua lại được.
+					Nhưng mọi thứ trong scene đều đứng im, chỉ có camera của ta và cái đèn là di chuyển. Series này sẽ thêm vật lý vào engine: đồ vật rơi, va chạm, nảy,
+					xoay, chồng lên nhau, và cuối series ta sẽ có một tháp Jenga mà bạn rút khối ra được, kế bên là một khối hình kỳ lạ để chứng minh
+					engine của ta xử lý được va chạm của mọi hình lồi (hình không có chỗ nào lõm vào, như hộp, quả cầu, viên kim cương) chứ không chỉ hộp và cầu.<br/><br/>
+
+					Blog này là phần dễ nhất: làm cho 1 vật chuyển động. Nghe đơn giản, nhưng tới cuối blog bạn sẽ thấy chỉ riêng chuyện "thời gian trôi bao lâu
+					giữa 2 frame" thôi cũng đủ làm vật lý sai theo nhiều kiểu khác nhau.
+
+					<h2>1. Điểm bắt đầu</h2>
+					Cũng như các series trước, mọi demo đều chạy được ngay trên trang (htmlPreview), có nút Diff để xem khác gì so với demo trước.
+					Vì demo nào cũng có vật lý chạy ngay khi mở, mình để mặc định tắt hết, bạn bấm <b>Enable</b> khi đọc tới để xem từ đầu.<br/><br/>
+
+					Demo đầu tiên của series này chính là demo cuối của series WebGL (htmlPreview53 bên đó), không đổi một dòng nào:
+					<div class="htmlPreview" id="htmlPreview1" data-no-diff="true" data-disabled="true"></div>
+
+					Engine vẫn giữ nguyên toàn bộ: cả <code>WebGLRenderer</code> lẫn <code>SoftwareRenderer</code>, cả 2 point light. Series này chỉ
+					thêm vào chứ không bỏ gì của engine, những gì mình thay đổi chỉ là đồ vật trong scene.<br/><br/>
+
+					Việc đầu tiên là dọn scene: bỏ cái tháp gỗ (3 dòng tạo <code>woodTower</code> và load file obj), thay bằng một khối hộp lơ lửng ở độ cao 5,
+					dùng lại texture gỗ của cái tháp. Mình cũng dời camera lại gần hơn cho dễ nhìn cái hộp (4 tham số của <code>Camera</code> vẫn như series trước: vị trí,
+					góc xoay Euler, ở đây là cúi xuống 5 độ, tốc độ di chuyển và độ nhạy chuột):
+					<pre><code class="language-javascript">let camera = new Camera(new Vector3(0, 4, -9), new Vector3(-5, 0, 0), 5, 0.2);	// <---------------------
+...
+let cubeMesh = Primitives.cube();
+let box = scene.add(new GameObject("Box", new Vector3(0, 5, 0), Vector3.zero, Vector3.one));			// <---------------------
+box.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));	// <---------------------</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview2" data-disabled="true"></div>
+
+					<h2>2. Vận tốc</h2>
+					Một vật chuyển động nghĩa là vị trí của nó thay đổi theo thời gian. Vị trí thay đổi nhanh hay chậm, theo hướng nào, thì gọi là
+					<b>vận tốc</b> (velocity), là một vector, đơn vị là mét trên giây (m/s). Ví dụ vận tốc <code>(1, 0, 0)</code> nghĩa là mỗi giây vật đi được 1 mét
+					theo trục x.<br/><br/>
+
+					Trong hàm <code>update</code> ta đã có sẵn biến <code>dt</code> từ series trước, là số giây đã trôi qua kể từ frame trước (ở 60 FPS thì
+					<code>dt</code> khoảng 0.0167). Vậy trong 1 frame, vật đi được một đoạn bằng vận tốc nhân <code>dt</code>:
+					$$\vec{x}_{mới} = \vec{x}_{cũ} + \vec{v} \cdot dt$$
+
+					Ta cần một chỗ để lưu vận tốc cho từng vật. Giống như <code>MeshRenderer</code> là component để GameObject được vẽ ra, mình thêm một
+					component mới tên <code>Rigidbody</code> (rigid body là "vật rắn", vật không bị biến dạng, cái tên này mình mượn từ Unity), GameObject nào có
+					<code>Rigidbody</code> thì sẽ chịu tác động của vật lý. Tất cả code vật lý mình để trong một phần mới tên <code>physics.js</code>. Cũng như
+					series trước, các "file" này chỉ là các đoạn được đánh dấu <code>// ===== x.js =====</code> trong cùng một trang HTML, phần mới nằm ngay
+					trước <code>index.js</code> để các class đã có sẵn khi <code>index.js</code> dùng tới:
+					<pre><code class="language-javascript">// ===== physics.js =====
+class Rigidbody extends Component {
+	constructor() {
+		super();
+		this.velocity = new Vector3(0, 0, 0);
+	}
+
+	integrateVelocity(dt) {
+		this.transform.position = Vector3.add(this.transform.position, Vector3.mul(this.velocity, dt));
+	}
+}
+
+class PhysicsWorld {
+	step(scene, dt) {
+		let rigidbodies = scene.getAllComponentsOfType(Rigidbody);
+		for (let rigidbody of rigidbodies) {
+			rigidbody.integrateVelocity(dt);
+		}
+	}
+}</code></pre>
+					<ul>
+						<li><code>integrateVelocity</code> chính là công thức ở trên. Cộng dồn từng chút một theo thời gian như vậy, trong toán gọi là tích phân
+						(integrate), bạn không cần biết gì thêm về tích phân để đọc tiếp. Cách tính từng bước nhỏ <code>dt</code> như này gọi là
+						<a href="https://en.wikipedia.org/wiki/Numerical_integration">tích phân số</a> (numerical integration), và phần cuối blog sẽ thấy nó
+						không chính xác tuyệt đối.</li>
+						<li><code>PhysicsWorld</code> là thứ chạy vật lý cho cả scene, giống <code>WebGLRenderer</code> là thứ vẽ cả scene. Nó tìm hết
+						<code>Rigidbody</code> trong scene bằng <code>getAllComponentsOfType</code>, y như cách renderer tìm hết <code>MeshRenderer</code>.</li>
+					</ul>
+
+					Trong <code>index.js</code>, cái hộp được gắn thêm một <code>Rigidbody</code> với vận tốc 1 m/s theo trục x, và mỗi frame ta gọi
+					<code>physicsWorld.step</code> trước khi vẽ. Nó nằm sau <code>updateGameObjectTransforms</code>, hàm này từ series trước chỉ di chuyển
+					camera và xoay mặt trời. Vật lý chỉ cần gán <code>transform.position</code>, renderer tự đọc vị trí mới khi vẽ:
+					<pre><code class="language-javascript">let physicsObjects = [];		// <---------------------
+let box;						// <---------------------
+let boxRigidbody;				// <---------------------
+
+function spawnPhysicsObjects() {	// <---------------------
+	box = scene.add(new GameObject("Box", new Vector3(0, 5, 0), Vector3.zero, Vector3.one));
+	box.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+	boxRigidbody = box.addComponent(new Rigidbody());		// <---------------------
+	boxRigidbody.velocity = new Vector3(1, 0, 0);			// <---------------------
+	physicsObjects.push(box);								// <---------------------
+}
+
+function resetPhysicsObjects() {	// <---------------------
+	scene.roots = scene.roots.filter((gameObject) => !physicsObjects.includes(gameObject));
+	physicsObjects = [];
+	spawnPhysicsObjects();
+}
+...
+spawnPhysicsObjects();			// <---------------------
+
+let physicsWorld = new PhysicsWorld();	// <---------------------
+...
+function update(time = performance.now()) {
+	...
+	updateGameObjectTransforms();
+	physicsWorld.step(scene, dt);		// <---------------------
+	renderer.render(scene, camera);
+	...
+}</code></pre>
+					Vì cái hộp sẽ bay đi mất, mình thêm một nút <b>Reset</b> kế nút Help. Thay vì load lại cả trang (load lại texture, mất hết
+					các slider bạn đã chỉnh), nút này chỉ xóa những vật có vật lý ra khỏi scene rồi tạo lại chúng. Cho nên việc tạo cái hộp được dời vào hàm
+					<code>spawnPhysicsObjects</code>, mỗi vật tạo ra được ghi vào mảng <code>physicsObjects</code>, và <code>resetPhysicsObjects</code>
+					lọc chúng ra khỏi <code>scene.roots</code> rồi tạo lại. <code>box</code> và <code>boxRigidbody</code> được khai báo ở ngoài hàm vì phần sau
+					cần đọc vận tốc của cái hộp. (<code>scene.roots</code> là mảng các GameObject cấp cao nhất của scene, <code>scene.add</code> thêm vào mảng này.)
+					Phần HTML và listener của nút:
+					<pre><code class="language-javascript">&lt;button id=&quot;resetButton&quot;
+	style=&quot;font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px&quot;&gt;Reset&lt;/button&gt;
+...
+const resetButton = (document.getElementById("resetButton"));
+...
+resetButton.addEventListener("click", resetPhysicsObjects);</code></pre>
+					Kết quả, cái hộp trôi sang phải với tốc độ 1 mét mỗi giây, bấm Reset để nó về lại chỗ cũ:
+					<div class="htmlPreview" id="htmlPreview3" data-disabled="true"></div>
+
+					<h2>3. Trọng lực</h2>
+					Giờ ta muốn cái hộp rơi. Rơi xuống là một chuyển động mà vận tốc không cố định: lúc đầu đứng yên, càng rơi càng nhanh. Thứ làm vận tốc thay đổi
+					gọi là <b>gia tốc</b> (acceleration), đơn vị là m/s² (mỗi giây vận tốc tăng thêm bao nhiêu m/s). Ở gần mặt đất, mọi vật đều rơi với cùng
+					một gia tốc hướng xuống khoảng 9.81 m/s², gọi là gia tốc trọng trường.<br/><br/>
+
+					Gia tốc với vận tốc có quan hệ y hệt vận tốc với vị trí, nên cách tính cũng y hệt:
+					$$\vec{v}_{mới} = \vec{v}_{cũ} + \vec{g} \cdot dt$$
+					<pre><code class="language-javascript">class Rigidbody extends Component {
+	...
+	integrateForces(dt, gravity) {		// <---------------------
+		this.velocity = Vector3.add(this.velocity, Vector3.mul(gravity, dt));
+	}
+
+	integrateVelocity(dt) {
+		this.transform.position = Vector3.add(this.transform.position, Vector3.mul(this.velocity, dt));
+	}
+}
+
+class PhysicsWorld {
+	constructor(gravity = new Vector3(0, -9.81, 0)) {	// <---------------------
+		this.gravity = gravity;							// <---------------------
+	}
+
+	step(scene, dt) {
+		let rigidbodies = scene.getAllComponentsOfType(Rigidbody);
+		for (let rigidbody of rigidbodies) {
+			rigidbody.integrateVelocity(dt);
+			rigidbody.integrateForces(dt, this.gravity);	// <---------------------
+		}
+	}
+}</code></pre>
+					Tên 2 hàm đọc theo kiểu "tích phân cái gì": <code>integrateVelocity</code> cộng dồn vận tốc để ra vị trí, <code>integrateForces</code>
+					cộng dồn gia tốc để ra vận tốc. Gọi là "forces" chứ không phải "gravity" vì ở blog 3 nó sẽ cộng thêm các lực khác, lực chia cho khối lượng
+					ra gia tốc (F = ma). Trọng lực thì đặc biệt: lực hút của trái đất lên một vật tỉ lệ với khối lượng của chính vật đó (\(F = mg\)), chia lại cho
+					khối lượng thì ra gia tốc \(g\) như nhau cho mọi vật, nên với trọng lực ta cộng thẳng gia tốc.
+					Trọng lực là của cả thế giới nên mình để nó trong <code>PhysicsWorld</code>. Ngoài ra mình bỏ dòng gán vận tốc <code>(1, 0, 0)</code>
+					cho cái hộp, để nó rơi thẳng xuống.<br/><br/>
+
+					Để ý thứ tự trong vòng lặp: cập nhật vị trí bằng vận tốc <b>cũ</b> trước, rồi mới cập nhật vận tốc. Bây giờ vận tốc thay đổi mỗi frame
+					nên thứ tự này bắt đầu có ý nghĩa, phần sau sẽ thấy. Mình cố ý để như vậy. Kết quả, cái hộp rơi xuyên qua mặt đất vì chưa có gì cản nó lại:
+					<div class="htmlPreview" id="htmlPreview4" data-disabled="true"></div>
+
+					<h2>4. Mặt đất tạm bợ</h2>
+					Va chạm thật sự là chủ đề của các blog sau. Bây giờ mình chỉ làm một mặt đất giả cho có cái để nảy: nếu đáy của vật thấp hơn mặt đất
+					và vật đang đi xuống, thì đảo chiều vận tốc theo trục y.
+					<pre><code class="language-javascript">step(scene, dt) {
+	let rigidbodies = scene.getAllComponentsOfType(Rigidbody);
+	for (let rigidbody of rigidbodies) {
+		rigidbody.integrateVelocity(dt);
+		rigidbody.integrateForces(dt, this.gravity);
+
+		let bottomY = rigidbody.transform.position.y - rigidbody.transform.lossyScale.y / 2;	// <---------------------
+		if (bottomY < 0.5 && rigidbody.velocity.y < 0) {										// <---------------------
+			rigidbody.velocity = new Vector3(rigidbody.velocity.x, -rigidbody.velocity.y, rigidbody.velocity.z);	// <---------------------
+		}																						// <---------------------
+	}
+}</code></pre>
+					<ul>
+						<li><code>bottomY</code>: mesh của khối hộp (<code>Primitives.cube()</code>) đi từ -0.5 tới 0.5, nhân với scale theo y là ra chiều cao, đáy nằm
+						dưới tâm một nửa chiều cao. <code>lossyScale</code> là scale trong thế giới (đã nhân với scale của cha nếu có), tên lấy theo Unity.</li>
+						<li><code>0.5</code> là mặt trên của ground: ground được tạo từ series trước với tâm ở y = 0 và scale <code>(30, 1, 30)</code>, tức là dày 1.</li>
+						<li>Điều kiện <code>velocity.y < 0</code> để chỉ đảo chiều 1 lần. Không có nó thì frame sau vật vẫn còn nằm dưới mặt đất, lại bị đảo chiều
+						lần nữa thành đi xuống, và kẹt luôn ở dưới.</li>
+					</ul>
+
+					Đảo chiều vận tốc mà giữ nguyên độ lớn nghĩa là cái hộp bay lên với đúng tốc độ lúc nó rơi xuống, chuyển động đi lên là chuyển động đi xuống
+					tua ngược lại, nên về lý thuyết nó phải nảy lên lại đúng độ cao 5 ban đầu, mãi mãi.
+					Để kiểm tra, mình thêm một dòng chữ in ra độ cao của đỉnh mỗi lần nảy. Đỉnh là lúc vật đổi từ đi lên sang không còn đi lên nữa:
+					<pre><code class="language-javascript">&lt;h3 id=&quot;physicsInfo&quot;&gt;Bounce peaks:&lt;/h3&gt;
+...
+const physicsInfo = (document.getElementById("physicsInfo"));
+...
+let bouncePeaks = [];
+let wasBoxGoingUp = false;
+...
+function updateBouncePeaks() {
+	let isBoxGoingUp = boxRigidbody.velocity.y > 0;
+	if (wasBoxGoingUp && !isBoxGoingUp) {
+		bouncePeaks.push(box.transform.position.y.toFixed(2));
+		physicsInfo.textContent = `Bounce peaks: ${bouncePeaks.slice(-6).join(", ")}`;
+	}
+	wasBoxGoingUp = isBoxGoingUp;
+}
+
+function update(time = performance.now()) {
+	...
+	physicsWorld.step(scene, dt);
+	updateBouncePeaks();		// <---------------------
+	renderer.render(scene, camera);
+	...
+}</code></pre>
+					Hàm <code>resetPhysicsObjects</code> cũng xóa <code>bouncePeaks</code>, đặt lại <code>wasBoxGoingUp = false</code> và dòng chữ, để đếm lại từ đầu.
+					Kết quả, bạn để ý dòng "Bounce peaks" dưới FPS:
+					<div class="htmlPreview" id="htmlPreview5" data-disabled="true"></div>
+
+					Ở 60 FPS, các đỉnh lần lượt là khoảng 5.15, 5.30, 5.46, 5.62... Cái hộp nảy càng lúc càng cao. (Nếu máy bị khựng hay bạn chuyển tab giữa chừng,
+					có thể bạn sẽ thấy nó vọt lên cao vút, khi đó bấm Reset, lý do nằm ở phần 7.)<br/><br/>
+
+					Để biết sai ở đâu, ta cần biết đáp án đúng. Vật rơi tự do từ đứng yên thì có công thức chính xác từ vật lý cấp 3: sau \(t\) giây, vận tốc là
+					\(v = g t\) và quãng đường đã rơi là \(s = \frac{1}{2} g t^2\). Công thức này đúng vì vận tốc tăng <b>liên tục</b> trong suốt thời gian rơi,
+					còn code của ta thì coi như trong cả 1 frame vận tốc đứng yên ở một giá trị, rồi mới nhảy lên giá trị mới ở frame sau. Thử tính tay 3 frame đầu,
+					lấy <code>dt = 0.1</code> và <code>g = 10</code> cho số đẹp:
+					<table style="border-collapse: collapse; margin: 10px 0;">
+						<tr>
+							<th style="border: 1px solid #aaa; padding: 4px 8px;">Sau</th>
+							<th style="border: 1px solid #aaa; padding: 4px 8px;">Vận tốc (code)</th>
+							<th style="border: 1px solid #aaa; padding: 4px 8px;">Vận tốc (đúng, \(gt\))</th>
+							<th style="border: 1px solid #aaa; padding: 4px 8px;">Đã rơi (code: đã rơi tới frame trước + vận tốc đầu frame × dt)</th>
+							<th style="border: 1px solid #aaa; padding: 4px 8px;">Đã rơi (đúng, \(\frac{1}{2}gt^2\))</th>
+						</tr>
+						<tr><td style="border: 1px solid #aaa; padding: 4px 8px;">frame 1 (t = 0.1)</td><td style="border: 1px solid #aaa; padding: 4px 8px;">1</td><td style="border: 1px solid #aaa; padding: 4px 8px;">1</td><td style="border: 1px solid #aaa; padding: 4px 8px;">0 + 0×0.1 = 0</td><td style="border: 1px solid #aaa; padding: 4px 8px;">0.05</td></tr>
+						<tr><td style="border: 1px solid #aaa; padding: 4px 8px;">frame 2 (t = 0.2)</td><td style="border: 1px solid #aaa; padding: 4px 8px;">2</td><td style="border: 1px solid #aaa; padding: 4px 8px;">2</td><td style="border: 1px solid #aaa; padding: 4px 8px;">0 + 1×0.1 = 0.1</td><td style="border: 1px solid #aaa; padding: 4px 8px;">0.2</td></tr>
+						<tr><td style="border: 1px solid #aaa; padding: 4px 8px;">frame 3 (t = 0.3)</td><td style="border: 1px solid #aaa; padding: 4px 8px;">3</td><td style="border: 1px solid #aaa; padding: 4px 8px;">3</td><td style="border: 1px solid #aaa; padding: 4px 8px;">0.1 + 2×0.1 = 0.3</td><td style="border: 1px solid #aaa; padding: 4px 8px;">0.45</td></tr>
+					</table>
+					Vận tốc thì luôn đúng, vì trọng lực không đổi nên cộng đều mỗi frame là chính xác. Nhưng quãng đường thì luôn <b>hụt</b>, vì mỗi frame vị trí được
+					tính bằng vận tốc của <b>đầu</b> frame, trong khi trong suốt frame đó vận tốc thật đã lớn hơn.<br/><br/>
+
+					Vậy lúc chạm đất thì sao? Đáy hộp ban đầu ở độ cao 4.5, mặt đất ở 0.5, nên nó phải rơi 4 mét. Ghép 2 công thức ở trên lại (rút \(t\) từ
+					\(s = \frac{1}{2} g t^2\) rồi thay vào \(v = gt\)) thì vật rơi tự do được \(s\) mét có vận tốc \(v = \sqrt{2 g s}\), rơi 4 mét thì
+					\(\sqrt{2 \cdot 9.81 \cdot 4} \approx 8.86\) m/s. Code của ta thì vì quãng đường luôn hụt, nó cần <b>nhiều frame hơn</b> mới rơi đủ 4 mét, mà vận tốc thì
+					tăng đều theo số frame, nên lúc rơi đủ 4 mét vận tốc của nó đã <b>lớn hơn</b> 8.86. Nảy lên với vận tốc lớn hơn thì lên cao hơn.<br/><br/>
+
+					Lúc đi lên thì ngược lại, vận tốc giảm dần mỗi frame. Vị trí vẫn được tính bằng vận tốc đầu frame, mà lần này vận tốc đầu frame lại <b>lớn hơn</b>
+					vận tốc thật trong suốt frame, nên mỗi frame vật đi lên được nhiều hơn đáng lẽ. Thêm một lần lệch về phía bay cao hơn. Cả 2 chiều cộng lại, mỗi lần
+					nảy lại cao thêm một chút.<br/><br/>
+
+					Cách tích phân này (tính vị trí mới và vận tốc mới đều từ những giá trị ở đầu bước) có tên là
+					<a href="https://en.wikipedia.org/wiki/Euler_method">Euler hiện</a> (explicit Euler). Euler ở đây là tên nhà toán học, không liên quan gì tới
+					góc xoay Euler của camera.
+
+					<h2>5. Đổi thứ tự 2 dòng</h2>
+					Sửa thì cực kỳ đơn giản: cập nhật vận tốc trước, rồi dùng vận tốc <b>mới</b> để cập nhật vị trí:
+					<pre><code class="language-javascript">for (let rigidbody of rigidbodies) {
+	rigidbody.integrateForces(dt, this.gravity);	// <--------------------- lên trên
+	rigidbody.integrateVelocity(dt);				// <---------------------
+	...
+}</code></pre>
+					Cách này có tên là <a href="https://en.wikipedia.org/wiki/Semi-implicit_Euler_method">Euler bán ẩn</a> (semi-implicit Euler): vận tốc vẫn tính
+					từ giá trị đầu bước như cũ, còn vị trí thì dùng vận tốc của cuối bước vừa tính xong. Tên gọi thì bạn không cần nhớ, chỉ cần nhớ thứ tự: vận tốc trước,
+					vị trí sau. Kết quả:
+					<div class="htmlPreview" id="htmlPreview6" data-disabled="true"></div>
+
+					Mình đã nghĩ là độ cao sẽ giữ nguyên, chạy thử thì không: các đỉnh là khoảng 4.85, 4.71, 4.56, 4.43..., mỗi lần nảy thấp đi gần đúng bằng lượng mà
+					bản trước cao thêm. Tính lại bảng ở trên với thứ tự mới: frame 1 đã rơi 1×0.1 = 0.1, frame 2 là 0.3, frame 3 là 0.6, so với đáp án đúng 0.05, 0.2,
+					0.45 thì bây giờ quãng đường luôn <b>dư</b>. Cái hộp chạm đất sớm hơn với vận tốc nhỏ hơn đáng lẽ, nên nảy thấp hơn.
+					(Mặt đất giả chỉ bắt được va chạm sau khi cái hộp đã lún xuống dưới 0.5 một chút cũng gây sai số, nhưng cả 2 bản đều có chung lỗi đó, nên nó
+					không phải lý do một bản cao dần còn một bản thấp dần.)<br/><br/>
+
+					Sao không dùng luôn công thức đúng \(s = \frac{1}{2} g t^2\)? Vì nó chỉ đúng khi gia tốc không đổi trong suốt thời gian rơi. Ngay khi có va chạm,
+					có lực đẩy, có vật này đè vật kia (các blog sau), lực thay đổi mỗi bước và không còn công thức nào tính thẳng ra vị trí được, chỉ có cách tính từng bước
+					như ta đang làm. Vậy câu hỏi là chọn cách tính từng bước nào. Chọn Euler bán ẩn, vì vật nảy thấp dần thì nhìn giống như có ma sát hay sức cản không khí,
+					người chơi không thấy gì sai. Còn vật tự nảy cao dần thì cộng dồn mãi tới lúc mọi thứ bay tán loạn. Euler bán ẩn cũng là cách mà <a href="https://box2d.org/">Box2D</a>
+					(một physics engine 2D mã nguồn mở rất nổi tiếng) dùng.
+					Bài <a href="https://gafferongames.com/post/integration_basics/">Integration Basics</a> của Glenn Fiedler so sánh mấy cách tích phân
+					này kỹ hơn nếu bạn muốn đọc thêm.
+
+					<h2>6. Vật lý phụ thuộc vào FPS</h2>
+					Trong bảng ở phần 4, chỗ sai đến từ chuyện vận tốc bị coi là đứng yên trong suốt 1 frame, frame càng dài thì càng sai. Mình chạy thử bản Euler hiện
+					(demo 5) với các <code>dt</code> khác nhau, độ cao đỉnh đầu tiên (đáng lẽ là 5) là: 5.06 với <code>dt</code> = 1/144, 5.15 với 1/60, 5.31 với 1/30.
+					<code>dt</code> gấp đôi thì sai số gấp đôi. Bản bán ẩn mà các demo từ giờ dùng cũng vậy, chỉ là sai theo chiều thấp đi. Mà <code>dt</code> lại phụ thuộc vào FPS của máy người chơi, nghĩa là cùng một game, máy yếu và
+					máy mạnh sẽ thấy vật lý khác nhau.<br/><br/>
+
+					Để thấy rõ, mình thêm một slider <b>Max FPS</b>, giới hạn số frame mỗi giây bằng cách bỏ qua những lần <code>requestAnimationFrame</code>
+					gọi tới mà chưa đủ thời gian của 1 frame:
+					<pre><code class="language-javascript">&lt;div class=&quot;controlRow&quot;&gt;
+	&lt;label class=&quot;controlLabel&quot; for=&quot;maxFps&quot;&gt;Max FPS:&lt;/label&gt;
+	&lt;span&gt;
+		&lt;input type=&quot;range&quot; id=&quot;maxFps&quot; min=&quot;10&quot; max=&quot;144&quot; step=&quot;1&quot; value=&quot;144&quot; /&gt;
+		&lt;span id=&quot;maxFpsText&quot; class=&quot;slider-value&quot;&gt;144&lt;/span&gt;
+	&lt;/span&gt;
+&lt;/div&gt;
+...
+const maxFpsSlider = (document.getElementById("maxFps"));
+const maxFpsText = (document.getElementById("maxFpsText"));
+let maxFps = parseFloat(maxFpsSlider.value);
+...
+function update(time = performance.now()) {
+	if (time - lastTime < 1000 / maxFps - 1) {		// <---------------------
+		requestAnimationFrame(update);				// <---------------------
+		return;										// <---------------------
+	}												// <---------------------
+	dt = (time - lastTime) / 1000;
+	lastTime = time;
+	...
+}
+...
+maxFpsSlider.addEventListener("input", () => {
+	maxFps = parseFloat(maxFpsSlider.value);
+	maxFpsText.textContent = maxFps.toFixed(0);
+});</code></pre>
+					<code>1000 / maxFps</code> là số mili giây của 1 frame. <code>requestAnimationFrame</code> được gọi mỗi lần màn hình vẽ lại, màn hình 60Hz
+					thì khoảng 16.6 đến 16.7 ms một lần, không đúng chính xác từng mili giây. Nếu so sánh chặt với 16.67 thì lúc chọn 60 FPS, những lần gọi sau 16.6 ms
+					sẽ bị bỏ, nên mình trừ hao 1 ms. Giá trị mặc định là 144, cao hơn tần số của hầu hết màn hình, tức là không giới hạn gì cả. Thấp nhất là 10,
+					lý do ở phần sau.<br/><br/>
+
+					Kết quả, bạn kéo Max FPS xuống 10 rồi bấm Reset:
+					<div class="htmlPreview" id="htmlPreview7" data-disabled="true"></div>
+
+					Ở 10 FPS các đỉnh là khoảng 4.15, 3.28, 2.68, 2.01, thấp đi nhanh hơn nhiều so với lúc 60 FPS. Lúc chạm đất bạn cũng sẽ thấy cái hộp lún hẳn vào
+					trong mặt đất: vận tốc lúc chạm đất khoảng 9 m/s (phần 4), mỗi frame dài 0.1 giây, nó đi được gần 1 mét trong 1 frame trước khi mặt đất giả kịp phát hiện.
+					Cả 2 chuyện đều từ cùng một nguyên nhân là <code>dt</code> lớn.
+
+					<h2>7. Fixed time step</h2>
+					Cách giải quyết mà gần như mọi physics engine dùng: vật lý luôn chạy với một <code>dt</code> cố định (mình chọn 1/60 giây), không quan tâm FPS
+					là bao nhiêu. Thời gian thật của mỗi frame được bỏ vào một "tài khoản" (<code>timeAccumulator</code>), rồi vật lý rút ra từng bước 1/60 giây
+					cho tới khi tài khoản không còn đủ cho một bước nữa. Phần dư thì để dành cho frame sau.
+					<ul>
+						<li>Ở 60 FPS: mỗi frame nạp vào khoảng 1/60 giây, chạy 1 bước.</li>
+						<li>Ở 10 FPS: mỗi frame nạp vào 0.1 giây, chạy 6 bước.</li>
+						<li>Ở 144 FPS: phần lớn các frame không đủ 1/60 giây nên không chạy bước nào, cứ khoảng 2 đến 3 frame mới chạy 1 bước.</li>
+					</ul>
+					Kiểu gì thì mỗi bước vật lý cũng nhận cùng một <code>dt</code>, nên chuỗi các bước vật lý giống hệt nhau trên mọi máy. Nó không làm vật lý đúng
+					hơn (vẫn là Euler bán ẩn với <code>dt</code> = 1/60), chỉ làm nó giống nhau. Chọn bước nhỏ hơn, ví dụ 1/120, thì chính xác hơn nhưng phải
+					tính gấp đôi số bước.
+					<pre><code class="language-javascript">class PhysicsWorld {
+	constructor(gravity = new Vector3(0, -9.81, 0)) {
+		this.gravity = gravity;
+		this.fixedDeltaTime = 1 / 60;		// <---------------------
+		this.timeAccumulator = 0;			// <---------------------
+	}
+
+	update(scene, dt) {													// <---------------------
+		this.timeAccumulator += Math.min(dt, 0.1);
+		while (this.timeAccumulator >= this.fixedDeltaTime) {
+			this.step(scene, this.fixedDeltaTime);
+			this.timeAccumulator -= this.fixedDeltaTime;
+		}
+	}
+
+	step(scene, dt) {
+		...
+	}
+}
+...
+function update(time = performance.now()) {
+	...
+	physicsWorld.update(scene, dt);		// <--------------------- thay cho physicsWorld.step(scene, dt)
+	...
+}</code></pre>
+					<code>Math.min(dt, 0.1)</code> là để chống một chuyện hay gặp: khi bạn chuyển sang tab khác, trình duyệt dừng gọi
+					<code>requestAnimationFrame</code>, lúc quay lại thì <code>dt</code> của frame đó có thể là cả phút (đây cũng là lý do cái hộp ở phần 4 có thể vọt lên
+					cao vút: một frame dài cả giây với Euler hiện thì sai cực lớn). Không kẹp lại thì vật lý sẽ phải chạy hàng nghìn bước trong 1 frame. Frame đó chạy rất lâu, làm <code>dt</code> của frame sau lại lớn, cứ vậy mà game đứng hình. Kẹp lại tối đa 0.1 giây thì
+					chuyện này không xảy ra, đổi lại nếu máy chạy dưới 10 FPS thì vật lý sẽ chậm hơn thời gian thật (giống như slow motion).
+					Đây cũng là lý do slider Max FPS chỉ cho kéo xuống tới 10.<br/><br/>
+
+					Kết quả, kéo Max FPS xuống 10 rồi bấm Reset, rồi so với lúc để nguyên 144 (máy mình chạy 60 FPS):
+					<div class="htmlPreview" id="htmlPreview8" data-disabled="true"></div>
+
+					Ở 10 FPS các đỉnh là khoảng 4.80, 4.70, 4.51, 4.37, còn ở 60 FPS là 4.85, 4.71, 4.56, 4.43. Chuyển động vật lý bây giờ giống hệt nhau,
+					mấy số này hơi khác chỉ vì <code>updateBouncePeaks</code> đọc vị trí mỗi frame: ở 60 FPS nó đọc sau mỗi bước vật lý nên đọc trúng bước cao nhất,
+					còn ở 10 FPS cứ 6 bước nó mới đọc 1 lần, nên hay đọc hụt bước cao nhất một chút. Cái hộp ở 10 FPS cũng không còn lún sâu vào mặt đất nữa,
+					vì mỗi bước vật lý vẫn chỉ dài 1/60 giây.<br/><br/>
+
+					Bài <a href="https://gafferongames.com/post/fix_your_timestep/">Fix Your Timestep!</a> của Glenn Fiedler giải thích fixed time step kỹ hơn, và cả
+					những thứ mình không làm ở đây, ví dụ làm sao cho hình vẽ ra mượt khi FPS cao hơn tần số của vật lý.<br/><br/>
+
+					Như vậy là cái hộp đã rơi và nảy với cùng một kết quả trên mọi máy. Nhưng cái mặt đất vẫn là giả: nó chỉ biết mỗi một độ cao 0.5, và chỉ biết
+					đáy của hộp. Blog sau ta sẽ làm va chạm thật, giữa nhiều vật với nhau.
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3DPhysics.js"></script>
+    <script src="concept.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

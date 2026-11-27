@@ -1,0 +1,57 @@
+--- "a/htmlPreviews\\htmlPreview28.html"
++++ "b/htmlPreviews\\htmlPreview29.html"
+@@ -3105,7 +3105,27 @@ void main(){
+ 			}
+ 
+ 			static buildResult(polytope, closest) {
+-				return { normal: closest.normal, depth: closest.distance };
++				let [a, b, c] = closest.face.map((i) => polytope[i]);
++				let projectedOrigin = Vector3.mul(closest.normal, closest.distance);
++				let [u, v, w] = EPA.barycentric(a.point, b.point, c.point, projectedOrigin);
++				let pointOnA = Vector3.add(Vector3.add(Vector3.mul(a.pointOnA, u), Vector3.mul(b.pointOnA, v)), Vector3.mul(c.pointOnA, w));
++				return { normal: closest.normal, depth: closest.distance, pointOnA: pointOnA };
++			}
++
++			static barycentric(a, b, c, p) {
++				let v0 = Vector3.sub(b, a);
++				let v1 = Vector3.sub(c, a);
++				let v2 = Vector3.sub(p, a);
++				let d00 = Vector3.dot(v0, v0);
++				let d01 = Vector3.dot(v0, v1);
++				let d11 = Vector3.dot(v1, v1);
++				let d20 = Vector3.dot(v2, v0);
++				let d21 = Vector3.dot(v2, v1);
++				let denominator = d00 * d11 - d01 * d01;
++				if (Math.abs(denominator) < 1e-12) return [1, 0, 0];
++				let v = (d11 * d20 - d01 * d21) / denominator;
++				let w = (d00 * d21 - d01 * d20) / denominator;
++				return [1 - v - w, v, w];
+ 			}
+ 		}
+ 
+@@ -3384,6 +3404,9 @@ void main(){
+ 		let crystalPushArrow = scene.add(new GameObject("Crystal push arrow"));
+ 		crystalPushArrow.addComponent(new MeshRenderer(null, new Material(new Color(255, 0, 0)), false));
+ 
++		let contactMarker = scene.add(new GameObject("Contact marker", Vector3.zero.clone(), Vector3.zero, new Vector3(0.15, 0.15, 0.15)));
++		contactMarker.addComponent(new MeshRenderer(null, new Material(new Color(0, 220, 255)), false));
++
+ 		let supportMarkers = [];
+ 		for (let i = 0; i < 2; i++) {
+ 			let marker = scene.add(new GameObject("Support marker", Vector3.zero.clone(), Vector3.zero, new Vector3(0.15, 0.15, 0.15)));
+@@ -3551,6 +3574,7 @@ void main(){
+ 
+ 			minkowskiPenetrationArrow.getComponent(MeshRenderer).mesh = isOverlapping ? cubeMesh : null;
+ 			crystalPushArrow.getComponent(MeshRenderer).mesh = isOverlapping ? cubeMesh : null;
++			contactMarker.getComponent(MeshRenderer).mesh = isOverlapping ? cubeMesh : null;
+ 			if (!isOverlapping) {
+ 				epaInfo.textContent = "EPA: not overlapping";
+ 				return;
+@@ -3559,6 +3583,7 @@ void main(){
+ 			let penetrationVector = Vector3.mul(penetration.normal, penetration.depth);
+ 			placeLine(minkowskiPenetrationArrow, minkowskiOrigin, Vector3.add(minkowskiOrigin, penetrationVector), 0.06);
+ 			placeLine(crystalPushArrow, crystal.transform.position, Vector3.sub(crystal.transform.position, penetrationVector), 0.06);
++			contactMarker.transform.position = penetration.pointOnA;
+ 			epaInfo.textContent = `EPA: depth ${penetration.depth.toFixed(3)}`;
+ 		}
+ 

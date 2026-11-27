@@ -1,0 +1,36 @@
+--- "a/htmlPreviews\\htmlPreview3.html"
++++ "b/htmlPreviews\\htmlPreview4.html"
+@@ -2717,16 +2717,25 @@ void main(){
+ 				this.velocity = new Vector3(0, 0, 0);
+ 			}
+ 
++			integrateForces(dt, gravity) {
++				this.velocity = Vector3.add(this.velocity, Vector3.mul(gravity, dt));
++			}
++
+ 			integrateVelocity(dt) {
+ 				this.transform.position = Vector3.add(this.transform.position, Vector3.mul(this.velocity, dt));
+ 			}
+ 		}
+ 
+ 		class PhysicsWorld {
++			constructor(gravity = new Vector3(0, -9.81, 0)) {
++				this.gravity = gravity;
++			}
++
+ 			step(scene, dt) {
+ 				let rigidbodies = scene.getAllComponentsOfType(Rigidbody);
+ 				for (let rigidbody of rigidbodies) {
+ 					rigidbody.integrateVelocity(dt);
++					rigidbody.integrateForces(dt, this.gravity);
+ 				}
+ 			}
+ 		}
+@@ -2801,7 +2810,6 @@ void main(){
+ 			box = scene.add(new GameObject("Box", new Vector3(0, 5, 0), Vector3.zero, Vector3.one));
+ 			box.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+ 			boxRigidbody = box.addComponent(new Rigidbody());
+-			boxRigidbody.velocity = new Vector3(1, 0, 0);
+ 			physicsObjects.push(box);
+ 		}
+ 

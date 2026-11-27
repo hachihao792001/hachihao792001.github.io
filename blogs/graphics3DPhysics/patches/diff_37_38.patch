@@ -1,0 +1,75 @@
+--- "a/htmlPreviews\\htmlPreview37.html"
++++ "b/htmlPreviews\\htmlPreview38.html"
+@@ -3209,6 +3209,7 @@ void main(){
+ 				this.point = point;
+ 				this.normal = normal;
+ 				this.depth = depth;
++				this.normalImpulse = 0;
+ 			}
+ 		}
+ 
+@@ -3327,11 +3328,12 @@ void main(){
+ 					}
+ 				}
+ 
++				for (let manifold of manifolds) {
++					this.prepareManifold(manifold);
++				}
+ 				for (let iteration = 0; iteration < this.iterations; iteration++) {
+ 					for (let manifold of manifolds) {
+-						for (let contact of manifold.contacts) {
+-							this.resolveContact(manifold.colliderA, manifold.colliderB, contact);
+-						}
++						this.solveManifold(manifold);
+ 					}
+ 				}
+ 
+@@ -3369,19 +3371,37 @@ void main(){
+ 				return 1 / k;
+ 			}
+ 
+-			resolveContact(colliderA, colliderB, contact) {
+-				let rigidbodyA = colliderA.rigidbody;
+-				let rigidbodyB = colliderB.rigidbody;
++			getRelativeVelocity(rigidbodyA, rigidbodyB, point) {
++				return Vector3.sub(this.getPointVelocity(rigidbodyB, point), this.getPointVelocity(rigidbodyA, point));
++			}
+ 
+-				let relativeVelocity = Vector3.sub(this.getPointVelocity(rigidbodyB, contact.point), this.getPointVelocity(rigidbodyA, contact.point));
+-				let normalVelocity = Vector3.dot(relativeVelocity, contact.normal);
+-				if (normalVelocity > 0) return;
++			applyImpulse(rigidbodyA, rigidbodyB, impulse, point) {
++				if (rigidbodyA != null) rigidbodyA.applyImpulseAtPosition(Vector3.mul(impulse, -1), point);
++				if (rigidbodyB != null) rigidbodyB.applyImpulseAtPosition(impulse, point);
++			}
+ 
+-				let restitution = Math.max(colliderA.restitution, colliderB.restitution);
+-				let effectiveMass = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.normal);
+-				let impulse = Vector3.mul(contact.normal, -(1 + restitution) * normalVelocity * effectiveMass);
+-				if (rigidbodyA != null) rigidbodyA.applyImpulseAtPosition(Vector3.mul(impulse, -1), contact.point);
+-				if (rigidbodyB != null) rigidbodyB.applyImpulseAtPosition(impulse, contact.point);
++			prepareManifold(manifold) {
++				let rigidbodyA = manifold.colliderA.rigidbody;
++				let rigidbodyB = manifold.colliderB.rigidbody;
++				let restitution = Math.max(manifold.colliderA.restitution, manifold.colliderB.restitution);
++
++				for (let contact of manifold.contacts) {
++					contact.normalMass = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.normal);
++					let normalVelocity = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.normal);
++					contact.bias = normalVelocity < -1 ? -restitution * normalVelocity : 0;
++				}
++			}
++
++			solveManifold(manifold) {
++				let rigidbodyA = manifold.colliderA.rigidbody;
++				let rigidbodyB = manifold.colliderB.rigidbody;
++
++				for (let contact of manifold.contacts) {
++					let normalVelocity = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.normal);
++					let oldNormalImpulse = contact.normalImpulse;
++					contact.normalImpulse = Math.max(0, oldNormalImpulse + (contact.bias - normalVelocity) * contact.normalMass);
++					this.applyImpulse(rigidbodyA, rigidbodyB, Vector3.mul(contact.normal, contact.normalImpulse - oldNormalImpulse), contact.point);
++				}
+ 			}
+ 
+ 			correctPositions(colliderA, colliderB, contact) {

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="Contact manifold: tìm reference face, incident face và clip để có nhiều điểm tiếp xúc cùng lúc.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="../graphics3D/graphics3D.css">
+    <link rel="stylesheet" href="concept.css">
+    <style>
+        .blog-content ul li a {
+            display: inline;
+            font-weight: inherit;
+            margin-bottom: 0;
+        }
+    </style>
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Physics #6: Contact manifold</title>
+</head>
+
+<body data-graphics3D-id="physics6">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Contact manifold</h1>
+
+					Cuối blog trước, những cái hộp nằm trên mặt đất cứ lắc lư mãi, vì mỗi cặp vật chỉ có một điểm chạm mỗi bước. Một cái hộp nằm trên mặt đất thì cả mặt đáy
+					của nó chạm đất, và vật lý cần biết điều đó: lực đỡ phải đặt ở cả 4 góc thì hộp mới đứng yên được. Tập hợp các điểm chạm của một cặp vật gọi là
+					<b>contact manifold</b>. Blog này tìm contact manifold cho các đa diện, theo cách mà nhiều engine dùng: tìm 2 mặt đang áp vào nhau, rồi cắt mặt này theo
+					mặt kia.
+
+					<h2>1. Các mặt của collider</h2>
+					Tới giờ <code>ConvexCollider</code> chỉ biết các đỉnh của nó, giờ nó cần biết thêm các mặt. Mỗi mặt là một đa giác: danh sách chỉ số đỉnh, theo
+					thứ tự đi vòng quanh mặt ngược chiều kim đồng hồ khi nhìn từ ngoài vào. Với thứ tự đó thì tích có hướng của 2 cạnh đầu
+					(\((\vec{v}_1 - \vec{v}_0) \times (\vec{v}_2 - \vec{v}_0)\)) là pháp tuyến hướng ra ngoài. Lát nữa phần cắt mặt cũng cần thứ tự này.
+					<code>getFaces</code> đổi các đỉnh ra thế giới rồi tính pháp tuyến cho từng mặt; quả cầu không có mặt nào nên <code>Collider</code> mặc định trả về
+					<code>null</code>:
+					<pre><code class="language-javascript">class Collider extends Component {
+	...
+	getFaces() {
+		return null;
+	}
+}
+...
+class ConvexCollider extends Collider {
+	constructor(localVertices, localFaces, restitution) {		// <---------------------
+		super(restitution);
+		this.localVertices = localVertices;
+		this.localFaces = localFaces;							// <---------------------
+	}
+
+	getVertices() {
+		return this.localVertices.map((v) => this.transform.transformPoint(v));
+	}
+
+	getFaces() {
+		let vertices = this.getVertices();
+		let faces = [];
+		for (let localFace of this.localFaces) {
+			let faceVertices = localFace.map((i) => vertices[i]);
+			let normal = Vector3.cross(Vector3.sub(faceVertices[1], faceVertices[0]), Vector3.sub(faceVertices[2], faceVertices[0])).normalize();
+			faces.push({ normal: normal, vertices: faceVertices });
+		}
+		return faces;
+	}
+	...
+}
+
+class BoxCollider extends ConvexCollider {
+	static corners = [ ... ];
+	static faces = [
+		[0, 3, 2, 1], [4, 5, 6, 7], [0, 4, 7, 3], [1, 2, 6, 5], [0, 1, 5, 4], [3, 7, 6, 2],
+	];
+
+	constructor(restitution = 0) {
+		super(BoxCollider.corners, BoxCollider.faces, restitution);		// <---------------------
+	}
+}</code></pre>
+					6 mặt của hộp viết tay: ví dụ <code>[0, 3, 2, 1]</code> là mặt z = -0.5 (góc 0, 3, 2, 1 trong <code>corners</code> đều có z = -0.5), thứ tự này cho pháp tuyến
+					\((0, 0, -1)\), hướng ra ngoài. Mình đã kiểm tra cả 6 mặt theo cách đó.<br/><br/>
+
+					Với crystal thì các mặt phải lấy từ mesh. <code>ConvexHullCollider</code> đổi hàm tìm đỉnh thành <code>buildFacesFromMesh</code>, trả về cả đỉnh lẫn mặt:
+					<pre><code class="language-javascript">class ConvexHullCollider extends ConvexCollider {
+	constructor(mesh, restitution = 0) {
+		let [vertices, faces] = ConvexHullCollider.buildFacesFromMesh(mesh);
+		super(vertices, faces, restitution);
+	}
+
+	static buildFacesFromMesh(mesh) {
+		let vertices = [];																// bước 1
+		let meshToHull = [];
+		let p = mesh.positions;
+		for (let i = 0; i < mesh.vertexCount; i++) {
+			let vertex = new Vector3(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]);
+			let index = vertices.findIndex((v) => Vector3.sub(v, vertex).magnitude() < 1e-5);
+			if (index < 0) {
+				index = vertices.length;
+				vertices.push(vertex);
+			}
+			meshToHull.push(index);
+		}
+
+		let faces = [];																	// bước 2
+		for (let i = 0; i < mesh.indices.length; i += 3) {
+			let a = meshToHull[mesh.indices[i]];
+			let b = meshToHull[mesh.indices[i + 1]];
+			let c = meshToHull[mesh.indices[i + 2]];
+			let normal = Vector3.cross(Vector3.sub(vertices[b], vertices[a]), Vector3.sub(vertices[c], vertices[a])).normalize();
+			let face = faces.find((f) => Vector3.dot(f.normal, normal) > 0.9999 && Math.abs(Vector3.dot(f.normal, Vector3.sub(vertices[a], vertices[f.indices[0]]))) < 1e-5);
+			if (face == null) {
+				face = { normal: normal, indices: [] };
+				faces.push(face);
+			}
+			for (let index of [a, b, c]) {
+				if (!face.indices.includes(index)) face.indices.push(index);
+			}
+		}
+
+		let hullCenter = new Vector3(0, 0, 0);											// bước 3
+		for (let v of vertices) hullCenter = Vector3.add(hullCenter, v);
+		hullCenter = Vector3.div(hullCenter, vertices.length);
+
+		for (let face of faces) {
+			if (Vector3.dot(face.normal, Vector3.sub(vertices[face.indices[0]], hullCenter)) < 0) face.normal = Vector3.mul(face.normal, -1);
+			let faceCenter = new Vector3(0, 0, 0);										// bước 4
+			for (let index of face.indices) faceCenter = Vector3.add(faceCenter, vertices[index]);
+			faceCenter = Vector3.div(faceCenter, face.indices.length);
+			let axisU = Vector3.sub(vertices[face.indices[0]], faceCenter).normalize();
+			let axisV = Vector3.cross(face.normal, axisU);
+			let angleOf = (index) => {
+				let offset = Vector3.sub(vertices[index], faceCenter);
+				return Math.atan2(Vector3.dot(offset, axisV), Vector3.dot(offset, axisU));
+			};
+			face.indices.sort((i, j) => angleOf(i) - angleOf(j));
+		}
+
+		return [vertices, faces.map((f) => f.indices)];
+	}
+}</code></pre>
+					<ol>
+						<li>Bỏ đỉnh trùng như cũ, nhưng giờ nhớ thêm đỉnh thứ i của mesh ứng với đỉnh nào trong danh sách không trùng (<code>meshToHull</code>), để bước 2
+						dùng.</li>
+						<li>Mesh chỉ có tam giác. Một mặt phẳng của hình (ví dụ một mặt vuông) có thể bị chia thành nhiều tam giác, nên mình gộp các tam giác cùng pháp tuyến
+						(tích vô hướng gần 1) và cùng nằm trên một mặt phẳng (khoảng cách tới mặt phẳng gần 0) thành một mặt, gom đỉnh của chúng lại. Crystal thì mọi mặt đều
+						là tam giác, mỗi mặt 1 tam giác, nhưng hàm này làm được cho mesh nào cũng được.</li>
+						<li>Tích có hướng có thể ra pháp tuyến hướng vào trong (tùy thứ tự đỉnh của mesh). Mình so với tâm của hình (trung bình các đỉnh): pháp tuyến phải
+						hướng ra xa tâm, không thì lật lại.</li>
+						<li>Đỉnh của một mặt gộp từ nhiều tam giác không theo thứ tự nào, nên mình sắp xếp chúng theo góc quanh tâm của mặt: chọn 2 trục vuông góc nằm trong mặt
+						(<code>axisU</code> từ tâm tới đỉnh đầu, <code>axisV</code> vuông góc với nó trong mặt), tính góc của mỗi đỉnh bằng <code>atan2</code> rồi sắp xếp
+						tăng dần. Với <code>axisV = normal × axisU</code>, thứ tự này cho ra đúng chiều mà <code>getFaces</code> cần: mình kiểm tra cả 14 mặt của crystal, pháp tuyến
+						tính lại bằng tích có hướng đều hướng ra ngoài.</li>
+					</ol>
+					Demo này nhìn y hệt demo trước, chỉ thêm dữ liệu chưa dùng tới:
+					<div class="htmlPreview" id="htmlPreview32" data-disabled="true"></div>
+
+					<h2>2. Reference face và incident face</h2>
+					Khi 2 hộp nằm áp vào nhau, pháp tuyến va chạm (từ EPA) gần như vuông góc với 2 mặt đang áp vào nhau. Nên cách tìm 2 mặt đó rất đơn giản: trên A, mặt có
+					pháp tuyến gần cùng hướng với pháp tuyến va chạm nhất (tích vô hướng lớn nhất); trên B, mặt có pháp tuyến gần ngược hướng nhất (vì pháp tuyến va chạm
+					hướng từ A sang B, mặt của B đang quay về phía A).<br/><br/>
+
+					Trong 2 mặt này, mặt nào vuông góc với pháp tuyến va chạm hơn (tích vô hướng gần 1 hơn) thì gọi là <b>reference face</b> (mặt tham chiếu), mặt còn lại là
+					<b>incident face</b> (mặt bị chạm). Mặt vuông góc với pháp tuyến hơn là mặt đang áp phẳng vào vật kia, mặt còn lại có thể đang chạm bằng một cạnh hay một góc. Ý tưởng: coi reference face là "mặt sàn", và các góc của incident face lún xuống dưới mặt sàn đó chính là các điểm
+					chạm. Mỗi góc như vậy là một <code>Contact</code>, độ lún là khoảng cách từ góc đó xuống mặt sàn, pháp tuyến là pháp tuyến của mặt sàn (lật lại nếu mặt sàn
+					thuộc về B, để vẫn hướng từ A sang B).
+					<pre><code class="language-javascript">class ContactManifold {
+	static findContacts(colliderA, colliderB) {
+		let simplex = GJK.findSimplexContainingOrigin(colliderA, colliderB);
+		if (simplex == null) return [];
+
+		let penetration = EPA.findPenetration(simplex, colliderA, colliderB);
+		let facesA = colliderA.getFaces();
+		let facesB = colliderB.getFaces();
+		if (facesA != null && facesB != null) {
+			let contacts = ContactManifold.findFaceContacts(facesA, facesB, penetration.normal);
+			if (contacts.length > 0) return contacts;
+		}
+
+		let point = penetration.pointOnA;
+		if (colliderA instanceof SphereCollider) point = colliderA.support(penetration.normal);
+		if (colliderB instanceof SphereCollider) point = colliderB.support(Vector3.mul(penetration.normal, -1));
+		return [new Contact(point, penetration.normal, penetration.depth)];
+	}
+
+	static findMostAlignedFace(faces, direction) {
+		let best = faces[0];
+		for (let face of faces) {
+			if (Vector3.dot(face.normal, direction) > Vector3.dot(best.normal, direction)) best = face;
+		}
+		return best;
+	}
+
+	static findFaceContacts(facesA, facesB, normal) {
+		let faceA = ContactManifold.findMostAlignedFace(facesA, normal);
+		let faceB = ContactManifold.findMostAlignedFace(facesB, Vector3.mul(normal, -1));
+
+		let referenceFace = faceA;
+		let incidentFace = faceB;
+		let isReferenceOnA = true;
+		if (Vector3.dot(faceB.normal, Vector3.mul(normal, -1)) > Vector3.dot(faceA.normal, normal) + 0.001) {
+			referenceFace = faceB;
+			incidentFace = faceA;
+			isReferenceOnA = false;
+		}
+
+		let referencePlane = new Plane(referenceFace.normal.clone(), referenceFace.vertices[0]);
+		let contactNormal = isReferenceOnA ? referenceFace.normal : Vector3.mul(referenceFace.normal, -1);
+		let contacts = [];
+		for (let point of incidentFace.vertices) {
+			let depth = -referencePlane.distanceToPoint(point);
+			if (depth >= 0) {
+				contacts.push(new Contact(point, contactNormal, depth));
+			}
+		}
+		return contacts;
+	}
+}</code></pre>
+					<ul>
+						<li><code>findContact</code> của <code>PhysicsWorld</code> được dời vào class mới này thành <code>findContacts</code>, trả về một mảng. Nếu một trong
+						2 vật không có mặt (quả cầu) hoặc không tìm được điểm nào từ các mặt, thì quay về một điểm chạm của EPA như blog trước.</li>
+						<li><code>+ 0.001</code>: khi 2 mặt song song gần hoàn hảo (hộp nằm trên mặt đất) thì 2 tích vô hướng gần bằng nhau, mình ưu tiên mặt của A làm
+						reference, để kết quả không nhảy qua lại giữa 2 lựa chọn từ bước này sang bước khác vì sai số rất nhỏ.</li>
+						<li><code>Plane</code> là class từ series Graphics Engine 3D: tạo từ pháp tuyến và một điểm, <code>distanceToPoint</code> trả về khoảng cách có dấu
+						(dương ở phía pháp tuyến). Hàm khởi tạo của <code>Plane</code> chuẩn hóa pháp tuyến ngay trên vector truyền vào, nên mình truyền một bản copy
+						(<code>clone</code>) để không làm hỏng pháp tuyến của mặt.</li>
+						<li>Góc nằm phía dưới mặt sàn thì khoảng cách âm, độ lún là số đối của nó. Góc nằm trên mặt sàn (chưa chạm) thì bỏ qua.</li>
+					</ul>
+					Trong <code>step</code>, mỗi cặp vật giờ có thể có nhiều điểm chạm, xử lý lần lượt từng điểm:
+					<pre><code class="language-javascript">let contacts = ContactManifold.findContacts(colliders[i], colliders[j]);
+for (let contact of contacts) {
+	this.maxPenetration = Math.max(this.maxPenetration, contact.depth);
+	this.resolveContact(colliders[i], colliders[j], contact);
+	this.correctPositions(colliders[i], colliders[j], contact);
+}</code></pre>
+					Một cặp vật có thể có nhiều hơn 4 điểm chạm (ví dụ crystal có mặt 7 cạnh, hay sau khi cắt ở phần 4), solver xử lý bao nhiêu điểm cũng được. Kết quả, nhìn lại những cái hộp nằm trên mặt đất:
+					<div class="htmlPreview" id="htmlPreview33" data-disabled="true"></div>
+					Đỡ lắc lư hơn hẳn. Mình đo lại cái hộp nằm trên mặt đất ở blog trước: vận tốc góc sau 10 giây từ 0.49 rad/s xuống còn 0.18, độ lún từ 0.026 còn 0.006.
+					Vẫn chưa nằm yên tuyệt đối, blog sau sẽ lo nốt.
+
+					<h2>3. Điểm chạm ma</h2>
+					Cách lấy các góc của incident face có một lỗ hổng. Thử một tình huống: một tấm ván rộng 3x3 đặt trên một cái bục nhỏ 0.6x0.6 (tĩnh, không có Rigidbody),
+					và đặt lệch: tâm tấm ván cách tâm bục 1 mét, nằm hẳn ra ngoài mép bục. Tấm ván phải đổ xuống:
+					<pre><code class="language-javascript">let pedestal = scene.add(new GameObject("Pedestal", new Vector3(-6, 0.8, -4.5), Vector3.zero, new Vector3(0.6, 0.6, 0.6)));
+pedestal.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(190, 150, 100))));
+pedestal.addComponent(new BoxCollider());
+physicsObjects.push(pedestal);
+
+let board = scene.add(new GameObject("Board", new Vector3(-5, 1.2, -4.5), Vector3.zero, new Vector3(3, 0.2, 3)));
+board.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+board.addComponent(new BoxCollider());
+board.addComponent(new Rigidbody());
+physicsObjects.push(board);</code></pre>
+					Cái bục nằm trong <code>physicsObjects</code> dù không có Rigidbody, để Reset tạo lại nó cùng tấm ván. Kết quả, nhìn tấm ván gỗ ở góc trái phía trước:
+					<div class="htmlPreview" id="htmlPreview34" data-disabled="true"></div>
+					Tấm ván nằm yên trên cái bục, hoàn toàn nằm ngang, như thể được dán keo. Lý do: mặt trên của bục và mặt dưới của tấm ván song song hoàn hảo, nên mặt trên
+					của bục (A) được chọn làm reference face, mặt dưới của tấm ván là incident face. 4 góc của mặt dưới tấm ván đều thấp hơn mặt trên của bục một chút (khi tấm
+					ván lún vào), nên cả 4 thành điểm chạm, dù 4 góc đó nằm cách cái bục cả mét, giữa không trung. Có 4 điểm đỡ ở 4 góc thì tấm ván đứng vững. Mặt sàn trong
+					ý tưởng ở trên đúng ra chỉ rộng bằng reference face, chứ không phải một mặt phẳng vô hạn.
+
+					<h2>4. Cắt incident face theo reference face</h2>
+					Cách sửa: chỉ giữ lại phần của incident face nằm "phía trên" reference face, tức là bên trong vùng mà reference face che phủ khi nhìn dọc theo pháp tuyến.
+					Mỗi cạnh của reference face dựng một mặt phẳng đứng (chứa cạnh đó và song song với pháp tuyến), pháp tuyến hướng vào trong. Cắt incident face lần lượt
+					bằng từng mặt phẳng, bỏ phần nằm ngoài, phần còn lại là vùng 2 mặt thật sự chồng lên nhau. Nhìn từ trên xuống thì như demo này:
+					<div class="conceptDemo" data-concept="face-clipping" data-height="490"></div>
+
+					Cắt một đa giác bằng một mặt phẳng là việc mà series Graphics Engine 3D đã làm ở phần clipping (cắt tam giác theo các mặt phẳng của camera), lần này
+					với một đa giác bất kỳ thay vì tam giác: đi qua từng cạnh của đa giác, giữ đỉnh nào nằm phía trước mặt phẳng, và cạnh nào đi xuyên qua mặt phẳng thì
+					thêm giao điểm. Cách này có tên là
+					<a href="https://en.wikipedia.org/wiki/Sutherland%E2%80%93Hodgman_algorithm">Sutherland–Hodgman</a>, dùng lại <code>isPointInFrontOfPlane</code> và
+					<code>intersectWithLine</code> của <code>Plane</code>:
+					<pre><code class="language-javascript">static findFaceContacts(facesA, facesB, normal) {
+	...
+	let polygon = incidentFace.vertices;											// <---------------------
+	let referenceVertices = referenceFace.vertices;
+	for (let i = 0; i < referenceVertices.length; i++) {
+		let edgeStart = referenceVertices[i];
+		let edgeEnd = referenceVertices[(i + 1) % referenceVertices.length];
+		let inwardNormal = Vector3.cross(referenceFace.normal, Vector3.sub(edgeEnd, edgeStart));
+		polygon = ContactManifold.clipPolygon(polygon, new Plane(inwardNormal, edgeStart));
+		if (polygon.length == 0) return [];
+	}
+
+	let referencePlane = new Plane(referenceFace.normal.clone(), referenceVertices[0]);
+	let contactNormal = isReferenceOnA ? referenceFace.normal : Vector3.mul(referenceFace.normal, -1);
+	let contacts = [];
+	for (let point of polygon) {													// <--------------------- thay cho incidentFace.vertices
+		...
+	}
+	return contacts;
+}
+
+static clipPolygon(polygon, plane) {
+	let result = [];
+	for (let i = 0; i < polygon.length; i++) {
+		let current = polygon[i];
+		let next = polygon[(i + 1) % polygon.length];
+		let isCurrentInFront = plane.isPointInFrontOfPlane(current);
+		let isNextInFront = plane.isPointInFrontOfPlane(next);
+		if (isCurrentInFront) result.push(current);
+		if (isCurrentInFront != isNextInFront) {
+			let [, intersection] = plane.intersectWithLine(current, next);
+			result.push(intersection);
+		}
+	}
+	return result;
+}</code></pre>
+					<ul>
+						<li><code>inwardNormal</code>: các đỉnh của reference face đi ngược chiều kim đồng hồ quanh pháp tuyến (phần 1), nên phần bên trong mặt luôn nằm bên
+						trái của mỗi cạnh khi nhìn từ phía pháp tuyến. Tích có hướng của pháp tuyến với hướng của cạnh cho đúng hướng chỉ sang bên trái đó, vuông góc với cả 2.
+						Mặt phẳng tạo từ pháp tuyến này và một đỉnh của cạnh là mặt phẳng đứng ở cạnh đó, "phía trước" nó là phía bên trong.</li>
+						<li>Nếu sau một lần cắt mà không còn gì thì 2 mặt không hề chồng lên nhau khi nhìn dọc pháp tuyến, trả về mảng rỗng (khi đó
+						<code>findContacts</code> sẽ dùng một điểm của EPA).</li>
+						<li>Hàm <code>clipPolygon</code> đi qua từng cạnh từ <code>current</code> tới <code>next</code>: <code>current</code> ở phía trước thì giữ; nếu 2 đầu
+						cạnh ở 2 phía khác nhau thì cạnh đi xuyên mặt phẳng, thêm giao điểm. Làm vậy với mọi cạnh thì ra đa giác mới, vẫn theo đúng thứ tự vòng quanh.</li>
+					</ul>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview35" data-disabled="true"></div>
+					Tấm ván giờ chỉ được đỡ ở vùng chồng lên cái bục, trọng tâm của nó nằm ngoài vùng đó, nên nó nghiêng đi rồi trượt khỏi bục, rơi xuống đất.
+
+					<h2>5. Một chồng hộp</h2>
+					Giờ là bài kiểm tra cho cái đích cuối series: chồng nhiều vật lên nhau. Mình xếp 5 cái hộp thẳng hàng thành một cột, mỗi hộp cách hộp dưới 0.001 (gần như
+					vừa khít):
+					<pre><code class="language-javascript">for (let i = 0; i < 5; i++) {
+	let stackBox = scene.add(new GameObject("Stack box " + i, new Vector3(-7.5, 1 + i * 1.001, 1.5), Vector3.zero, Vector3.one));
+	stackBox.addComponent(new MeshRenderer(cubeMesh, boxMaterial));
+	stackBox.addComponent(new BoxCollider());
+	stackBox.addComponent(new Rigidbody());
+	physicsObjects.push(stackBox);
+}</code></pre>
+					Kết quả, nhìn cột hộp xanh mới ở góc trái phía sau (cột 4 hộp cũ của blog 4 vẫn đổ ở chỗ cũ), ngay khi bấm Enable:
+					<div class="htmlPreview" id="htmlPreview36" data-disabled="true"></div>
+					Cột hộp không đứng nổi 2 giây, nghiêng dần rồi đổ sập. Mình đo được trong giây đầu tiên các hộp đã lún vào nhau và vào đất có chỗ hơn 0.2, và nghiêng tới 12 độ.
+					<br/><br/>
+
+					Vấn đề nằm ở chỗ mỗi điểm chạm được xử lý <b>một lần</b>, lần lượt từng cái. Giữa đất và hộp 1 có 4 điểm chạm, giữa hộp 1 và hộp 2 có 4 điểm, cứ thế lên trên.
+					Xử lý điểm chạm giữa đất và hộp 1 thì hộp 1 dừng lại; nhưng ngay sau đó xử lý điểm chạm giữa hộp 1 và hộp 2, impulse đẩy hộp 2 lên thì cũng đẩy hộp 1 xuống,
+					và không ai quay lại sửa điểm chạm với đất nữa. Hộp 1 lún dần. Tương tự giữa 4 điểm chạm của cùng một mặt: impulse ở góc thứ nhất làm hộp xoay, làm sai vận tốc
+					ở 3 góc còn lại. Mỗi lần xử lý một điểm thì làm hỏng những điểm đã xử lý trước đó. Blog sau giải quyết chuyện này.
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3DPhysics.js"></script>
+    <script src="concept.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

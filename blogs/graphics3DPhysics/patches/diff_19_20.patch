@@ -1,0 +1,24 @@
+--- "a/htmlPreviews\\htmlPreview19.html"
++++ "b/htmlPreviews\\htmlPreview20.html"
+@@ -2782,6 +2782,12 @@ void main(){
+ 				this.force = Vector3.add(this.force, force);
+ 			}
+ 
++			applyInverseInertia(vector) {
++				let rotation = this.transform.rotation;
++				let localVector = rotation.inverseRotateVector(vector);
++				return rotation.rotateVector(Vector3.scale(localVector, this.localInverseInertia));
++			}
++
+ 			addForceAtPosition(force, position) {
+ 				this.addForce(force);
+ 				let r = Vector3.sub(position, this.transform.position);
+@@ -2793,7 +2799,7 @@ void main(){
+ 					this.velocity = Vector3.add(this.velocity, Vector3.mul(gravity, dt));
+ 				}
+ 				this.velocity = Vector3.add(this.velocity, Vector3.mul(this.force, this.inverseMass * dt));
+-				this.angularVelocity = Vector3.add(this.angularVelocity, Vector3.mul(Vector3.scale(this.torque, this.localInverseInertia), dt));
++				this.angularVelocity = Vector3.add(this.angularVelocity, Vector3.mul(this.applyInverseInertia(this.torque), dt));
+ 				this.force = new Vector3(0, 0, 0);
+ 				this.torque = new Vector3(0, 0, 0);
+ 			}

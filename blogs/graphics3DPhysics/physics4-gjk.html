@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="So sánh AABB, SAT và GJK, rồi dựng GJK từ support function và Minkowski difference.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="../graphics3D/graphics3D.css">
+    <link rel="stylesheet" href="concept.css">
+    <style>
+        .blog-content ul li a {
+            display: inline;
+            font-weight: inherit;
+            margin-bottom: 0;
+        }
+    </style>
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Physics #4: Phát hiện va chạm cho mọi hình lồi (GJK)</title>
+</head>
+
+<body data-graphics3D-id="physics4">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Phát hiện va chạm cho mọi hình lồi (GJK)</h1>
+
+					Phần phát hiện va chạm ở blog 2 chỉ có 2 hàm: cầu với cầu, cầu với hộp (hộp không xoay). Blog trước đã làm cho vật biết xoay, giờ ta cần phát hiện
+					va chạm cho những vật bị xoay, và không chỉ cho hộp mà cho mọi hình lồi. Blog này sẽ thử cách đơn giản nhất trước, thấy nó sai ở đâu, so sánh
+					vài cách khác, rồi chọn và dựng một thuật toán tên là GJK.
+
+					<h2>1. Hộp với hộp: AABB</h2>
+					Cách đơn giản nhất để kiểm tra 2 cái hộp có chạm nhau không: bao mỗi hộp bằng một cái hộp khác có các cạnh song song với 3 trục x, y, z, gọi là
+					<b>AABB</b> (axis-aligned bounding box, hộp bao song song với trục). Một AABB chỉ cần 2 điểm: <code>min</code> (góc có x, y, z nhỏ nhất) và
+					<code>max</code>. Hai AABB chạm nhau khi và chỉ khi chúng chồng nhau trên cả 3 trục: khoảng <code>[minA.x, maxA.x]</code> chồng với
+					<code>[minB.x, maxB.x]</code>, tương tự cho y và z.<br/><br/>
+
+					Để tính AABB của một <code>BoxCollider</code>, mình lấy 8 góc của hộp (trong hệ tọa độ của hộp là các điểm ±0.5, vì mesh hộp có cạnh dài 1),
+					đổi ra thế giới bằng <code>transformPoint</code> (tính cả xoay và scale), rồi lấy min, max của chúng:
+					<pre><code class="language-javascript">class BoxCollider extends Collider {
+	static corners = [
+		new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, -0.5, -0.5), new Vector3(0.5, 0.5, -0.5), new Vector3(-0.5, 0.5, -0.5),
+		new Vector3(-0.5, -0.5, 0.5), new Vector3(0.5, -0.5, 0.5), new Vector3(0.5, 0.5, 0.5), new Vector3(-0.5, 0.5, 0.5),
+	];
+
+	getAABB() {
+		let min = new Vector3(Infinity, Infinity, Infinity);
+		let max = new Vector3(-Infinity, -Infinity, -Infinity);
+		for (let corner of BoxCollider.corners) {
+			let p = this.transform.transformPoint(corner);
+			min = new Vector3(Math.min(min.x, p.x), Math.min(min.y, p.y), Math.min(min.z, p.z));
+			max = new Vector3(Math.max(max.x, p.x), Math.max(max.y, p.y), Math.max(max.z, p.z));
+		}
+		return [min, max];
+	}
+
+	calculateLocalInverseInertia(mass) {
+		...
+	}
+}</code></pre>
+					Ngoài "có chạm không", phần phản hồi còn cần pháp tuyến và độ lún. Với 2 AABB, độ chồng lên nhau trên mỗi trục là
+					<code>min(maxA, maxB) - max(minA, minB)</code>. Muốn tách 2 hộp ra bằng quãng ngắn nhất thì đẩy theo trục có độ chồng nhỏ nhất: pháp tuyến là
+					trục đó (hướng từ A sang B), độ lún là độ chồng trên trục đó. Điểm chạm mình lấy tâm của vùng chồng nhau:
+					<pre><code class="language-javascript">findContact(colliderA, colliderB) {
+	if (colliderA instanceof SphereCollider && colliderB instanceof SphereCollider) return this.sphereVsSphere(colliderA, colliderB);
+	if (colliderA instanceof BoxCollider && colliderB instanceof BoxCollider) return this.boxVsBox(colliderA, colliderB);	// <---------------------
+	...
+}
+...
+boxVsBox(boxA, boxB) {
+	let [minA, maxA] = boxA.getAABB();
+	let [minB, maxB] = boxB.getAABB();
+	let overlapX = Math.min(maxA.x, maxB.x) - Math.max(minA.x, minB.x);
+	let overlapY = Math.min(maxA.y, maxB.y) - Math.max(minA.y, minB.y);
+	let overlapZ = Math.min(maxA.z, maxB.z) - Math.max(minA.z, minB.z);
+	if (overlapX <= 0 || overlapY <= 0 || overlapZ <= 0) return null;
+
+	let centerA = boxA.transform.position;
+	let centerB = boxB.transform.position;
+	let normal;
+	let depth;
+	if (overlapX < overlapY && overlapX < overlapZ) {
+		normal = new Vector3(centerB.x > centerA.x ? 1 : -1, 0, 0);
+		depth = overlapX;
+	} else if (overlapY < overlapZ) {
+		normal = new Vector3(0, centerB.y > centerA.y ? 1 : -1, 0);
+		depth = overlapY;
+	} else {
+		normal = new Vector3(0, 0, centerB.z > centerA.z ? 1 : -1);
+		depth = overlapZ;
+	}
+	let point = new Vector3(
+		(Math.max(minA.x, minB.x) + Math.min(maxA.x, maxB.x)) / 2,
+		(Math.max(minA.y, minB.y) + Math.min(maxA.y, maxB.y)) / 2,
+		(Math.max(minA.z, minB.z) + Math.min(maxA.z, maxB.z)) / 2,
+	);
+	return new Contact(point, normal, depth);
+}</code></pre>
+					Trong scene, mình thả thêm 4 cái hộp xanh ở bên trái, hộp sau cao hơn hộp trước 1.5 và lệch qua lại 0.3 (dùng chung một material
+					<code>boxMaterial</code>). Camera được dời ra xa hơn để thấy hết các thứ:
+					<pre><code class="language-javascript">let camera = new Camera(new Vector3(0.5, 9, -12), new Vector3(-30, 0, 0), 5, 0.2);		// <---------------------
+...
+let boxMaterial = new Material(new Color(110, 170, 255));
+...
+for (let i = 0; i < 4; i++) {
+	let box = scene.add(new GameObject("Box " + i, new Vector3(-5 + (i % 2) * 0.3, 2 + i * 1.5, 0), Vector3.zero, Vector3.one));
+	box.addComponent(new MeshRenderer(cubeMesh, boxMaterial));
+	box.addComponent(new BoxCollider());
+	box.addComponent(new Rigidbody());
+	physicsObjects.push(box);
+}</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview21" data-disabled="true"></div>
+					4 cái hộp rơi xuống chồng lên nhau gọn gàng thành một cột. Phản hồi va chạm từ blog 2 chỉ đổi vận tốc chứ chưa đổi vận tốc góc, nên các hộp không
+					bao giờ bị xoay, và AABB của một hộp không xoay thì trùng khít với chính cái hộp. Trường hợp này AABB là hoàn hảo.
+
+					<h2>2. Khi hộp bị xoay</h2>
+					Giờ thử với một cái hộp bị xoay: mình đặt một cái dốc (một khối hộp tĩnh dài 4, dày 0.3, nghiêng 20 độ quanh trục z, đầu bên phải cao hơn) ở bên phải, và thả một cái hộp xanh
+					nghiêng cùng góc lên ngay trên nó:
+					<pre><code class="language-javascript">let ramp = scene.add(new GameObject("Ramp", new Vector3(6, 1.2, -5), new Vector3(0, 0, -20), new Vector3(4, 0.3, 2)));
+ramp.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(190, 150, 100))));
+ramp.addComponent(new BoxCollider());
+...
+function spawnPhysicsObjects() {
+	...
+	let rampBox = scene.add(new GameObject("Ramp box", new Vector3(6.2, 2.4, -5), new Vector3(0, 0, -20), Vector3.one));
+	rampBox.addComponent(new MeshRenderer(cubeMesh, boxMaterial));
+	rampBox.addComponent(new BoxCollider());
+	rampBox.addComponent(new Rigidbody());
+	physicsObjects.push(rampBox);
+}</code></pre>
+					Cái dốc không có Rigidbody nên đứng yên như mặt đất. Kết quả, nhìn cái hộp xanh trên cái dốc:
+					<div class="htmlPreview" id="htmlPreview22" data-disabled="true"></div>
+					Cái hộp lơ lửng phía trên mặt dốc, mình đo được khe hở là 0.65. AABB của một vật bị xoay to hơn chính vật đó, vì cái hộp bao phải bao được cả những góc
+					chĩa ra: AABB của cái dốc nghiêng là một cái hộp nằm ngang, mặt trên của nó ngang với đầu cao nhất của dốc. Với <code>boxVsBox</code> thì
+					cái dốc trông như một cái bục phẳng vô hình, cái hộp xanh nằm trên mặt bục đó chứ không nằm trên mặt dốc.<br/><br/>
+
+					<h2>3. So sánh các cách phát hiện va chạm</h2>
+					AABB nhanh và đơn giản, nên engine nào cũng dùng nó, nhưng chỉ để lọc sơ bộ (blog 8 sẽ dùng lại). Những chỗ nó nói sai luôn là những chỗ có vật bị xoay. Để biết chính xác 2 vật bị xoay có chạm nhau không,
+					có mấy hướng chính:
+					<ul>
+						<li><b>Viết riêng một hàm cho từng cặp hình</b>, như blog 2 đã làm với cầu-cầu và cầu-hộp. Mỗi hình mới thêm vào là phải viết thêm hàm cho nó
+						với mọi hình đã có: 3 loại hình là 6 hàm (cầu-cầu, cầu-hộp, cầu-X, hộp-hộp, hộp-X, X-X), 4 loại hình là 10 hàm. <code>findContact</code> của ta
+						đã bắt đầu thấy cái giá này: với mỗi cặp đến sai thứ tự còn phải đảo lại và lật pháp tuyến.</li>
+						<li><b><a href="https://en.wikipedia.org/wiki/Hyperplane_separation_theorem">SAT</a></b> (separating axis theorem, định lý trục phân tách):
+						2 hình lồi không chạm nhau khi và chỉ khi tìm được một hướng mà chiếu 2 hình lên hướng đó thì 2 cái bóng không chồng nhau. Với 2 hình hộp, chỉ cần
+						thử 15 hướng (3 pháp tuyến mặt của mỗi hộp, cộng 9 tích có hướng giữa các cạnh của 2 hộp), không hướng nào tách được thì đang chạm. SAT chạy
+						nhanh và cho luôn pháp tuyến, nhưng danh sách các hướng cần thử phụ thuộc vào hình, với hình nhiều mặt thì danh sách dài ra, với quả cầu thì
+						phải xử lý riêng.</li>
+						<li><b><a href="https://en.wikipedia.org/wiki/Gilbert%E2%80%93Johnson%E2%80%93Keerthi_distance_algorithm">GJK</a></b>
+						(Gilbert–Johnson–Keerthi, tên của 3 tác giả): <b>một</b> thuật toán dùng cho mọi cặp hình lồi, nó không cần biết hình đó là gì, chỉ cần mỗi hình
+						trả lời được đúng một câu hỏi: "theo hướng này, điểm nào của bạn xa nhất?". Thêm một hình mới chỉ cần viết một hàm nhỏ trả lời câu đó.</li>
+					</ul>
+					Ngoài ra còn <a href="https://en.wikipedia.org/wiki/Minkowski_Portal_Refinement">MPR</a>, một thuật toán cùng họ với GJK, mình không làm ở đây.<br/><br/>
+
+					GJK chỉ trả lời "có chạm hay không", để có pháp tuyến và độ lún thì nó thường đi kèm một thuật toán thứ hai tên là EPA (blog sau). Bullet dùng
+					GJK + EPA cho các hình lồi. Mình chọn GJK, vì cuối series ta cần một khối hình kỳ lạ va chạm được với mọi thứ khác mà không phải viết thêm hàm nào.
+
+					<h2>4. Một hình kỳ lạ</h2>
+					Trước khi làm GJK, ta cần một hình lồi không phải hộp, không phải cầu. Mình gọi nó là <code>crystal</code> (viên pha lê): một vòng 7 điểm nằm ngang
+					với bán kính khác nhau, nối lên một đỉnh trên và xuống một đỉnh dưới, cả 2 đỉnh đều lệch khỏi tâm một chút. Mỗi cạnh của vòng tạo một tam giác
+					với đỉnh trên và một tam giác với đỉnh dưới, tất cả 14 mặt đều là tam giác. Hình này lồi vì các điểm trên vòng tạo thành một đa giác lồi (bán kính
+					thay đổi đủ ít) và đoạn nối 2 đỉnh đi xuyên qua bên trong đa giác đó.
+					<pre><code class="language-javascript">class Primitives {
+	...
+	static crystal() {
+		let top = new Vector3(0.25, 0.9, 0.1);
+		let bottom = new Vector3(-0.15, -0.9, -0.05);
+		let radii = [0.9, 0.7, 1.0, 0.75, 0.95, 0.65, 0.85];
+		let ring = [];
+		for (let i = 0; i < radii.length; i++) {
+			let angle = (i / radii.length) * Math.PI * 2;
+			ring.push(new Vector3(Math.cos(angle) * radii[i], 0, Math.sin(angle) * radii[i]));
+		}
+
+		let triangles = [];
+		let uvs = [new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 1)];
+		for (let i = 0; i < ring.length; i++) {
+			let current = ring[i];
+			let next = ring[(i + 1) % ring.length];
+			triangles.push(new Triangle([top, next, current], uvs));
+			triangles.push(new Triangle([bottom, current, next], uvs));
+		}
+		return Mesh.fromTriangles(triangles);
+	}
+	...
+}</code></pre>
+					UV không dùng (crystal chỉ có màu), mọi tam giác dùng chung 3 UV. Thứ tự đỉnh <code>top, next, current</code> và
+					<code>bottom, current, next</code> là chiều kim đồng hồ khi nhìn từ ngoài, như quả cầu ở blog 2. Mình đặt một viên crystal màu tím lơ lửng
+					bên phải, chưa có vật lý gì:
+					<pre><code class="language-javascript">let crystal = scene.add(new GameObject("Crystal", new Vector3(5.5, 2.5, -1), Vector3.zero, Vector3.one));
+let crystalMaterial = new Material(new Color(170, 90, 255));
+crystal.addComponent(new MeshRenderer(Primitives.crystal(), crystalMaterial));</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview23" data-disabled="true"></div>
+
+					<h2>5. Support function</h2>
+					Câu hỏi duy nhất mà GJK hỏi mỗi hình: "theo hướng \(\vec{d}\), điểm nào của bạn xa nhất?". Hàm trả lời câu này gọi là <b>support function</b>,
+					ký hiệu \(support(\vec{d})\). "Xa nhất theo hướng \(\vec{d}\)" nghĩa là có tích vô hướng với \(\vec{d}\) lớn nhất: tích vô hướng của một
+					điểm với \(\vec{d}\) (khi \(\vec{d}\) là vector đơn vị) chính là độ dài hình chiếu của điểm đó lên hướng \(\vec{d}\). Bạn kéo thử mũi tên trong
+					demo dưới đây:
+					<div class="conceptDemo" data-concept="support-function" data-height="430"></div>
+
+					Với một hình đa diện (hộp, crystal), điểm xa nhất luôn là một đỉnh, nên support function chỉ cần duyệt qua các đỉnh, lấy đỉnh có tích vô hướng lớn
+					nhất. Với quả cầu thì càng đơn giản: điểm xa nhất là tâm cộng bán kính theo hướng \(\vec{d}\):
+					<pre><code class="language-javascript">class SphereCollider extends Collider {
+	...
+	support(direction) {
+		let normalizedDirection = direction.clone().normalize();
+		return Vector3.add(this.transform.position, Vector3.mul(normalizedDirection, this.worldRadius));
+	}
+}</code></pre>
+					Hộp và crystal giống nhau ở chỗ đều là một danh sách đỉnh, nên mình gom phần chung vào một class cha <code>ConvexCollider</code>, giữ danh sách
+					đỉnh trong hệ tọa độ local, <code>BoxCollider</code> giờ chỉ là một <code>ConvexCollider</code> với 8 góc:
+					<pre><code class="language-javascript">class ConvexCollider extends Collider {
+	constructor(localVertices, restitution) {
+		super(restitution);
+		this.localVertices = localVertices;
+	}
+
+	getVertices() {
+		return this.localVertices.map((v) => this.transform.transformPoint(v));
+	}
+
+	support(direction) {
+		let localDirection = Vector3.scale(this.transform.inverseTransformDirection(direction), this.transform.lossyScale);
+		let best = this.localVertices[0];
+		let bestDot = -Infinity;
+		for (let v of this.localVertices) {
+			let dot = Vector3.dot(v, localDirection);
+			if (dot > bestDot) {
+				bestDot = dot;
+				best = v;
+			}
+		}
+		return this.transform.transformPoint(best);
+	}
+}
+
+class BoxCollider extends ConvexCollider {
+	static corners = [ ... ];
+
+	constructor(restitution = 0) {						// <---------------------
+		super(BoxCollider.corners, restitution);
+	}
+
+	getAABB() {
+		let min = new Vector3(Infinity, Infinity, Infinity);
+		let max = new Vector3(-Infinity, -Infinity, -Infinity);
+		for (let p of this.getVertices()) {				// <---------------------
+			...
+		}
+		return [min, max];
+	}
+	...
+}</code></pre>
+					Chỗ cần giải thích là dòng <code>localDirection</code> trong <code>support</code>. Cách thẳng thắn là đổi hết các đỉnh ra thế giới rồi so tích
+					vô hướng với \(\vec{d}\), nhưng mỗi lần gọi support (GJK gọi rất nhiều lần) lại phải đổi hết các đỉnh. Cách của mình là đổi \(\vec{d}\) về hệ
+					tọa độ local một lần, rồi so trong local. Một đỉnh local \(\vec{v}\) ra thế giới thành \(R(S\vec{v}) + \vec{t}\) (\(S\) là scale từng trục,
+					\(R\) là xoay, \(\vec{t}\) là vị trí). Phần \(\vec{t}\) cộng thêm cùng một lượng \(\vec{t} \cdot \vec{d}\) cho mọi đỉnh nên không ảnh hưởng đỉnh
+					nào lớn nhất. Phần xoay thì xoay cả \(\vec{v}\) lẫn \(\vec{d}\) ngược lại không làm đổi tích vô hướng, nên
+					\(R(S\vec{v}) \cdot \vec{d} = S\vec{v} \cdot R^{-1}\vec{d}\), mà \(R^{-1}\vec{d}\) chính là <code>inverseTransformDirection</code>. Còn scale từng trục
+					thì \(S\vec{v} \cdot \vec{u} = \vec{v} \cdot S\vec{u}\) (nhân x với x, y với y, z với z, đổi chỗ nhân nào trước cũng như nhau), nên ta nhân scale
+					vào hướng thay vì vào đỉnh, đó là <code>Vector3.scale(..., lossyScale)</code>. So xong thì chỉ đổi đúng 1 đỉnh thắng cuộc ra thế giới.<br/><br/>
+
+					Crystal có <code>ConvexHullCollider</code> ("convex hull" là hình lồi nhỏ nhất bao hết các điểm; mesh của crystal vốn đã lồi nên hình bao chính là nó,
+					collider này không tự dựng hình bao nên chỉ dùng cho mesh lồi). Nó lấy danh sách đỉnh từ mesh. Mesh lưu đỉnh theo từng tam giác, một đỉnh dùng chung
+					cho nhiều tam giác sẽ bị lặp lại, nên mình bỏ những đỉnh trùng nhau (cách nhau dưới 0.00001). Để ý <code>support</code> không cần \(\vec{d}\) là vector
+					đơn vị: nhân \(\vec{d}\) với một số dương thì mọi tích vô hướng đều nhân với số đó, đỉnh lớn nhất vẫn là đỉnh đó.
+					<pre><code class="language-javascript">class ConvexHullCollider extends ConvexCollider {
+	constructor(mesh, restitution = 0) {
+		super(ConvexHullCollider.findUniqueVertices(mesh), restitution);
+	}
+
+	static findUniqueVertices(mesh) {
+		let vertices = [];
+		let p = mesh.positions;
+		for (let i = 0; i < mesh.vertexCount; i++) {
+			let vertex = new Vector3(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]);
+			if (!vertices.some((v) => Vector3.sub(v, vertex).magnitude() < 1e-5)) vertices.push(vertex);
+		}
+		return vertices;
+	}
+}
+...
+let crystalMesh = Primitives.crystal();
+crystal.addComponent(new MeshRenderer(crystalMesh, crystalMaterial));
+let crystalCollider = crystal.addComponent(new ConvexHullCollider(crystalMesh));</code></pre>
+					Crystal có collider nhưng không có Rigidbody nên là vật tĩnh, <code>findContact</code> chưa có hàm nào cho nó nên chưa có va chạm. Để xem support
+					function chạy, mình đặt 2 khối vuông nhỏ màu vàng tại support của crystal và của hộp gỗ, theo hướng ngược với hướng camera nhìn
+					(tức là đỉnh "hướng về phía camera" nhất):
+					<pre><code class="language-javascript">let supportMarkers = [];
+for (let i = 0; i < 2; i++) {
+	let marker = scene.add(new GameObject("Support marker", Vector3.zero.clone(), Vector3.zero, new Vector3(0.15, 0.15, 0.15)));
+	marker.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 230, 0)), false));
+	supportMarkers.push(marker);
+}
+...
+function updateSupportMarkers() {
+	let directionToCamera = Vector3.mul(camera.transform.getForward(), -1);
+	let colliders = [crystalCollider, pushableObjects[0].getComponent(Collider)];
+	for (let i = 0; i < colliders.length; i++) {
+		supportMarkers[i].transform.position = colliders[i].support(directionToCamera);
+	}
+}</code></pre>
+					<code>updateSupportMarkers</code> chạy mỗi frame sau <code>updatePushArrows</code>, <code>pushableObjects[0]</code> là hộp gỗ. Kết quả, bạn di
+					chuyển camera (WASD, chuột) quanh crystal và nhìn điểm vàng nhảy từ đỉnh này sang đỉnh khác:
+					<div class="htmlPreview" id="htmlPreview24" data-disabled="true"></div>
+
+					<h2>6. Minkowski difference</h2>
+					Giờ là ý tưởng chính của GJK. Lấy mọi điểm \(\vec{a}\) thuộc hình A, mọi điểm \(\vec{b}\) thuộc hình B, tính tất cả các hiệu \(\vec{a} - \vec{b}\),
+					ta được một hình mới gọi là <b>Minkowski difference</b>, viết là \(A - B\). Nếu A và B chồng lên nhau thì có ít nhất một điểm nằm trong cả 2 hình,
+					tức là có một cặp \(\vec{a} = \vec{b}\), hiệu của chúng là \((0, 0, 0)\). Ngược lại, nếu \(A - B\) chứa gốc tọa độ thì có một cặp
+					\(\vec{a} - \vec{b} = 0\), tức là một điểm chung. Vậy:
+					<b>A và B chồng nhau khi và chỉ khi \(A - B\) chứa gốc tọa độ.</b> Bài toán 2 hình biến thành bài toán 1 hình với 1 điểm. Bạn kéo thử hình B:
+					<div class="conceptDemo" data-concept="minkowski-difference" data-height="430"></div>
+
+					Với 2 đa diện, \(A - B\) cũng là một đa diện lồi, các đỉnh của nó nằm trong số các hiệu "đỉnh của A trừ đỉnh của B" (crystal có 9 đỉnh, hộp có 8, nên
+					có 72 hiệu). Để xem trong 3D, mình làm một khu thử nghiệm bên phải: viên crystal được dời qua lại quanh một cái hộp màu cam đứng yên (xoay sẵn một góc,
+					cạnh 1.2) bằng hàm <code>moveCrystal</code>, và 72 điểm xám nhỏ được vẽ tại các vị trí \(\vec{a} - \vec{b}\), dời đi một khoảng
+					<code>minkowskiOrigin</code> để không đè lên chỗ khác (khối đỏ đánh dấu gốc tọa độ của chúng):
+					<pre><code class="language-javascript">let crystal = scene.add(new GameObject("Crystal", new Vector3(5.5, 2.5, -1), Vector3.zero, Vector3.one));
+let crystalStartPosition = crystal.transform.position.clone();		// <---------------------
+...
+let testBox = scene.add(new GameObject("Test box", new Vector3(5.5, 2.5, -1), new Vector3(0, 30, 20), new Vector3(1.2, 1.2, 1.2)));
+testBox.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 160, 60))));
+let testBoxCollider = testBox.addComponent(new BoxCollider());
+
+let minkowskiOrigin = new Vector3(5.5, 4, 3.5);
+let originMarker = scene.add(new GameObject("Origin marker", minkowskiOrigin, Vector3.zero, new Vector3(0.2, 0.2, 0.2)));
+originMarker.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 0, 0)), false));
+let minkowskiDots = [];
+for (let i = 0; i < crystalCollider.localVertices.length * testBoxCollider.localVertices.length; i++) {
+	let dot = scene.add(new GameObject("Minkowski dot", Vector3.zero.clone(), Vector3.zero, new Vector3(0.08, 0.08, 0.08)));
+	dot.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(60, 60, 60)), false));
+	minkowskiDots.push(dot);
+}
+...
+function moveCrystal(time) {
+	crystal.transform.position = Vector3.add(crystalStartPosition, new Vector3(Math.sin(time / 1500) * 2, 0, 0));
+	crystal.transform.rotation = Quaternion.buildQuaternionEuler(new Vector3(0, time / 40, 0));
+}
+
+function updateMinkowskiDots() {
+	let i = 0;
+	for (let a of crystalCollider.getVertices()) {
+		for (let b of testBoxCollider.getVertices()) {
+			minkowskiDots[i].transform.position = Vector3.add(minkowskiOrigin, Vector3.sub(a, b));
+			i++;
+		}
+	}
+}
+...
+function update(time = performance.now()) {
+	...
+	moveCrystal(time);			// <---------------------
+	updateMinkowskiDots();		// <---------------------
+	...
+}</code></pre>
+					<code>moveCrystal</code> nhận <code>time</code> của <code>requestAnimationFrame</code> (mili giây): <code>sin(time / 1500)</code> đưa crystal qua lại
+					2 mét mỗi bên, khoảng 9.4 giây một vòng, và xoay nó quanh trục y 25 độ mỗi giây. Kết quả:
+					<div class="htmlPreview" id="htmlPreview25" data-disabled="true"></div>
+					Đám điểm xám là hình \(A - B\) (bạn tưởng tượng một đa diện bao lấy chúng), nó trượt qua lại theo crystal. Lúc crystal xuyên qua cái hộp cam, đám điểm
+					trùm lên khối đỏ; lúc crystal ra xa, khối đỏ nằm ngoài.
+
+					<h2>7. GJK</h2>
+					Vẽ ra \(A - B\) thì tốn: 72 điểm với 2 hình nhỏ, rồi còn phải dựng đa diện bao chúng mới kiểm tra được gốc có nằm trong không. GJK không bao giờ dựng
+					\(A - B\). Nó chỉ cần support function của \(A - B\), mà cái này tính được từ support của 2 hình gốc: điểm xa nhất theo hướng \(\vec{d}\) của
+					\(A - B\) là điểm xa nhất của A theo \(\vec{d}\) trừ điểm <b>gần nhất</b> của B theo \(\vec{d}\), tức là điểm xa nhất của B theo \(-\vec{d}\):
+					$$support_{A-B}(\vec{d}) = support_A(\vec{d}) - support_B(-\vec{d})$$
+					Mình lưu kèm 2 điểm gốc trên A và B, blog sau sẽ cần:
+					<pre><code class="language-javascript">class MinkowskiPoint {
+	constructor(pointOnA, pointOnB) {
+		this.pointOnA = pointOnA;
+		this.pointOnB = pointOnB;
+		this.point = Vector3.sub(pointOnA, pointOnB);
+	}
+
+	static support(colliderA, colliderB, direction) {
+		return new MinkowskiPoint(colliderA.support(direction), colliderB.support(Vector3.mul(direction, -1)));
+	}
+}</code></pre>
+					Ý tưởng của GJK: tìm một hình đơn giản nhất có các đỉnh nằm trên biên của \(A - B\) mà bao được gốc tọa độ. Vì \(A - B\) lồi (A và B lồi thì
+					\(A - B\) cũng lồi), một hình có các đỉnh nằm trên nó thì nằm gọn bên trong nó, nên hình đó chứa gốc thì \(A - B\) cũng chứa gốc. Đây là lý do GJK
+					chỉ dùng được cho hình lồi. Trong 3D, hình đơn giản nhất bao được một điểm là
+					tứ diện (4 đỉnh). Các hình điểm, đoạn thẳng, tam giác, tứ diện gọi chung là <b>simplex</b>. GJK bắt đầu với 1 điểm, mỗi vòng lặp thêm 1 điểm mới
+					bằng support theo hướng về phía gốc, rồi bỏ những điểm không giúp gì, cho tới khi:
+					<ul>
+						<li>có được một tứ diện chứa gốc: <b>chạm nhau</b>, hoặc</li>
+						<li>điểm xa nhất về phía gốc mà vẫn chưa vượt qua được gốc: \(A - B\) nằm hẳn bên kia, <b>không chạm nhau</b>.</li>
+					</ul>
+					Demo 2D dưới đây chạy đúng ý tưởng đó (trong 2D thì hình bao được một điểm là tam giác), bạn bấm Bước tiếp để đi từng bước, kéo hình B để thử các
+					trường hợp khác:
+					<div class="conceptDemo" data-concept="gjk" data-height="500"></div>
+
+					Vòng lặp chính, giống hệt demo:
+					<pre><code class="language-javascript">class GJK {
+	static isOverlapping(colliderA, colliderB) {
+		return GJK.findSimplexContainingOrigin(colliderA, colliderB) != null;
+	}
+
+	static findSimplexContainingOrigin(colliderA, colliderB) {
+		let direction = Vector3.sub(colliderB.transform.position, colliderA.transform.position);	// bước 1
+		if (direction.magnitude() < 1e-9) direction = new Vector3(1, 0, 0);
+
+		let simplex = [MinkowskiPoint.support(colliderA, colliderB, direction)];
+		direction = Vector3.mul(simplex[0].point, -1);											// bước 2
+
+		for (let iteration = 0; iteration < 64; iteration++) {
+			if (direction.magnitude() < 1e-12) return null;
+			let newPoint = MinkowskiPoint.support(colliderA, colliderB, direction);				// bước 3
+			if (Vector3.dot(newPoint.point, direction) <= 0) return null;						// bước 4
+
+			simplex.unshift(newPoint);															// bước 5
+			let containsOrigin;
+			[simplex, direction, containsOrigin] = GJK.updateSimplex(simplex);					// bước 6
+			if (containsOrigin) return simplex;
+		}
+		return null;
+	}
+
+	static updateSimplex(simplex) {
+		if (simplex.length == 2) return GJK.updateLine(simplex);
+		if (simplex.length == 3) return GJK.updateTriangle(simplex);
+		return GJK.updateTetrahedron(simplex);
+	}
+	...
+}</code></pre>
+					<ol>
+						<li>Hướng đầu tiên chọn tùy ý, mình lấy hướng từ tâm A sang tâm B. Nếu 2 tâm trùng nhau thì lấy trục x.</li>
+						<li>Đã có 1 điểm, muốn tiến về phía gốc thì hướng tiếp theo là từ điểm đó về gốc: gốc trừ điểm, bằng âm của điểm.</li>
+						<li>Lấy điểm xa nhất của \(A - B\) theo hướng đó.</li>
+						<li>Nếu điểm xa nhất mà tích vô hướng với hướng tìm vẫn ≤ 0, tức là nó chưa vượt qua gốc (gốc có tích vô hướng 0 với mọi hướng), thì toàn bộ
+						\(A - B\) nằm bên kia mặt phẳng vuông góc với hướng tìm đi qua gốc. Gốc không thể nằm trong \(A - B\): không chạm nhau.</li>
+						<li>Thêm điểm mới vào <b>đầu</b> mảng. Quy ước: <code>simplex[0]</code> (gọi là <code>a</code>) luôn là điểm mới nhất.</li>
+						<li>Tùy simplex đang có mấy điểm, xử lý để bỏ những điểm vô dụng và chọn hướng tìm tiếp theo. Hàm trả về simplex mới, hướng mới, và đã bao được gốc
+						chưa.</li>
+					</ol>
+					Dòng <code>magnitude</code> thứ hai (trong vòng lặp): hướng tìm bằng 0 nghĩa là gốc nằm
+					đúng trên simplex hiện tại, không còn hướng nào để tìm, mình coi như không chạm (blog sau sẽ thấy với vật lún vào nhau thật thì trường hợp này không làm gì
+					sai). 64 vòng là giới hạn an toàn, thực tế GJK thường xong trong vài vòng.<br/><br/>
+
+					Ba hàm xử lý simplex dưới đây làm cùng một việc: tìm xem <b>phần nào của simplex gần gốc nhất</b> (một đỉnh, một cạnh, hay cả mặt), giữ lại đúng phần
+					đó, bỏ các đỉnh còn lại, và chọn hướng tìm tiếp là từ phần đó đi thẳng về gốc. Ví dụ với một đoạn thẳng: gốc có thể gần đầu <code>a</code> nhất, gần đầu
+					<code>b</code> nhất, hoặc gần một điểm giữa đoạn nhất. Demo GJK 2D ở trên làm đúng việc này. Trong code, <code>ao</code> là vector từ <code>a</code> (điểm mới
+					nhất) về gốc, \(0 - \vec{a}\).<br/><br/>
+
+					Một mẹo làm code ngắn đi: ở vòng trước, hướng tìm được chọn là từ phần gần gốc nhất của simplex cũ đi thẳng về gốc, và điểm mới <code>a</code> là điểm xa nhất
+					theo hướng đó, đã đi qua khỏi gốc (bước 4). Nên gốc nằm ở khoảng giữa simplex cũ và <code>a</code>, không thể nằm ở phía bên kia của simplex cũ. Vì vậy phần gần
+					gốc nhất của simplex mới chắc chắn có chứa <code>a</code>: ta chỉ cần xét những phần có chứa <code>a</code>, không cần xét đỉnh <code>b</code> một mình hay cạnh
+					<code>bc</code>.<br/><br/>
+
+					<b>Đoạn thẳng</b> (<code>a</code> mới, <code>b</code> cũ):
+					<pre><code class="language-javascript">static updateLine(simplex) {
+	let [a, b] = simplex;
+	let ab = Vector3.sub(b.point, a.point);
+	let ao = Vector3.mul(a.point, -1);
+	if (Vector3.dot(ab, ao) > 0) {
+		return [[a, b], Vector3.cross(Vector3.cross(ab, ao), ab), false];
+	}
+	return [[a], ao, false];
+}</code></pre>
+					Nếu gốc nằm "giữa" đoạn (tích vô hướng của <code>ab</code> và <code>ao</code> dương: gốc nằm cùng phía với <code>b</code> khi nhìn từ <code>a</code>),
+					giữ cả đoạn, và hướng tìm tiếp là hướng vuông góc với đoạn, chỉ về phía gốc. Hướng đó tính bằng 2 lần tích có hướng:
+					\((\vec{ab} \times \vec{ao}) \times \vec{ab}\). Tích có hướng đầu tiên cho một vector vuông góc với mặt phẳng chứa đoạn thẳng và gốc; tích có hướng
+					thứ hai với \(\vec{ab}\) lại cho một vector vuông góc với cả cái đó lẫn đoạn thẳng, tức là nằm trong mặt phẳng chứa đoạn và gốc, vuông góc với đoạn,
+					và chỉ về phía gốc (đổi thứ tự 2 lần nhân thì nó chỉ về phía ngược lại; bạn có thể thử với \(\vec{ab} = (1, 0, 0)\), \(\vec{ao} = (0, 1, 0)\): kết quả là
+					\((0, 1, 0)\), đúng hướng về gốc). Nhánh còn lại là khi gần gốc nhất là đỉnh <code>a</code>: bỏ <code>b</code>, tìm thẳng từ <code>a</code> về gốc.<br/><br/>
+
+					<b>Tam giác</b> (<code>a</code> mới, <code>b</code>, <code>c</code> cũ):
+					<pre><code class="language-javascript">static updateTriangle(simplex) {
+	let [a, b, c] = simplex;
+	let ab = Vector3.sub(b.point, a.point);
+	let ac = Vector3.sub(c.point, a.point);
+	let ao = Vector3.mul(a.point, -1);
+	let abc = Vector3.cross(ab, ac);
+
+	if (Vector3.dot(Vector3.cross(abc, ac), ao) > 0) {				// gốc ở ngoài cạnh ac
+		if (Vector3.dot(ac, ao) > 0) {
+			return [[a, c], Vector3.cross(Vector3.cross(ac, ao), ac), false];
+		}
+		return GJK.updateLine([a, b]);
+	}
+	if (Vector3.dot(Vector3.cross(ab, abc), ao) > 0) {				// gốc ở ngoài cạnh ab
+		return GJK.updateLine([a, b]);
+	}
+	if (Vector3.dot(abc, ao) > 0) {									// gốc ở phía trên mặt tam giác
+		return [[a, b, c], abc, false];
+	}
+	return [[a, c, b], Vector3.mul(abc, -1), false];				// gốc ở phía dưới mặt tam giác
+}</code></pre>
+					<code>abc</code> là pháp tuyến của tam giác. \(\vec{abc} \times \vec{ac}\) là một vector nằm trong mặt phẳng tam giác, vuông góc với cạnh
+					<code>ac</code>, chỉ ra phía ngoài cạnh đó (phía không có <code>b</code>); tương tự \(\vec{ab} \times \vec{abc}\) chỉ ra ngoài cạnh <code>ab</code>.
+					Lần lượt:
+					<ul>
+						<li>Gốc nằm ngoài cạnh <code>ac</code>: nếu gốc cũng nằm "giữa" đoạn <code>ac</code> (theo chiều dài đoạn) thì phần gần gốc nhất là cạnh <code>ac</code>,
+						bỏ <code>b</code>. Còn không thì gốc nằm phía sau <code>a</code> khi nhìn dọc theo <code>ac</code>, phần gần nhất chỉ có thể là đỉnh <code>a</code> hoặc cạnh
+						<code>ab</code> (2 phần còn lại có chứa <code>a</code>), và đó đúng là câu hỏi mà <code>updateLine([a, b])</code> trả lời.</li>
+						<li>Gốc nằm ngoài cạnh <code>ab</code>: xử lý như đoạn <code>ab</code>, bỏ <code>c</code>.</li>
+						<li>Không ngoài cạnh nào: gốc nằm ngay trên hoặc dưới tam giác. Trong 3D, tam giác chưa bao được một điểm, cần thêm điểm thứ tư, nên hướng tìm tiếp
+						là pháp tuyến của tam giác, về phía có gốc. Nếu gốc ở phía dưới, mình đổi thứ tự thành <code>a, c, b</code> để pháp tuyến tính theo thứ tự đỉnh
+						(<code>ab × ac</code>) luôn chỉ về phía gốc. Bước tứ diện sẽ cần điều này.</li>
+					</ul>
+					Cạnh không chứa <code>a</code> (ở đây là <code>bc</code>) không cần kiểm tra, theo mẹo ở trên. Điều này vẫn đúng khi hàm được gọi từ bước tứ diện với
+					<code>[a, c, d]</code> hay <code>[a, d, b]</code>: cạnh không chứa <code>a</code> khi đó là <code>cd</code> hoặc <code>db</code>, đều là các điểm cũ.<br/><br/>
+
+					<b>Tứ diện</b> (<code>a</code> mới, <code>b</code>, <code>c</code>, <code>d</code> cũ):
+					<pre><code class="language-javascript">static updateTetrahedron(simplex) {
+	let [a, b, c, d] = simplex;
+	let ab = Vector3.sub(b.point, a.point);
+	let ac = Vector3.sub(c.point, a.point);
+	let ad = Vector3.sub(d.point, a.point);
+	let ao = Vector3.mul(a.point, -1);
+
+	let abc = Vector3.cross(ab, ac);
+	let acd = Vector3.cross(ac, ad);
+	let adb = Vector3.cross(ad, ab);
+
+	if (Vector3.dot(abc, ao) >= 0) return GJK.updateTriangle([a, b, c]);
+	if (Vector3.dot(acd, ao) >= 0) return GJK.updateTriangle([a, c, d]);
+	if (Vector3.dot(adb, ao) >= 0) return GJK.updateTriangle([a, d, b]);
+	return [simplex, null, true];
+}</code></pre>
+					Tam giác <code>b, c, d</code> (cũ) có pháp tuyến chỉ về phía gốc, và <code>a</code> nằm về phía đó, nên tứ diện có 3 mặt mới chứa <code>a</code>:
+					<code>abc</code>, <code>acd</code>, <code>adb</code>. Nhờ thứ tự đỉnh ở bước tam giác, pháp tuyến của 3 mặt này tính theo thứ tự trên đều chỉ ra ngoài
+					tứ diện. Gốc nằm phía ngoài mặt nào (tích vô hướng với <code>ao</code> dương) thì quay về bài toán tam giác với mặt đó, bỏ đỉnh còn lại. Không ở ngoài
+					mặt nào thì gốc nằm trong tứ diện: chạm nhau, trả về tứ diện (blog sau dùng nó).<br/><br/>
+
+					Ở đây mình dùng <code>>= 0</code> chứ không phải <code>> 0</code>: bằng 0 nghĩa là gốc nằm đúng trên một mặt của tứ diện. Mình không kết luận "chạm" ngay mà
+					quay về bài toán tam giác với mặt đó và cho GJK tìm tiếp. Nếu 2 vật lún vào nhau thật thì sau vài vòng GJK sẽ tìm ra một tứ diện chứa hẳn gốc ở bên trong. Còn nếu mặt đó đã là biên của \(A - B\) (2 vật chỉ vừa chạm nhau, độ lún bằng 0) thì bước 4 trả về
+					<code>null</code>: không chạm. Lúc mình dùng <code>> 0</code>, trường hợp vừa chạm được tính là chạm, và EPA ở blog sau trả về một pháp tuyến sai bét
+					khi mình thử với tháp Jenga (các khối xếp vừa khít nhau). Ở bước đoạn thẳng và tam giác, dấu bằng không quan trọng: nó chỉ chọn giữa 2 nhánh mà nhánh nào
+					cũng tìm tiếp chứ không kết luận gì.<br/><br/>
+
+					Ở khu thử nghiệm, crystal đổi sang màu đỏ khi GJK nói nó đang chạm hộp cam:
+					<pre><code class="language-javascript">function updateOverlapColor() {
+	let isOverlapping = GJK.isOverlapping(crystalCollider, testBoxCollider);
+	crystalMaterial.color = isOverlapping ? new Color(255, 40, 40) : new Color(170, 90, 255);
+}</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview26" data-disabled="true"></div>
+					Crystal đỏ lên đúng lúc nó chạm vào hộp cam, kể cả khi chỉ chạm bằng một đỉnh nhọn, và hết đỏ ngay khi tách ra.
+
+					<h2>8. Xem tứ diện cuối cùng</h2>
+					Để thấy GJK làm gì trong 3D, mình vẽ tứ diện mà nó trả về (khi chạm nhau) bằng 6 đoạn thẳng màu xanh lá, dời đi <code>minkowskiOrigin</code>
+					như đám điểm xám, dùng lại <code>placeLine</code> từ blog trước:
+					<pre><code class="language-javascript">let simplexLines = [];
+for (let i = 0; i < 6; i++) {
+	let line = scene.add(new GameObject("Simplex line"));
+	line.addComponent(new MeshRenderer(null, new Material(new Color(0, 200, 80)), false));
+	simplexLines.push(line);
+}
+...
+function updateOverlapColor() {
+	let simplex = GJK.findSimplexContainingOrigin(crystalCollider, testBoxCollider);		// <---------------------
+	let isOverlapping = simplex != null;													// <---------------------
+	crystalMaterial.color = isOverlapping ? new Color(255, 40, 40) : new Color(170, 90, 255);
+
+	let edges = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+	for (let i = 0; i < edges.length; i++) {
+		let lineRenderer = simplexLines[i].getComponent(MeshRenderer);
+		lineRenderer.mesh = isOverlapping ? cubeMesh : null;
+		if (!isOverlapping) continue;
+		let from = Vector3.add(minkowskiOrigin, simplex[edges[i][0]].point);
+		let to = Vector3.add(minkowskiOrigin, simplex[edges[i][1]].point);
+		placeLine(simplexLines[i], from, to, 0.04);
+	}
+}</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview27" data-disabled="true"></div>
+					Mỗi lần crystal chạm hộp, một tứ diện xanh lá hiện ra quanh khối đỏ (gốc tọa độ), 4 đỉnh của nó nằm trên đám điểm xám. Tứ diện thường dẹt và lệch,
+					không cần đẹp, chỉ cần chứa gốc.<br/><br/>
+
+					GJK đã cho ta biết "có chạm hay không" cho mọi cặp hình lồi. Nhưng phản hồi va chạm cần thêm pháp tuyến, độ lún và điểm chạm. Blog sau ta sẽ lấy
+					chúng từ chính cái tứ diện xanh lá này.
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3DPhysics.js"></script>
+    <script src="concept.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

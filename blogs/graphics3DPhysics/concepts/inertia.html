@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept: moment of inertia</title>
+    <style>
+        :root {
+            --ink: #17384a;
+            --muted: #5b7183;
+            --line: #c6d4de;
+            --brand: #20799b;
+            --other: #c77d2a;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 12px;
+            background: #f7f9fb;
+            color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        canvas {
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            max-width: 100%;
+            height: auto;
+            touch-action: none;
+            cursor: grab;
+        }
+
+        canvas.dragging {
+            cursor: grabbing;
+        }
+
+        .readout {
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 12.5px;
+            line-height: 1.75;
+            text-align: center;
+        }
+
+        .result {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--brand);
+        }
+
+        .hint {
+            font-size: 11.5px;
+            color: var(--muted);
+        }
+
+        label {
+            font-size: 12.5px;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="c" width="460" height="250"></canvas>
+    <label>Khối lượng mỗi quả tạ: <input type="range" id="mass" min="0.5" max="4" step="0.5" value="1" /> <span id="massText">1.0</span> kg</label>
+    <div class="readout" id="out"></div>
+    <div class="hint">Kéo một trong 2 quả tạ dọc theo thanh. Cùng một torque τ = 1, nét mờ là lúc đầu, nét đậm là sau 1 giây.</div>
+
+    <script>
+        const canvas = document.getElementById("c");
+        const ctx = canvas.getContext("2d");
+        const out = document.getElementById("out");
+        const massSlider = document.getElementById("mass");
+        const massText = document.getElementById("massText");
+
+        const O = { x: 230, y: 125 };
+        const SCALE = 90;
+        const TORQUE = 1;
+        const MAX_DISTANCE = 2.3;
+
+        let distance = 1;   // distance from the centre to each weight
+        let mass = 1;
+
+        const toScreen = (x, y) => ({ x: O.x + x * SCALE, y: O.y - y * SCALE });
+
+        function momentOfInertia() {
+            return 2 * mass * distance * distance;
+        }
+
+        function drawDumbbell(angle, alpha) {
+            ctx.globalAlpha = alpha;
+            const c = Math.cos(angle), s = Math.sin(angle);
+            const a = toScreen(-distance * c, -distance * s);
+            const b = toScreen(distance * c, distance * s);
+            const rodEndA = toScreen(-MAX_DISTANCE * c, -MAX_DISTANCE * s);
+            const rodEndB = toScreen(MAX_DISTANCE * c, MAX_DISTANCE * s);
+            ctx.strokeStyle = "#7d8e99";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(rodEndA.x, rodEndA.y);
+            ctx.lineTo(rodEndB.x, rodEndB.y);
+            ctx.stroke();
+            const radius = 8 + mass * 4;
+            for (const p of [a, b]) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = "#c77d2a";
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const alpha = TORQUE / momentOfInertia();
+            const angleAfterOneSecond = 0.5 * alpha;
+
+            drawDumbbell(0, 0.25);
+            drawDumbbell(angleAfterOneSecond % (Math.PI * 2), 1);
+
+            // the angle turned, as an arc
+            ctx.strokeStyle = "#20799b";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(O.x, O.y, 40, 0, -Math.min(angleAfterOneSecond, Math.PI * 2 - 0.01), true);
+            ctx.stroke();
+
+            ctx.fillStyle = "#17384a";
+            ctx.beginPath();
+            ctx.arc(O.x, O.y, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // distance label on the resting position
+            const a = toScreen(0, -0.35), b = toScreen(distance, -0.35);
+            ctx.strokeStyle = "#20799b";
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = "#20799b";
+            ctx.font = "600 13px ui-monospace, Consolas, monospace";
+            ctx.fillText("r = " + distance.toFixed(2), (a.x + b.x) / 2 - 24, a.y + 16);
+        }
+
+        function say() {
+            const inertia = momentOfInertia();
+            const alpha = TORQUE / inertia;
+            const degrees = 0.5 * alpha * 180 / Math.PI;
+            out.innerHTML =
+                `I = m&times;r² + m&times;r² = 2 &times; ${mass.toFixed(1)} &times; ${distance.toFixed(2)}² = <span class="result">${inertia.toFixed(2)}</span><br/>` +
+                `gia tốc góc = τ / I = 1 / ${inertia.toFixed(2)} = ${alpha.toFixed(2)} rad/s²<br/>` +
+                `sau 1 giây quay được ½ &times; ${alpha.toFixed(2)} &times; 1² rad = ${degrees.toFixed(0)}&deg;`;
+        }
+
+        function render() { draw(); say(); }
+
+        let dragging = false;
+
+        function at(e) {
+            const r = canvas.getBoundingClientRect();
+            return {
+                x: (e.clientX - r.left) * (canvas.width / r.width),
+                y: (e.clientY - r.top) * (canvas.height / r.height),
+            };
+        }
+
+        canvas.addEventListener("pointerdown", e => {
+            const p = at(e);
+            for (const side of [-1, 1]) {
+                const s = toScreen(side * distance, 0);
+                if (Math.hypot(s.x - p.x, s.y - p.y) < 30) {
+                    dragging = true;
+                    canvas.classList.add("dragging");
+                    try { canvas.setPointerCapture(e.pointerId); } catch (err) { }
+                    return;
+                }
+            }
+        });
+
+        canvas.addEventListener("pointermove", e => {
+            if (!dragging) return;
+            const p = at(e);
+            distance = Math.max(0.2, Math.min(MAX_DISTANCE, Math.abs(p.x - O.x) / SCALE));
+            render();
+        });
+
+        const release = () => { dragging = false; canvas.classList.remove("dragging"); };
+        canvas.addEventListener("pointerup", release);
+        canvas.addEventListener("pointercancel", release);
+
+        massSlider.addEventListener("input", () => {
+            mass = parseFloat(massSlider.value);
+            massText.textContent = mass.toFixed(1);
+            render();
+        });
+
+        render();
+
+        (function selfTest() {
+            // two 1 kg weights 1 m from the centre: I = 2
+            const saved = [distance, mass];
+            distance = 1; mass = 1;
+            if (momentOfInertia() !== 2) console.error("inertia self-test failed: expected 2, got", momentOfInertia());
+            [distance, mass] = saved;
+        })();
+    </script>
+</body>
+
+</html>

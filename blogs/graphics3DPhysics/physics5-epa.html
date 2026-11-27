@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="EPA tìm độ lún và pháp tuyến va chạm, rồi phản hồi va chạm có xoay bằng impulse đặt tại điểm tiếp xúc.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="../graphics3D/graphics3D.css">
+    <link rel="stylesheet" href="concept.css">
+    <style>
+        .blog-content ul li a {
+            display: inline;
+            font-weight: inherit;
+            margin-bottom: 0;
+        }
+    </style>
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Physics #5: EPA và phản hồi va chạm có xoay</title>
+</head>
+
+<body data-graphics3D-id="physics5">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>EPA và phản hồi va chạm có xoay</h1>
+
+					GJK cho ta biết 2 hình lồi có chạm nhau không. Phản hồi va chạm từ blog 2 cần thêm 3 thứ: pháp tuyến (đẩy 2 vật ra theo hướng nào), độ lún (lún
+					bao sâu), và điểm chạm. Blog này lấy cả 3 thứ đó từ cái tứ diện mà GJK trả về, bằng một thuật toán thứ hai tên là
+					<a href="https://en.wikipedia.org/wiki/Expanding_polytope_algorithm">EPA</a> (expanding polytope algorithm), rồi dùng điểm chạm để làm vật xoay khi
+					va chạm, nối lại với torque ở blog 3.
+
+					<h2>1. Độ lún là gì trong A − B</h2>
+					Nhắc lại blog trước: A và B chồng nhau khi \(A - B\) chứa gốc tọa độ. Giờ ta muốn biết phải dời B đi một đoạn ngắn nhất là bao nhiêu, theo hướng nào,
+					để 2 hình vừa hết chồng nhau. Dời B đi một vector \(\vec{t}\) thì mọi điểm \(\vec{a} - \vec{b}\) thành \(\vec{a} - (\vec{b} + \vec{t})\), tức là cả
+					hình \(A - B\) dời đi \(-\vec{t}\). 2 hình hết chồng nhau khi \(A - B\) không còn chứa gốc, tức là gốc vừa nằm trên biên của nó. Dời ngắn nhất
+					thì gốc phải đi ra theo đường ngắn nhất tới biên: <b>khoảng cách từ gốc tới điểm gần nhất trên biên của \(A - B\) chính là độ lún</b>, và hướng từ gốc
+					tới điểm đó chính là pháp tuyến (hướng đẩy B ra, cũng là hướng từ A sang B như quy ước của <code>Contact</code>).<br/><br/>
+
+					GJK chỉ cần biết gốc có nằm trong hay không, nên cái tứ diện của nó thường nằm lọt thỏm bên trong \(A - B\), các mặt của nó không phải biên thật.
+					EPA bắt đầu từ cái tứ diện đó và cho nó "nở" ra dần, mỗi lần thêm 1 đỉnh nằm trên biên thật của \(A - B\), ở đúng chỗ gần gốc nhất, cho tới khi mặt gần
+					gốc nhất của nó trùng với biên thật. Demo 2D (trong 2D thì là đa giác và cạnh thay cho đa diện và mặt), bạn bấm Bước tiếp:
+					<div class="conceptDemo" data-concept="epa" data-height="510"></div>
+
+					<h2>2. EPA</h2>
+					Trong 3D, đa diện (polytope) của EPA được lưu bằng một mảng đỉnh (<code>MinkowskiPoint</code>, giống GJK) và một mảng các mặt tam giác, mỗi mặt là 3 chỉ
+					số vào mảng đỉnh. Tứ diện ban đầu có 4 mặt. Khác với demo 2D (chỉ thay đúng cạnh gần nhất), trong 3D một điểm mới có thể nằm phía trước nhiều mặt cùng lúc, và phải bỏ
+					hết những mặt đó, nếu không đa diện sẽ bị lõm vào. Kế hoạch của vòng lặp:
+					<ol>
+						<li>Tìm mặt gần gốc nhất, cùng với pháp tuyến hướng ra ngoài và khoảng cách từ gốc tới nó.</li>
+						<li>Lấy support của \(A - B\) theo pháp tuyến đó.</li>
+						<li>Nếu điểm mới không xa gốc hơn mặt đó (chênh dưới 0.0001), thì mặt đó đã nằm trên biên thật: xong, độ lún là khoảng cách, pháp tuyến là pháp tuyến của mặt.</li>
+						<li>Nếu không, bỏ đi mọi mặt mà từ điểm mới "nhìn thấy được" (điểm mới nằm phía trước mặt đó).</li>
+						<li>Các mặt bị bỏ để lại một cái lỗ, lấy các cạnh viền của lỗ đó.</li>
+						<li>Nối mỗi cạnh viền với điểm mới thành một mặt mới, lấp lỗ. Quay lại bước 1.</li>
+					</ol>
+					<pre><code class="language-javascript">class EPA {
+	static findPenetration(simplex, colliderA, colliderB) {
+		let polytope = simplex.slice();
+		let faces = [[0, 1, 2], [0, 3, 1], [0, 2, 3], [1, 3, 2]];
+		let insidePoint = new Vector3(0, 0, 0);
+		for (let p of simplex) insidePoint = Vector3.add(insidePoint, Vector3.mul(p.point, 0.25));
+
+		for (let iteration = 0; iteration < 64; iteration++) {
+			let closest = EPA.findClosestFace(polytope, faces, insidePoint);					// bước 1
+			let newPoint = MinkowskiPoint.support(colliderA, colliderB, closest.normal);		// bước 2
+			let newPointDistance = Vector3.dot(newPoint.point, closest.normal);
+
+			if (newPointDistance - closest.distance < 1e-4) {								// bước 3
+				return EPA.buildResult(polytope, closest);
+			}
+
+			let edges = [];
+			let keptFaces = [];
+			for (let face of faces) {
+				let normal = EPA.getOutwardNormal(polytope, face, insidePoint);
+				let canSeeNewPoint = Vector3.dot(normal, Vector3.sub(newPoint.point, polytope[face[0]].point)) > 0;
+				if (canSeeNewPoint) {														// bước 4, 5
+					EPA.addEdgeOrRemoveShared(edges, face[0], face[1]);
+					EPA.addEdgeOrRemoveShared(edges, face[1], face[2]);
+					EPA.addEdgeOrRemoveShared(edges, face[2], face[0]);
+				} else {
+					keptFaces.push(face);
+				}
+			}
+
+			polytope.push(newPoint);														// bước 6
+			let newIndex = polytope.length - 1;
+			for (let [from, to] of edges) {
+				keptFaces.push([from, to, newIndex]);
+			}
+			faces = keptFaces;
+		}
+
+		return EPA.buildResult(polytope, EPA.findClosestFace(polytope, faces, insidePoint));
+	}
+	...
+}</code></pre>
+					<ul>
+						<li><code>faces</code> ban đầu là 4 mặt của tứ diện 4 đỉnh (mỗi mặt bỏ đi 1 trong 4 đỉnh), thứ tự đỉnh trong mỗi mặt được chọn để cả 4 mặt cùng
+						một chiều khi nhìn từ ngoài vào. Pháp tuyến thì lát nữa mình tự lật cho đúng, nhưng chiều này cần cho bước 5.</li>
+						<li>Bước 3: support theo pháp tuyến là điểm xa nhất của \(A - B\) theo hướng đó. Nếu nó không xa hơn mặt hiện tại thì không có gì của \(A - B\)
+						nằm ngoài mặt này, mặt này là biên. 0.0001 là sai số cho phép (số thực không bao giờ bằng nhau tuyệt đối), 64 vòng là giới hạn an toàn.</li>
+						<li>Bước 4: điểm mới "nhìn thấy" một mặt khi nó nằm phía trước mặt đó, tức là tích vô hướng của pháp tuyến với vector từ một đỉnh của mặt tới điểm mới
+						là dương.</li>
+					</ul>
+					Bước 5 cần giải thích một chút. Các mặt bị bỏ dính liền với nhau thành một mảng. Một cạnh nằm giữa 2 mặt bị bỏ là cạnh bên trong mảng, còn cạnh của
+					một mặt bị bỏ nằm cạnh một mặt được giữ lại là cạnh viền của lỗ. Mỗi cạnh trong đa diện đều thuộc đúng 2 mặt, và nếu các mặt đều có thứ tự đỉnh cùng
+					một chiều (nhìn từ ngoài) thì 2 mặt chung nhau một cạnh sẽ đi qua cạnh đó theo 2 chiều ngược nhau (mặt này đi từ p tới q, mặt kia đi từ q tới p).
+					Nên khi gặp một cạnh, nếu cạnh ngược chiều của nó đã có trong danh sách thì đây là cạnh bên trong, xóa cả 2; không thì thêm vào:
+					<pre><code class="language-javascript">static addEdgeOrRemoveShared(edges, from, to) {
+	let reverseIndex = edges.findIndex((e) => e[0] == to && e[1] == from);
+	if (reverseIndex >= 0) {
+		edges.splice(reverseIndex, 1);
+	} else {
+		edges.push([from, to]);
+	}
+}</code></pre>
+					Cuối vòng lặp <code>edges</code> chỉ còn các cạnh viền, vẫn giữ chiều của mặt cũ, nên mặt mới <code>[from, to, newIndex]</code> có cùng chiều với
+					các mặt cũ.<br/><br/>
+
+					Bước 1, tìm mặt gần nhất, cần pháp tuyến hướng ra ngoài của từng mặt:
+					<pre><code class="language-javascript">static getOutwardNormal(polytope, face, insidePoint) {
+	let a = polytope[face[0]].point;
+	let b = polytope[face[1]].point;
+	let c = polytope[face[2]].point;
+	let normal = Vector3.cross(Vector3.sub(b, a), Vector3.sub(c, a)).normalize();
+	if (Vector3.dot(normal, Vector3.sub(a, insidePoint)) < 0) normal = Vector3.mul(normal, -1);
+	return normal;
+}
+
+static findClosestFace(polytope, faces, insidePoint) {
+	let closest = null;
+	for (let face of faces) {
+		let normal = EPA.getOutwardNormal(polytope, face, insidePoint);
+		let distance = Vector3.dot(normal, polytope[face[0]].point);
+		if (closest == null || distance < closest.distance) {
+			closest = { face: face, normal: normal, distance: distance };
+		}
+	}
+	return closest;
+}</code></pre>
+					Tích có hướng của 2 cạnh cho pháp tuyến, nhưng chưa biết nó hướng ra ngoài hay vào trong. Mình so với một điểm chắc chắn nằm bên trong đa diện,
+					<code>insidePoint</code>, là trung bình 4 đỉnh của tứ diện ban đầu (đa diện chỉ nở ra nên điểm này luôn ở bên trong): pháp tuyến hướng ra ngoài thì từ
+					<code>insidePoint</code> đi tới mặt phải cùng hướng với pháp tuyến, không thì lật lại. Khoảng cách từ gốc tới mặt là tích vô hướng của pháp tuyến
+					(vector đơn vị) với một đỉnh bất kỳ của mặt.<br/><br/>
+
+					Sao không so với gốc tọa độ, vì gốc cũng nằm trong đa diện? Trước khi đổi dấu <code>>= 0</code> ở GJK (blog trước), GJK có lúc trả về tứ diện có gốc nằm đúng
+					trên một mặt, so với gốc thì tích vô hướng bằng 0, không biết lật hay không, và EPA trả về một hướng sai hoàn toàn. Giờ GJK chỉ trả về tứ diện chứa hẳn gốc,
+					nhưng mình vẫn so với điểm trung bình vì nó an toàn hơn: nó nằm sâu bên trong tứ diện, không bao giờ nằm trên mặt.<br/><br/>
+
+					Tạm thời <code>buildResult</code> chỉ trả về pháp tuyến và độ lún:
+					<pre><code class="language-javascript">static buildResult(polytope, closest) {
+	return { normal: closest.normal, depth: closest.distance };
+}</code></pre>
+					Ở khu thử nghiệm của blog trước, mình vẽ thêm 2 mũi tên đỏ: một mũi tên trong khu \(A - B\), từ gốc theo pháp tuyến dài bằng độ lún (đúng như demo 2D),
+					và một mũi tên từ tâm crystal theo hướng ngược lại (crystal là A, đẩy A theo \(-\vec{n}\) cũng như đẩy B theo \(\vec{n}\)), dài bằng độ lún: dời crystal
+					theo mũi tên đó thì nó vừa chạm hộp cam. Độ lún được in ra một dòng chữ mới dưới dòng Max penetration:
+					<pre><code class="language-javascript">&lt;h3 id=&quot;epaInfo&quot;&gt;EPA: not overlapping&lt;/h3&gt;
+...
+const epaInfo = (document.getElementById("epaInfo"));
+...
+let minkowskiPenetrationArrow = scene.add(new GameObject("Minkowski penetration arrow"));
+minkowskiPenetrationArrow.addComponent(new MeshRenderer(null, new Material(new Color(255, 0, 0)), false));
+let crystalPushArrow = scene.add(new GameObject("Crystal push arrow"));
+crystalPushArrow.addComponent(new MeshRenderer(null, new Material(new Color(255, 0, 0)), false));
+...
+function updateOverlapColor() {
+	...
+	minkowskiPenetrationArrow.getComponent(MeshRenderer).mesh = isOverlapping ? cubeMesh : null;
+	crystalPushArrow.getComponent(MeshRenderer).mesh = isOverlapping ? cubeMesh : null;
+	if (!isOverlapping) {
+		epaInfo.textContent = "EPA: not overlapping";
+		return;
+	}
+	let penetration = EPA.findPenetration(simplex, crystalCollider, testBoxCollider);
+	let penetrationVector = Vector3.mul(penetration.normal, penetration.depth);
+	placeLine(minkowskiPenetrationArrow, minkowskiOrigin, Vector3.add(minkowskiOrigin, penetrationVector), 0.06);
+	placeLine(crystalPushArrow, crystal.transform.position, Vector3.sub(crystal.transform.position, penetrationVector), 0.06);
+	epaInfo.textContent = `EPA: depth ${penetration.depth.toFixed(3)}`;
+}</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview28" data-disabled="true"></div>
+					Khi crystal vừa chạm hộp cam, mũi tên rất ngắn và độ lún gần 0; crystal càng lún sâu thì mũi tên càng dài. Mũi tên ở tâm crystal luôn chỉ về phía
+					ra khỏi hộp cam theo đường ngắn nhất, có khi là sang ngang, có khi là lên trên, tùy crystal đang lún vào mặt nào.
+
+					<h2>3. Điểm chạm</h2>
+					Phần cuối cùng là điểm chạm. Mặt gần nhất mà EPA tìm được có 3 đỉnh, mỗi đỉnh là một <code>MinkowskiPoint</code>, nhớ cả điểm trên A lẫn điểm trên B đã
+					tạo ra nó: \(\vec{m}_i = \vec{a}_i - \vec{b}_i\). Điểm gần gốc nhất trên mặt này là chân đường vuông góc từ gốc xuống mặt,
+					\(\vec{p} = \vec{n} \cdot depth\). Nó nằm trong tam giác nên viết được thành tổ hợp của 3 đỉnh với 3 trọng số cộng lại bằng 1, gọi là
+					<a href="https://en.wikipedia.org/wiki/Barycentric_coordinate_system">tọa độ barycentric</a> (thứ mà series Graphics Engine 3D dùng để nội suy
+					độ sâu trong tam giác):
+					$$\vec{p} = u\,\vec{m}_1 + v\,\vec{m}_2 + w\,\vec{m}_3 = (u\,\vec{a}_1 + v\,\vec{a}_2 + w\,\vec{a}_3) - (u\,\vec{b}_1 + v\,\vec{b}_2 + w\,\vec{b}_3)$$
+					Vế phải là hiệu của một điểm trên A với một điểm trên B (cùng trọng số), và hiệu đó bằng đúng \(\vec{p}\), vector lún. 2 điểm này cách nhau đúng độ
+					lún (rất nhỏ), là một chỗ mà 2 vật đang lún vào nhau. Mình lấy điểm trên A làm điểm chạm chung cho cả 2 vật. (Với mặt gần gốc nhất của một đa diện lồi
+					chứa gốc, chân đường vuông góc \(\vec{p}\) luôn nằm trong mặt đó, nên 3 trọng số đều không âm.)<br/><br/>
+
+					Tính \(u, v, w\): gọi 3 đỉnh của mặt (các điểm \(\vec{m}_i\) ở trên) là \(\vec{m}_1, \vec{m}_2, \vec{m}_3\) và đặt \(\vec{e}_0 = \vec{m}_2 - \vec{m}_1\),
+					\(\vec{e}_1 = \vec{m}_3 - \vec{m}_1\), \(\vec{e}_2 = \vec{p} - \vec{m}_1\). Viết \(\vec{e}_2 = v\,\vec{e}_0 + w\,\vec{e}_1\) (rồi \(u = 1 - v - w\)).
+					Lấy tích vô hướng 2 vế với \(\vec{e}_0\), rồi với \(\vec{e}_1\), ta được 2 phương trình 2 ẩn:
+					$$v\,(\vec{e}_0 \cdot \vec{e}_0) + w\,(\vec{e}_0 \cdot \vec{e}_1) = \vec{e}_2 \cdot \vec{e}_0 \qquad v\,(\vec{e}_0 \cdot \vec{e}_1) + w\,(\vec{e}_1 \cdot \vec{e}_1) = \vec{e}_2 \cdot \vec{e}_1$$
+					Code đặt tên các tích vô hướng là <code>d00</code> \(= \vec{e}_0 \cdot \vec{e}_0\), <code>d01</code> \(= \vec{e}_0 \cdot \vec{e}_1\),
+					<code>d11</code> \(= \vec{e}_1 \cdot \vec{e}_1\), <code>d20</code> \(= \vec{e}_2 \cdot \vec{e}_0\), <code>d21</code> \(= \vec{e}_2 \cdot \vec{e}_1\)
+					(<code>v0</code>, <code>v1</code>, <code>v2</code> là \(\vec{e}_0, \vec{e}_1, \vec{e}_2\)). Hệ thành
+					\(v \cdot d00 + w \cdot d01 = d20\) và \(v \cdot d01 + w \cdot d11 = d21\), giải ra (nhân phương trình đầu với <code>d11</code>, phương trình sau với
+					<code>d01</code> rồi trừ nhau để khử \(w\), tương tự để khử \(v\); cách này gọi là
+					<a href="https://en.wikipedia.org/wiki/Cramer%27s_rule">quy tắc Cramer</a>):
+					$$v = \frac{d11 \cdot d20 - d01 \cdot d21}{d00 \cdot d11 - d01^2} \qquad w = \frac{d00 \cdot d21 - d01 \cdot d20}{d00 \cdot d11 - d01^2}$$
+					Trong code, <code>a</code>, <code>b</code>, <code>c</code> là 3 đỉnh \(\vec{m}_1, \vec{m}_2, \vec{m}_3\) của mặt. Cách viết này lấy từ sách Real-Time
+					Collision Detection của Christer Ericson:
+					<pre><code class="language-javascript">static buildResult(polytope, closest) {
+	let [a, b, c] = closest.face.map((i) => polytope[i]);
+	let projectedOrigin = Vector3.mul(closest.normal, closest.distance);
+	let [u, v, w] = EPA.barycentric(a.point, b.point, c.point, projectedOrigin);
+	let pointOnA = Vector3.add(Vector3.add(Vector3.mul(a.pointOnA, u), Vector3.mul(b.pointOnA, v)), Vector3.mul(c.pointOnA, w));
+	return { normal: closest.normal, depth: closest.distance, pointOnA: pointOnA };
+}
+
+static barycentric(a, b, c, p) {
+	let v0 = Vector3.sub(b, a);
+	let v1 = Vector3.sub(c, a);
+	let v2 = Vector3.sub(p, a);
+	let d00 = Vector3.dot(v0, v0);
+	let d01 = Vector3.dot(v0, v1);
+	let d11 = Vector3.dot(v1, v1);
+	let d20 = Vector3.dot(v2, v0);
+	let d21 = Vector3.dot(v2, v1);
+	let denominator = d00 * d11 - d01 * d01;
+	if (Math.abs(denominator) < 1e-12) return [1, 0, 0];
+	let v = (d11 * d20 - d01 * d21) / denominator;
+	let w = (d00 * d21 - d01 * d20) / denominator;
+	return [1 - v - w, v, w];
+}</code></pre>
+					<code>denominator</code> là mẫu số \(d00 \cdot d11 - d01^2\), bằng 0 khi tam giác bị dẹp thành đường thẳng, khi đó mình trả về đỉnh đầu tiên cho an toàn. Ở khu thử nghiệm mình thêm một khối nhỏ màu xanh dương tại điểm chạm:
+					<pre><code class="language-javascript">let contactMarker = scene.add(new GameObject("Contact marker", Vector3.zero.clone(), Vector3.zero, new Vector3(0.15, 0.15, 0.15)));
+contactMarker.addComponent(new MeshRenderer(null, new Material(new Color(0, 220, 255)), false));
+...
+contactMarker.getComponent(MeshRenderer).mesh = isOverlapping ? cubeMesh : null;		// trong updateOverlapColor
+...
+contactMarker.transform.position = penetration.pointOnA;</code></pre>
+					Kết quả, nhìn khối xanh dương lúc crystal chạm hộp cam:
+					<div class="htmlPreview" id="htmlPreview29" data-disabled="true"></div>
+					Khối xanh dương nằm ở phần của crystal đâm sâu nhất vào hộp cam, thường là một đỉnh nhọn của crystal.
+
+					<h2>4. GJK + EPA thay cho mọi hàm va chạm</h2>
+					Giờ ta có đủ cả 3 thứ cho mọi cặp hình lồi. <code>findContact</code> bỏ hết các nhánh <code>instanceof</code>, xóa luôn
+					<code>sphereVsSphere</code>, <code>boxVsSphere</code>, <code>boxVsBox</code> và <code>BoxCollider.getAABB</code> (blog 8 sẽ thêm lại AABB theo một
+					cách khác), thay bằng:
+					<pre><code class="language-javascript">findContact(colliderA, colliderB) {
+	let simplex = GJK.findSimplexContainingOrigin(colliderA, colliderB);
+	if (simplex == null) return null;
+
+	let penetration = EPA.findPenetration(simplex, colliderA, colliderB);
+	let point = penetration.pointOnA;
+	if (colliderA instanceof SphereCollider) point = colliderA.support(penetration.normal);
+	if (colliderB instanceof SphereCollider) point = colliderB.support(Vector3.mul(penetration.normal, -1));
+	return new Contact(point, penetration.normal, penetration.depth);
+}</code></pre>
+					Còn đúng một trường hợp đặc biệt: quả cầu. EPA với hình cong không bao giờ đúng tuyệt đối, vì đa diện chỉ xấp xỉ mặt cong, nên điểm chạm tính bằng
+					barycentric bị lệch đi một chút. Lúc mình thử, quả bóng đứng yên trên mặt đất cứ tự lăn đi và lăn càng lúc càng nhanh: điểm chạm lệch khỏi chỗ ngay
+					dưới tâm, lực đỡ của mặt đất đặt lệch tâm tạo ra torque. Ở demo ngay dưới đây thì chưa thấy gì, vì phải tới phần 5 điểm chạm mới được dùng để tạo torque,
+					nhưng mình sửa luôn ở đây vì nó thuộc về phần tìm điểm chạm. Với quả cầu thì có cách tính chính xác: điểm lún sâu nhất
+					của quả cầu theo pháp tuyến chính là support của nó. Pháp tuyến hướng từ A sang B, nên nếu quả cầu là A thì lấy support theo \(\vec{n}\), là B thì theo
+					\(-\vec{n}\).<br/><br/>
+
+					Crystal sắp có <code>Rigidbody</code>, nên cần moment quán tính. Mình không tính chính xác cho crystal mà dùng moment quán tính của cái hộp bao quanh nó
+					(hộp nhỏ nhất song song với các trục local chứa hết các đỉnh). Với hộp thì hộp bao quanh chính là nó, nên hàm này thay luôn cho hàm của
+					<code>BoxCollider</code> và được dời lên <code>ConvexCollider</code>:
+					<pre><code class="language-javascript">class ConvexCollider extends Collider {
+	...
+	calculateLocalInverseInertia(mass) {
+		let min = new Vector3(Infinity, Infinity, Infinity);
+		let max = new Vector3(-Infinity, -Infinity, -Infinity);
+		for (let v of this.localVertices) {
+			min = new Vector3(Math.min(min.x, v.x), Math.min(min.y, v.y), Math.min(min.z, v.z));
+			max = new Vector3(Math.max(max.x, v.x), Math.max(max.y, v.y), Math.max(max.z, v.z));
+		}
+		let size = Vector3.scale(Vector3.sub(max, min), this.transform.lossyScale);
+		let x2 = size.x * size.x;
+		let y2 = size.y * size.y;
+		let z2 = size.z * size.z;
+		return new Vector3(12 / (mass * (y2 + z2)), 12 / (mass * (x2 + z2)), 12 / (mass * (x2 + y2)));
+	}
+}</code></pre>
+					Mình cũng giả sử trọng tâm của crystal nằm ở gốc tọa độ local của nó (2 đỉnh trên dưới lệch nhau một chút nên không đúng hẳn), những sai lệch nhỏ này
+					không làm crystal trông sai khi rơi.<br/><br/>
+
+					Để thử engine mới với những thứ trước đây nó không xử lý được, mình thả thêm 2 thứ. Một viên crystal có Rigidbody, từ trên cao xuống chỗ thả bóng.
+					Và 3 vật lơ lửng của blog 3 (hộp gỗ, 2 tấm ván) giờ có trọng lực và bị nghiêng một góc lúc tạo ra: hộp gỗ nghiêng <code>(20, 30, 10)</code> độ,
+					tấm ván nằm nghiêng 25 độ, tấm ván đứng nghiêng 15 độ so với phương thẳng đứng (75 thay cho 90):
+					<pre><code class="language-javascript">let cube = scene.add(new GameObject("Cube", new Vector3(-3, 3.5, -4.5), new Vector3(20, 30, 10), Vector3.one));	// <---------------------
+...
+cube.addComponent(new Rigidbody());				// <--------------------- bỏ (1, false), giờ có trọng lực
+...
+let lyingPlank = scene.add(new GameObject("Lying plank", new Vector3(0.5, 3.5, -4.5), new Vector3(0, 0, 25), new Vector3(3, 0.4, 0.4)));		// <---------------------
+...
+let standingPlank = scene.add(new GameObject("Standing plank", new Vector3(3.5, 3.5, -4.5), new Vector3(0, 0, 75), new Vector3(3, 0.4, 0.4)));	// <---------------------
+...</code></pre>
+					(2 tấm ván cũng bỏ <code>(1, false)</code> trong <code>new Rigidbody</code> như hộp gỗ.)
+					<pre><code class="language-javascript">let fallingCrystal = scene.add(new GameObject("Falling crystal", new Vector3(0, 6, 0), new Vector3(30, 0, 20), Vector3.one));
+fallingCrystal.addComponent(new MeshRenderer(crystalMesh, new Material(new Color(170, 90, 255))));
+fallingCrystal.addComponent(new ConvexHullCollider(crystalMesh));
+fallingCrystal.addComponent(new Rigidbody());
+physicsObjects.push(fallingCrystal);</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview30" data-disabled="true"></div>
+					Viên crystal rơi xuống đè lên các quả bóng. Cái hộp xanh trên dốc giờ nằm đúng trên mặt dốc chứ không lơ lửng nữa, và trượt xuống dốc rồi trôi đi
+					(chưa có ma sát). Nhưng nhìn 3 vật nghiêng ở phía trước: tấm ván nằm chống một đầu xuống đất, đầu kia chổng lên, và đứng yên như vậy mãi, tấm ván đứng
+					cũng đứng nghiêng mãi. Va chạm vẫn chỉ đổi vận tốc, không đổi vận tốc góc, nên không có gì làm chúng đổ xuống.
+
+					<h2>5. Phản hồi va chạm có xoay</h2>
+					Blog 3 đã có đủ đồ nghề. Một impulse \(\vec{J}\) đặt tại một điểm cách trọng tâm \(\vec{r}\), giống như một lực đặt lệch tâm, vừa làm đổi vận tốc vừa
+					tạo một "xung lượng góc" \(\vec{r} \times \vec{J}\) làm đổi vận tốc góc, y như torque \(\vec{r} \times \vec{F}\):
+					$$\Delta\vec{v} = \frac{\vec{J}}{m} \qquad \Delta\vec{\omega} = I^{-1}(\vec{r} \times \vec{J})$$
+					(\(I^{-1}\) là hàm <code>applyInverseInertia</code>.) Và vận tốc của điểm chạm trên mỗi vật không còn chỉ là vận tốc của vật, mà cộng thêm phần do xoay,
+					công thức ở blog 3: \(\vec{v} + \vec{\omega} \times \vec{r}\).
+					<pre><code class="language-javascript">class Rigidbody extends Component {
+	...
+	getPointVelocity(point) {
+		let r = Vector3.sub(point, this.transform.position);
+		return Vector3.add(this.velocity, Vector3.cross(this.angularVelocity, r));
+	}
+
+	applyImpulseAtPosition(impulse, position) {
+		this.velocity = Vector3.add(this.velocity, Vector3.mul(impulse, this.inverseMass));
+		let r = Vector3.sub(position, this.transform.position);
+		this.angularVelocity = Vector3.add(this.angularVelocity, this.applyInverseInertia(Vector3.cross(r, impulse)));
+	}
+	...
+}</code></pre>
+					Công thức tính \(J\) cũng phải làm lại. Ở blog 2, vận tốc tương đối theo pháp tuyến \(v_n\) thay đổi một lượng \(J(\frac{1}{m_A} + \frac{1}{m_B})\)
+					khi nhận impulse. Giờ tính lại lượng đó với vận tốc của điểm chạm. B nhận \(J\vec{n}\) tại \(\vec{r}_B\):
+					$$\Delta\vec{v}_B = \frac{J\vec{n}}{m_B} \qquad \Delta\vec{\omega}_B = J \cdot I_B^{-1}(\vec{r}_B \times \vec{n})$$
+					Vận tốc của điểm chạm trên B đổi \(\Delta\vec{v}_B + \Delta\vec{\omega}_B \times \vec{r}_B\), lấy thành phần theo pháp tuyến:
+					$$J\left(\frac{1}{m_B} + \left(I_B^{-1}(\vec{r}_B \times \vec{n}) \times \vec{r}_B\right) \cdot \vec{n}\right)$$
+					A nhận \(-J\vec{n}\), điểm chạm trên A đổi ngược dấu, và \(v_n\) là của B trừ của A, nên phần của A cũng được cộng vào. Gọi tổng là \(k\):
+					$$k = \frac{1}{m_A} + \frac{1}{m_B} + \left(I_A^{-1}(\vec{r}_A \times \vec{n}) \times \vec{r}_A\right) \cdot \vec{n} + \left(I_B^{-1}(\vec{r}_B \times \vec{n}) \times \vec{r}_B\right) \cdot \vec{n}$$
+					thì \(v_n' = v_n + J \cdot k\), và giải y như blog 2: \(J = -(1 + e)\,v_n / k\). \(\frac{1}{k}\) gọi là <b>khối lượng hiệu dụng</b> (effective mass) tại điểm
+					chạm theo hướng pháp tuyến: một vật dễ xoay thì đẩy vào góc của nó cảm giác "nhẹ" hơn đẩy vào tâm. Không có xoay thì 2 số hạng cuối bằng 0, quay về công
+					thức cũ.
+					<pre><code class="language-javascript">getPointVelocity(rigidbody, point) {
+	return rigidbody != null ? rigidbody.getPointVelocity(point) : new Vector3(0, 0, 0);
+}
+
+calculateEffectiveMass(rigidbodyA, rigidbodyB, point, direction) {
+	let k = this.getInverseMass(rigidbodyA) + this.getInverseMass(rigidbodyB);
+	if (rigidbodyA != null) {
+		let rA = Vector3.sub(point, rigidbodyA.transform.position);
+		k += Vector3.dot(Vector3.cross(rigidbodyA.applyInverseInertia(Vector3.cross(rA, direction)), rA), direction);
+	}
+	if (rigidbodyB != null) {
+		let rB = Vector3.sub(point, rigidbodyB.transform.position);
+		k += Vector3.dot(Vector3.cross(rigidbodyB.applyInverseInertia(Vector3.cross(rB, direction)), rB), direction);
+	}
+	return 1 / k;
+}
+
+resolveContact(colliderA, colliderB, contact) {
+	let rigidbodyA = colliderA.rigidbody;
+	let rigidbodyB = colliderB.rigidbody;
+
+	let relativeVelocity = Vector3.sub(this.getPointVelocity(rigidbodyB, contact.point), this.getPointVelocity(rigidbodyA, contact.point));
+	let normalVelocity = Vector3.dot(relativeVelocity, contact.normal);
+	if (normalVelocity > 0) return;
+
+	let restitution = Math.max(colliderA.restitution, colliderB.restitution);
+	let effectiveMass = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.normal);
+	let impulse = Vector3.mul(contact.normal, -(1 + restitution) * normalVelocity * effectiveMass);
+	if (rigidbodyA != null) rigidbodyA.applyImpulseAtPosition(Vector3.mul(impulse, -1), contact.point);
+	if (rigidbodyB != null) rigidbodyB.applyImpulseAtPosition(impulse, contact.point);
+}</code></pre>
+					<code>getPointVelocity</code> của <code>PhysicsWorld</code> thay cho <code>getVelocity</code> cũ (vật tĩnh vẫn có vận tốc 0), <code>getInverseMass</code>
+					giữ nguyên. Hàm <code>calculateEffectiveMass</code> nhận thêm tham số <code>direction</code> chứ không dùng thẳng pháp tuyến, vì blog 7 sẽ dùng nó cho
+					hướng khác. Kết quả:
+					<div class="htmlPreview" id="htmlPreview31" data-disabled="true"></div>
+					Các vật nghiêng giờ đổ xuống và nằm ra mặt đất, crystal lăn lộn trên đám bóng. Nhưng nhìn kỹ những cái hộp đang nằm trên mặt đất, ví dụ cái hộp gỗ phía
+					trước hay mấy cái hộp xanh: chúng không bao giờ nằm yên, cứ rung rung lắc lư nhẹ, và lún xuống đất một chút. Mình đo một cái hộp nằm trên mặt đất: sau
+					10 giây vận tốc góc vẫn khoảng 0.5 rad/s và tâm thấp hơn đáng lẽ khoảng 0.03. Cột 4 hộp xanh bên trái (ở blog trước đứng vững vì không hộp nào
+					xoay được) giờ cũng đổ sập vì cái lắc lư này.<br/><br/>
+
+					Lý do là mỗi cặp vật chỉ có <b>một</b> điểm chạm mỗi bước. Một cái hộp nằm trên mặt đất thật ra chạm đất bằng cả mặt đáy, nhưng EPA chỉ trả về một điểm,
+					thường là một góc. Impulse đặt ở góc đó làm hộp nghiêng một chút, bước sau góc đối diện lún sâu hơn, điểm chạm nhảy sang góc kia, hộp nghiêng ngược lại,
+					cứ thế mãi. Cái hộp cũng chìm xuống một chút, mình không phân tích kỹ nguyên nhân của phần này, nhưng ở blog sau nó giảm đi gần hết. Blog sau sẽ tìm nhiều điểm chạm cùng lúc.
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3DPhysics.js"></script>
+    <script src="concept.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

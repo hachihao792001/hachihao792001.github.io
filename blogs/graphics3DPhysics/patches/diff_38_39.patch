@@ -1,0 +1,101 @@
+--- "a/htmlPreviews\\htmlPreview38.html"
++++ "b/htmlPreviews\\htmlPreview39.html"
+@@ -2857,9 +2857,10 @@ void main(){
+ 		}
+ 
+ 		class Collider extends Component {
+-			constructor(restitution = 0) {
++			constructor(restitution = 0, friction = 0.5) {
+ 				super();
+ 				this.restitution = restitution;
++				this.friction = friction;
+ 			}
+ 
+ 			get rigidbody() {
+@@ -2872,8 +2873,8 @@ void main(){
+ 		}
+ 
+ 		class SphereCollider extends Collider {
+-			constructor(radius = 0.5, restitution = 0) {
+-				super(restitution);
++			constructor(radius = 0.5, restitution = 0, friction = 0.5) {
++				super(restitution, friction);
+ 				this.radius = radius;
+ 			}
+ 
+@@ -2893,8 +2894,8 @@ void main(){
+ 		}
+ 
+ 		class ConvexCollider extends Collider {
+-			constructor(localVertices, localFaces, restitution) {
+-				super(restitution);
++			constructor(localVertices, localFaces, restitution, friction) {
++				super(restitution, friction);
+ 				this.localVertices = localVertices;
+ 				this.localFaces = localFaces;
+ 			}
+@@ -2952,15 +2953,15 @@ void main(){
+ 				[0, 3, 2, 1], [4, 5, 6, 7], [0, 4, 7, 3], [1, 2, 6, 5], [0, 1, 5, 4], [3, 7, 6, 2],
+ 			];
+ 
+-			constructor(restitution = 0) {
+-				super(BoxCollider.corners, BoxCollider.faces, restitution);
++			constructor(restitution = 0, friction = 0.5) {
++				super(BoxCollider.corners, BoxCollider.faces, restitution, friction);
+ 			}
+ 		}
+ 
+ 		class ConvexHullCollider extends ConvexCollider {
+-			constructor(mesh, restitution = 0) {
++			constructor(mesh, restitution = 0, friction = 0.5) {
+ 				let [vertices, faces] = ConvexHullCollider.buildFacesFromMesh(mesh);
+-				super(vertices, faces, restitution);
++				super(vertices, faces, restitution, friction);
+ 			}
+ 
+ 			static buildFacesFromMesh(mesh) {
+@@ -3210,6 +3211,8 @@ void main(){
+ 				this.normal = normal;
+ 				this.depth = depth;
+ 				this.normalImpulse = 0;
++				this.tangentImpulse1 = 0;
++				this.tangentImpulse2 = 0;
+ 			}
+ 		}
+ 
+@@ -3384,9 +3387,16 @@ void main(){
+ 				let rigidbodyA = manifold.colliderA.rigidbody;
+ 				let rigidbodyB = manifold.colliderB.rigidbody;
+ 				let restitution = Math.max(manifold.colliderA.restitution, manifold.colliderB.restitution);
++				manifold.friction = Math.sqrt(manifold.colliderA.friction * manifold.colliderB.friction);
+ 
+ 				for (let contact of manifold.contacts) {
++					let n = contact.normal;
++					contact.tangent1 = Math.abs(n.x) >= 0.57735 ? new Vector3(n.y, -n.x, 0).normalize() : new Vector3(0, n.z, -n.y).normalize();
++					contact.tangent2 = Vector3.cross(n, contact.tangent1);
++
+ 					contact.normalMass = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.normal);
++					contact.tangentMass1 = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.tangent1);
++					contact.tangentMass2 = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.tangent2);
+ 					let normalVelocity = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.normal);
+ 					contact.bias = normalVelocity < -1 ? -restitution * normalVelocity : 0;
+ 				}
+@@ -3397,6 +3407,18 @@ void main(){
+ 				let rigidbodyB = manifold.colliderB.rigidbody;
+ 
+ 				for (let contact of manifold.contacts) {
++					let maxFriction = manifold.friction * contact.normalImpulse;
++
++					let tangentVelocity1 = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.tangent1);
++					let oldTangentImpulse1 = contact.tangentImpulse1;
++					contact.tangentImpulse1 = Math.max(-maxFriction, Math.min(maxFriction, oldTangentImpulse1 - tangentVelocity1 * contact.tangentMass1));
++					this.applyImpulse(rigidbodyA, rigidbodyB, Vector3.mul(contact.tangent1, contact.tangentImpulse1 - oldTangentImpulse1), contact.point);
++
++					let tangentVelocity2 = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.tangent2);
++					let oldTangentImpulse2 = contact.tangentImpulse2;
++					contact.tangentImpulse2 = Math.max(-maxFriction, Math.min(maxFriction, oldTangentImpulse2 - tangentVelocity2 * contact.tangentMass2));
++					this.applyImpulse(rigidbodyA, rigidbodyB, Vector3.mul(contact.tangent2, contact.tangentImpulse2 - oldTangentImpulse2), contact.point);
++
+ 					let normalVelocity = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.normal);
+ 					let oldNormalImpulse = contact.normalImpulse;
+ 					contact.normalImpulse = Math.max(0, oldNormalImpulse + (contact.bias - normalVelocity) * contact.normalMass);

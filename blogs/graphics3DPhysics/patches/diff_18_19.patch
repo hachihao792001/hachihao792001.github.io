@@ -1,0 +1,73 @@
+--- "a/htmlPreviews\\htmlPreview18.html"
++++ "b/htmlPreviews\\htmlPreview19.html"
+@@ -2770,6 +2770,14 @@ void main(){
+ 				this.torque = new Vector3(0, 0, 0);
+ 			}
+ 
++			get collider() {
++				return this.gameObject.getComponent(Collider);
++			}
++
++			get localInverseInertia() {
++				return this.collider.calculateLocalInverseInertia(this.mass);
++			}
++
+ 			addForce(force) {
+ 				this.force = Vector3.add(this.force, force);
+ 			}
+@@ -2785,7 +2793,7 @@ void main(){
+ 					this.velocity = Vector3.add(this.velocity, Vector3.mul(gravity, dt));
+ 				}
+ 				this.velocity = Vector3.add(this.velocity, Vector3.mul(this.force, this.inverseMass * dt));
+-				this.angularVelocity = Vector3.add(this.angularVelocity, Vector3.mul(this.torque, dt));
++				this.angularVelocity = Vector3.add(this.angularVelocity, Vector3.mul(Vector3.scale(this.torque, this.localInverseInertia), dt));
+ 				this.force = new Vector3(0, 0, 0);
+ 				this.torque = new Vector3(0, 0, 0);
+ 			}
+@@ -2822,9 +2830,21 @@ void main(){
+ 			get worldRadius() {
+ 				return this.radius * this.transform.lossyScale.x;
+ 			}
++
++			calculateLocalInverseInertia(mass) {
++				let inertia = 0.4 * mass * this.worldRadius * this.worldRadius;
++				return new Vector3(1 / inertia, 1 / inertia, 1 / inertia);
++			}
+ 		}
+ 
+ 		class BoxCollider extends Collider {
++			calculateLocalInverseInertia(mass) {
++				let size = this.transform.lossyScale;
++				let x2 = size.x * size.x;
++				let y2 = size.y * size.y;
++				let z2 = size.z * size.z;
++				return new Vector3(12 / (mass * (y2 + z2)), 12 / (mass * (x2 + z2)), 12 / (mass * (x2 + y2)));
++			}
+ 		}
+ 
+ 		class Contact {
+@@ -3052,9 +3072,23 @@ void main(){
+ 
+ 			let cube = scene.add(new GameObject("Cube", new Vector3(-3, 3.5, -4.5), Vector3.zero, Vector3.one));
+ 			cube.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
++			cube.addComponent(new BoxCollider());
+ 			cube.addComponent(new Rigidbody(1, false));
+ 			physicsObjects.push(cube);
+-			pushableObjects = [cube];
++
++			let lyingPlank = scene.add(new GameObject("Lying plank", new Vector3(0.5, 3.5, -4.5), Vector3.zero, new Vector3(3, 0.4, 0.4)));
++			lyingPlank.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
++			lyingPlank.addComponent(new BoxCollider());
++			lyingPlank.addComponent(new Rigidbody(1, false));
++			physicsObjects.push(lyingPlank);
++
++			let standingPlank = scene.add(new GameObject("Standing plank", new Vector3(3.5, 3.5, -4.5), new Vector3(0, 0, 90), new Vector3(3, 0.4, 0.4)));
++			standingPlank.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
++			standingPlank.addComponent(new BoxCollider());
++			standingPlank.addComponent(new Rigidbody(1, false));
++			physicsObjects.push(standingPlank);
++
++			pushableObjects = [cube, lyingPlank, standingPlank];
+ 		}
+ 
+ 		function resetPhysicsObjects() {

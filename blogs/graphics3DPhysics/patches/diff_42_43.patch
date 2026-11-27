@@ -1,0 +1,337 @@
+--- "a/htmlPreviews\\htmlPreview42.html"
++++ "b/htmlPreviews\\htmlPreview43.html"
+@@ -164,7 +164,6 @@
+ 	</div>
+ 	<h2 id="fps">FPS: 0</h2>
+ 	<h3 id="physicsInfo">Max penetration: 0</h3>
+-	<h3 id="epaInfo">EPA: not overlapping</h3>
+ 	<div>
+ 		<button id="helpButton"
+ 			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Help</button>
+@@ -203,12 +202,6 @@
+ 			</div>
+ 		</div>
+ 	</div>
+-	<div id="pushControls">
+-		<button data-key="pushCenter"
+-			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 8px">Push center</button>
+-		<button data-key="pushOffCenter"
+-			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 8px">Push off-center</button>
+-	</div>
+ 	<div id="controls">
+ 		<div class="controlRow">
+ 			<label class="controlLabel" for="rendererSelect">Renderer:</label>
+@@ -266,13 +259,6 @@
+ 				<span id="maxFpsText" class="slider-value">144</span>
+ 			</span>
+ 		</div>
+-		<div class="controlRow">
+-			<label class="controlLabel" for="restitution">Ball restitution:</label>
+-			<span>
+-				<input type="range" id="restitution" min="0" max="1" step="0.05" value="0" />
+-				<span id="restitutionText" class="slider-value">0.00</span>
+-			</span>
+-		</div>
+ 		<div class="controlRow">
+ 			<label class="controlLabel" for="iterations">Solver iterations:</label>
+ 			<span>
+@@ -3458,7 +3444,7 @@ void main(){
+ 		let renderer = webglRenderer;
+ 		const rendererSelect = (document.getElementById("rendererSelect"));
+ 
+-		let camera = new Camera(new Vector3(0.5, 9, -12), new Vector3(-30, 0, 0), 5, 0.2);
++		let camera = new Camera(new Vector3(0, 6, -18), new Vector3(-5, 0, 0), 5, 0.2);
+ 		let keyStates = {};
+ 
+ 		const renderDiv = (document.getElementById("render"));
+@@ -3474,7 +3460,6 @@ void main(){
+ 
+ 		const fpsInfo = (document.getElementById("fps"));
+ 		const physicsInfo = (document.getElementById("physicsInfo"));
+-		const epaInfo = (document.getElementById("epaInfo"));
+ 		let frames = 0,
+ 			fpsTimeCounter = 0;
+ 
+@@ -3504,8 +3489,6 @@ void main(){
+ 		const maxFpsSlider = (document.getElementById("maxFps"));
+ 		const maxFpsText = (document.getElementById("maxFpsText"));
+ 		let maxFps = parseFloat(maxFpsSlider.value);
+-		const restitutionSlider = (document.getElementById("restitution"));
+-		const restitutionText = (document.getElementById("restitutionText"));
+ 		const iterationsSlider = (document.getElementById("iterations"));
+ 		const iterationsText = (document.getElementById("iterationsText"));
+ 		webglRenderer.useShadow = useShadowCheckbox.checked;
+@@ -3514,149 +3497,19 @@ void main(){
+ 		let brickTexture = new Texture(
+ 			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/brick.jpg"
+ 		);
+-		let woodTexture = new Texture(
+-			"https://raw.githubusercontent.com/hachihao792001/hachihao792001.github.io/refs/heads/main/blogs/graphics3D/images/textures/Wood_Tower_Col.jpg"
+-		);
+ 
+ 		let scene = new Scene();
+ 
+ 		let cubeMesh = Primitives.cube();
+-		let sphereMesh = Primitives.sphere();
+-		let walls = [
+-			new GameObject("Wall left", new Vector3(-2.75, 1.25, 0), Vector3.zero, new Vector3(0.5, 1.5, 6)),
+-			new GameObject("Wall right", new Vector3(2.75, 1.25, 0), Vector3.zero, new Vector3(0.5, 1.5, 6)),
+-			new GameObject("Wall front", new Vector3(0, 1.25, -2.75), Vector3.zero, new Vector3(5, 1.5, 0.5)),
+-			new GameObject("Wall back", new Vector3(0, 1.25, 2.75), Vector3.zero, new Vector3(5, 1.5, 0.5)),
+-		];
+-		for (let wall of walls) {
+-			scene.add(wall);
+-			wall.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(190, 150, 100))));
+-			wall.addComponent(new BoxCollider());
+-		}
+-
+-		let ramp = scene.add(new GameObject("Ramp", new Vector3(6, 1.2, -5), new Vector3(0, 0, -20), new Vector3(4, 0.3, 2)));
+-		ramp.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(190, 150, 100))));
+-		ramp.addComponent(new BoxCollider());
+-
+-		let crystal = scene.add(new GameObject("Crystal", new Vector3(5.5, 2.5, -1), Vector3.zero, Vector3.one));
+-		let crystalStartPosition = crystal.transform.position.clone();
+-		let crystalMaterial = new Material(new Color(170, 90, 255));
+ 		let crystalMesh = Primitives.crystal();
+-		crystal.addComponent(new MeshRenderer(crystalMesh, crystalMaterial));
+-		let crystalCollider = crystal.addComponent(new ConvexHullCollider(crystalMesh));
+-
+-		let testBox = scene.add(new GameObject("Test box", new Vector3(5.5, 2.5, -1), new Vector3(0, 30, 20), new Vector3(1.2, 1.2, 1.2)));
+-		testBox.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 160, 60))));
+-		let testBoxCollider = testBox.addComponent(new BoxCollider());
+-
+-		let minkowskiOrigin = new Vector3(5.5, 4, 3.5);
+-		let originMarker = scene.add(new GameObject("Origin marker", minkowskiOrigin, Vector3.zero, new Vector3(0.2, 0.2, 0.2)));
+-		originMarker.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 0, 0)), false));
+-		let minkowskiDots = [];
+-		for (let i = 0; i < crystalCollider.localVertices.length * testBoxCollider.localVertices.length; i++) {
+-			let dot = scene.add(new GameObject("Minkowski dot", Vector3.zero.clone(), Vector3.zero, new Vector3(0.08, 0.08, 0.08)));
+-			dot.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(60, 60, 60)), false));
+-			minkowskiDots.push(dot);
+-		}
+-
+-		let simplexLines = [];
+-		for (let i = 0; i < 6; i++) {
+-			let line = scene.add(new GameObject("Simplex line"));
+-			line.addComponent(new MeshRenderer(null, new Material(new Color(0, 200, 80)), false));
+-			simplexLines.push(line);
+-		}
+-
+-		let minkowskiPenetrationArrow = scene.add(new GameObject("Minkowski penetration arrow"));
+-		minkowskiPenetrationArrow.addComponent(new MeshRenderer(null, new Material(new Color(255, 0, 0)), false));
+-		let crystalPushArrow = scene.add(new GameObject("Crystal push arrow"));
+-		crystalPushArrow.addComponent(new MeshRenderer(null, new Material(new Color(255, 0, 0)), false));
+-
+-		let contactMarker = scene.add(new GameObject("Contact marker", Vector3.zero.clone(), Vector3.zero, new Vector3(0.15, 0.15, 0.15)));
+-		contactMarker.addComponent(new MeshRenderer(null, new Material(new Color(0, 220, 255)), false));
+-
+-		let supportMarkers = [];
+-		for (let i = 0; i < 2; i++) {
+-			let marker = scene.add(new GameObject("Support marker", Vector3.zero.clone(), Vector3.zero, new Vector3(0.15, 0.15, 0.15)));
+-			marker.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 230, 0)), false));
+-			supportMarkers.push(marker);
+-		}
+-
+-		let ballMaterial = new Material(new Color(255, 90, 90));
+-		let boxMaterial = new Material(new Color(110, 170, 255));
+ 		let physicsObjects = [];
+-		let pushableObjects = [];
+-		let pushArrows = [];
+-		let pushStrength = 2;
+-		let offCenterPushPoint = new Vector3(0, 0, -0.5);
+ 
+ 		function spawnPhysicsObjects() {
+-			for (let i = 0; i < 12; i++) {
+-				let position = new Vector3(((i % 4) - 1.5) * 0.8, 2 + i * 0.7, (Math.floor(i / 4) - 1) * 0.8);
+-				let ball = scene.add(new GameObject("Ball " + i, position, Vector3.zero, Vector3.one));
+-				ball.addComponent(new MeshRenderer(sphereMesh, ballMaterial));
+-				ball.addComponent(new SphereCollider(0.5, parseFloat(restitutionSlider.value)));
+-				ball.addComponent(new Rigidbody());
+-				physicsObjects.push(ball);
+-			}
+-
+-			let cube = scene.add(new GameObject("Cube", new Vector3(-3, 3.5, -4.5), new Vector3(20, 30, 10), Vector3.one));
+-			cube.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+-			cube.addComponent(new BoxCollider());
+-			cube.addComponent(new Rigidbody());
+-			physicsObjects.push(cube);
+-
+-			let lyingPlank = scene.add(new GameObject("Lying plank", new Vector3(0.5, 3.5, -4.5), new Vector3(0, 0, 25), new Vector3(3, 0.4, 0.4)));
+-			lyingPlank.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+-			lyingPlank.addComponent(new BoxCollider());
+-			lyingPlank.addComponent(new Rigidbody());
+-			physicsObjects.push(lyingPlank);
+-
+-			let standingPlank = scene.add(new GameObject("Standing plank", new Vector3(3.5, 3.5, -4.5), new Vector3(0, 0, 75), new Vector3(3, 0.4, 0.4)));
+-			standingPlank.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+-			standingPlank.addComponent(new BoxCollider());
+-			standingPlank.addComponent(new Rigidbody());
+-			physicsObjects.push(standingPlank);
+-
+-			pushableObjects = [cube, lyingPlank, standingPlank];
+-
+-			for (let i = 0; i < 4; i++) {
+-				let box = scene.add(new GameObject("Box " + i, new Vector3(-5 + (i % 2) * 0.3, 2 + i * 1.5, 0), Vector3.zero, Vector3.one));
+-				box.addComponent(new MeshRenderer(cubeMesh, boxMaterial));
+-				box.addComponent(new BoxCollider());
+-				box.addComponent(new Rigidbody());
+-				physicsObjects.push(box);
+-			}
+-
+-			let pedestal = scene.add(new GameObject("Pedestal", new Vector3(-6, 0.8, -4.5), Vector3.zero, new Vector3(0.6, 0.6, 0.6)));
+-			pedestal.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(190, 150, 100))));
+-			pedestal.addComponent(new BoxCollider());
+-			physicsObjects.push(pedestal);
+-
+-			let board = scene.add(new GameObject("Board", new Vector3(-5, 1.2, -4.5), Vector3.zero, new Vector3(3, 0.2, 3)));
+-			board.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+-			board.addComponent(new BoxCollider());
+-			board.addComponent(new Rigidbody());
+-			physicsObjects.push(board);
+-
+-			for (let i = 0; i < 10; i++) {
+-				let stackBox = scene.add(new GameObject("Stack box " + i, new Vector3(-7.5, 1 + i * 1.001, 1.5), Vector3.zero, Vector3.one));
+-				stackBox.addComponent(new MeshRenderer(cubeMesh, boxMaterial));
+-				stackBox.addComponent(new BoxCollider());
+-				stackBox.addComponent(new Rigidbody());
+-				physicsObjects.push(stackBox);
+-			}
+-
+-			let fallingCrystal = scene.add(new GameObject("Falling crystal", new Vector3(0, 6, 0), new Vector3(30, 0, 20), Vector3.one));
+-			fallingCrystal.addComponent(new MeshRenderer(crystalMesh, new Material(new Color(170, 90, 255))));
+-			fallingCrystal.addComponent(new ConvexHullCollider(crystalMesh));
+-			fallingCrystal.addComponent(new Rigidbody());
+-			physicsObjects.push(fallingCrystal);
+-
+-			let rampBox = scene.add(new GameObject("Ramp box", new Vector3(6.2, 2.4, -5), new Vector3(0, 0, -20), Vector3.one));
+-			rampBox.addComponent(new MeshRenderer(cubeMesh, boxMaterial));
+-			rampBox.addComponent(new BoxCollider());
+-			rampBox.addComponent(new Rigidbody());
+-			physicsObjects.push(rampBox);
++			let crystal = scene.add(new GameObject("Crystal", new Vector3(4, 1.5, -1), new Vector3(30, 0, 20), Vector3.one));
++			crystal.addComponent(new MeshRenderer(crystalMesh, new Material(new Color(170, 90, 255))));
++			crystal.addComponent(new ConvexHullCollider(crystalMesh));
++			crystal.addComponent(new Rigidbody());
++			physicsObjects.push(crystal);
+ 		}
+ 
+ 		function resetPhysicsObjects() {
+@@ -3691,12 +3544,6 @@ void main(){
+ 		let dt = 0;
+ 
+ 		function fixedUpdate() {
+-			for (let pushableObject of pushableObjects) {
+-				let rigidbody = pushableObject.getComponent(Rigidbody);
+-				let force = Vector3.mul(pushableObject.transform.transformDirection(Vector3.right), pushStrength);
+-				if (keyStates["pushCenter"]) rigidbody.addForce(force);
+-				if (keyStates["pushOffCenter"]) rigidbody.addForceAtPosition(force, pushableObject.transform.transformPoint(offCenterPushPoint));
+-			}
+ 		}
+ 
+ 		function placeLine(line, from, to, thickness) {
+@@ -3707,78 +3554,6 @@ void main(){
+ 			line.transform.localScale = new Vector3(thickness, thickness, direction.magnitude());
+ 		}
+ 
+-		function updatePushArrows() {
+-			while (pushArrows.length < pushableObjects.length) {
+-				let arrow = scene.add(new GameObject("Push arrow"));
+-				arrow.addComponent(new MeshRenderer(null, new Material(new Color(255, 0, 0)), false));
+-				pushArrows.push(arrow);
+-			}
+-			for (let i = 0; i < pushableObjects.length; i++) {
+-				let transform = pushableObjects[i].transform;
+-				let arrowRenderer = pushArrows[i].getComponent(MeshRenderer);
+-				let isPushing = keyStates["pushCenter"] || keyStates["pushOffCenter"];
+-				arrowRenderer.mesh = isPushing ? cubeMesh : null;
+-				if (!isPushing) continue;
+-
+-				let pushPoint = keyStates["pushOffCenter"] ? transform.transformPoint(offCenterPushPoint) : transform.position;
+-				let forceDirection = transform.transformDirection(Vector3.right);
+-				placeLine(pushArrows[i], Vector3.sub(pushPoint, Vector3.mul(forceDirection, 1.5)), pushPoint, 0.08);
+-			}
+-		}
+-
+-		function updateSupportMarkers() {
+-			let directionToCamera = Vector3.mul(camera.transform.getForward(), -1);
+-			let colliders = [crystalCollider, pushableObjects[0].getComponent(Collider)];
+-			for (let i = 0; i < colliders.length; i++) {
+-				supportMarkers[i].transform.position = colliders[i].support(directionToCamera);
+-			}
+-		}
+-
+-		function moveCrystal(time) {
+-			crystal.transform.position = Vector3.add(crystalStartPosition, new Vector3(Math.sin(time / 1500) * 2, 0, 0));
+-			crystal.transform.rotation = Quaternion.buildQuaternionEuler(new Vector3(0, time / 40, 0));
+-		}
+-
+-		function updateMinkowskiDots() {
+-			let i = 0;
+-			for (let a of crystalCollider.getVertices()) {
+-				for (let b of testBoxCollider.getVertices()) {
+-					minkowskiDots[i].transform.position = Vector3.add(minkowskiOrigin, Vector3.sub(a, b));
+-					i++;
+-				}
+-			}
+-		}
+-
+-		function updateOverlapColor() {
+-			let simplex = GJK.findSimplexContainingOrigin(crystalCollider, testBoxCollider);
+-			let isOverlapping = simplex != null;
+-			crystalMaterial.color = isOverlapping ? new Color(255, 40, 40) : new Color(170, 90, 255);
+-
+-			let edges = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+-			for (let i = 0; i < edges.length; i++) {
+-				let lineRenderer = simplexLines[i].getComponent(MeshRenderer);
+-				lineRenderer.mesh = isOverlapping ? cubeMesh : null;
+-				if (!isOverlapping) continue;
+-				let from = Vector3.add(minkowskiOrigin, simplex[edges[i][0]].point);
+-				let to = Vector3.add(minkowskiOrigin, simplex[edges[i][1]].point);
+-				placeLine(simplexLines[i], from, to, 0.04);
+-			}
+-
+-			minkowskiPenetrationArrow.getComponent(MeshRenderer).mesh = isOverlapping ? cubeMesh : null;
+-			crystalPushArrow.getComponent(MeshRenderer).mesh = isOverlapping ? cubeMesh : null;
+-			contactMarker.getComponent(MeshRenderer).mesh = isOverlapping ? cubeMesh : null;
+-			if (!isOverlapping) {
+-				epaInfo.textContent = "EPA: not overlapping";
+-				return;
+-			}
+-			let penetration = EPA.findPenetration(simplex, crystalCollider, testBoxCollider);
+-			let penetrationVector = Vector3.mul(penetration.normal, penetration.depth);
+-			placeLine(minkowskiPenetrationArrow, minkowskiOrigin, Vector3.add(minkowskiOrigin, penetrationVector), 0.06);
+-			placeLine(crystalPushArrow, crystal.transform.position, Vector3.sub(crystal.transform.position, penetrationVector), 0.06);
+-			contactMarker.transform.position = penetration.pointOnA;
+-			epaInfo.textContent = `EPA: depth ${penetration.depth.toFixed(3)}`;
+-		}
+-
+ 		function updateGameObjectTransforms() {
+ 			camera.updateMovement(dt, keyStates);
+ 			if (lookInput.x != 0 || lookInput.y != 0) {
+@@ -3807,11 +3582,6 @@ void main(){
+ 
+ 			updateGameObjectTransforms();
+ 			physicsWorld.update(scene, dt, fixedUpdate);
+-			updatePushArrows();
+-			updateSupportMarkers();
+-			moveCrystal(time);
+-			updateMinkowskiDots();
+-			updateOverlapColor();
+ 			physicsInfo.textContent = `Max penetration: ${physicsWorld.maxPenetration.toFixed(3)}`;
+ 			renderer.render(scene, camera);
+ 
+@@ -3857,14 +3627,6 @@ void main(){
+ 			maxFpsText.textContent = maxFps.toFixed(0);
+ 		});
+ 
+-		restitutionSlider.addEventListener("input", () => {
+-			let restitution = parseFloat(restitutionSlider.value);
+-			for (let collider of scene.getAllComponentsOfType(SphereCollider)) {
+-				collider.restitution = restitution;
+-			}
+-			restitutionText.textContent = restitution.toFixed(2);
+-		});
+-
+ 		iterationsSlider.addEventListener("input", () => {
+ 			physicsWorld.iterations = parseInt(iterationsSlider.value);
+ 			iterationsText.textContent = physicsWorld.iterations.toString();

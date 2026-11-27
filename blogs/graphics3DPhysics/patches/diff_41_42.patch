@@ -1,0 +1,103 @@
+--- "a/htmlPreviews\\htmlPreview41.html"
++++ "b/htmlPreviews\\htmlPreview42.html"
+@@ -3206,10 +3206,11 @@ void main(){
+ 		}
+ 
+ 		class Contact {
+-			constructor(point, normal, depth) {
++			constructor(point, normal, depth, colliderA) {
+ 				this.point = point;
+ 				this.normal = normal;
+ 				this.depth = depth;
++				this.localPointA = colliderA.transform.inverseTransformPoint(point);
+ 				this.normalImpulse = 0;
+ 				this.tangentImpulse1 = 0;
+ 				this.tangentImpulse2 = 0;
+@@ -3225,14 +3226,14 @@ void main(){
+ 				let facesA = colliderA.getFaces();
+ 				let facesB = colliderB.getFaces();
+ 				if (facesA != null && facesB != null) {
+-					let contacts = ContactManifold.findFaceContacts(facesA, facesB, penetration.normal);
++					let contacts = ContactManifold.findFaceContacts(colliderA, facesA, facesB, penetration.normal);
+ 					if (contacts.length > 0) return contacts;
+ 				}
+ 
+ 				let point = penetration.pointOnA;
+ 				if (colliderA instanceof SphereCollider) point = colliderA.support(penetration.normal);
+ 				if (colliderB instanceof SphereCollider) point = colliderB.support(Vector3.mul(penetration.normal, -1));
+-				return [new Contact(point, penetration.normal, penetration.depth)];
++				return [new Contact(point, penetration.normal, penetration.depth, colliderA)];
+ 			}
+ 
+ 			static findMostAlignedFace(faces, direction) {
+@@ -3243,7 +3244,7 @@ void main(){
+ 				return best;
+ 			}
+ 
+-			static findFaceContacts(facesA, facesB, normal) {
++			static findFaceContacts(colliderA, facesA, facesB, normal) {
+ 				let faceA = ContactManifold.findMostAlignedFace(facesA, normal);
+ 				let faceB = ContactManifold.findMostAlignedFace(facesB, Vector3.mul(normal, -1));
+ 
+@@ -3272,7 +3273,7 @@ void main(){
+ 				for (let point of polygon) {
+ 					let depth = -referencePlane.distanceToPoint(point);
+ 					if (depth >= 0) {
+-						contacts.push(new Contact(point, contactNormal, depth));
++						contacts.push(new Contact(point, contactNormal, depth, colliderA));
+ 					}
+ 				}
+ 				return contacts;
+@@ -3304,6 +3305,7 @@ void main(){
+ 				this.allowedPenetration = 0.01;
+ 				this.baumgarte = 0.2;
+ 				this.iterations = 10;
++				this.manifolds = new Map();
+ 			}
+ 
+ 			update(scene, dt, fixedUpdate) {
+@@ -3322,14 +3324,32 @@ void main(){
+ 				}
+ 
+ 				let colliders = scene.getAllComponentsOfType(Collider);
+-				let manifolds = [];
++				let newManifolds = new Map();
+ 				for (let i = 0; i < colliders.length; i++) {
+ 					for (let j = i + 1; j < colliders.length; j++) {
+ 						if (colliders[i].rigidbody == null && colliders[j].rigidbody == null) continue;
+ 						let contacts = ContactManifold.findContacts(colliders[i], colliders[j]);
+-						if (contacts.length > 0) manifolds.push({ colliderA: colliders[i], colliderB: colliders[j], contacts: contacts });
++						if (contacts.length == 0) continue;
++
++						let key = colliders[i].gameObject.id + "-" + colliders[j].gameObject.id;
++						let oldManifold = this.manifolds.get(key);
++						if (oldManifold != null) {
++							for (let contact of contacts) {
++								for (let oldContact of oldManifold.contacts) {
++									if (Vector3.sub(contact.localPointA, oldContact.localPointA).magnitude() < 0.05) {
++										contact.normalImpulse = oldContact.normalImpulse;
++										contact.tangentImpulse1 = oldContact.tangentImpulse1;
++										contact.tangentImpulse2 = oldContact.tangentImpulse2;
++										break;
++									}
++								}
++							}
++						}
++						newManifolds.set(key, { colliderA: colliders[i], colliderB: colliders[j], contacts: contacts });
+ 					}
+ 				}
++				this.manifolds = newManifolds;
++				let manifolds = [...newManifolds.values()];
+ 
+ 				for (let manifold of manifolds) {
+ 					this.prepareManifold(manifold, dt);
+@@ -3399,6 +3419,9 @@ void main(){
+ 					let normalVelocity = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.normal);
+ 					contact.bias = (this.baumgarte / dt) * Math.max(0, contact.depth - this.allowedPenetration);
+ 					if (normalVelocity < -1) contact.bias += -restitution * normalVelocity;
++
++					let warmStartImpulse = Vector3.add(Vector3.mul(n, contact.normalImpulse), Vector3.add(Vector3.mul(contact.tangent1, contact.tangentImpulse1), Vector3.mul(contact.tangent2, contact.tangentImpulse2)));
++					this.applyImpulse(rigidbodyA, rigidbodyB, warmStartImpulse, contact.point);
+ 				}
+ 			}
+ 

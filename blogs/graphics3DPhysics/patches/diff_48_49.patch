@@ -1,0 +1,89 @@
+--- "a/htmlPreviews\\htmlPreview48.html"
++++ "b/htmlPreviews\\htmlPreview49.html"
+@@ -202,6 +202,10 @@
+ 			</div>
+ 		</div>
+ 	</div>
++	<div id="pushControls">
++		<button data-key="push"
++			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 8px">Push</button>
++	</div>
+ 	<div id="controls">
+ 		<div class="controlRow">
+ 			<label class="controlLabel" for="rendererSelect">Renderer:</label>
+@@ -282,10 +286,12 @@
+ 			<li>W, A, S, D to move</li>
+ 			<li>Space, shift to fly up and down</li>
+ 			<li>Mouse to look around</li>
++			<li>Hold left mouse to push the block under the crosshair</li>
+ 		</ul>
+ 		Touch controls:
+ 		<ul>
+ 			<li>Mobile controls to move and look around</li>
++			<li>Hold the Push button to push the block under the crosshair</li>
+ 		</ul>
+ 	</div>
+ 
+@@ -3610,8 +3616,24 @@ void main(){
+ 		let physicsTime = 0;
+ 		let highlightedCollider = null;
+ 		let highlightedColliderColor = null;
++		let pushSpeed = 3;
++		let maxPushForce = 300;
++		let pushHitPoint = null;
++		let pushArrow = scene.add(new GameObject("Push arrow"));
++		pushArrow.addComponent(new MeshRenderer(null, new Material(new Color(255, 0, 0)), false));
+ 
+ 		function fixedUpdate() {
++			if (!keyStates["push"]) return;
++			let [collider, distance] = raycastDynamicCollider(camera.transform.position, camera.transform.getForward());
++			if (collider == null) return;
++
++			let rigidbody = collider.rigidbody;
++			let pushDirection = camera.transform.getForward();
++			let hitPoint = Vector3.add(camera.transform.position, Vector3.mul(pushDirection, distance));
++			let speedAlongPush = Vector3.dot(rigidbody.getPointVelocity(hitPoint), pushDirection);
++			let forceStrength = Math.max(0, Math.min(maxPushForce, (pushSpeed - speedAlongPush) * 1000 * rigidbody.mass));
++			rigidbody.addForceAtPosition(Vector3.mul(pushDirection, forceStrength), hitPoint);
++			pushHitPoint = hitPoint;
+ 		}
+ 
+ 		function placeLine(line, from, to, thickness) {
+@@ -3648,6 +3670,16 @@ void main(){
+ 			}
+ 		}
+ 
++		function updatePushArrow() {
++			let isPushing = keyStates["push"] && pushHitPoint != null;
++			pushArrow.getComponent(MeshRenderer).mesh = isPushing ? cubeMesh : null;
++			if (isPushing) {
++				let pushDirection = camera.transform.getForward();
++				placeLine(pushArrow, Vector3.sub(pushHitPoint, Vector3.mul(pushDirection, 1)), pushHitPoint, 0.05);
++			}
++			if (!keyStates["push"]) pushHitPoint = null;
++		}
++
+ 		function updateGameObjectTransforms() {
+ 			camera.updateMovement(dt, keyStates);
+ 			if (lookInput.x != 0 || lookInput.y != 0) {
+@@ -3681,6 +3713,7 @@ void main(){
+ 			physicsWorld.update(scene, dt, fixedUpdate);
+ 			physicsTime += performance.now() - physicsStartTime;
+ 			updateHighlightedCollider();
++			updatePushArrow();
+ 			renderer.render(scene, camera);
+ 
+ 			requestAnimationFrame(update);
+@@ -3774,8 +3807,12 @@ void main(){
+ 		for (let canvas of [gameCanvas, softwareCanvas]) {
+ 			canvas.addEventListener("mousedown", () => {
+ 				if (document.pointerLockElement !== renderDiv) requestMouseLook();
++				else keyStates["push"] = true;
+ 			});
+ 		}
++		window.addEventListener("mouseup", () => {
++			keyStates["push"] = false;
++		});
+ 
+ 		rendererSelect.addEventListener("change", () => {
+ 			renderer = rendererSelect.value == "webgl" ? webglRenderer : softwareRenderer;

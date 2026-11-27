@@ -1,0 +1,38 @@
+--- "a/htmlPreviews\\htmlPreview13.html"
++++ "b/htmlPreviews\\htmlPreview14.html"
+@@ -2808,6 +2808,8 @@ void main(){
+ 				this.fixedDeltaTime = 1 / 60;
+ 				this.timeAccumulator = 0;
+ 				this.maxPenetration = 0;
++				this.allowedPenetration = 0.01;
++				this.correctionPercent = 0.2;
+ 			}
+ 
+ 			update(scene, dt) {
+@@ -2833,6 +2835,7 @@ void main(){
+ 						if (contact == null) continue;
+ 						this.maxPenetration = Math.max(this.maxPenetration, contact.depth);
+ 						this.resolveContact(colliders[i], colliders[j], contact);
++						this.correctPositions(colliders[i], colliders[j], contact);
+ 					}
+ 				}
+ 
+@@ -2901,6 +2904,18 @@ void main(){
+ 				if (rigidbodyA != null) rigidbodyA.velocity = Vector3.sub(rigidbodyA.velocity, Vector3.mul(impulse, inverseMassA));
+ 				if (rigidbodyB != null) rigidbodyB.velocity = Vector3.add(rigidbodyB.velocity, Vector3.mul(impulse, inverseMassB));
+ 			}
++
++			correctPositions(colliderA, colliderB, contact) {
++				let rigidbodyA = colliderA.rigidbody;
++				let rigidbodyB = colliderB.rigidbody;
++				let inverseMassA = this.getInverseMass(rigidbodyA);
++				let inverseMassB = this.getInverseMass(rigidbodyB);
++
++				let correctionDepth = Math.max(contact.depth - this.allowedPenetration, 0) * this.correctionPercent;
++				let correction = Vector3.mul(contact.normal, correctionDepth / (inverseMassA + inverseMassB));
++				if (rigidbodyA != null) rigidbodyA.transform.position = Vector3.sub(rigidbodyA.transform.position, Vector3.mul(correction, inverseMassA));
++				if (rigidbodyB != null) rigidbodyB.transform.position = Vector3.add(rigidbodyB.transform.position, Vector3.mul(correction, inverseMassB));
++			}
+ 		}
+ 
+ 		// ===== index.js =====

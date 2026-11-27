@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="Dựng tháp Jenga 54 khối, tối ưu physics engine, raycast và đẩy khối ra khỏi tháp.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="../graphics3D/graphics3D.css">
+    <link rel="stylesheet" href="concept.css">
+    <style>
+        .blog-content ul li a {
+            display: inline;
+            font-weight: inherit;
+            margin-bottom: 0;
+        }
+    </style>
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Physics #8: Jenga</title>
+</head>
+
+<body data-graphics3D-id="physics8">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Jenga</h1>
+
+					Engine đã có đủ: GJK + EPA cho mọi hình lồi, contact manifold, solver lặp với ma sát và warm starting. Blog cuối này dựng cái tháp Jenga, làm cho nó chạy đủ
+					nhanh, và thêm cách để bạn đẩy từng khối ra khỏi tháp. Kế bên tháp là viên crystal, để thấy engine xử lý nó y như mọi khối hộp.
+
+					<h2>1. Dọn dẹp</h2>
+					Scene của mấy blog trước giờ đã quá chật: chỗ thả bóng, các tấm ván, cái bục, cái dốc, khu thử nghiệm GJK với đám điểm Minkowski. Mình xóa hết những thứ đó
+					khỏi <code>index.js</code>, chỉ giữ lại mặt đất, 2 loại đèn, và một viên crystal. Engine (mọi class trong <code>physics.js</code>, kể cả
+					<code>SphereCollider</code> và <code>Primitives.sphere</code> dù scene không còn quả cầu nào) giữ nguyên. Cụ thể những gì bị xóa:
+					<ul>
+						<li>4 bức tường, cái dốc, khu thử nghiệm (crystal dao động, hộp cam, đám điểm Minkowski, các đường của tứ diện, 2 mũi tên EPA, khối đánh dấu điểm chạm,
+						2 khối vàng của support), và các hàm cập nhật chúng: <code>moveCrystal</code>, <code>updateMinkowskiDots</code>, <code>updateOverlapColor</code>,
+						<code>updateSupportMarkers</code>, <code>updatePushArrows</code>.</li>
+						<li>Mọi thứ trong <code>spawnPhysicsObjects</code> cũ (bóng, hộp gỗ, 2 tấm ván, các cột hộp xanh, tấm ván và cái bục, hộp trên dốc, crystal rơi), thay bằng
+						một viên crystal đặt trên mặt đất bên phải.</li>
+						<li>2 nút đẩy của blog 3 (<code>pushableObjects</code>, <code>pushArrows</code>, ...), slider Ball restitution, dòng chữ EPA, và texture gỗ (không còn gì dùng).</li>
+					</ul>
+					Hàm <code>fixedUpdate</code> được giữ lại nhưng để trống, phần cuối blog sẽ dùng lại nó, cùng với <code>placeLine</code>. Camera được dời ra xa để thấy được cả
+					cái tháp cao khoảng 11 mét sắp dựng:
+					<pre><code class="language-javascript">let camera = new Camera(new Vector3(0, 6, -18), new Vector3(-5, 0, 0), 5, 0.2);
+...
+let crystalMesh = Primitives.crystal();
+let physicsObjects = [];
+
+function spawnPhysicsObjects() {
+	let crystal = scene.add(new GameObject("Crystal", new Vector3(4, 1.5, -1), new Vector3(30, 0, 20), Vector3.one));
+	crystal.addComponent(new MeshRenderer(crystalMesh, new Material(new Color(170, 90, 255))));
+	crystal.addComponent(new ConvexHullCollider(crystalMesh));
+	crystal.addComponent(new Rigidbody());
+	physicsObjects.push(crystal);
+}
+...
+function fixedUpdate() {
+}</code></pre>
+					Diff của bước này dài vì toàn là dòng bị xóa. Kết quả:
+					<div class="htmlPreview" id="htmlPreview43" data-disabled="true"></div>
+
+					<h2>2. Tháp Jenga</h2>
+					Một bộ Jenga thật có 54 khối, mỗi khối dài gấp 3 lần chiều rộng (khoảng 7.5 x 2.5 x 1.5 cm), xếp thành 18 tầng, mỗi tầng 3 khối nằm cạnh nhau, tầng sau xoay 90 độ
+					so với tầng trước. Mình giữ đúng tỉ lệ nhưng phóng to lên: mỗi khối dài 3, rộng 1, cao 0.6 (đơn vị mét). To như vậy thì tháp cao gần 11 mét, rơi đổ chậm hơn
+					(một vật to rơi cùng gia tốc nhưng quãng đường dài hơn), và với bước vật lý 1/60 giây thì các khối không bị lún quá sâu trong 1 bước.
+					<pre><code class="language-javascript">let blockColors = [new Color(235, 200, 150), new Color(210, 170, 115)];
+...
+function spawnPhysicsObjects() {
+	...
+	for (let layer = 0; layer < 18; layer++) {
+		for (let i = 0; i < 3; i++) {
+			let y = 0.5 + 0.3 + layer * 0.6;
+			let offset = i - 1;
+			let isAlongZ = layer % 2 == 0;
+			let position = isAlongZ ? new Vector3(offset, y, 0) : new Vector3(0, y, offset);
+			let scale = isAlongZ ? new Vector3(1, 0.6, 3) : new Vector3(3, 0.6, 1);
+			let block = scene.add(new GameObject("Block " + layer + "-" + i, position, Vector3.zero, scale));
+			block.addComponent(new MeshRenderer(cubeMesh, new Material(blockColors[(layer + i) % 2])));
+			block.addComponent(new BoxCollider());
+			block.addComponent(new Rigidbody());
+			physicsObjects.push(block);
+		}
+	}
+}</code></pre>
+					<ul>
+						<li><code>y</code>: mặt đất ở 0.5, tâm khối thấp nhất cao hơn nửa chiều cao khối (0.3), mỗi tầng cao thêm 0.6. Các khối được đặt vừa khít nhau, không lún, không
+						hở (đây chính là trường hợp "vừa chạm" mà blog 4 phải xử lý bằng <code>>= 0</code>).</li>
+						<li>Tầng chẵn nằm dọc trục z, tầng lẻ dọc trục x, 3 khối cách nhau 1 (đúng bằng chiều rộng).</li>
+						<li>2 màu xen kẽ để phân biệt các khối, mỗi khối có một <code>Material</code> riêng, phần 6 sẽ cần đổi màu từng khối.</li>
+					</ul>
+					Trước khi chạy, mình đoán tháp này sẽ chậm, nên thay dòng Max penetration bằng thời gian mà vật lý tốn mỗi frame, đo bằng <code>performance.now()</code> quanh
+					<code>physicsWorld.update</code> và in ra trung bình mỗi giây, cùng lúc với FPS (<code>maxPenetration</code> trong <code>PhysicsWorld</code> cũng bị bỏ vì không ai đọc nữa):
+					<pre><code class="language-javascript">&lt;h3 id=&quot;physicsInfo&quot;&gt;Physics: 0 ms per frame&lt;/h3&gt;
+...
+let physicsTime = 0;
+...
+function update(time = performance.now()) {
+	...
+	if (fpsTimeCounter >= 1) {
+		fpsInfo.textContent = `FPS: ${frames}`;
+		physicsInfo.textContent = `Physics: ${(physicsTime / frames).toFixed(1)} ms per frame`;
+		physicsTime = 0;
+		...
+	}
+	...
+	let physicsStartTime = performance.now();
+	physicsWorld.update(scene, dt, fixedUpdate);
+	physicsTime += performance.now() - physicsStartTime;
+	...
+}</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview44" data-disabled="true"></div>
+					Tháp đứng vững: mình chạy 30 giây, không khối nào xê dịch quá khoảng 0.06. Nhưng chậm: trên máy mình dòng Physics báo khoảng 30 ms mỗi frame, FPS còn khoảng 32.
+					Ở 60 FPS một frame chỉ có 16.7 ms cho mọi thứ.
+
+					<h2>3. Broad phase</h2>
+					Mình đoán chỗ chậm là phần tìm va chạm: 55 collider (54 khối và crystal, mặt đất tĩnh) tạo ra 55 × 54 / 2 + 55 = 1540 cặp, mỗi cặp chạy GJK mỗi bước, trong khi mỗi khối
+					chỉ chạm vài khối bên cạnh. Cách giải quyết chuẩn là thêm một bước lọc rẻ trước GJK, gọi là <b>broad phase</b> (GJK, EPA, manifold là <b>narrow phase</b>): 2 vật mà
+					AABB không chồng nhau thì chắc chắn không chạm, bỏ qua luôn. AABB thì blog 4 đã có, giờ mình viết lại cho mọi collider bằng support function: điểm xa nhất theo
+					\(-x\) cho <code>min.x</code>, theo \(+x\) cho <code>max.x</code>, tương tự cho y, z. 6 lần gọi support là ra AABB của bất kỳ hình nào, kể cả quả cầu và crystal:
+					<pre><code class="language-javascript">class Collider extends Component {
+	...
+	getAABB() {
+		let minX = this.support(Vector3.left).x;
+		let maxX = this.support(Vector3.right).x;
+		let minY = this.support(Vector3.down).y;
+		let maxY = this.support(Vector3.up).y;
+		let minZ = this.support(Vector3.back).z;
+		let maxZ = this.support(Vector3.forward).z;
+		return [new Vector3(minX, minY, minZ), new Vector3(maxX, maxY, maxZ)];
+	}
+}
+...
+step(scene, dt) {
+	...
+	let aabbs = colliders.map((collider) => collider.getAABB());
+	let newManifolds = new Map();
+	for (let i = 0; i < colliders.length; i++) {
+		for (let j = i + 1; j < colliders.length; j++) {
+			if (colliders[i].rigidbody == null && colliders[j].rigidbody == null) continue;
+			if (this.useBroadPhase) {
+				let [minA, maxA] = aabbs[i];
+				let [minB, maxB] = aabbs[j];
+				if (minA.x > maxB.x || minB.x > maxA.x || minA.y > maxB.y || minB.y > maxA.y || minA.z > maxB.z || minB.z > maxA.z) continue;
+			}
+			let contacts = ...
+		}
+	}
+	...
+}</code></pre>
+					AABB của mỗi collider tính 1 lần mỗi bước, trước vòng lặp các cặp. 2 AABB không chồng nhau khi một cái nằm hẳn về một phía của cái kia trên ít nhất 1 trục.
+					<code>this.useBroadPhase</code> (mặc định <code>true</code>) và checkbox <b>Broad phase</b> để bật tắt so sánh:
+					<pre><code class="language-javascript">&lt;div class=&quot;controlRow&quot;&gt;
+	&lt;label class=&quot;controlLabel&quot; for=&quot;useBroadPhase&quot;&gt;Broad phase:&lt;/label&gt;
+	&lt;span&gt;&lt;input type=&quot;checkbox&quot; id=&quot;useBroadPhase&quot; checked=&quot;checked&quot; /&gt;&lt;/span&gt;
+&lt;/div&gt;
+...
+useBroadPhaseCheckbox.addEventListener("change", () => {
+	physicsWorld.useBroadPhase = useBroadPhaseCheckbox.checked;
+	useBroadPhaseCheckbox.blur();
+});</code></pre>
+					Kết quả, thử bật tắt checkbox và nhìn dòng Physics:
+					<div class="htmlPreview" id="htmlPreview45" data-disabled="true"></div>
+
+					<b>Và đây là chỗ mình đoán sai.</b> Dòng Physics trên trang đo theo frame, mà một frame có thể chạy 1 hoặc 2 bước vật lý (blog 1), nên nó không so sánh chính xác
+					được. Mình đo riêng: chạy đúng code vật lý của từng bản trong Node.js (không vẽ gì), cho cái tháp, mỗi bản 300 bước, lấy trung vị thời gian của một bước. Con số
+					tuyệt đối sẽ khác trên máy bạn, so sánh giữa các bản mới là thứ đáng tin:
+					<table style="border-collapse: collapse; margin: 10px 0;">
+						<tr><th style="border: 1px solid #aaa; padding: 4px 8px;">Bản</th><th style="border: 1px solid #aaa; padding: 4px 8px;">ms mỗi bước vật lý</th></tr>
+						<tr><td style="border: 1px solid #aaa; padding: 4px 8px;">Không có broad phase</td><td style="border: 1px solid #aaa; padding: 4px 8px;">30.4</td></tr>
+						<tr><td style="border: 1px solid #aaa; padding: 4px 8px;">Có broad phase</td><td style="border: 1px solid #aaa; padding: 4px 8px;">28.0</td></tr>
+					</table>
+					Chỉ nhanh hơn chưa tới 10%. GJK với 2 vật cách xa nhau thì dừng ngay ở vòng đầu (bước 4 của blog 4), nên 1500 cặp không chạm nhau vốn đã rẻ, lọc bằng AABB chỉ tiết
+					kiệm được một ít. Broad phase vẫn đáng giữ, vì nếu có hàng trăm vật thì số cặp tăng theo bình phương, nhưng nó không phải chỗ chậm của tháp này. Vậy chỗ chậm ở đâu? Lẽ ra
+					mình phải đo trước khi đoán.<br/><br/>
+
+					Mình chạy lại với <a href="https://nodejs.org/en/learn/getting-started/profiling">profiler</a> (công cụ đo xem chương trình tốn thời gian ở hàm nào nhiều nhất):
+					<table style="border-collapse: collapse; margin: 10px 0;">
+						<tr><th style="border: 1px solid #aaa; padding: 4px 8px;">Hàm</th><th style="border: 1px solid #aaa; padding: 4px 8px;">% thời gian</th></tr>
+						<tr><td style="border: 1px solid #aaa; padding: 4px 8px;"><b><code>calculateLocalInverseInertia</code></b></td><td style="border: 1px solid #aaa; padding: 4px 8px;"><b>46.2%</b></td></tr>
+						<tr><td style="border: 1px solid #aaa; padding: 4px 8px;"><code>applyInverseInertia</code></td><td style="border: 1px solid #aaa; padding: 4px 8px;">6.8%</td></tr>
+						<tr><td style="border: 1px solid #aaa; padding: 4px 8px;"><code>applyImpulseAtPosition</code></td><td style="border: 1px solid #aaa; padding: 4px 8px;">6.5%</td></tr>
+						<tr><td style="border: 1px solid #aaa; padding: 4px 8px;"><code>Quaternion.multiply</code></td><td style="border: 1px solid #aaa; padding: 4px 8px;">5.9%</td></tr>
+						<tr><td style="border: 1px solid #aaa; padding: 4px 8px;"><code>inverseRotateVector</code></td><td style="border: 1px solid #aaa; padding: 4px 8px;">5.4%</td></tr>
+					</table>
+					Gần một nửa thời gian nằm ở một hàm tính moment quán tính, và phần còn lại đứng đầu bảng cũng đều là chuyện xoay trong solver. GJK còn không lọt vào top 5.
+
+					<h2>4. Nhớ moment quán tính</h2>
+					Getter <code>localInverseInertia</code> của <code>Rigidbody</code> (blog 3) gọi <code>calculateLocalInverseInertia</code> mỗi lần được đọc, và từ blog 5 hàm đó duyệt qua
+					mọi đỉnh để tìm hộp bao. Mà nó được đọc trong <code>applyInverseInertia</code>, mỗi lần áp dụng một impulse, nghĩa là rất nhiều lần mỗi bước: mỗi điểm chạm (mỗi khối chạm vài khối khác, mỗi cặp có vài điểm chạm), mỗi lượt (10 lượt), 3 impulse (pháp tuyến và 2 tiếp tuyến),
+					mỗi impulse 2 vật. Trong khi kết quả không bao giờ đổi, vì hình dạng và khối lượng của vật không đổi. Tính 1 lần
+					rồi nhớ lại:
+					<pre><code class="language-javascript">class Rigidbody extends Component {
+	constructor(mass = 1, useGravity = true) {
+		...
+		this.cachedLocalInverseInertia = null;									// <---------------------
+	}
+	...
+	get localInverseInertia() {
+		if (this.cachedLocalInverseInertia == null) {							// <---------------------
+			this.cachedLocalInverseInertia = this.collider.calculateLocalInverseInertia(this.mass);
+		}
+		return this.cachedLocalInverseInertia;
+	}
+	...
+}</code></pre>
+					Kết quả (giống hệt về vật lý, chỉ nhanh hơn):
+					<div class="htmlPreview" id="htmlPreview46" data-disabled="true"></div>
+					28.0 ms xuống còn 16.6 ms mỗi bước. Đổi scale của vật lúc đang chạy thì giá trị nhớ sẽ sai, nhưng engine của ta không làm chuyện đó.
+
+					<h2>5. Tính trước những thứ không đổi trong solver</h2>
+					Profile lại, phần lớn thời gian giờ nằm ở <code>applyInverseInertia</code> (xoay ngược, chia, xoay xuôi bằng quaternion), được gọi mỗi lần áp dụng một impulse.
+					Nhìn lại công thức ở blog 5: impulse \(J\) theo một hướng \(\vec{d}\) tại điểm \(\vec{r}\) làm vận tốc góc đổi \(J \cdot I^{-1}(\vec{r} \times \vec{d})\).
+					Trong một bước, \(\vec{r}\), \(\vec{d}\) và hướng của vật đều không đổi qua các lượt lặp (vị trí chỉ cập nhật sau khi solver xong), chỉ có \(J\) thay đổi. Vậy
+					\(I^{-1}(\vec{r} \times \vec{d})\) tính được 1 lần trong <code>prepareManifold</code>, và mỗi lần áp dụng impulse chỉ còn là nhân vector với số. Nó cũng chính là
+					phần mà <code>calculateEffectiveMass</code> đang tính, nên mình gộp 2 thứ lại thành một hàm trả về cả 2:
+					<pre><code class="language-javascript">prepareImpulseDirection(rigidbodyA, rigidbodyB, point, direction) {			// <--------------------- thay cho calculateEffectiveMass
+	let k = this.getInverseMass(rigidbodyA) + this.getInverseMass(rigidbodyB);
+	let angularA = new Vector3(0, 0, 0);
+	let angularB = new Vector3(0, 0, 0);
+	if (rigidbodyA != null) {
+		let rA = Vector3.sub(point, rigidbodyA.transform.position);
+		angularA = rigidbodyA.applyInverseInertia(Vector3.cross(rA, direction));
+		k += Vector3.dot(Vector3.cross(angularA, rA), direction);
+	}
+	if (rigidbodyB != null) {
+		let rB = Vector3.sub(point, rigidbodyB.transform.position);
+		angularB = rigidbodyB.applyInverseInertia(Vector3.cross(rB, direction));
+		k += Vector3.dot(Vector3.cross(angularB, rB), direction);
+	}
+	return { direction: direction, angularA: angularA, angularB: angularB, mass: 1 / k };
+}
+
+applyImpulseAlongDirection(rigidbodyA, rigidbodyB, impulseDirection, amount) {	// <--------------------- thay cho applyImpulse
+	if (rigidbodyA != null) {
+		rigidbodyA.velocity = Vector3.sub(rigidbodyA.velocity, Vector3.mul(impulseDirection.direction, amount * rigidbodyA.inverseMass));
+		rigidbodyA.angularVelocity = Vector3.sub(rigidbodyA.angularVelocity, Vector3.mul(impulseDirection.angularA, amount));
+	}
+	if (rigidbodyB != null) {
+		rigidbodyB.velocity = Vector3.add(rigidbodyB.velocity, Vector3.mul(impulseDirection.direction, amount * rigidbodyB.inverseMass));
+		rigidbodyB.angularVelocity = Vector3.add(rigidbodyB.angularVelocity, Vector3.mul(impulseDirection.angularB, amount));
+	}
+}</code></pre>
+					Mỗi điểm chạm có 3 hướng (pháp tuyến, 2 tiếp tuyến), nên <code>prepareManifold</code> lưu 3 cái này thay cho 3 khối lượng hiệu dụng cũ, và mọi chỗ áp dụng impulse
+					(warm starting, ma sát, pháp tuyến) chuyển sang hàm mới, khối lượng hiệu dụng giờ đọc từ <code>.mass</code> (mỗi cái là một object gồm hướng, 2 vector góc và khối lượng hiệu dụng, không phải một <code>Vector3</code>):
+					<pre><code class="language-javascript">prepareManifold(manifold, dt) {
+	...
+		contact.normalDirection = this.prepareImpulseDirection(rigidbodyA, rigidbodyB, contact.point, contact.normal);
+		contact.tangentDirection1 = this.prepareImpulseDirection(rigidbodyA, rigidbodyB, contact.point, contact.tangent1);
+		contact.tangentDirection2 = this.prepareImpulseDirection(rigidbodyA, rigidbodyB, contact.point, contact.tangent2);
+		...
+		this.applyImpulseAlongDirection(rigidbodyA, rigidbodyB, contact.normalDirection, contact.normalImpulse);
+		this.applyImpulseAlongDirection(rigidbodyA, rigidbodyB, contact.tangentDirection1, contact.tangentImpulse1);
+		this.applyImpulseAlongDirection(rigidbodyA, rigidbodyB, contact.tangentDirection2, contact.tangentImpulse2);
+	...
+}
+
+solveManifold(manifold) {
+	...
+		contact.tangentImpulse1 = Math.max(-maxFriction, Math.min(maxFriction, oldTangentImpulse1 - tangentVelocity1 * contact.tangentDirection1.mass));
+		this.applyImpulseAlongDirection(rigidbodyA, rigidbodyB, contact.tangentDirection1, contact.tangentImpulse1 - oldTangentImpulse1);
+		...	// tiếp tuyến 2 và pháp tuyến đổi y hệt
+	...
+}</code></pre>
+					Warm starting trước đây gộp 3 impulse thành một vector rồi áp dụng 1 lần, giờ thành 3 lần gọi, kết quả như nhau. Kết quả:
+					<div class="htmlPreview" id="htmlPreview47" data-disabled="true"></div>
+					16.6 ms xuống còn 8.1 ms mỗi bước (đo trong Node.js như trên). Cộng lại từ đầu phần này: 30.4 ms xuống 8.1 ms, gần 4 lần, và chuyển động của tháp giống hệt nhau
+					(mình so độ xê dịch lớn nhất sau 7 giây, cả 4 bản đều là 0.044). Trên trình duyệt của mình, dòng Physics từ khoảng 30 ms mỗi frame ở 32 FPS (lúc đó mỗi frame
+					thường phải chạy 2 bước) xuống khoảng 6 ms mỗi frame ở 60 FPS (1 bước mỗi frame). Engine vẫn còn chậm so với engine thật (rất nhiều
+					<code>new Vector3</code> mỗi bước, tạo rác cho garbage collector), nhưng đủ để chơi.
+
+					<h2>6. Nhắm vào một khối</h2>
+					Để chơi Jenga thì phải chọn được khối muốn đẩy. Mình dùng tâm màn hình (dấu chữ thập từ series trước): bắn một tia (ray) từ camera theo hướng camera nhìn, khối nào
+					tia đó chạm đầu tiên thì được chọn và tô vàng. Việc này gọi là <b>raycast</b>.<br/><br/>
+
+					Kiểm tra tia có chạm một đa diện lồi không: một đa diện lồi là phần giao của các "nửa không gian" phía sau mỗi mặt của nó. Đi dọc theo tia, với mỗi mặt, tính lúc tia
+					đi qua mặt phẳng của mặt đó: nếu lúc đó tia đang đi vào (ngược hướng pháp tuyến) thì đó là một lúc "vào", còn đi ra thì là một lúc "ra". Tia ở bên trong đa diện khi
+					nó đã qua mọi lúc vào và chưa qua lúc ra nào, tức là từ lúc vào muộn nhất tới lúc ra sớm nhất. Nếu vào muộn nhất mà còn sau ra sớm nhất thì tia đi trượt qua.
+					<pre><code class="language-javascript">class ConvexCollider extends Collider {
+	...
+	raycast(origin, direction) {
+		let enterDistance = 0;
+		let exitDistance = Infinity;
+		for (let face of this.getFaces()) {
+			let distanceFromPlane = Vector3.dot(Vector3.sub(origin, face.vertices[0]), face.normal);
+			let speedAlongNormal = Vector3.dot(direction, face.normal);
+			if (Math.abs(speedAlongNormal) < 1e-9) {
+				if (distanceFromPlane > 0) return null;
+				continue;
+			}
+			let distance = -distanceFromPlane / speedAlongNormal;
+			if (speedAlongNormal < 0) enterDistance = Math.max(enterDistance, distance);
+			else exitDistance = Math.min(exitDistance, distance);
+			if (enterDistance > exitDistance) return null;
+		}
+		return enterDistance;
+	}
+	...
+}</code></pre>
+					<ul>
+						<li>Điểm trên tia ở khoảng cách \(t\) là \(\vec{o} + t\vec{d}\) (<code>direction</code> là vector đơn vị). Khoảng cách có dấu tới mặt phẳng của nó là
+						<code>distanceFromPlane + t * speedAlongNormal</code>, bằng 0 khi \(t\) = <code>-distanceFromPlane / speedAlongNormal</code>.</li>
+						<li><code>speedAlongNormal</code> là tốc độ tia đi theo hướng pháp tuyến. Âm nghĩa là tia đi ngược pháp tuyến (pháp tuyến hướng ra ngoài): đi vào. Dương: đi ra.</li>
+						<li>Tia song song với mặt: nếu đang ở phía ngoài mặt đó thì không bao giờ vào được, trả về <code>null</code>; ở phía trong thì mặt này không giới hạn gì.</li>
+						<li><code>enterDistance</code> bắt đầu từ 0: không tính phần phía sau camera. Kết quả là khoảng cách từ camera tới chỗ tia chạm vào vật.</li>
+					</ul>
+					Cách này có tên là thuật toán Cyrus–Beck, dùng được cho mọi <code>ConvexCollider</code> nhờ <code>getFaces</code> của blog 6. Bên <code>index.js</code>, tìm vật có
+					Rigidbody gần nhất mà tia chạm, rồi đổi màu nó (nhớ màu cũ để trả lại khi không nhắm vào nữa):
+					<pre><code class="language-javascript">let highlightedCollider = null;
+let highlightedColliderColor = null;
+...
+function raycastDynamicCollider(origin, direction) {
+	let closestCollider = null;
+	let closestDistance = Infinity;
+	for (let collider of scene.getAllComponentsOfType(ConvexCollider)) {
+		if (collider.rigidbody == null) continue;
+		let distance = collider.raycast(origin, direction);
+		if (distance != null && distance < closestDistance) {
+			closestDistance = distance;
+			closestCollider = collider;
+		}
+	}
+	return [closestCollider, closestDistance];
+}
+
+function updateHighlightedCollider() {
+	let [collider] = raycastDynamicCollider(camera.transform.position, camera.transform.getForward());
+	if (collider == highlightedCollider) return;
+	if (highlightedCollider != null) highlightedCollider.gameObject.getComponent(MeshRenderer).material.color = highlightedColliderColor;
+	highlightedCollider = collider;
+	if (highlightedCollider != null) {
+		let material = highlightedCollider.gameObject.getComponent(MeshRenderer).material;
+		highlightedColliderColor = material.color;
+		material.color = new Color(255, 230, 60);
+	}
+}</code></pre>
+					<code>updateHighlightedCollider</code> chạy mỗi frame sau vật lý. Bỏ qua vật không có Rigidbody để không bao giờ chọn mặt đất. Kết quả, di chuyển camera (WASD, chuột):
+					<div class="htmlPreview" id="htmlPreview48" data-disabled="true"></div>
+					Khối nằm dưới dấu chữ thập sáng vàng, kể cả viên crystal.
+
+					<h2>7. Đẩy</h2>
+					Phần cuối cùng: giữ chuột trái (hoặc nút <b>Push</b> trên điện thoại) để đẩy khối đang nhắm, theo hướng camera nhìn, tại đúng điểm mà tia chạm vào. Đẩy là một lực
+					đặt tại một điểm, <code>addForceAtPosition</code> của blog 3, thêm trong <code>fixedUpdate</code> cũng của blog 3 (lực phải thêm trước mỗi bước vật lý).<br/><br/>
+
+					Lực bao nhiêu? Một khối ở giữa tháp bị cả chục tầng đè lên, ma sát ở mặt trên và mặt dưới của nó lớn hơn nhiều so với trọng lượng của chính nó. Mình thử lực cố định
+					trước: 120 N thì khối ở giữa tháp nhích chậm, ma sát kéo theo cả các tầng phía trên, và tháp đổ. 200 N thì khối ở giữa bật ra gọn gàng, tháp đứng yên, nhưng khối ở tầng
+					trên cùng (không có gì đè lên, ma sát rất nhỏ) sẽ bị bắn đi với gia tốc gần 200 m/s². Thứ mình muốn là đẩy giống một ngón tay: đẩy mạnh tới
+					đâu cũng được để khối di chuyển với một tốc độ nhất định (3 m/s), nhưng không quá một lực tối đa (300 N). Lực tỉ lệ với phần tốc độ còn thiếu: điểm bị đẩy đang
+					chạy theo hướng đẩy chậm hơn 3 m/s bao nhiêu thì đẩy mạnh bấy nhiêu, nhân với 1000 và với khối lượng của vật để chỉ cần thiếu một chút là đã đẩy rất mạnh (vật nặng gấp đôi thì cần lực gấp đôi cho cùng gia tốc, các khối của ta đều
+					nặng 1 kg), rồi kẹp trong khoảng 0 tới 300 N. Đây là cách làm thô: lực chỉ đẩy chứ không kéo lại, nên khi vật đã nhanh hơn 3 m/s thì lực bằng 0 và để ma sát làm chậm lại,
+					nhưng đủ cho việc đẩy khối Jenga:
+					<pre><code class="language-javascript">let pushSpeed = 3;
+let maxPushForce = 300;
+let pushHitPoint = null;
+let pushArrow = scene.add(new GameObject("Push arrow"));
+pushArrow.addComponent(new MeshRenderer(null, new Material(new Color(255, 0, 0)), false));
+...
+function fixedUpdate() {
+	if (!keyStates["push"]) return;
+	let [collider, distance] = raycastDynamicCollider(camera.transform.position, camera.transform.getForward());
+	if (collider == null) return;
+
+	let rigidbody = collider.rigidbody;
+	let pushDirection = camera.transform.getForward();
+	let hitPoint = Vector3.add(camera.transform.position, Vector3.mul(pushDirection, distance));
+	let speedAlongPush = Vector3.dot(rigidbody.getPointVelocity(hitPoint), pushDirection);
+	let forceStrength = Math.max(0, Math.min(maxPushForce, (pushSpeed - speedAlongPush) * 1000 * rigidbody.mass));
+	rigidbody.addForceAtPosition(Vector3.mul(pushDirection, forceStrength), hitPoint);
+	pushHitPoint = hitPoint;
+}
+
+function updatePushArrow() {
+	let isPushing = keyStates["push"] && pushHitPoint != null;
+	pushArrow.getComponent(MeshRenderer).mesh = isPushing ? cubeMesh : null;
+	if (isPushing) {
+		let pushDirection = camera.transform.getForward();
+		placeLine(pushArrow, Vector3.sub(pushHitPoint, Vector3.mul(pushDirection, 1)), pushHitPoint, 0.05);
+	}
+	if (!keyStates["push"]) pushHitPoint = null;
+}</code></pre>
+					<ul>
+						<li>Điểm chạm của tia là vị trí camera cộng hướng nhìn nhân khoảng cách mà <code>raycast</code> trả về. Mỗi bước vật lý tia được bắn lại, nên khi khối trượt đi thì ngón
+						tay "đi theo" nó.</li>
+						<li><code>getPointVelocity</code> (blog 5) cho vận tốc của chính điểm bị đẩy, kể cả phần do xoay.</li>
+						<li>Mũi tên đỏ dài 1 kết thúc tại điểm đẩy, vẽ mỗi frame trong <code>updatePushArrow</code> (gọi ngay sau <code>updateHighlightedCollider</code>).</li>
+					</ul>
+					Chuột trái đang được dùng để khóa con trỏ (pointer lock) cho việc nhìn xung quanh, nên mình chỉ coi là "đẩy" khi con trỏ đã khóa rồi; nút Push dùng lại cơ chế
+					<code>data-key</code> như các nút đẩy của blog 3. Hướng dẫn trong nút Help cũng thêm 2 dòng tương ứng:
+					<pre><code class="language-javascript">&lt;div id=&quot;pushControls&quot;&gt;
+	&lt;button data-key=&quot;push&quot; ...&gt;Push&lt;/button&gt;
+&lt;/div&gt;
+...
+for (let canvas of [gameCanvas, softwareCanvas]) {
+	canvas.addEventListener("mousedown", () => {
+		if (document.pointerLockElement !== renderDiv) requestMouseLook();
+		else keyStates["push"] = true;						// <---------------------
+	});
+}
+window.addEventListener("mouseup", () => {					// <---------------------
+	keyStates["push"] = false;
+});</code></pre>
+					Kết quả, click vào canvas để khóa chuột, nhắm vào một khối ở giữa tháp (ví dụ khối giữa của một tầng) rồi giữ chuột trái:
+					<div class="htmlPreview" id="htmlPreview49" data-disabled="true"></div>
+					Khối bị đẩy trượt ra phía sau tháp, các tầng phía trên đứng yên trên 2 khối còn lại. Trong một lần thử của mình, đẩy khối giữa của tầng 7 ra, các khối khác xê dịch nhiều nhất
+					khoảng 0.5. Bạn có thể tiếp tục rút các khối khác cho tới khi tháp đổ, bấm Reset để xếp lại, hoặc nhắm vào viên crystal và đẩy nó vào chân tháp: GJK, EPA và contact
+					manifold xử lý nó y như mọi khối hộp, không có dòng code nào viết riêng cho nó.<br/><br/>
+
+					Như vậy là xong series. Từ một cái hộp nảy trên mặt đất giả, ta đã có một physics engine với GJK + EPA cho mọi hình lồi, contact manifold, sequential impulses với ma
+					sát và warm starting. Vẫn còn nhiều thứ mà engine thật có: sleeping (cho các vật đứng yên ngừng tính toán), continuous collision detection (để vật nhanh không xuyên qua
+					vật mỏng), joints, broad phase tốt hơn. Nhưng đủ để rút khối Jenga, và đủ để hiểu những engine đó đang làm gì bên trong.
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3DPhysics.js"></script>
+    <script src="concept.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

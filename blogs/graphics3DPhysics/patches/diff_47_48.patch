@@ -1,0 +1,77 @@
+--- "a/htmlPreviews\\htmlPreview47.html"
++++ "b/htmlPreviews\\htmlPreview48.html"
+@@ -2933,6 +2933,24 @@ void main(){
+ 				return this.transform.transformPoint(best);
+ 			}
+ 
++			raycast(origin, direction) {
++				let enterDistance = 0;
++				let exitDistance = Infinity;
++				for (let face of this.getFaces()) {
++					let distanceFromPlane = Vector3.dot(Vector3.sub(origin, face.vertices[0]), face.normal);
++					let speedAlongNormal = Vector3.dot(direction, face.normal);
++					if (Math.abs(speedAlongNormal) < 1e-9) {
++						if (distanceFromPlane > 0) return null;
++						continue;
++					}
++					let distance = -distanceFromPlane / speedAlongNormal;
++					if (speedAlongNormal < 0) enterDistance = Math.max(enterDistance, distance);
++					else exitDistance = Math.min(exitDistance, distance);
++					if (enterDistance > exitDistance) return null;
++				}
++				return enterDistance;
++			}
++
+ 			calculateLocalInverseInertia(mass) {
+ 				let min = new Vector3(Infinity, Infinity, Infinity);
+ 				let max = new Vector3(-Infinity, -Infinity, -Infinity);
+@@ -3590,6 +3608,8 @@ void main(){
+ 		let lastTime = performance.now();
+ 		let dt = 0;
+ 		let physicsTime = 0;
++		let highlightedCollider = null;
++		let highlightedColliderColor = null;
+ 
+ 		function fixedUpdate() {
+ 		}
+@@ -3602,6 +3622,32 @@ void main(){
+ 			line.transform.localScale = new Vector3(thickness, thickness, direction.magnitude());
+ 		}
+ 
++		function raycastDynamicCollider(origin, direction) {
++			let closestCollider = null;
++			let closestDistance = Infinity;
++			for (let collider of scene.getAllComponentsOfType(ConvexCollider)) {
++				if (collider.rigidbody == null) continue;
++				let distance = collider.raycast(origin, direction);
++				if (distance != null && distance < closestDistance) {
++					closestDistance = distance;
++					closestCollider = collider;
++				}
++			}
++			return [closestCollider, closestDistance];
++		}
++
++		function updateHighlightedCollider() {
++			let [collider] = raycastDynamicCollider(camera.transform.position, camera.transform.getForward());
++			if (collider == highlightedCollider) return;
++			if (highlightedCollider != null) highlightedCollider.gameObject.getComponent(MeshRenderer).material.color = highlightedColliderColor;
++			highlightedCollider = collider;
++			if (highlightedCollider != null) {
++				let material = highlightedCollider.gameObject.getComponent(MeshRenderer).material;
++				highlightedColliderColor = material.color;
++				material.color = new Color(255, 230, 60);
++			}
++		}
++
+ 		function updateGameObjectTransforms() {
+ 			camera.updateMovement(dt, keyStates);
+ 			if (lookInput.x != 0 || lookInput.y != 0) {
+@@ -3634,6 +3680,7 @@ void main(){
+ 			let physicsStartTime = performance.now();
+ 			physicsWorld.update(scene, dt, fixedUpdate);
+ 			physicsTime += performance.now() - physicsStartTime;
++			updateHighlightedCollider();
+ 			renderer.render(scene, camera);
+ 
+ 			requestAnimationFrame(update);

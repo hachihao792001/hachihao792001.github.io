@@ -1,0 +1,28 @@
+--- "a/htmlPreviews\\htmlPreview7.html"
++++ "b/htmlPreviews\\htmlPreview8.html"
+@@ -2737,6 +2737,16 @@ void main(){
+ 		class PhysicsWorld {
+ 			constructor(gravity = new Vector3(0, -9.81, 0)) {
+ 				this.gravity = gravity;
++				this.fixedDeltaTime = 1 / 60;
++				this.timeAccumulator = 0;
++			}
++
++			update(scene, dt) {
++				this.timeAccumulator += Math.min(dt, 0.1);
++				while (this.timeAccumulator >= this.fixedDeltaTime) {
++					this.step(scene, this.fixedDeltaTime);
++					this.timeAccumulator -= this.fixedDeltaTime;
++				}
+ 			}
+ 
+ 			step(scene, dt) {
+@@ -2902,7 +2912,7 @@ void main(){
+ 			}
+ 
+ 			updateGameObjectTransforms();
+-			physicsWorld.step(scene, dt);
++			physicsWorld.update(scene, dt);
+ 			updateBouncePeaks();
+ 			renderer.render(scene, camera);
+ 

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="Torque từ đầu: vận tốc góc, lực đặt lệch tâm, tích có hướng r × F, moment quán tính và inertia tensor.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="../graphics3D/graphics3D.css">
+    <link rel="stylesheet" href="concept.css">
+    <style>
+        .blog-content ul li a {
+            display: inline;
+            font-weight: inherit;
+            margin-bottom: 0;
+        }
+    </style>
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Physics #3: Torque</title>
+</head>
+
+<body data-graphics3D-id="physics3">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Torque</h1>
+
+					Tới giờ mọi vật trong engine chỉ biết trượt: vị trí thay đổi, còn hướng thì đứng yên. Ngoài đời thì khác, bạn đẩy vào góc của một cái hộp, nó vừa trượt
+					đi vừa xoay. Blog này làm phần xoay, và mình sẽ đi từ đầu, vì đây là phần mà lúc đi học mình chưa từng được học cho tử tế: vận tốc góc, torque,
+					và moment quán tính.<br/><br/>
+
+					Mình sẽ làm trên một khối hộp lơ lửng giữa không trung, không có trọng lực, không va chạm với gì cả, để chỉ còn đúng chuyện xoay.
+
+					<h2>1. Vận tốc góc</h2>
+					Vận tốc ở blog 1 nói vật đi nhanh cỡ nào, theo hướng nào. Với chuyện xoay ta cũng cần 2 thứ tương tự: vật xoay <b>quanh trục nào</b>, và xoay
+					<b>nhanh cỡ nào</b>. Tốc độ xoay đo bằng radian mỗi giây (rad/s). 1 radian là góc mà cung tròn chắn bởi nó dài đúng bằng bán kính, 1 vòng là 2π ≈ 6.28 radian, nên 2 rad/s là khoảng 1 vòng mỗi 3.1 giây. Cũng từ định nghĩa đó: xoay ω rad mỗi giây thì một điểm cách trục một khoảng d chạy được ω·d mét mỗi giây.<br/><br/>
+
+					Trục xoay là một hướng, tức là một vector đơn vị, còn tốc độ là một con số, nên người ta gộp 2 thứ này lại thành một vector duy nhất gọi là
+					<b>vận tốc góc</b> (angular velocity), ký hiệu \(\vec{\omega}\) (omega): hướng của nó là trục xoay, độ dài của nó là tốc độ xoay. Ví dụ
+					\(\vec{\omega} = (0, 2, 0)\) là xoay quanh trục y với tốc độ 2 rad/s. Còn xoay quanh trục đó theo chiều nào thì phải có thêm một quy ước, phần 4
+					sẽ quay lại chuyện này.<br/><br/>
+
+					Cập nhật hướng của vật thì giống hệt cập nhật vị trí: trong <code>dt</code> giây, vật xoay được một góc \(|\vec{\omega}| \cdot dt\) quanh trục
+					\(\vec{\omega} / |\vec{\omega}|\). Engine đã có sẵn hàm <code>Quaternion.buildQuaternionAxisRadian(axis, angle)</code> từ series trước để
+					tạo quaternion xoay một góc quanh một trục, và cách cộng thêm một phép xoay vào <code>transform.rotation</code> thì <code>updateGameObjectTransforms</code>
+					đang làm với mặt trời mỗi frame: nhân quaternion xoay vào bên trái.
+					<pre><code class="language-javascript">class Rigidbody extends Component {
+	constructor(mass = 1, useGravity = true) {						// <---------------------
+		super();
+		this.mass = mass;
+		this.inverseMass = 1 / mass;
+		this.useGravity = useGravity;								// <---------------------
+		this.velocity = new Vector3(0, 0, 0);
+		this.angularVelocity = new Vector3(0, 0, 0);				// <---------------------
+	}
+
+	integrateForces(dt, gravity) {
+		if (this.useGravity) {										// <---------------------
+			this.velocity = Vector3.add(this.velocity, Vector3.mul(gravity, dt));
+		}
+	}
+
+	integrateVelocity(dt) {
+		this.transform.position = Vector3.add(this.transform.position, Vector3.mul(this.velocity, dt));
+
+		let angularSpeed = this.angularVelocity.magnitude();								// <---------------------
+		if (angularSpeed > 0) {																// <---------------------
+			let axis = Vector3.div(this.angularVelocity, angularSpeed);						// <---------------------
+			let deltaRotation = Quaternion.buildQuaternionAxisRadian(axis, angularSpeed * dt);	// <---------------------
+			this.transform.rotation = Quaternion.multiply(deltaRotation, this.transform.rotation);	// <---------------------
+		}																					// <---------------------
+	}
+}</code></pre>
+					<ul>
+						<li><code>useGravity</code>: để có những vật lơ lửng như cái hộp sắp thêm vào. Mặc định vẫn là <code>true</code>, các quả bóng không bị ảnh hưởng.</li>
+						<li><code>if (angularSpeed > 0)</code>: vật không xoay thì không có trục nào để chia, chia cho 0 sẽ ra NaN.</li>
+						<li>Nhân <code>deltaRotation</code> vào bên trái nghĩa là xoay thêm quanh một trục của thế giới (nhân bên phải thì trục được hiểu là trục của chính vật),
+						\(\vec{\omega}\) của ta tính theo thế giới nên nhân bên trái, giống như cách mặt trời được xoay quanh trục y của thế giới.</li>
+					</ul>
+					Trong <code>spawnPhysicsObjects</code>, mình thêm một khối hộp lơ lửng phía trước chỗ thả bóng, không trọng lực, cho nó vận tốc góc
+					<code>(0, 2, 0)</code>:
+					<pre><code class="language-javascript">let cube = scene.add(new GameObject("Cube", new Vector3(-3, 3.5, -4.5), Vector3.zero, Vector3.one));
+cube.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+let cubeRigidbody = cube.addComponent(new Rigidbody(1, false));
+cubeRigidbody.angularVelocity = new Vector3(0, 2, 0);
+physicsObjects.push(cube);</code></pre>
+					Kết quả, cái hộp bên trái tự xoay quanh trục thẳng đứng, khoảng 3 giây một vòng:
+					<div class="htmlPreview" id="htmlPreview15" data-disabled="true"></div>
+
+					<h2>2. Đẩy vào một điểm</h2>
+					Vận tốc góc thì ta tự gán, giờ ta muốn nó tự sinh ra khi đẩy vào vật. Trước tiên là đẩy kiểu đơn giản: tác dụng một <b>lực</b> vào vật.
+					Theo F = ma, lực chia cho khối lượng ra gia tốc, gia tốc nhân <code>dt</code> cộng vào vận tốc, y như trọng lực. Khác ở chỗ trọng lực
+					thì có sẵn, còn lực thì do code bên ngoài thêm vào bất cứ lúc nào, có khi nhiều lực một lúc. Nên <code>Rigidbody</code> có một biến
+					<code>force</code> để cộng dồn mọi lực được thêm vào trong bước này, và xóa về 0 sau khi dùng:
+					<pre><code class="language-javascript">class Rigidbody extends Component {
+	constructor(mass = 1, useGravity = true) {
+		...
+		this.angularVelocity = new Vector3(0, 0, 0);
+		this.force = new Vector3(0, 0, 0);								// <---------------------
+	}
+
+	addForce(force) {													// <---------------------
+		this.force = Vector3.add(this.force, force);
+	}
+
+	integrateForces(dt, gravity) {
+		if (this.useGravity) {
+			this.velocity = Vector3.add(this.velocity, Vector3.mul(gravity, dt));
+		}
+		this.velocity = Vector3.add(this.velocity, Vector3.mul(this.force, this.inverseMass * dt));	// <---------------------
+		this.force = new Vector3(0, 0, 0);															// <---------------------
+	}
+	...
+}</code></pre>
+					Lực được thêm từ <code>index.js</code>, khi bạn giữ một nút bấm. Có một vấn đề nhỏ: <code>update</code> chạy theo frame, vật lý chạy theo bước 1/60 giây
+					(blog 1). Ở màn hình 144Hz, cứ 2 đến 3 frame mới có 1 bước vật lý, nếu frame nào cũng <code>addForce</code> thì lực bị cộng dồn 2 đến 3 lần trước khi
+					được dùng, vật bị đẩy mạnh hơn trên màn hình tần số cao. Vì vậy <code>PhysicsWorld.update</code> nhận thêm một hàm <code>fixedUpdate</code> và gọi
+					nó ngay trước mỗi bước vật lý, mọi lực sẽ được thêm trong đó (cái tên lấy từ <code>FixedUpdate</code> của Unity, cũng để làm đúng việc này):
+					<pre><code class="language-javascript">update(scene, dt, fixedUpdate) {				// <---------------------
+	this.timeAccumulator += Math.min(dt, 0.1);
+	while (this.timeAccumulator >= this.fixedDeltaTime) {
+		fixedUpdate();								// <---------------------
+		this.step(scene, this.fixedDeltaTime);
+		this.timeAccumulator -= this.fixedDeltaTime;
+	}
+}</code></pre>
+					Bên <code>index.js</code>, mình thêm 2 nút giữ để đẩy: <b>Push center</b> đẩy vào tâm hộp, <b>Push off-center</b> đẩy vào giữa mặt trước của hộp
+					(mặt hướng về phía camera), cả 2 đều đẩy theo trục x của hộp (sang phải). Điểm đẩy và hướng đẩy được cho trong hệ tọa độ của hộp
+					(<code>offCenterPushPoint = (0, 0, -0.5)</code>, <code>Vector3.right</code>) rồi đổi ra thế giới bằng <code>transformPoint</code> và
+					<code>transformDirection</code>, để khi hộp xoay thì điểm đẩy xoay theo, như ngón tay dính vào mặt hộp.
+					<pre><code class="language-javascript">&lt;div id=&quot;pushControls&quot;&gt;
+	&lt;button data-key=&quot;pushCenter&quot; ...&gt;Push center&lt;/button&gt;
+	&lt;button data-key=&quot;pushOffCenter&quot; ...&gt;Push off-center&lt;/button&gt;
+&lt;/div&gt;
+...
+let pushableObjects = [];
+let pushArrows = [];
+let pushStrength = 2;
+let offCenterPushPoint = new Vector3(0, 0, -0.5);
+...
+function fixedUpdate() {
+	for (let pushableObject of pushableObjects) {
+		let rigidbody = pushableObject.getComponent(Rigidbody);
+		let force = Vector3.mul(pushableObject.transform.transformDirection(Vector3.right), pushStrength);
+		if (keyStates["pushCenter"]) rigidbody.addForce(force);
+		if (keyStates["pushOffCenter"]) rigidbody.addForce(force);
+	}
+}
+...
+physicsWorld.update(scene, dt, fixedUpdate);	// <---------------------</code></pre>
+					Để ý là cả 2 nút hiện tại làm đúng một việc: <code>addForce</code> không nhận vào điểm đặt lực, nên nó không biết bạn đẩy vào đâu.
+					Các nút bấm dùng lại cơ chế <code>data-key</code> của bảng Mobile controls từ series trước (giữ nút thì <code>keyStates[key]</code> là
+					<code>true</code>), chỉ đổi <code>mobileControls.querySelectorAll</code> thành <code>document.querySelectorAll</code> để nó tìm cả những nút nằm
+					ngoài bảng đó. <code>pushableObjects</code> là danh sách những vật bị đẩy, được gán trong <code>spawnPhysicsObjects</code> (hiện tại chỉ có cái hộp).
+					Mình cũng bỏ vận tốc góc ban đầu của cái hộp, để thấy rõ cái gì làm nó xoay.<br/><br/>
+
+					Để thấy được lực, mình vẽ một mũi tên đỏ dài 1.5 kết thúc tại điểm đẩy. Mũi tên chỉ là một khối hộp được kéo dài: <code>placeLine</code> đặt khối hộp
+					vào giữa 2 điểm, xoay trục z của nó theo hướng từ điểm đầu tới điểm cuối bằng <code>lookRotation</code>, rồi scale trục z bằng độ dài đoạn thẳng.
+					<code>lookRotation(forward, up)</code> xoay trục z của vật theo <code>forward</code>, rồi dùng <code>up</code> để quyết định vật lăn quanh trục đó bao nhiêu
+					(trục y của vật sẽ nghiêng về phía <code>up</code>). Nếu đoạn thẳng thẳng đứng thì <code>forward</code> trùng với <code>up</code> mặc định, không còn biết
+					lăn thế nào, nên lúc đó mình đổi <code>up</code> thành <code>Vector3.forward</code> (ở phần 5 sẽ có một vật mà mũi tên của nó thẳng đứng). Không đẩy thì gán <code>mesh = null</code>, renderer bỏ qua MeshRenderer không có mesh
+					(series trước dùng chuyện này lúc file obj chưa load xong):
+					<pre><code class="language-javascript">function placeLine(line, from, to, thickness) {
+	let direction = Vector3.sub(to, from);
+	let forward = direction.clone().normalize();
+	line.transform.position = Vector3.div(Vector3.add(from, to), 2);
+	line.transform.lookRotation(forward, Math.abs(forward.y) > 0.99 ? Vector3.forward : Vector3.up);
+	line.transform.localScale = new Vector3(thickness, thickness, direction.magnitude());
+}
+
+function updatePushArrows() {
+	while (pushArrows.length < pushableObjects.length) {
+		let arrow = scene.add(new GameObject("Push arrow"));
+		arrow.addComponent(new MeshRenderer(null, new Material(new Color(255, 0, 0)), false));
+		pushArrows.push(arrow);
+	}
+	for (let i = 0; i < pushableObjects.length; i++) {
+		let transform = pushableObjects[i].transform;
+		let arrowRenderer = pushArrows[i].getComponent(MeshRenderer);
+		let isPushing = keyStates["pushCenter"] || keyStates["pushOffCenter"];
+		arrowRenderer.mesh = isPushing ? cubeMesh : null;
+		if (!isPushing) continue;
+
+		let pushPoint = keyStates["pushOffCenter"] ? transform.transformPoint(offCenterPushPoint) : transform.position;
+		let forceDirection = transform.transformDirection(Vector3.right);
+		placeLine(pushArrows[i], Vector3.sub(pushPoint, Vector3.mul(forceDirection, 1.5)), pushPoint, 0.08);
+	}
+}</code></pre>
+					<code>updatePushArrows</code> được gọi mỗi frame ngay sau <code>physicsWorld.update</code>. Mũi tên tạo thêm khi cần (vòng <code>while</code>) và
+					không nằm trong <code>physicsObjects</code>, nên bấm Reset không xóa nó. Kết quả, giữ từng nút một lúc (bấm Reset khi hộp trôi xa quá):
+					<div class="htmlPreview" id="htmlPreview16" data-disabled="true"></div>
+					Cả 2 nút đều làm hộp trượt sang phải mà không xoay, mặc dù mũi tên của nút thứ hai đang gạt ngang ở mặt trước. Bạn thử đặt ngón tay lên mặt trước của
+					một cái hộp trên bàn rồi gạt ngang sang phải xem, nó sẽ xoay.
+
+					<h2>3. Torque</h2>
+					Thứ làm vật xoay khi bị đẩy gọi là <b>torque</b> (tiếng Việt là mô men lực). Nó phụ thuộc vào 2 thứ: lực mạnh cỡ nào, và lực đặt ở đâu so với
+					tâm của vật. Ai từng vặn ốc bằng cờ lê đều biết: cầm ở đuôi cờ lê thì vặn nhẹ hơn cầm sát con ốc, và đẩy vuông góc với cờ lê thì hiệu quả nhất,
+					còn đẩy dọc theo cờ lê (hướng thẳng vào con ốc) thì không xoay được gì.<br/><br/>
+
+					Gọi \(\vec{r}\) là vector từ tâm của vật tới điểm đặt lực, \(\vec{F}\) là lực. Trong 2D (nhìn vật từ phía trước, giống như camera nhìn vào màn hình),
+					torque là một con số:
+					$$\tau = r_x F_y - r_y F_x$$
+					Dương thì vật xoay ngược chiều kim đồng hồ, âm thì xoay cùng chiều kim đồng hồ, bằng 0 thì không xoay. Bạn kéo thử trong demo dưới đây: chấm xanh là
+					điểm đặt lực, đầu mũi tên cam là lực. Đẩy thẳng vào tâm thì τ = 0; đặt lực càng xa tâm, hoặc hướng lực càng vuông góc với \(\vec{r}\), thì τ càng lớn.
+					Nét đứt xám là khoảng cách vuông góc từ tâm tới đường thẳng chứa lực (gọi là cánh tay đòn), \(|\tau|\) đúng bằng cánh tay đòn nhân độ lớn của lực,
+					đúng như cái cờ lê. Ví dụ dễ kiểm tra: \(\vec{r} = (1, 0)\), \(\vec{F} = (0, 2)\) (đẩy thẳng lên ở cạnh phải), thì \(\tau = 1 \cdot 2 - 0 \cdot 0 = 2\),
+					cánh tay đòn là 1, lực dài 2, và đẩy lên ở bên phải thì vật xoay ngược chiều kim đồng hồ.
+					<div class="conceptDemo" data-concept="torque" data-height="450"></div>
+
+					Trong 3D, ngoài độ mạnh còn có trục xoay, và may mắn là có sẵn một phép toán cho ra đúng cả 2 thứ: tích có hướng (cross product), cái ta đã dùng
+					để tính pháp tuyến tam giác ở series trước.
+					$$\vec{\tau} = \vec{r} \times \vec{F} = (r_y F_z - r_z F_y,\; r_z F_x - r_x F_z,\; r_x F_y - r_y F_x)$$
+					Để ý thành phần z chính là công thức 2D ở trên: hình 2D chính là lực và \(\vec{r}\) nằm trong mặt phẳng xy, vật xoay quanh trục z.
+					Kết quả \(\vec{\tau}\) là một vector vuông góc với cả \(\vec{r}\) và \(\vec{F}\), tức là nằm dọc theo trục mà lực làm vật xoay quanh (hướng nào
+					trong 2 hướng của trục thì phần 4 sẽ nói). Độ dài của nó là \(|\vec{r}||\vec{F}|\sin\theta\) với \(\theta\) là góc giữa \(\vec{r}\) và \(\vec{F}\) (đây là một tính chất có sẵn của tích có hướng:
+					độ dài của \(\vec{a} \times \vec{b}\) luôn là \(|\vec{a}||\vec{b}|\sin\theta\)),
+					mà \(|\vec{r}|\sin\theta\) chính là cánh tay đòn (cạnh góc vuông đối diện góc \(\theta\)), nên độ dài là cánh tay đòn nhân độ lớn của lực. Torque cũng là một vector giống như vận tốc góc:
+					hướng là trục, độ dài là độ mạnh.<br/><br/>
+
+					"Tâm của vật" ở đây là <b>trọng tâm</b> (center of mass). Một vật đang trôi tự do mà bị đẩy thì nó xoay quanh trọng tâm của nó, mình sẽ không chứng minh
+					chuyện này, bạn có thể đọc thêm về <a href="https://en.wikipedia.org/wiki/Center_of_mass">center of mass</a>. Các vật của ta đều đối xứng (hộp, cầu),
+					nên trọng tâm nằm đúng ở <code>transform.position</code>.<br/><br/>
+
+					Torque làm thay đổi vận tốc góc, giống như lực làm thay đổi vận tốc. Tạm thời mình làm đơn giản nhất: torque nhân <code>dt</code> cộng thẳng
+					vào vận tốc góc, như thể vật nào cũng dễ xoay như nhau (phần 5 sẽ sửa chỗ này). <code>Rigidbody</code> thêm một biến cộng dồn <code>torque</code>, và
+					một hàm thêm lực tại một điểm, vừa cộng lực như cũ vừa cộng torque:
+					<pre><code class="language-javascript">class Rigidbody extends Component {
+	constructor(mass = 1, useGravity = true) {
+		...
+		this.force = new Vector3(0, 0, 0);
+		this.torque = new Vector3(0, 0, 0);					// <---------------------
+	}
+
+	addForce(force) {
+		this.force = Vector3.add(this.force, force);
+	}
+
+	addForceAtPosition(force, position) {					// <---------------------
+		this.addForce(force);
+		let r = Vector3.sub(position, this.transform.position);
+		this.torque = Vector3.add(this.torque, Vector3.cross(r, force));
+	}
+
+	integrateForces(dt, gravity) {
+		...
+		this.velocity = Vector3.add(this.velocity, Vector3.mul(this.force, this.inverseMass * dt));
+		this.angularVelocity = Vector3.add(this.angularVelocity, Vector3.mul(this.torque, dt));		// <---------------------
+		this.force = new Vector3(0, 0, 0);
+		this.torque = new Vector3(0, 0, 0);															// <---------------------
+	}
+	...
+}
+...
+function fixedUpdate() {
+	...
+		if (keyStates["pushOffCenter"]) rigidbody.addForceAtPosition(force, pushableObject.transform.transformPoint(offCenterPushPoint));	// <---------------------
+	...
+}</code></pre>
+					Lực đẩy vào một điểm vẫn làm cả vật trượt đi y như đẩy vào tâm (dòng <code>this.addForce(force)</code>), cộng thêm việc xoay. Nghe như vô lý (lực phải chia ra một phần để xoay chứ?), nhưng vật lý thật đúng là vậy: trọng tâm của vật luôn chuyển động theo F = ma, bất kể lực đặt ở đâu. Kết quả, giữ Push off-center:
+					<div class="htmlPreview" id="htmlPreview17" data-disabled="true"></div>
+					Nó xoay rồi. Nhưng bạn nhìn kỹ mặt trước của hộp, chỗ mũi tên đỏ đâm vào: mũi tên đẩy sang phải, mà mặt trước lại đi sang <b>trái</b>. Cái hộp
+					xoay ngược chiều với cú đẩy.
+
+					<h2>4. Chiều xoay</h2>
+					Mình cố ý để lỗi này. Ở phần 1 mình có nói xoay quanh trục theo chiều nào thì cần một quy ước. Quy ước mà mọi công thức vật lý về xoay đều dùng là:
+					một điểm trên vật, cách trọng tâm một vector \(\vec{r}\), khi vật xoay với vận tốc góc \(\vec{\omega}\) thì có vận tốc
+					$$\vec{v} = \vec{\omega} \times \vec{r}$$
+					Vì sao hợp lý: điểm đó chạy vòng tròn quanh trục, nên vận tốc của nó phải vuông góc với trục (\(\vec{\omega}\)) và vuông góc với \(\vec{r}\), mà tích
+					có hướng cho đúng một vector vuông góc với cả 2. Độ dài của nó, \(|\vec{\omega}||\vec{r}|\sin\theta\) (\(\theta\) là góc giữa \(\vec{\omega}\) và
+					\(\vec{r}\)), bằng tốc độ xoay nhân khoảng cách từ điểm tới trục: càng xa trục chạy càng nhanh. Vuông góc thì có 2 hướng ngược nhau, chọn hướng nào là
+					do thứ tự \(\vec{\omega} \times \vec{r}\) quyết định, và đó chính là quy ước. Blog 5 sẽ cần công thức này.<br/><br/>
+
+					Torque \(\vec{r} \times \vec{F}\) có khớp với quy ước này không? Tức là đẩy vào một điểm thì điểm đó có bắt đầu chạy theo hướng mình đẩy không? Thử bằng
+					số với cú đẩy của ta: điểm đẩy \(\vec{r} = (0, 0, -0.5)\) (mặt trước), lực \(\vec{F} = (2, 0, 0)\):
+					$$\vec{\tau} = \vec{r} \times \vec{F} = (0 \cdot 0 - (-0.5) \cdot 0,\; (-0.5) \cdot 2 - 0 \cdot 0,\; 0 \cdot 0 - 0 \cdot 2) = (0, -1, 0)$$
+					Vận tốc góc nhận thêm cùng hướng với torque, tức là theo -y. Vận tốc của điểm ở mặt trước khi đó là:
+					$$\vec{\omega} \times \vec{r} = (0, -1, 0) \times (0, 0, -0.5) = ((-1)(-0.5) - 0 \cdot 0,\; 0 \cdot 0 - 0 \cdot (-0.5),\; 0 \cdot 0 - (-1) \cdot 0) = (0.5, 0, 0)$$
+					Theo công thức thì mặt trước phải đi theo +x, cùng hướng cú đẩy. Vậy demo trước sai ở đâu? Ở chỗ biến vận tốc góc thành chuyển động xoay thật:
+					hàm <code>Quaternion.buildQuaternionAxisRadian(axis, angle)</code> từ series trước. Mình thử trực tiếp với trục \((0, 1, 0)\) và điểm \((1, 0, 0)\).
+					Theo quy ước, xoay quanh +y thì điểm này phải đi về phía \((0, 1, 0) \times (1, 0, 0) = (0, 0, -1)\), tức -z. Còn
+					<code>buildQuaternionAxisRadian((0, 1, 0), 0.1)</code> xoay nó thành <code>(0.995, 0, 0.0998)</code>, đi về phía +z. Hàm của engine dùng chiều ngược
+					lại với quy ước, nên mình truyền góc âm vào. (Chỉ có việc tạo quaternion từ trục và góc là ngược, còn <code>rotateVector</code>,
+					<code>inverseRotateVector</code> thì vẫn dùng như cũ.)
+					<pre><code class="language-javascript">let deltaRotation = Quaternion.buildQuaternionAxisRadian(axis, -angularSpeed * dt);	// <--------------------- thêm dấu trừ</code></pre>
+					Kết quả, mặt trước giờ đi sang phải cùng với mũi tên:
+					<div class="htmlPreview" id="htmlPreview18" data-disabled="true"></div>
+
+					<h2>5. Moment quán tính</h2>
+					Bây giờ thử nghĩ: một khối hộp gỗ nặng 1 kg và một tấm ván dài 3 mét nặng 1 kg, tác dụng cùng một torque (cùng lực, cùng cánh tay đòn) vào mỗi cái,
+					cái nào xoay nhanh hơn? Ngoài đời là cái hộp. Tấm ván dài thì khó xoay hơn hẳn, dù cùng khối lượng. Code của ta thì cộng thẳng torque vào vận tốc góc, coi mọi vật dễ xoay
+					như nhau.<br/><br/>
+
+					Độ "khó xoay" này gọi là <b>moment quán tính</b> (moment of inertia), ký hiệu \(I\), đóng vai trò giống khối lượng nhưng cho chuyện xoay: lực chia
+					khối lượng ra gia tốc, torque chia moment quán tính ra <b>gia tốc góc</b> (vận tốc góc tăng bao nhiêu mỗi giây):
+					$$\Delta\vec{\omega} = \frac{\vec{\tau}}{I} \cdot dt$$
+					Moment quán tính phụ thuộc vào khối lượng nằm ở <b>đâu</b> so với trục xoay. Với những khối lượng nhỏ \(m_i\) cách trục một khoảng \(r_i\):
+					$$I = \sum m_i r_i^2$$
+					Vì sao bình phương: cùng một torque \(\tau\), tác dụng lên một quả tạ ở khoảng cách \(r\) thì lực đẩy quả tạ chỉ còn \(\tau / r\) (cánh tay đòn dài thì
+					cần ít lực hơn để có cùng torque, ngược lại cùng torque thì lực nhỏ đi). Trong khi đó để vật xoay thêm cùng một vận tốc góc, quả tạ phải chạy nhanh thêm
+					\(\omega r\). Lực nhỏ đi \(r\) lần, vận tốc cần đạt lớn lên \(r\) lần, nên khó hơn \(r^2\) lần. Nên khối lượng nằm xa trục ảnh hưởng nhiều hơn hẳn: xa gấp đôi thì khó xoay gấp 4.
+					(Ở đây \(r_i\) là khoảng cách tới <b>trục xoay</b>, không phải vector \(\vec{r}\) từ tâm như ở phần torque.) Đó là lý do tấm ván dài khó xoay,
+					khối lượng của nó trải ra xa tâm. Bạn kéo thử 2 quả tạ trong demo dưới đây, cùng một torque, xem sau 1 giây nó quay được bao nhiêu độ:
+					<div class="conceptDemo" data-concept="inertia" data-height="425"></div>
+
+					Một vật thật thì khối lượng trải liên tục chứ không phải vài quả tạ, tổng ở trên thành tích phân. Mình không tự tính, các hình cơ bản đều có
+					công thức sẵn (<a href="https://en.wikipedia.org/wiki/List_of_moments_of_inertia">bảng moment quán tính trên Wikipedia</a>):
+					<ul>
+						<li>Quả cầu đặc bán kính \(r\): \(I = \frac{2}{5} m r^2\), quanh trục nào qua tâm cũng như nhau.</li>
+						<li>Hộp có kích thước \(x, y, z\): quanh trục x thì \(I_x = \frac{1}{12} m (y^2 + z^2)\), tương tự cho \(I_y\) và \(I_z\). Quanh trục x thì
+						chỉ chiều cao và chiều sâu mới quyết định khối lượng nằm xa trục bao nhiêu, chiều dài theo trục x không ảnh hưởng.</li>
+					</ul>
+					Cái thứ 2 quan trọng: với hộp, moment quán tính <b>khác nhau theo từng trục</b>. Tấm ván dài 3 mét theo trục x, dày 0.4 theo y và z, nặng 1 kg:
+					\(I_x = \frac{1}{12}(0.4^2 + 0.4^2) \approx 0.027\) (xoay quanh trục dọc theo tấm ván, rất dễ) nhưng
+					\(I_y = I_z = \frac{1}{12}(3^2 + 0.4^2) \approx 0.76\) (xoay kiểu cánh quạt, khó hơn 28 lần). Vậy mỗi vật có 3 con số, mỗi trục của vật một số.
+					Với hộp, 3 trục dọc theo các cạnh là 3 trục đặc biệt (gọi là trục chính): khối lượng của hộp nằm đối xứng 2 bên mỗi trục này, nên torque quanh một trục chính chỉ làm
+					hộp xoay quanh đúng trục đó, và chia torque cho từng con số riêng là đúng; xoay quanh một trục xéo thì
+					phải đổi torque về 3 trục này trước, phần 6 sẽ làm.<br/><br/>
+
+					Moment quán tính phụ thuộc vào hình dạng của vật, nên mình để collider tính nó. Hàm trả về <b>nghịch đảo</b> \(\frac{1}{I}\) theo từng trục (như
+					<code>inverseMass</code>), để code chỉ cần nhân:
+					<pre><code class="language-javascript">class SphereCollider extends Collider {
+	...
+	calculateLocalInverseInertia(mass) {
+		let inertia = 0.4 * mass * this.worldRadius * this.worldRadius;
+		return new Vector3(1 / inertia, 1 / inertia, 1 / inertia);
+	}
+}
+
+class BoxCollider extends Collider {
+	calculateLocalInverseInertia(mass) {
+		let size = this.transform.lossyScale;
+		let x2 = size.x * size.x;
+		let y2 = size.y * size.y;
+		let z2 = size.z * size.z;
+		return new Vector3(12 / (mass * (y2 + z2)), 12 / (mass * (x2 + z2)), 12 / (mass * (x2 + y2)));
+	}
+}</code></pre>
+					Chữ "local" trong tên là vì 3 số này đi theo 3 trục của <b>chính vật đó</b> (trục x của tấm ván là chiều dài của nó, dù tấm ván có đang xoay
+					hướng nào). Các quả bóng cũng cần hàm này vì mọi <code>Rigidbody</code> đều đi qua <code>integrateForces</code>.
+					<code>Rigidbody</code> lấy collider của nó và gọi hàm trên, rồi chia torque cho từng trục (nhân với nghịch đảo, bằng <code>Vector3.scale</code>,
+					nhân từng thành phần):
+					<pre><code class="language-javascript">class Rigidbody extends Component {
+	...
+	get collider() {													// <---------------------
+		return this.gameObject.getComponent(Collider);
+	}
+
+	get localInverseInertia() {											// <---------------------
+		return this.collider.calculateLocalInverseInertia(this.mass);
+	}
+	...
+	integrateForces(dt, gravity) {
+		...
+		this.angularVelocity = Vector3.add(this.angularVelocity, Vector3.mul(Vector3.scale(this.torque, this.localInverseInertia), dt));	// <---------------------
+		...
+	}
+}</code></pre>
+					Để so sánh, mình thêm 2 tấm ván giống hệt nhau (3 x 0.4 x 0.4, nặng 1 kg): một tấm nằm ngang, một tấm dựng đứng (xoay 90 độ quanh trục z).
+					Cái hộp cũng được gắn <code>BoxCollider</code> để có moment quán tính. Cả 3 vật đều nằm trong <code>pushableObjects</code> và bị đẩy giống hệt nhau
+					trong hệ tọa độ của chính nó: đẩy theo trục x của vật, vào giữa mặt trước của vật.
+					<pre><code class="language-javascript">cube.addComponent(new BoxCollider());			// <---------------------
+cube.addComponent(new Rigidbody(1, false));
+physicsObjects.push(cube);
+
+let lyingPlank = scene.add(new GameObject("Lying plank", new Vector3(0.5, 3.5, -4.5), Vector3.zero, new Vector3(3, 0.4, 0.4)));
+lyingPlank.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+lyingPlank.addComponent(new BoxCollider());
+lyingPlank.addComponent(new Rigidbody(1, false));
+physicsObjects.push(lyingPlank);
+
+let standingPlank = scene.add(new GameObject("Standing plank", new Vector3(3.5, 3.5, -4.5), new Vector3(0, 0, 90), new Vector3(3, 0.4, 0.4)));
+standingPlank.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+standingPlank.addComponent(new BoxCollider());
+standingPlank.addComponent(new Rigidbody(1, false));
+physicsObjects.push(standingPlank);
+
+pushableObjects = [cube, lyingPlank, standingPlank];</code></pre>
+					Kết quả, giữ Push off-center:
+					<div class="htmlPreview" id="htmlPreview19" data-disabled="true"></div>
+					Cái hộp xoay nhanh, tấm ván nằm xoay chậm. (Torque của 2 cái cũng khác nhau: điểm đẩy ở giữa mặt trước cách tâm 0.5 với hộp nhưng chỉ 0.2 với tấm ván
+					dày 0.4, nên torque là 1 so với 0.4; so sánh có ý nghĩa là giữa 2 tấm ván với nhau.) Tấm ván đứng thì quay tít như chong chóng: sau 1 giây đẩy, vận tốc
+					góc của tấm ván nằm là 0.52 rad/s (= 0.4 / 0.76) còn tấm ván đứng là 15 rad/s, gấp gần 30 lần, dù 2 tấm ván giống hệt nhau, cùng torque 0.4.<br/><br/>
+
+					Lý do: 3 con số moment quán tính đi theo trục của vật, nhưng torque thì tính theo trục của thế giới. Tấm ván đứng đã bị xoay 90 độ, trục dài (trục x
+					của nó) bây giờ là trục y của thế giới. Cú đẩy làm nó xoay quanh trục x của thế giới, tức là xoay kiểu cánh quạt, khó (0.76). Nhưng code đem thành phần x
+					của torque chia cho \(I_x\) của tấm ván, là con số của trục dọc theo tấm ván (0.027), dễ hơn 28 lần.
+
+					<h2>6. Đổi torque về hệ tọa độ của vật</h2>
+					Cách sửa: trước khi chia, đổi torque về hệ tọa độ của vật, tức là hỏi "torque này xoay quanh trục x, y, z <b>của tấm ván</b> bao nhiêu". Đổi xong
+					thì chia cho đúng 3 con số của tấm ván, rồi đổi kết quả ngược về hệ tọa độ thế giới. Đổi qua lại thì engine có sẵn: <code>inverseRotateVector</code>
+					xoay ngược một vector theo hướng của vật (thế giới về local), <code>rotateVector</code> xoay xuôi (local về thế giới).
+					<pre><code class="language-javascript">class Rigidbody extends Component {
+	...
+	addForce(force) {
+		this.force = Vector3.add(this.force, force);
+	}
+
+	applyInverseInertia(vector) {													// <---------------------
+		let rotation = this.transform.rotation;
+		let localVector = rotation.inverseRotateVector(vector);
+		return rotation.rotateVector(Vector3.scale(localVector, this.localInverseInertia));
+	}
+	...
+	integrateForces(dt, gravity) {
+		...
+		this.angularVelocity = Vector3.add(this.angularVelocity, Vector3.mul(this.applyInverseInertia(this.torque), dt));	// <---------------------
+		...
+	}
+}</code></pre>
+					Trong sách vở, 3 bước này thường được viết thành một ma trận 3x3 gọi là <a href="https://en.wikipedia.org/wiki/Moment_of_inertia#Inertia_tensor">inertia tensor</a>
+					trong hệ tọa độ thế giới, \(I^{-1}_{world} = R \, I^{-1}_{local} \, R^T\), với \(R\) là ma trận xoay của vật và \(R^T\) là xoay ngược. Nhân vào một vector
+					thì đọc từ phải sang trái: xoay ngược, chia từng trục, xoay xuôi, đúng như hàm trên, engine của ta không có ma trận 3x3 nên mình dùng quaternion. Hàm tên là <code>applyInverseInertia</code> vì nó là
+					"nhân với nghịch đảo moment quán tính", blog 5 sẽ dùng lại nó cho va chạm. Kết quả:
+					<div class="htmlPreview" id="htmlPreview20" data-disabled="true"></div>
+					Bây giờ 2 tấm ván xoay y hệt nhau (0.52 rad/s sau 1 giây đẩy), chỉ khác hướng đặt ban đầu. Để ý là khi 3 con số khác nhau, vận tốc góc nhận được có thể
+					không cùng hướng với torque (mỗi thành phần bị chia cho một số khác nhau), nên vật không nhất thiết xoay quanh đúng hướng của torque.<br/><br/>
+
+					Có một chỗ mình đơn giản hóa: công thức đầy đủ của chuyển động xoay có thêm một số hạng nữa, làm vận tốc góc của một vật tự xoay thay đổi dần (đó là lý do
+					một cái điện thoại tung lên xoay quanh trục giữa sẽ bị lật lộn xộn,
+					<a href="https://en.wikipedia.org/wiki/Tennis_racket_theorem">tennis racket theorem</a>). Mình bỏ qua giống như nhiều engine khác.<br/><br/>
+
+					Như vậy vật đã biết xoay khi bị đẩy lệch tâm. Nhưng các va chạm từ blog trước vẫn chỉ đổi vận tốc, chưa đụng tới vận tốc góc, và phần phát hiện
+					va chạm thì chỉ biết quả cầu với hộp không xoay. Blog sau ta sẽ làm phát hiện va chạm cho vật bị xoay, và cho mọi hình lồi.
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3DPhysics.js"></script>
+    <script src="concept.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

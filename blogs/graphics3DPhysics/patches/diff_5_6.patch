@@ -1,0 +1,12 @@
+--- "a/htmlPreviews\\htmlPreview5.html"
++++ "b/htmlPreviews\\htmlPreview6.html"
+@@ -2735,8 +2735,8 @@ void main(){
+ 			step(scene, dt) {
+ 				let rigidbodies = scene.getAllComponentsOfType(Rigidbody);
+ 				for (let rigidbody of rigidbodies) {
+-					rigidbody.integrateVelocity(dt);
+ 					rigidbody.integrateForces(dt, this.gravity);
++					rigidbody.integrateVelocity(dt);
+ 
+ 					let bottomY = rigidbody.transform.position.y - rigidbody.transform.lossyScale.y / 2;
+ 					if (bottomY < 0.5 && rigidbody.velocity.y < 0) {

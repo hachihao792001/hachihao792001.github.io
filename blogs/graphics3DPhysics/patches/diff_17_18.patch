@@ -1,0 +1,11 @@
+--- "a/htmlPreviews\\htmlPreview17.html"
++++ "b/htmlPreviews\\htmlPreview18.html"
+@@ -2796,7 +2796,7 @@ void main(){
+ 				let angularSpeed = this.angularVelocity.magnitude();
+ 				if (angularSpeed > 0) {
+ 					let axis = Vector3.div(this.angularVelocity, angularSpeed);
+-					let deltaRotation = Quaternion.buildQuaternionAxisRadian(axis, angularSpeed * dt);
++					let deltaRotation = Quaternion.buildQuaternionAxisRadian(axis, -angularSpeed * dt);
+ 					this.transform.rotation = Quaternion.multiply(deltaRotation, this.transform.rotation);
+ 				}
+ 			}

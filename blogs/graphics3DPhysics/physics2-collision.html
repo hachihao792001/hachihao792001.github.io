@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="Phát hiện va chạm giữa quả cầu và hộp, so sánh 3 cách phản hồi va chạm: đẩy ra, lò xo (penalty) và impulse.">
+    <meta name="theme-color" content="#20799b">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2320799b'/><text x='16' y='23' font-family='Inter,sans-serif' font-size='18' font-weight='600' fill='white' text-anchor='middle'>H</text></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/blogcontent.css">
+    <link rel="stylesheet" href="/css/prism.css">
+    <link rel="stylesheet" href="../graphics3D/graphics3D.css">
+    <link rel="stylesheet" href="concept.css">
+    <style>
+        .blog-content ul li a {
+            display: inline;
+            font-weight: inherit;
+            margin-bottom: 0;
+        }
+    </style>
+
+    <script src="/js/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <title>Physics #2: Va chạm đầu tiên và 3 cách phản hồi</title>
+</head>
+
+<body data-graphics3D-id="physics2">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main>
+        <div class="container-fluid ps-0">
+            <div class="row">
+                <div class="col-12 col-lg-2 sidebar pb-0 pe-0">
+                    <!--load from sidebar.html-->
+                </div>
+
+                <div class="blog-content col-12 col-lg-10" id="main">
+                    <div id="graphics3D-nav-top"></div>
+                    <h1>Va chạm đầu tiên và 3 cách phản hồi</h1>
+
+					Ở blog trước cái hộp nảy trên một mặt đất giả, chỉ là một dòng <code>if</code> so độ cao với 0.5. Blog này ta làm va chạm thật: một vật
+					biết được nó đang chạm vào vật nào, chạm ở đâu, lún vào bao sâu, rồi phản ứng lại. Mình sẽ bắt đầu với hình dễ nhất là quả cầu, và thử
+					3 cách phản hồi va chạm khác nhau để xem cái nào chạy được.<br/><br/>
+
+					Một hệ thống va chạm luôn có 2 nửa tách biệt:
+					<ul>
+						<li><b>Phát hiện va chạm</b> (collision detection): 2 vật có đang chạm nhau không, nếu có thì chạm theo hướng nào, lún sâu bao nhiêu.</li>
+						<li><b>Phản hồi va chạm</b> (collision response): biết rồi thì làm gì với vận tốc và vị trí của 2 vật.</li>
+					</ul>
+					Blog này phần phát hiện rất đơn giản, phần lớn công sức nằm ở phản hồi.
+
+					<h2>1. Quả cầu</h2>
+					Engine chưa có mesh hình cầu, nên mình thêm <code>Primitives.sphere()</code>. Cách dựng giống như các đường kinh tuyến, vĩ tuyến trên quả địa cầu:
+					chia quả cầu thành <code>rings</code> vòng từ cực trên xuống cực dưới (góc <code>theta</code> từ 0 tới π), mỗi vòng chia thành <code>segments</code>
+					đoạn quanh trục y (góc <code>phi</code> từ 0 tới 2π). Một điểm cách cực trên một góc <code>theta</code> thì có độ cao
+					<code>0.5 * cos(theta)</code> và cách trục y một khoảng <code>0.5 * sin(theta)</code>, đi vòng quanh trục y một góc <code>phi</code> thì khoảng cách đó
+					chia ra theo x là nhân <code>cos(phi)</code>, theo z là nhân <code>sin(phi)</code>, y như tọa độ một điểm trên đường tròn. Mỗi ô giữa 2 vòng và 2 đoạn
+					là một hình tứ giác, cắt ra 2 tam giác:
+					<pre><code class="language-javascript">class Primitives {
+	...
+	static sphere(segments = 20, rings = 14) {
+		let triangles = [];
+		let pointOnSphere = (ring, segment) => {
+			let theta = (ring / rings) * Math.PI;
+			let phi = (segment / segments) * Math.PI * 2;
+			return new Vector3(0.5 * Math.sin(theta) * Math.cos(phi), 0.5 * Math.cos(theta), 0.5 * Math.sin(theta) * Math.sin(phi));
+		};
+		let uvOnSphere = (ring, segment) => new Vector2(segment / segments, 1 - ring / rings);
+
+		for (let ring = 0; ring < rings; ring++) {
+			for (let segment = 0; segment < segments; segment++) {
+				let a = pointOnSphere(ring, segment);
+				let b = pointOnSphere(ring, segment + 1);
+				let c = pointOnSphere(ring + 1, segment + 1);
+				let d = pointOnSphere(ring + 1, segment);
+				let uvA = uvOnSphere(ring, segment);
+				let uvB = uvOnSphere(ring, segment + 1);
+				let uvC = uvOnSphere(ring + 1, segment + 1);
+				let uvD = uvOnSphere(ring + 1, segment);
+				if (ring != 0) triangles.push(new Triangle([a, b, c], [uvA, uvB, uvC]));
+				if (ring != rings - 1) triangles.push(new Triangle([a, c, d], [uvA, uvC, uvD]));
+			}
+		}
+		return Mesh.fromTriangles(triangles);
+	}
+	...
+}</code></pre>
+					<ul>
+						<li>Bán kính là 0.5, để quả cầu vừa khít trong khối hộp 1x1x1, giống <code>Primitives.cube()</code>.</li>
+						<li>Ở vòng đầu tiên (<code>ring == 0</code>), 2 điểm <code>a</code> và <code>b</code> đều nằm ở cực trên (sin 0 = 0), tam giác
+						<code>a, b, c</code> bị dẹp thành một đường thẳng nên mình bỏ qua. Vòng cuối thì <code>c</code> và <code>d</code> trùng nhau ở cực dưới, bỏ
+						tam giác còn lại.</li>
+						<li>UV thì quả bóng đỏ của ta không dùng (không có texture), nhưng <code>Triangle</code> cần có, mình trải ảnh theo kinh độ (u) và vĩ độ (v, cực trên là 1).</li>
+						<li>Thứ tự đỉnh <code>a, b, c</code> là chiều kim đồng hồ khi nhìn từ bên ngoài, đúng với <code>gl.frontFace(gl.CW)</code> mà engine dùng
+						từ series trước, nên các mặt không bị cull mất.</li>
+					</ul>
+					Cái hộp được đổi thành một quả bóng đỏ, các biến <code>box</code>, <code>boxRigidbody</code>, <code>wasBoxGoingUp</code> đổi tên thành
+					<code>ball</code>, <code>ballRigidbody</code>, <code>wasBallGoingUp</code>. Mặt đất giả vẫn chạy được với quả bóng, vì bán kính 0.5 đúng bằng
+					nửa chiều cao của cái hộp cũ. Kết quả:
+					<div class="htmlPreview" id="htmlPreview9" data-disabled="true"></div>
+
+					<h2>2. Collider và cách thứ nhất: đẩy ra</h2>
+					Để biết một vật có hình dạng gì khi va chạm, mỗi vật cần thêm một component mô tả hình dạng của nó, gọi là <b>collider</b>.
+					Collider tách riêng với <code>MeshRenderer</code>: mesh dùng để vẽ có thể có hàng nghìn tam giác, còn collider chỉ cần một hình
+					đơn giản bao lấy vật, ví dụ một quả cầu hay một cái hộp. Mình thêm 2 loại collider:
+					<pre><code class="language-javascript">class Collider extends Component {
+	get rigidbody() {
+		return this.gameObject.getComponent(Rigidbody);
+	}
+}
+
+class SphereCollider extends Collider {
+	constructor(radius = 0.5) {
+		super();
+		this.radius = radius;
+	}
+
+	get worldRadius() {
+		return this.radius * this.transform.lossyScale.x;
+	}
+}
+
+class BoxCollider extends Collider {
+}
+
+class Contact {
+	constructor(point, normal, depth) {
+		this.point = point;
+		this.normal = normal;
+		this.depth = depth;
+	}
+}</code></pre>
+					<ul>
+						<li><code>worldRadius</code>: bán kính sau khi tính scale của GameObject, mình giả sử quả cầu được scale đều 3 trục nên chỉ lấy
+						<code>x</code>.</li>
+						<li><code>BoxCollider</code> chưa cần thêm gì, kích thước của hộp chính là <code>lossyScale</code> của GameObject (vì mesh hộp có cạnh dài 1).</li>
+						<li>Một vật có collider mà không có <code>Rigidbody</code> là vật tĩnh, không bao giờ di chuyển, như mặt đất. Getter
+						<code>rigidbody</code> trả về <code>undefined</code> cho những vật này.</li>
+						<li><code>Contact</code> là kết quả của phần phát hiện: điểm chạm, pháp tuyến (normal, vector đơn vị chỉ hướng đẩy 2 vật ra xa nhau), và độ lún
+						(depth, 2 vật đang chồng lên nhau bao sâu). Điểm chạm thì blog này chưa dùng, blog 3 làm cho vật xoay được, rồi tới blog 5 điểm chạm mới cần để làm vật
+						xoay khi va chạm.</li>
+					</ul>
+
+					Phần phát hiện va chạm giữa quả cầu và mặt đất (là một cái hộp): tìm điểm trên hộp gần tâm quả cầu nhất, nếu khoảng cách từ điểm đó tới tâm nhỏ
+					hơn bán kính thì đang chạm nhau. Với một hộp không bị xoay, điểm gần nhất tìm rất dễ: kẹp từng tọa độ của tâm quả cầu vào khoảng
+					<code>[min, max]</code> của hộp theo trục đó. Ví dụ hộp có x từ -1 tới 1, tâm quả cầu có x = 3 thì điểm gần nhất có x = 1 (mép hộp), còn nếu x của tâm
+					là 0.5 (đã nằm trong khoảng) thì giữ nguyên 0.5. Mỗi trục độc lập với nhau nên làm riêng từng trục là ra điểm gần nhất.
+					<pre><code class="language-javascript">boxVsSphere(box, sphere) {
+	let center = sphere.transform.position;
+	let boxCenter = box.transform.position;
+	let halfSize = Vector3.div(box.transform.lossyScale, 2);
+	let closestPoint = new Vector3(
+		Math.max(boxCenter.x - halfSize.x, Math.min(center.x, boxCenter.x + halfSize.x)),
+		Math.max(boxCenter.y - halfSize.y, Math.min(center.y, boxCenter.y + halfSize.y)),
+		Math.max(boxCenter.z - halfSize.z, Math.min(center.z, boxCenter.z + halfSize.z)),
+	);
+	let offset = Vector3.sub(center, closestPoint);
+	let distance = offset.magnitude();
+	if (distance == 0 || distance >= sphere.worldRadius) return null;
+	return new Contact(closestPoint, Vector3.div(offset, distance), sphere.worldRadius - distance);
+}</code></pre>
+					Pháp tuyến hướng từ điểm gần nhất ra tâm quả cầu (từ hộp sang cầu), độ lún là bán kính trừ khoảng cách. Trường hợp <code>distance == 0</code>
+					là khi tâm quả cầu đã lọt hẳn vào trong hộp, lúc đó không biết đẩy ra hướng nào nên mình bỏ qua luôn, coi như không chạm. Hàm này giả sử
+					hộp không bị xoay, blog 4 sẽ nói lại chuyện này.<br/><br/>
+
+					Lát nữa <code>step</code> sẽ duyệt qua từng cặp collider (A, B) theo thứ tự chúng nằm trong scene, nên ta cần một hàm chọn đúng hàm phát hiện cho từng cặp.
+					Mình quy ước pháp tuyến của <code>Contact</code> luôn hướng từ vật A sang vật B, nên nếu cặp đến theo thứ tự cầu trước hộp sau, ta gọi
+					<code>boxVsSphere</code> với thứ tự đảo lại rồi lật pháp tuyến:
+					<pre><code class="language-javascript">findContact(colliderA, colliderB) {
+	if (colliderA instanceof BoxCollider && colliderB instanceof SphereCollider) return this.boxVsSphere(colliderA, colliderB);
+	if (colliderA instanceof SphereCollider && colliderB instanceof BoxCollider) {
+		let contact = this.boxVsSphere(colliderB, colliderA);
+		if (contact != null) contact.normal = Vector3.mul(contact.normal, -1);
+		return contact;
+	}
+	return null;
+}</code></pre>
+
+					Giờ tới phần phản hồi. Cách đầu tiên mà ai cũng nghĩ tới: đang lún vào thì đẩy nó ra cho hết lún, rồi bỏ phần vận tốc đang lao vào vật kia
+					đi. Nếu cả 2 vật đều di chuyển được thì mỗi bên chịu một nửa:
+					<pre><code class="language-javascript">resolveContact(colliderA, colliderB, contact) {
+	let rigidbodyA = colliderA.rigidbody;
+	let rigidbodyB = colliderB.rigidbody;
+	let movableCount = (rigidbodyA != null ? 1 : 0) + (rigidbodyB != null ? 1 : 0);
+	let pushDistance = contact.depth / movableCount;
+
+	if (rigidbodyA != null) {
+		rigidbodyA.transform.position = Vector3.sub(rigidbodyA.transform.position, Vector3.mul(contact.normal, pushDistance));
+		let speedTowardB = Vector3.dot(rigidbodyA.velocity, contact.normal);
+		if (speedTowardB > 0) rigidbodyA.velocity = Vector3.sub(rigidbodyA.velocity, Vector3.mul(contact.normal, speedTowardB));
+	}
+	if (rigidbodyB != null) {
+		rigidbodyB.transform.position = Vector3.add(rigidbodyB.transform.position, Vector3.mul(contact.normal, pushDistance));
+		let speedTowardA = -Vector3.dot(rigidbodyB.velocity, contact.normal);
+		if (speedTowardA > 0) rigidbodyB.velocity = Vector3.add(rigidbodyB.velocity, Vector3.mul(contact.normal, speedTowardA));
+	}
+}</code></pre>
+					Pháp tuyến hướng từ A sang B, nên A bị đẩy theo hướng <code>-normal</code>, B theo hướng <code>+normal</code>. Phần vận tốc của A hướng
+					về phía B là tích vô hướng <code>dot(vA, normal)</code> (độ dài hình chiếu của vận tốc lên pháp tuyến), nếu dương tức là A đang lao vào B
+					thì trừ phần đó đi, chỉ giữ lại phần vận tốc song song với mặt chạm. B thì ngược dấu.<br/><br/>
+
+					Cuối cùng là gắn mọi thứ vào <code>step</code>. Thứ tự bây giờ là: cập nhật vận tốc (trọng lực), xử lý va chạm, rồi mới cập nhật vị trí, nên vòng lặp
+					cũ được tách làm 2. Trọng lực đi trước để phần va chạm thấy luôn lượng vận tốc mà trọng lực vừa cộng vào trong bước này và xóa nó đi nếu vật đang đè lên mặt đất.
+					Cập nhật vị trí đi sau để vật di chuyển bằng vận tốc đã được sửa, chứ không lún thêm một bước nữa rồi mới sửa. Mặt đất giả bị bỏ đi, ta duyệt qua mọi cặp collider:
+					<pre><code class="language-javascript">step(scene, dt) {
+	let rigidbodies = scene.getAllComponentsOfType(Rigidbody);
+	for (let rigidbody of rigidbodies) {
+		rigidbody.integrateForces(dt, this.gravity);
+	}
+
+	let colliders = scene.getAllComponentsOfType(Collider);					// <--------------------- tìm cả class con (instanceof)
+	for (let i = 0; i < colliders.length; i++) {								// <---------------------
+		for (let j = i + 1; j < colliders.length; j++) {
+			if (colliders[i].rigidbody == null && colliders[j].rigidbody == null) continue;
+			let contact = this.findContact(colliders[i], colliders[j]);
+			if (contact != null) this.resolveContact(colliders[i], colliders[j], contact);
+		}
+	}
+
+	for (let rigidbody of rigidbodies) {
+		rigidbody.integrateVelocity(dt);
+	}
+}</code></pre>
+					<code>j</code> bắt đầu từ <code>i + 1</code> để mỗi cặp chỉ xét 1 lần, và cặp nào cả 2 đều tĩnh (không có Rigidbody) thì bỏ qua. Ground được
+					gắn thêm <code>BoxCollider</code>, quả bóng được gắn <code>SphereCollider</code>. Mình cũng bỏ luôn dòng "Bounce peaks" và hàm
+					<code>updateBouncePeaks</code>, vì quả bóng không còn nảy nữa, và <code>spawnPhysicsObjects</code> không cần lưu <code>ball</code> ra
+					biến ngoài nữa. Kết quả:
+					<div class="htmlPreview" id="htmlPreview10" data-disabled="true"></div>
+					Quả bóng rơi xuống và đứng im luôn, không nảy chút nào: vận tốc lao xuống bị xóa sạch ngay khoảnh khắc chạm đất.
+
+					<h2>3. Nhiều quả cầu</h2>
+					Phát hiện va chạm giữa 2 quả cầu còn dễ hơn: 2 quả chạm nhau khi khoảng cách giữa 2 tâm nhỏ hơn tổng 2 bán kính.
+					<pre><code class="language-javascript">findContact(colliderA, colliderB) {
+	if (colliderA instanceof SphereCollider && colliderB instanceof SphereCollider) return this.sphereVsSphere(colliderA, colliderB);	// <---------------------
+	...
+}
+
+sphereVsSphere(sphereA, sphereB) {
+	let offset = Vector3.sub(sphereB.transform.position, sphereA.transform.position);
+	let distance = offset.magnitude();
+	let radiusSum = sphereA.worldRadius + sphereB.worldRadius;
+	if (distance == 0 || distance >= radiusSum) return null;
+	let normal = Vector3.div(offset, distance);
+	let point = Vector3.add(sphereA.transform.position, Vector3.mul(normal, sphereA.worldRadius));
+	return new Contact(point, normal, radiusSum - distance);
+}</code></pre>
+					Pháp tuyến là hướng từ tâm A sang tâm B, điểm chạm là điểm trên bề mặt A theo hướng đó.<br/><br/>
+
+					Trong <code>spawnPhysicsObjects</code> giờ mình thả 12 quả bóng, xếp thành lưới 4x3 nhưng mỗi quả cao hơn quả trước 0.7, khoảng cách
+					giữa các quả theo chiều ngang là 0.8, nhỏ hơn đường kính 1, nên chúng sẽ đè lên nhau khi rơi. Quanh chỗ thả có 4 bức tường tĩnh (chỉ có
+					<code>BoxCollider</code>, không có <code>Rigidbody</code>) để bóng không lăn đi mất, vì engine của ta chưa có ma sát: một quả bóng trượt trên
+					mặt đất sẽ trượt mãi tới khi rơi khỏi mép. Camera được dời lên cao hơn để nhìn vào trong.
+					<pre><code class="language-javascript">let camera = new Camera(new Vector3(0, 7, -8), new Vector3(-35, 0, 0), 5, 0.2);	// <---------------------
+...
+let walls = [
+	new GameObject("Wall left", new Vector3(-2.75, 1.25, 0), Vector3.zero, new Vector3(0.5, 1.5, 6)),
+	new GameObject("Wall right", new Vector3(2.75, 1.25, 0), Vector3.zero, new Vector3(0.5, 1.5, 6)),
+	new GameObject("Wall front", new Vector3(0, 1.25, -2.75), Vector3.zero, new Vector3(5, 1.5, 0.5)),
+	new GameObject("Wall back", new Vector3(0, 1.25, 2.75), Vector3.zero, new Vector3(5, 1.5, 0.5)),
+];
+for (let wall of walls) {
+	scene.add(wall);
+	wall.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(190, 150, 100))));
+	wall.addComponent(new BoxCollider());
+}
+
+let ballMaterial = new Material(new Color(255, 90, 90));
+let physicsObjects = [];
+
+function spawnPhysicsObjects() {
+	for (let i = 0; i < 12; i++) {
+		let position = new Vector3(((i % 4) - 1.5) * 0.8, 2 + i * 0.7, (Math.floor(i / 4) - 1) * 0.8);
+		let ball = scene.add(new GameObject("Ball " + i, position, Vector3.zero, Vector3.one));
+		ball.addComponent(new MeshRenderer(sphereMesh, ballMaterial));
+		ball.addComponent(new SphereCollider());
+		ball.addComponent(new Rigidbody());
+		physicsObjects.push(ball);
+	}
+}</code></pre>
+					Kết quả:
+					<div class="htmlPreview" id="htmlPreview11" data-disabled="true"></div>
+					Các quả bóng rơi vào nhau như cục đất sét: chạm là dính, không nảy ra. Nhìn những quả rơi sau đâm vào những quả đã nằm dưới đáy: quả rơi xuống
+					mất vận tốc và dừng lại trên quả bên dưới, còn quả bên dưới không bị đẩy đi đâu cả. Ngoài đời thì quả bên dưới phải bị hất văng ra.
+
+					<h2>4. Cách thứ hai: lò xo</h2>
+					Cách thứ hai là tưởng tượng giữa 2 vật đang lún vào nhau có một cái lò xo bị nén. Lò xo bị nén càng sâu thì đẩy càng mạnh,
+					theo <a href="https://en.wikipedia.org/wiki/Hooke%27s_law">định luật Hooke</a>: lực bằng độ cứng <code>k</code> nhân độ nén. Cách này có tên là
+					<b>penalty method</b> (độ lún bị "phạt" bằng một lực đẩy). Lực thì tạo ra gia tốc, gia tốc nhân <code>dt</code> ra lượng vận tốc thay đổi,
+					y như trọng lực ở blog trước:
+					<pre><code class="language-javascript">class PhysicsWorld {
+	constructor(gravity = new Vector3(0, -9.81, 0)) {
+		...
+		this.stiffness = 2000;		// <---------------------
+	}
+	...
+	resolveContact(colliderA, colliderB, contact, dt) {
+		let rigidbodyA = colliderA.rigidbody;
+		let rigidbodyB = colliderB.rigidbody;
+		let velocityChange = Vector3.mul(contact.normal, this.stiffness * contact.depth * dt);
+		if (rigidbodyA != null) rigidbodyA.velocity = Vector3.sub(rigidbodyA.velocity, velocityChange);
+		if (rigidbodyB != null) rigidbodyB.velocity = Vector3.add(rigidbodyB.velocity, velocityChange);
+	}
+}</code></pre>
+					Engine chưa có khối lượng, nên mình coi như mọi vật nặng 1 kg, khi đó gia tốc bằng đúng lực (\(a = F/m\)). Khác với cách đẩy ra (chia đôi độ lún cho 2 vật),
+					ở đây mỗi vật nhận nguyên <code>velocityChange</code>, ngược chiều nhau: lò xo đẩy 2 đầu với cùng một lực (lực và phản lực), 2 vật cùng nặng 1 kg thì
+					vận tốc đổi cùng một lượng. Phần đẩy vị trí của cách đầu tiên bị bỏ hẳn. <code>step</code> truyền thêm <code>dt</code>
+					vào <code>resolveContact</code>. Mình thêm một slider <b>Stiffness</b> (từ 50 tới 20000) để chỉnh <code>k</code>:
+					<pre><code class="language-javascript">&lt;div class=&quot;controlRow&quot;&gt;
+	&lt;label class=&quot;controlLabel&quot; for=&quot;stiffness&quot;&gt;Stiffness:&lt;/label&gt;
+	&lt;span&gt;
+		&lt;input type=&quot;range&quot; id=&quot;stiffness&quot; min=&quot;50&quot; max=&quot;20000&quot; step=&quot;50&quot; value=&quot;2000&quot; /&gt;
+		&lt;span id=&quot;stiffnessText&quot; class=&quot;slider-value&quot;&gt;2000&lt;/span&gt;
+	&lt;/span&gt;
+&lt;/div&gt;
+...
+stiffnessSlider.addEventListener("input", () => {
+	physicsWorld.stiffness = parseFloat(stiffnessSlider.value);
+	stiffnessText.textContent = physicsWorld.stiffness.toFixed(0);
+});</code></pre>
+					Kết quả, bạn thử 3 giá trị: để nguyên 2000, kéo xuống khoảng 100 rồi bấm Reset, kéo lên 20000 rồi bấm Reset:
+					<div class="htmlPreview" id="htmlPreview12" data-disabled="true"></div>
+					<ul>
+						<li><b>2000</b>: bóng nảy loạn xạ không dừng, có quả nảy lên cao gần bằng độ cao lúc thả (khoảng 8), văng qua tường rồi trượt ra khỏi mép mặt đất.
+						Lò xo này không có gì làm chậm nó lại, bị nén bao nhiêu thì bung ra bấy nhiêu.</li>
+						<li><b>100</b>: lò xo quá mềm, bóng lún sâu vào mặt đất. Rơi từ trên cao xuống thì lún quá nửa quả, tâm lọt vào trong hộp, và rơi xuyên qua luôn.</li>
+						<li><b>20000</b>: bóng nổ tung bay khắp nơi.</li>
+					</ul>
+					Tại sao lò xo cứng lại nổ? Lấy một quả bóng rơi xuống đất với vận tốc 9 m/s. Va chạm chỉ được phát hiện ở bước đầu tiên mà nó đã lún vào, và trong
+					1 bước 1/60 giây nó đi được 9/60 = 0.15 mét, nên lúc được phát hiện nó có thể đã lún tới 0.15. Lò xo thật thì bắt đầu đẩy từ lúc lún 0.001, đẩy nhẹ
+					rồi mạnh dần, liên tục, nên quả bóng bị hãm lại từ từ và với lò xo đủ cứng thì không bao giờ lún được tới 0.15. Còn ở đây, ngay bước đầu tiên nó nhận một lượng vận tốc bằng <code>k</code> nhân 0.15 nhân 1/60:
+					<ul>
+						<li><code>k</code> = 2000: 5 m/s mỗi bước, phải 2 bước mới hãm hết 9 m/s rồi đẩy ra dần.</li>
+						<li><code>k</code> = 20000: 50 m/s ngay trong một bước, quả bóng đang lao xuống 9 m/s bật ra với 41 m/s, nhanh gấp 4 lần lúc lao vào.</li>
+					</ul>
+					Lò xo càng cứng thì cú đẩy của bước đầu tiên đó càng quá tay. Chia nhỏ <code>dt</code> thì độ lún lúc được phát hiện nhỏ hơn và lực được đo lại
+					thường xuyên hơn, nên lò xo cứng mới chạy được, nhưng phải tính rất nhiều bước. Ngoài ra phải thêm một lực cản (damping, lực ngược chiều vận tốc)
+					mới không nảy mãi, lại thêm một thông số cần chỉnh. Vì vậy với vật rắn penalty method ít được dùng.
+
+					<h2>5. Cách thứ ba: impulse</h2>
+					Nhìn lại code lò xo: mỗi bước nó đổi vận tốc của 2 vật một lượng, và lượng đó do một cái lò xo mình tự bịa ra quyết định, nên có lúc quá ít (lún),
+					có lúc quá nhiều (nổ). Cách thứ ba cũng đổi vận tốc của 2 vật một lượng mỗi bước, nhưng không bịa nữa: nó tính ra <b>đúng</b> lượng cần đổi
+					để ngay sau bước đó 2 vật tách nhau ra theo kiểu ta muốn.<br/><br/>
+
+					Đầu tiên là 2 vật nhận bao nhiêu so với nhau. Nếu 2 vật nặng bằng nhau thì đổi vận tốc bằng nhau, ngược chiều, như lò xo. Nhưng một quả bóng
+					bàn đâm vào quả bowling thì quả bóng bàn bật ra còn quả bowling gần như không nhúc nhích. Vật lý cấp 3 cho ta quy tắc:
+					<ul>
+						<li><b>Động lượng</b> (momentum) của một vật là khối lượng nhân vận tốc, \(\vec{p} = m\vec{v}\).</li>
+						<li>Khi 2 vật va chạm với nhau, tổng động lượng của 2 vật không đổi (bảo toàn động lượng): vật này mất bao nhiêu động lượng thì vật kia nhận
+						bấy nhiêu.</li>
+						<li>Lượng động lượng một vật nhận được gọi là <b>xung lượng</b> (impulse), ký hiệu \(\vec{J}\). Nhận \(\vec{J}\) thì vận tốc thay đổi
+						\(\Delta\vec{v} = \vec{J}/m\): cùng một impulse, vật nặng gấp 100 lần thì vận tốc đổi ít hơn 100 lần.</li>
+					</ul>
+					(Liên hệ với lực: một lực \(\vec{F}\) không đổi trong thời gian \(\Delta t\) tạo gia tốc \(\vec{a} = \vec{F}/m\), vận tốc đổi
+					\(\Delta\vec{v} = \vec{a}\,\Delta t = \vec{F}\Delta t / m\), tức là xung lượng của nó là \(\vec{J} = \vec{F}\Delta t\). Cái <code>velocityChange</code>
+					của lò xo cũng chính là một xung lượng. Lúc va chạm, lực giữa 2 vật rất lớn mà thời gian rất ngắn, ta không cần biết từng cái, chỉ cần biết
+					tích của chúng.)<br/><br/>
+
+					Vậy để phản hồi va chạm, ta chỉ cần tính một con số: độ lớn của impulse \(J\) theo hướng pháp tuyến \(\vec{n}\). B nhận \(J\vec{n}\), A nhận
+					\(-J\vec{n}\) (bảo toàn động lượng), mỗi vật chia cho khối lượng của mình để ra vận tốc thay đổi. Chỉ theo hướng pháp tuyến vì 2 bề mặt chỉ đẩy nhau ra, còn phần vận tốc trượt dọc theo mặt chạm thì
+					phải có ma sát mới cản lại, blog 7 mới làm. Để tính \(J\), ta cần biết sau va chạm 2 vật phải tách nhau ra như thế nào.<br/><br/>
+
+					Gọi \(v_n\) là vận tốc tương đối của B so với A theo hướng pháp tuyến:
+					$$v_n = (\vec{v}_B - \vec{v}_A) \cdot \vec{n}$$
+					\(v_n < 0\) nghĩa là B đang lao vào A (đi ngược hướng pháp tuyến), \(v_n > 0\) là đang tách ra. Ngoài đời, sau va chạm 2 vật tách ra với vận tốc
+					bằng một phần vận tốc lúc lao vào, tỉ lệ đó gọi là <b>hệ số đàn hồi</b> (coefficient of restitution) \(e\): \(e = 0\) là không nảy chút nào
+					(cục đất sét), \(e = 1\) là nảy lại hoàn toàn (bóng siêu đàn hồi). Vậy ta muốn sau va chạm:
+					$$v_n' = -e \cdot v_n$$
+					(dấu phẩy trên \(v_n'\) nghĩa là giá trị sau va chạm.)
+
+					Sau khi nhận impulse, vận tốc của 2 vật là:
+					$$\vec{v}_A' = \vec{v}_A - \frac{J\vec{n}}{m_A} \qquad \vec{v}_B' = \vec{v}_B + \frac{J\vec{n}}{m_B}$$
+					Thay vào công thức của \(v_n'\): trong ngoặc là \(\vec{v}_B + \frac{J\vec{n}}{m_B} - \vec{v}_A + \frac{J\vec{n}}{m_A}\) (trừ một số âm thành cộng),
+					tách phần có \(J\) ra, và nhớ \(\vec{n} \cdot \vec{n} = 1\) vì \(\vec{n}\) là vector đơn vị:
+					$$v_n' = (\vec{v}_B' - \vec{v}_A') \cdot \vec{n} = (\vec{v}_B - \vec{v}_A) \cdot \vec{n} + J\left(\frac{1}{m_A} + \frac{1}{m_B}\right) = v_n + J\left(\frac{1}{m_A} + \frac{1}{m_B}\right)$$
+					Cho nó bằng \(-e \cdot v_n\) rồi chuyển vế:
+					$$J = \frac{-(1 + e)\, v_n}{\frac{1}{m_A} + \frac{1}{m_B}}$$
+
+					Một vật tĩnh như mặt đất thì coi như nặng vô hạn, \(\frac{1}{m} = 0\), nó không nhận được tí vận tốc nào từ impulse. Vì công thức chỉ dùng
+					\(\frac{1}{m}\) chứ không dùng \(m\), mình lưu luôn nghịch đảo khối lượng (<code>inverseMass</code>) trong <code>Rigidbody</code>, vật không
+					có Rigidbody thì <code>inverseMass</code> là 0:
+					<pre><code class="language-javascript">class Rigidbody extends Component {
+	constructor(mass = 1) {					// <---------------------
+		super();
+		this.mass = mass;					// <---------------------
+		this.inverseMass = 1 / mass;		// <---------------------
+		this.velocity = new Vector3(0, 0, 0);
+	}
+	...
+}
+
+class Collider extends Component {
+	constructor(restitution = 0) {			// <---------------------
+		super();
+		this.restitution = restitution;
+	}
+	...
+}
+
+class SphereCollider extends Collider {
+	constructor(radius = 0.5, restitution = 0) {	// <---------------------
+		super(restitution);
+		this.radius = radius;
+	}
+	...
+}</code></pre>
+					<code>mass</code> được lưu lại để blog 3 dùng. Hệ số đàn hồi là tính chất của bề mặt, nên mình để nó trong <code>Collider</code>. Khi 2 bề mặt khác nhau chạm nhau, mình lấy cái lớn hơn
+					(Box2D, physics engine 2D mà mình nhắc ở blog trước, cũng làm vậy), để một quả bóng nảy vẫn nảy được trên mặt đất không nảy. Hàm <code>resolveContact</code> chính là công thức ở trên:
+					<pre><code class="language-javascript">getInverseMass(rigidbody) {
+	return rigidbody != null ? rigidbody.inverseMass : 0;
+}
+
+getVelocity(rigidbody) {
+	return rigidbody != null ? rigidbody.velocity : new Vector3(0, 0, 0);
+}
+
+resolveContact(colliderA, colliderB, contact) {
+	let rigidbodyA = colliderA.rigidbody;
+	let rigidbodyB = colliderB.rigidbody;
+	let inverseMassA = this.getInverseMass(rigidbodyA);
+	let inverseMassB = this.getInverseMass(rigidbodyB);
+
+	let relativeVelocity = Vector3.sub(this.getVelocity(rigidbodyB), this.getVelocity(rigidbodyA));
+	let normalVelocity = Vector3.dot(relativeVelocity, contact.normal);
+	if (normalVelocity > 0) return;
+
+	let restitution = Math.max(colliderA.restitution, colliderB.restitution);
+	let impulseMagnitude = -(1 + restitution) * normalVelocity / (inverseMassA + inverseMassB);
+	let impulse = Vector3.mul(contact.normal, impulseMagnitude);
+	if (rigidbodyA != null) rigidbodyA.velocity = Vector3.sub(rigidbodyA.velocity, Vector3.mul(impulse, inverseMassA));
+	if (rigidbodyB != null) rigidbodyB.velocity = Vector3.add(rigidbodyB.velocity, Vector3.mul(impulse, inverseMassB));
+}</code></pre>
+					Dòng <code>if (normalVelocity > 0) return;</code>: nếu 2 vật đã đang tách ra thì không làm gì cả. Không có dòng này thì 2 vật vừa nảy ra
+					xong mà vẫn còn lún một chút ở bước sau sẽ bị kéo ngược vào lại (impulse ra số âm). Vật tĩnh thì <code>getVelocity</code> trả về vector 0.
+					<code>step</code> không cần truyền <code>dt</code> nữa, impulse không phụ thuộc thời gian.<br/><br/>
+
+					Slider Stiffness được thay bằng slider <b>Ball restitution</b> để chỉnh hệ số đàn hồi của các quả bóng (mặc định 0), quả bóng mới tạo ra
+					cũng lấy giá trị từ slider:
+					<pre><code class="language-javascript">restitutionSlider.addEventListener("input", () => {
+	let restitution = parseFloat(restitutionSlider.value);
+	for (let collider of scene.getAllComponentsOfType(SphereCollider)) {
+		collider.restitution = restitution;
+	}
+	restitutionText.textContent = restitution.toFixed(2);
+});
+...
+ball.addComponent(new SphereCollider(0.5, parseFloat(restitutionSlider.value)));	// <---------------------</code></pre>
+					Ngoài ra mình thêm một dòng chữ in ra độ lún lớn nhất trong bước vật lý vừa rồi, <code>step</code> ghi lại nó vào <code>maxPenetration</code>
+					(constructor cũng gán <code>this.maxPenetration = 0</code>, để những frame chưa chạy bước vật lý nào vẫn có số để in):
+					<pre><code class="language-javascript">&lt;h3 id=&quot;physicsInfo&quot;&gt;Max penetration: 0&lt;/h3&gt;
+...
+step(scene, dt) {
+	...
+	let colliders = scene.getAllComponentsOfType(Collider);
+	this.maxPenetration = 0;														// <---------------------
+	for (let i = 0; i < colliders.length; i++) {
+		for (let j = i + 1; j < colliders.length; j++) {
+			if (colliders[i].rigidbody == null && colliders[j].rigidbody == null) continue;
+			let contact = this.findContact(colliders[i], colliders[j]);
+			if (contact == null) continue;
+			this.maxPenetration = Math.max(this.maxPenetration, contact.depth);		// <---------------------
+			this.resolveContact(colliders[i], colliders[j], contact);
+		}
+	}
+	...
+}
+...
+physicsWorld.update(scene, dt);
+physicsInfo.textContent = `Max penetration: ${physicsWorld.maxPenetration.toFixed(3)}`;</code></pre>
+					Kết quả, thử kéo Ball restitution lên 0.8 rồi bấm Reset:
+					<div class="htmlPreview" id="htmlPreview13" data-disabled="true"></div>
+					Ở restitution 0 các quả bóng không nảy, nhưng khác demo 11 ở chỗ quả rơi xuống đâm vào quả nằm dưới thì quả dưới bị đẩy đi
+					(2 quả chia nhau vận tốc theo hướng pháp tuyến). Kéo lên 0.8 thì chúng nảy và hất nhau văng đi. Nhưng để lại restitution 0, chờ các quả bóng nằm
+					yên, rồi nhìn dòng Max penetration: khoảng <b>0.2</b>. Các quả bóng nằm sát đáy lún vào mặt đất, mỗi quả một khác: mình đo được từ 0.04 tới 0.2,
+					và chúng nằm như vậy mãi mãi.<br/><br/>
+
+					Lý do: impulse chỉ sửa <b>vận tốc</b>, không sửa <b>vị trí</b>. Va chạm chỉ được phát hiện sau khi quả bóng đã lún vào, mà trong 1 bước 1/60 giây
+					một quả bóng chạm đất với vài m/s tới hơn chục m/s (tùy nó được thả cao cỡ nào, và có bị quả khác đè xuống không) đi được từ vài phần trăm mét tới khoảng
+					0.2 mét. Impulse làm nó ngừng đi xuống, nhưng độ lún đã có thì vẫn còn nguyên. Với restitution lớn thì quả bóng nảy lên
+					nên độ lún tự hết, còn với restitution 0 thì không gì kéo nó lên lại.
+
+					<h2>6. Sửa độ lún</h2>
+					Cách sửa đơn giản nhất: sau khi xử lý vận tốc, đẩy 2 vật ra một ít theo pháp tuyến. Không đẩy hết độ lún trong 1 bước như cách đầu tiên, mà chỉ đẩy
+					một phần, cụ thể 20% (<code>correctionPercent</code>), và chừa lại 0.01 (<code>allowedPenetration</code>) không đẩy:
+					<pre><code class="language-javascript">class PhysicsWorld {
+	constructor(gravity = new Vector3(0, -9.81, 0)) {
+		...
+		this.allowedPenetration = 0.01;		// <---------------------
+		this.correctionPercent = 0.2;		// <---------------------
+	}
+	...
+	step(scene, dt) {
+		...
+			this.resolveContact(colliders[i], colliders[j], contact);
+			this.correctPositions(colliders[i], colliders[j], contact);		// <---------------------
+		...
+	}
+	...
+	correctPositions(colliderA, colliderB, contact) {
+		let rigidbodyA = colliderA.rigidbody;
+		let rigidbodyB = colliderB.rigidbody;
+		let inverseMassA = this.getInverseMass(rigidbodyA);
+		let inverseMassB = this.getInverseMass(rigidbodyB);
+
+		let correctionDepth = Math.max(contact.depth - this.allowedPenetration, 0) * this.correctionPercent;
+		let correction = Vector3.mul(contact.normal, correctionDepth / (inverseMassA + inverseMassB));
+		if (rigidbodyA != null) rigidbodyA.transform.position = Vector3.sub(rigidbodyA.transform.position, Vector3.mul(correction, inverseMassA));
+		if (rigidbodyB != null) rigidbodyB.transform.position = Vector3.add(rigidbodyB.transform.position, Vector3.mul(correction, inverseMassB));
+	}
+}</code></pre>
+					<ul>
+						<li>Chỉ đẩy 20% phần lún mỗi bước: từ 0.2 xuống gần 0.01 mất khoảng 20 bước, tức khoảng 1/3 giây, bạn sẽ thấy quả bóng trồi lên từ từ chứ không giật
+						lên trong 1 frame. Con số 20% mình lấy theo bài viết của Randy Gaul (link ở dưới), bài đó gợi ý khoảng 20% tới 80%.</li>
+						<li>Chừa lại 0.01: khi độ lún còn dưới 0.01 thì thôi không đẩy nữa, quả bóng nằm yên với độ lún khoảng 0.01, nên <code>boxVsSphere</code> và
+						<code>sphereVsSphere</code> luôn phát hiện nó đang chạm ở <b>mọi</b> bước (2 hàm này so sánh <code>>=</code>, vừa khít là coi như không chạm).
+						Ở blog này nhìn bằng mắt thì không thấy khác, nhưng các blog sau sẽ cần chuyện một vật nằm yên luôn có va chạm.</li>
+						<li>Chia cho tổng nghịch đảo khối lượng rồi nhân với nghịch đảo khối lượng của từng vật: vật nhẹ bị đẩy nhiều hơn vật nặng. Hai vật nặng bằng nhau
+						thì mỗi vật bị đẩy một nửa, cộng lại đúng bằng <code>correctionDepth</code>.</li>
+					</ul>
+					Cách sửa này mình lấy từ bài viết của <a href="https://code.tutsplus.com/how-to-create-a-custom-2d-physics-engine-the-basics-and-impulse-resolution--gamedev-6331">Randy Gaul</a>
+					(gọi là linear projection). Kết quả:
+					<div class="htmlPreview" id="htmlPreview14" data-disabled="true"></div>
+					Lúc các quả bóng mới rơi xuống thì dòng Max penetration vẫn nhảy lên cao, nhưng khi chúng đã nằm yên thì nó là khoảng 0.010, đúng bằng phần chừa lại,
+					các quả bóng nằm đúng trên mặt đất (nhìn những quả nằm sát đáy).
+
+					<h2>7. So sánh và chọn</h2>
+					Tổng kết 3 cách đã thử, cộng thêm một cách thứ tư mà mình không làm nhưng bạn nên biết:
+					<table style="border-collapse: collapse; margin: 10px 0;">
+						<tr>
+							<th style="border: 1px solid #aaa; padding: 4px 8px;">Cách</th>
+							<th style="border: 1px solid #aaa; padding: 4px 8px;">Làm gì</th>
+							<th style="border: 1px solid #aaa; padding: 4px 8px;">Vấn đề</th>
+						</tr>
+						<tr>
+							<td style="border: 1px solid #aaa; padding: 4px 8px;">Đẩy ra</td>
+							<td style="border: 1px solid #aaa; padding: 4px 8px;">Sửa vị trí cho hết lún, bỏ phần vận tốc lao vào</td>
+							<td style="border: 1px solid #aaa; padding: 4px 8px;">Không nảy, không truyền vận tốc cho vật kia, vật nặng nhẹ khác nhau thì không biết chia</td>
+						</tr>
+						<tr>
+							<td style="border: 1px solid #aaa; padding: 4px 8px;">Lò xo (penalty)</td>
+							<td style="border: 1px solid #aaa; padding: 4px 8px;">Lực đẩy tỉ lệ với độ lún</td>
+							<td style="border: 1px solid #aaa; padding: 4px 8px;">Mềm thì lún, cứng thì nổ tung, cần <code>dt</code> rất nhỏ</td>
+						</tr>
+						<tr>
+							<td style="border: 1px solid #aaa; padding: 4px 8px;"><b>Impulse</b></td>
+							<td style="border: 1px solid #aaa; padding: 4px 8px;"><b>Đổi vận tốc ngay lập tức theo bảo toàn động lượng</b></td>
+							<td style="border: 1px solid #aaa; padding: 4px 8px;"><b>Cần sửa độ lún riêng</b></td>
+						</tr>
+						<tr>
+							<td style="border: 1px solid #aaa; padding: 4px 8px;">Position based (PBD, XPBD)</td>
+							<td style="border: 1px solid #aaa; padding: 4px 8px;">Sửa vị trí trước, rồi suy ra vận tốc từ vị trí đã sửa, chia mỗi frame thành rất nhiều bước nhỏ</td>
+							<td style="border: 1px solid #aaa; padding: 4px 8px;">Ổn định, nhưng nhiều bước nhỏ hơn và phải dùng thêm các khái niệm khác</td>
+						</tr>
+					</table>
+					Cách thứ tư (Position Based Dynamics) đang được dùng nhiều trong vài năm gần đây, nếu muốn tìm hiểu bạn có thể đọc paper
+					<a href="https://matthias-research.github.io/pages/publications/PBDBodies.pdf">Detailed Rigid Body Simulation with Extended Position Based Dynamics</a>
+					của Matthias Müller. Series này sẽ đi theo cách thứ ba, impulse, vì đây là cách của Box2D, <a href="https://pybullet.org/">Bullet</a>
+					(một physics engine 3D mã nguồn mở), và tài liệu về nó cũng nhiều nhất. Cách làm đầy đủ của nó (gọi là <i>sequential impulses</i>) sẽ được hoàn thiện dần tới blog 7.<br/><br/>
+
+					Hiện tại engine chỉ xử lý được quả cầu, và các quả cầu chỉ trượt chứ không lăn, vì vật của ta chưa biết xoay. Blog sau ta sẽ cho vật xoay.
+
+                    <div id="graphics3D-nav-bottom"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="graphics3DPhysics.js"></script>
+    <script src="concept.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/loadsidebar.js"></script>
+</body>
+
+</html>

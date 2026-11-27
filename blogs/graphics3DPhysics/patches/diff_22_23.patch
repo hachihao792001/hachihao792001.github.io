@@ -1,0 +1,41 @@
+--- "a/htmlPreviews\\htmlPreview22.html"
++++ "b/htmlPreviews\\htmlPreview23.html"
+@@ -1585,6 +1585,27 @@
+ 				return Mesh.fromTriangles(triangles);
+ 			}
+ 
++			static crystal() {
++				let top = new Vector3(0.25, 0.9, 0.1);
++				let bottom = new Vector3(-0.15, -0.9, -0.05);
++				let radii = [0.9, 0.7, 1.0, 0.75, 0.95, 0.65, 0.85];
++				let ring = [];
++				for (let i = 0; i < radii.length; i++) {
++					let angle = (i / radii.length) * Math.PI * 2;
++					ring.push(new Vector3(Math.cos(angle) * radii[i], 0, Math.sin(angle) * radii[i]));
++				}
++
++				let triangles = [];
++				let uvs = [new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 1)];
++				for (let i = 0; i < ring.length; i++) {
++					let current = ring[i];
++					let next = ring[(i + 1) % ring.length];
++					triangles.push(new Triangle([top, next, current], uvs));
++					triangles.push(new Triangle([bottom, current, next], uvs));
++				}
++				return Mesh.fromTriangles(triangles);
++			}
++
+ 			static cube() {
+ 				return Mesh.fromTriangles([
+ 					// FRONT
+@@ -3110,6 +3131,10 @@ void main(){
+ 		ramp.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(190, 150, 100))));
+ 		ramp.addComponent(new BoxCollider());
+ 
++		let crystal = scene.add(new GameObject("Crystal", new Vector3(5.5, 2.5, -1), Vector3.zero, Vector3.one));
++		let crystalMaterial = new Material(new Color(170, 90, 255));
++		crystal.addComponent(new MeshRenderer(Primitives.crystal(), crystalMaterial));
++
+ 		let ballMaterial = new Material(new Color(255, 90, 90));
+ 		let boxMaterial = new Material(new Color(110, 170, 255));
+ 		let physicsObjects = [];

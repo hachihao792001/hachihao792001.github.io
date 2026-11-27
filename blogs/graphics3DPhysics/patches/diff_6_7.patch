@@ -1,0 +1,49 @@
+--- "a/htmlPreviews\\htmlPreview6.html"
++++ "b/htmlPreviews\\htmlPreview7.html"
+@@ -252,6 +252,13 @@
+ 			<label class="controlLabel" for="useShadow">Shadow:</label>
+ 			<span><input type="checkbox" id="useShadow" checked="checked" /></span>
+ 		</div>
++		<div class="controlRow">
++			<label class="controlLabel" for="maxFps">Max FPS:</label>
++			<span>
++				<input type="range" id="maxFps" min="10" max="144" step="1" value="144" />
++				<span id="maxFpsText" class="slider-value">144</span>
++			</span>
++		</div>
+ 	</div>
+ 
+ 	<div id="helpPopup" style="display: none">
+@@ -2796,6 +2803,9 @@ void main(){
+ 		const pointLightRangeText = (document.getElementById("pointRangeText"));
+ 
+ 		const useShadowCheckbox = (document.getElementById("useShadow"));
++		const maxFpsSlider = (document.getElementById("maxFps"));
++		const maxFpsText = (document.getElementById("maxFpsText"));
++		let maxFps = parseFloat(maxFpsSlider.value);
+ 		webglRenderer.useShadow = useShadowCheckbox.checked;
+ 		softwareRenderer.useShadow = useShadowCheckbox.checked;
+ 
+@@ -2876,6 +2886,10 @@ void main(){
+ 		}
+ 
+ 		function update(time = performance.now()) {
++			if (time - lastTime < 1000 / maxFps - 1) {
++				requestAnimationFrame(update);
++				return;
++			}
+ 			dt = (time - lastTime) / 1000;
+ 			lastTime = time;
+ 
+@@ -2929,6 +2943,11 @@ void main(){
+ 			useShadowCheckbox.blur();
+ 		});
+ 
++		maxFpsSlider.addEventListener("input", () => {
++			maxFps = parseFloat(maxFpsSlider.value);
++			maxFpsText.textContent = maxFps.toFixed(0);
++		});
++
+ 		function readResolution(input, min, max, current) {
+ 			let value = parseInt(input.value);
+ 			if (isNaN(value)) return current;

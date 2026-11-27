@@ -1,0 +1,102 @@
+--- "a/htmlPreviews\\htmlPreview20.html"
++++ "b/htmlPreviews\\htmlPreview21.html"
+@@ -2844,6 +2844,22 @@ void main(){
+ 		}
+ 
+ 		class BoxCollider extends Collider {
++			static corners = [
++				new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, -0.5, -0.5), new Vector3(0.5, 0.5, -0.5), new Vector3(-0.5, 0.5, -0.5),
++				new Vector3(-0.5, -0.5, 0.5), new Vector3(0.5, -0.5, 0.5), new Vector3(0.5, 0.5, 0.5), new Vector3(-0.5, 0.5, 0.5),
++			];
++
++			getAABB() {
++				let min = new Vector3(Infinity, Infinity, Infinity);
++				let max = new Vector3(-Infinity, -Infinity, -Infinity);
++				for (let corner of BoxCollider.corners) {
++					let p = this.transform.transformPoint(corner);
++					min = new Vector3(Math.min(min.x, p.x), Math.min(min.y, p.y), Math.min(min.z, p.z));
++					max = new Vector3(Math.max(max.x, p.x), Math.max(max.y, p.y), Math.max(max.z, p.z));
++				}
++				return [min, max];
++			}
++
+ 			calculateLocalInverseInertia(mass) {
+ 				let size = this.transform.lossyScale;
+ 				let x2 = size.x * size.x;
+@@ -2906,6 +2922,7 @@ void main(){
+ 
+ 			findContact(colliderA, colliderB) {
+ 				if (colliderA instanceof SphereCollider && colliderB instanceof SphereCollider) return this.sphereVsSphere(colliderA, colliderB);
++				if (colliderA instanceof BoxCollider && colliderB instanceof BoxCollider) return this.boxVsBox(colliderA, colliderB);
+ 				if (colliderA instanceof BoxCollider && colliderB instanceof SphereCollider) return this.boxVsSphere(colliderA, colliderB);
+ 				if (colliderA instanceof SphereCollider && colliderB instanceof BoxCollider) {
+ 					let contact = this.boxVsSphere(colliderB, colliderA);
+@@ -2940,6 +2957,36 @@ void main(){
+ 				return new Contact(closestPoint, Vector3.div(offset, distance), sphere.worldRadius - distance);
+ 			}
+ 
++			boxVsBox(boxA, boxB) {
++				let [minA, maxA] = boxA.getAABB();
++				let [minB, maxB] = boxB.getAABB();
++				let overlapX = Math.min(maxA.x, maxB.x) - Math.max(minA.x, minB.x);
++				let overlapY = Math.min(maxA.y, maxB.y) - Math.max(minA.y, minB.y);
++				let overlapZ = Math.min(maxA.z, maxB.z) - Math.max(minA.z, minB.z);
++				if (overlapX <= 0 || overlapY <= 0 || overlapZ <= 0) return null;
++
++				let centerA = boxA.transform.position;
++				let centerB = boxB.transform.position;
++				let normal;
++				let depth;
++				if (overlapX < overlapY && overlapX < overlapZ) {
++					normal = new Vector3(centerB.x > centerA.x ? 1 : -1, 0, 0);
++					depth = overlapX;
++				} else if (overlapY < overlapZ) {
++					normal = new Vector3(0, centerB.y > centerA.y ? 1 : -1, 0);
++					depth = overlapY;
++				} else {
++					normal = new Vector3(0, 0, centerB.z > centerA.z ? 1 : -1);
++					depth = overlapZ;
++				}
++				let point = new Vector3(
++					(Math.max(minA.x, minB.x) + Math.min(maxA.x, maxB.x)) / 2,
++					(Math.max(minA.y, minB.y) + Math.min(maxA.y, maxB.y)) / 2,
++					(Math.max(minA.z, minB.z) + Math.min(maxA.z, maxB.z)) / 2,
++				);
++				return new Contact(point, normal, depth);
++			}
++
+ 			getInverseMass(rigidbody) {
+ 				return rigidbody != null ? rigidbody.inverseMass : 0;
+ 			}
+@@ -2986,7 +3033,7 @@ void main(){
+ 		let renderer = webglRenderer;
+ 		const rendererSelect = (document.getElementById("rendererSelect"));
+ 
+-		let camera = new Camera(new Vector3(0, 7, -8), new Vector3(-35, 0, 0), 5, 0.2);
++		let camera = new Camera(new Vector3(0.5, 9, -12), new Vector3(-30, 0, 0), 5, 0.2);
+ 		let keyStates = {};
+ 
+ 		const renderDiv = (document.getElementById("render"));
+@@ -3060,6 +3107,7 @@ void main(){
+ 		}
+ 
+ 		let ballMaterial = new Material(new Color(255, 90, 90));
++		let boxMaterial = new Material(new Color(110, 170, 255));
+ 		let physicsObjects = [];
+ 		let pushableObjects = [];
+ 		let pushArrows = [];
+@@ -3095,6 +3143,14 @@ void main(){
+ 			physicsObjects.push(standingPlank);
+ 
+ 			pushableObjects = [cube, lyingPlank, standingPlank];
++
++			for (let i = 0; i < 4; i++) {
++				let box = scene.add(new GameObject("Box " + i, new Vector3(-5 + (i % 2) * 0.3, 2 + i * 1.5, 0), Vector3.zero, Vector3.one));
++				box.addComponent(new MeshRenderer(cubeMesh, boxMaterial));
++				box.addComponent(new BoxCollider());
++				box.addComponent(new Rigidbody());
++				physicsObjects.push(box);
++			}
+ 		}
+ 
+ 		function resetPhysicsObjects() {

@@ -1,0 +1,26 @@
+--- "a/htmlPreviews\\htmlPreview21.html"
++++ "b/htmlPreviews\\htmlPreview22.html"
+@@ -3106,6 +3106,10 @@ void main(){
+ 			wall.addComponent(new BoxCollider());
+ 		}
+ 
++		let ramp = scene.add(new GameObject("Ramp", new Vector3(6, 1.2, -5), new Vector3(0, 0, -20), new Vector3(4, 0.3, 2)));
++		ramp.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(190, 150, 100))));
++		ramp.addComponent(new BoxCollider());
++
+ 		let ballMaterial = new Material(new Color(255, 90, 90));
+ 		let boxMaterial = new Material(new Color(110, 170, 255));
+ 		let physicsObjects = [];
+@@ -3151,6 +3155,12 @@ void main(){
+ 				box.addComponent(new Rigidbody());
+ 				physicsObjects.push(box);
+ 			}
++
++			let rampBox = scene.add(new GameObject("Ramp box", new Vector3(6.2, 2.4, -5), new Vector3(0, 0, -20), Vector3.one));
++			rampBox.addComponent(new MeshRenderer(cubeMesh, boxMaterial));
++			rampBox.addComponent(new BoxCollider());
++			rampBox.addComponent(new Rigidbody());
++			physicsObjects.push(rampBox);
+ 		}
+ 
+ 		function resetPhysicsObjects() {

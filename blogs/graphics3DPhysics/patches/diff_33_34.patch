@@ -1,0 +1,20 @@
+--- "a/htmlPreviews\\htmlPreview33.html"
++++ "b/htmlPreviews\\htmlPreview34.html"
+@@ -3526,6 +3526,17 @@ void main(){
+ 				physicsObjects.push(box);
+ 			}
+ 
++			let pedestal = scene.add(new GameObject("Pedestal", new Vector3(-6, 0.8, -4.5), Vector3.zero, new Vector3(0.6, 0.6, 0.6)));
++			pedestal.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(190, 150, 100))));
++			pedestal.addComponent(new BoxCollider());
++			physicsObjects.push(pedestal);
++
++			let board = scene.add(new GameObject("Board", new Vector3(-5, 1.2, -4.5), Vector3.zero, new Vector3(3, 0.2, 3)));
++			board.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
++			board.addComponent(new BoxCollider());
++			board.addComponent(new Rigidbody());
++			physicsObjects.push(board);
++
+ 			let fallingCrystal = scene.add(new GameObject("Falling crystal", new Vector3(0, 6, 0), new Vector3(30, 0, 20), Vector3.one));
+ 			fallingCrystal.addComponent(new MeshRenderer(crystalMesh, new Material(new Color(170, 90, 255))));
+ 			fallingCrystal.addComponent(new ConvexHullCollider(crystalMesh));

@@ -1,0 +1,11 @@
+--- "a/htmlPreviews\\htmlPreview40.html"
++++ "b/htmlPreviews\\htmlPreview41.html"
+@@ -3615,7 +3615,7 @@ void main(){
+ 			board.addComponent(new Rigidbody());
+ 			physicsObjects.push(board);
+ 
+-			for (let i = 0; i < 5; i++) {
++			for (let i = 0; i < 10; i++) {
+ 				let stackBox = scene.add(new GameObject("Stack box " + i, new Vector3(-7.5, 1 + i * 1.001, 1.5), Vector3.zero, Vector3.one));
+ 				stackBox.addComponent(new MeshRenderer(cubeMesh, boxMaterial));
+ 				stackBox.addComponent(new BoxCollider());

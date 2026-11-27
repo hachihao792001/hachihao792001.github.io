@@ -1,0 +1,122 @@
+--- "a/htmlPreviews\\htmlPreview23.html"
++++ "b/htmlPreviews\\htmlPreview24.html"
+@@ -2862,19 +2862,52 @@ void main(){
+ 				let inertia = 0.4 * mass * this.worldRadius * this.worldRadius;
+ 				return new Vector3(1 / inertia, 1 / inertia, 1 / inertia);
+ 			}
++
++			support(direction) {
++				let normalizedDirection = direction.clone().normalize();
++				return Vector3.add(this.transform.position, Vector3.mul(normalizedDirection, this.worldRadius));
++			}
+ 		}
+ 
+-		class BoxCollider extends Collider {
++		class ConvexCollider extends Collider {
++			constructor(localVertices, restitution) {
++				super(restitution);
++				this.localVertices = localVertices;
++			}
++
++			getVertices() {
++				return this.localVertices.map((v) => this.transform.transformPoint(v));
++			}
++
++			support(direction) {
++				let localDirection = Vector3.scale(this.transform.inverseTransformDirection(direction), this.transform.lossyScale);
++				let best = this.localVertices[0];
++				let bestDot = -Infinity;
++				for (let v of this.localVertices) {
++					let dot = Vector3.dot(v, localDirection);
++					if (dot > bestDot) {
++						bestDot = dot;
++						best = v;
++					}
++				}
++				return this.transform.transformPoint(best);
++			}
++		}
++
++		class BoxCollider extends ConvexCollider {
+ 			static corners = [
+ 				new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, -0.5, -0.5), new Vector3(0.5, 0.5, -0.5), new Vector3(-0.5, 0.5, -0.5),
+ 				new Vector3(-0.5, -0.5, 0.5), new Vector3(0.5, -0.5, 0.5), new Vector3(0.5, 0.5, 0.5), new Vector3(-0.5, 0.5, 0.5),
+ 			];
+ 
++			constructor(restitution = 0) {
++				super(BoxCollider.corners, restitution);
++			}
++
+ 			getAABB() {
+ 				let min = new Vector3(Infinity, Infinity, Infinity);
+ 				let max = new Vector3(-Infinity, -Infinity, -Infinity);
+-				for (let corner of BoxCollider.corners) {
+-					let p = this.transform.transformPoint(corner);
++				for (let p of this.getVertices()) {
+ 					min = new Vector3(Math.min(min.x, p.x), Math.min(min.y, p.y), Math.min(min.z, p.z));
+ 					max = new Vector3(Math.max(max.x, p.x), Math.max(max.y, p.y), Math.max(max.z, p.z));
+ 				}
+@@ -2890,6 +2923,22 @@ void main(){
+ 			}
+ 		}
+ 
++		class ConvexHullCollider extends ConvexCollider {
++			constructor(mesh, restitution = 0) {
++				super(ConvexHullCollider.findUniqueVertices(mesh), restitution);
++			}
++
++			static findUniqueVertices(mesh) {
++				let vertices = [];
++				let p = mesh.positions;
++				for (let i = 0; i < mesh.vertexCount; i++) {
++					let vertex = new Vector3(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]);
++					if (!vertices.some((v) => Vector3.sub(v, vertex).magnitude() < 1e-5)) vertices.push(vertex);
++				}
++				return vertices;
++			}
++		}
++
+ 		class Contact {
+ 			constructor(point, normal, depth) {
+ 				this.point = point;
+@@ -3133,7 +3182,16 @@ void main(){
+ 
+ 		let crystal = scene.add(new GameObject("Crystal", new Vector3(5.5, 2.5, -1), Vector3.zero, Vector3.one));
+ 		let crystalMaterial = new Material(new Color(170, 90, 255));
+-		crystal.addComponent(new MeshRenderer(Primitives.crystal(), crystalMaterial));
++		let crystalMesh = Primitives.crystal();
++		crystal.addComponent(new MeshRenderer(crystalMesh, crystalMaterial));
++		let crystalCollider = crystal.addComponent(new ConvexHullCollider(crystalMesh));
++
++		let supportMarkers = [];
++		for (let i = 0; i < 2; i++) {
++			let marker = scene.add(new GameObject("Support marker", Vector3.zero.clone(), Vector3.zero, new Vector3(0.15, 0.15, 0.15)));
++			marker.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 230, 0)), false));
++			supportMarkers.push(marker);
++		}
+ 
+ 		let ballMaterial = new Material(new Color(255, 90, 90));
+ 		let boxMaterial = new Material(new Color(110, 170, 255));
+@@ -3255,6 +3313,14 @@ void main(){
+ 			}
+ 		}
+ 
++		function updateSupportMarkers() {
++			let directionToCamera = Vector3.mul(camera.transform.getForward(), -1);
++			let colliders = [crystalCollider, pushableObjects[0].getComponent(Collider)];
++			for (let i = 0; i < colliders.length; i++) {
++				supportMarkers[i].transform.position = colliders[i].support(directionToCamera);
++			}
++		}
++
+ 		function updateGameObjectTransforms() {
+ 			camera.updateMovement(dt, keyStates);
+ 			if (lookInput.x != 0 || lookInput.y != 0) {
+@@ -3284,6 +3350,7 @@ void main(){
+ 			updateGameObjectTransforms();
+ 			physicsWorld.update(scene, dt, fixedUpdate);
+ 			updatePushArrows();
++			updateSupportMarkers();
+ 			physicsInfo.textContent = `Max penetration: ${physicsWorld.maxPenetration.toFixed(3)}`;
+ 			renderer.render(scene, camera);
+ 

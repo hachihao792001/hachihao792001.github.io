@@ -1,0 +1,95 @@
+--- "a/htmlPreviews\\htmlPreview46.html"
++++ "b/htmlPreviews\\htmlPreview47.html"
+@@ -3385,26 +3385,36 @@ void main(){
+ 				return rigidbody != null ? rigidbody.getPointVelocity(point) : new Vector3(0, 0, 0);
+ 			}
+ 
+-			calculateEffectiveMass(rigidbodyA, rigidbodyB, point, direction) {
++			prepareImpulseDirection(rigidbodyA, rigidbodyB, point, direction) {
+ 				let k = this.getInverseMass(rigidbodyA) + this.getInverseMass(rigidbodyB);
++				let angularA = new Vector3(0, 0, 0);
++				let angularB = new Vector3(0, 0, 0);
+ 				if (rigidbodyA != null) {
+ 					let rA = Vector3.sub(point, rigidbodyA.transform.position);
+-					k += Vector3.dot(Vector3.cross(rigidbodyA.applyInverseInertia(Vector3.cross(rA, direction)), rA), direction);
++					angularA = rigidbodyA.applyInverseInertia(Vector3.cross(rA, direction));
++					k += Vector3.dot(Vector3.cross(angularA, rA), direction);
+ 				}
+ 				if (rigidbodyB != null) {
+ 					let rB = Vector3.sub(point, rigidbodyB.transform.position);
+-					k += Vector3.dot(Vector3.cross(rigidbodyB.applyInverseInertia(Vector3.cross(rB, direction)), rB), direction);
++					angularB = rigidbodyB.applyInverseInertia(Vector3.cross(rB, direction));
++					k += Vector3.dot(Vector3.cross(angularB, rB), direction);
+ 				}
+-				return 1 / k;
++				return { direction: direction, angularA: angularA, angularB: angularB, mass: 1 / k };
+ 			}
+ 
+-			getRelativeVelocity(rigidbodyA, rigidbodyB, point) {
+-				return Vector3.sub(this.getPointVelocity(rigidbodyB, point), this.getPointVelocity(rigidbodyA, point));
++			applyImpulseAlongDirection(rigidbodyA, rigidbodyB, impulseDirection, amount) {
++				if (rigidbodyA != null) {
++					rigidbodyA.velocity = Vector3.sub(rigidbodyA.velocity, Vector3.mul(impulseDirection.direction, amount * rigidbodyA.inverseMass));
++					rigidbodyA.angularVelocity = Vector3.sub(rigidbodyA.angularVelocity, Vector3.mul(impulseDirection.angularA, amount));
++				}
++				if (rigidbodyB != null) {
++					rigidbodyB.velocity = Vector3.add(rigidbodyB.velocity, Vector3.mul(impulseDirection.direction, amount * rigidbodyB.inverseMass));
++					rigidbodyB.angularVelocity = Vector3.add(rigidbodyB.angularVelocity, Vector3.mul(impulseDirection.angularB, amount));
++				}
+ 			}
+ 
+-			applyImpulse(rigidbodyA, rigidbodyB, impulse, point) {
+-				if (rigidbodyA != null) rigidbodyA.applyImpulseAtPosition(Vector3.mul(impulse, -1), point);
+-				if (rigidbodyB != null) rigidbodyB.applyImpulseAtPosition(impulse, point);
++			getRelativeVelocity(rigidbodyA, rigidbodyB, point) {
++				return Vector3.sub(this.getPointVelocity(rigidbodyB, point), this.getPointVelocity(rigidbodyA, point));
+ 			}
+ 
+ 			prepareManifold(manifold, dt) {
+@@ -3418,15 +3428,16 @@ void main(){
+ 					contact.tangent1 = Math.abs(n.x) >= 0.57735 ? new Vector3(n.y, -n.x, 0).normalize() : new Vector3(0, n.z, -n.y).normalize();
+ 					contact.tangent2 = Vector3.cross(n, contact.tangent1);
+ 
+-					contact.normalMass = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.normal);
+-					contact.tangentMass1 = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.tangent1);
+-					contact.tangentMass2 = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.tangent2);
++					contact.normalDirection = this.prepareImpulseDirection(rigidbodyA, rigidbodyB, contact.point, contact.normal);
++					contact.tangentDirection1 = this.prepareImpulseDirection(rigidbodyA, rigidbodyB, contact.point, contact.tangent1);
++					contact.tangentDirection2 = this.prepareImpulseDirection(rigidbodyA, rigidbodyB, contact.point, contact.tangent2);
+ 					let normalVelocity = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.normal);
+ 					contact.bias = (this.baumgarte / dt) * Math.max(0, contact.depth - this.allowedPenetration);
+ 					if (normalVelocity < -1) contact.bias += -restitution * normalVelocity;
+ 
+-					let warmStartImpulse = Vector3.add(Vector3.mul(n, contact.normalImpulse), Vector3.add(Vector3.mul(contact.tangent1, contact.tangentImpulse1), Vector3.mul(contact.tangent2, contact.tangentImpulse2)));
+-					this.applyImpulse(rigidbodyA, rigidbodyB, warmStartImpulse, contact.point);
++					this.applyImpulseAlongDirection(rigidbodyA, rigidbodyB, contact.normalDirection, contact.normalImpulse);
++					this.applyImpulseAlongDirection(rigidbodyA, rigidbodyB, contact.tangentDirection1, contact.tangentImpulse1);
++					this.applyImpulseAlongDirection(rigidbodyA, rigidbodyB, contact.tangentDirection2, contact.tangentImpulse2);
+ 				}
+ 			}
+ 
+@@ -3439,18 +3450,18 @@ void main(){
+ 
+ 					let tangentVelocity1 = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.tangent1);
+ 					let oldTangentImpulse1 = contact.tangentImpulse1;
+-					contact.tangentImpulse1 = Math.max(-maxFriction, Math.min(maxFriction, oldTangentImpulse1 - tangentVelocity1 * contact.tangentMass1));
+-					this.applyImpulse(rigidbodyA, rigidbodyB, Vector3.mul(contact.tangent1, contact.tangentImpulse1 - oldTangentImpulse1), contact.point);
++					contact.tangentImpulse1 = Math.max(-maxFriction, Math.min(maxFriction, oldTangentImpulse1 - tangentVelocity1 * contact.tangentDirection1.mass));
++					this.applyImpulseAlongDirection(rigidbodyA, rigidbodyB, contact.tangentDirection1, contact.tangentImpulse1 - oldTangentImpulse1);
+ 
+ 					let tangentVelocity2 = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.tangent2);
+ 					let oldTangentImpulse2 = contact.tangentImpulse2;
+-					contact.tangentImpulse2 = Math.max(-maxFriction, Math.min(maxFriction, oldTangentImpulse2 - tangentVelocity2 * contact.tangentMass2));
+-					this.applyImpulse(rigidbodyA, rigidbodyB, Vector3.mul(contact.tangent2, contact.tangentImpulse2 - oldTangentImpulse2), contact.point);
++					contact.tangentImpulse2 = Math.max(-maxFriction, Math.min(maxFriction, oldTangentImpulse2 - tangentVelocity2 * contact.tangentDirection2.mass));
++					this.applyImpulseAlongDirection(rigidbodyA, rigidbodyB, contact.tangentDirection2, contact.tangentImpulse2 - oldTangentImpulse2);
+ 
+ 					let normalVelocity = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.normal);
+ 					let oldNormalImpulse = contact.normalImpulse;
+-					contact.normalImpulse = Math.max(0, oldNormalImpulse + (contact.bias - normalVelocity) * contact.normalMass);
+-					this.applyImpulse(rigidbodyA, rigidbodyB, Vector3.mul(contact.normal, contact.normalImpulse - oldNormalImpulse), contact.point);
++					contact.normalImpulse = Math.max(0, oldNormalImpulse + (contact.bias - normalVelocity) * contact.normalDirection.mass);
++					this.applyImpulseAlongDirection(rigidbodyA, rigidbodyB, contact.normalDirection, contact.normalImpulse - oldNormalImpulse);
+ 				}
+ 			}
+ 		}

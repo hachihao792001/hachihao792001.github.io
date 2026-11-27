@@ -1,0 +1,168 @@
+--- "a/htmlPreviews\\htmlPreview29.html"
++++ "b/htmlPreviews\\htmlPreview30.html"
+@@ -2893,6 +2893,20 @@ void main(){
+ 				}
+ 				return this.transform.transformPoint(best);
+ 			}
++
++			calculateLocalInverseInertia(mass) {
++				let min = new Vector3(Infinity, Infinity, Infinity);
++				let max = new Vector3(-Infinity, -Infinity, -Infinity);
++				for (let v of this.localVertices) {
++					min = new Vector3(Math.min(min.x, v.x), Math.min(min.y, v.y), Math.min(min.z, v.z));
++					max = new Vector3(Math.max(max.x, v.x), Math.max(max.y, v.y), Math.max(max.z, v.z));
++				}
++				let size = Vector3.scale(Vector3.sub(max, min), this.transform.lossyScale);
++				let x2 = size.x * size.x;
++				let y2 = size.y * size.y;
++				let z2 = size.z * size.z;
++				return new Vector3(12 / (mass * (y2 + z2)), 12 / (mass * (x2 + z2)), 12 / (mass * (x2 + y2)));
++			}
+ 		}
+ 
+ 		class BoxCollider extends ConvexCollider {
+@@ -2904,24 +2918,6 @@ void main(){
+ 			constructor(restitution = 0) {
+ 				super(BoxCollider.corners, restitution);
+ 			}
+-
+-			getAABB() {
+-				let min = new Vector3(Infinity, Infinity, Infinity);
+-				let max = new Vector3(-Infinity, -Infinity, -Infinity);
+-				for (let p of this.getVertices()) {
+-					min = new Vector3(Math.min(min.x, p.x), Math.min(min.y, p.y), Math.min(min.z, p.z));
+-					max = new Vector3(Math.max(max.x, p.x), Math.max(max.y, p.y), Math.max(max.z, p.z));
+-				}
+-				return [min, max];
+-			}
+-
+-			calculateLocalInverseInertia(mass) {
+-				let size = this.transform.lossyScale;
+-				let x2 = size.x * size.x;
+-				let y2 = size.y * size.y;
+-				let z2 = size.z * size.z;
+-				return new Vector3(12 / (mass * (y2 + z2)), 12 / (mass * (x2 + z2)), 12 / (mass * (x2 + y2)));
+-			}
+ 		}
+ 
+ 		class ConvexHullCollider extends ConvexCollider {
+@@ -3181,70 +3177,14 @@ void main(){
+ 			}
+ 
+ 			findContact(colliderA, colliderB) {
+-				if (colliderA instanceof SphereCollider && colliderB instanceof SphereCollider) return this.sphereVsSphere(colliderA, colliderB);
+-				if (colliderA instanceof BoxCollider && colliderB instanceof BoxCollider) return this.boxVsBox(colliderA, colliderB);
+-				if (colliderA instanceof BoxCollider && colliderB instanceof SphereCollider) return this.boxVsSphere(colliderA, colliderB);
+-				if (colliderA instanceof SphereCollider && colliderB instanceof BoxCollider) {
+-					let contact = this.boxVsSphere(colliderB, colliderA);
+-					if (contact != null) contact.normal = Vector3.mul(contact.normal, -1);
+-					return contact;
+-				}
+-				return null;
+-			}
++				let simplex = GJK.findSimplexContainingOrigin(colliderA, colliderB);
++				if (simplex == null) return null;
+ 
+-			sphereVsSphere(sphereA, sphereB) {
+-				let offset = Vector3.sub(sphereB.transform.position, sphereA.transform.position);
+-				let distance = offset.magnitude();
+-				let radiusSum = sphereA.worldRadius + sphereB.worldRadius;
+-				if (distance == 0 || distance >= radiusSum) return null;
+-				let normal = Vector3.div(offset, distance);
+-				let point = Vector3.add(sphereA.transform.position, Vector3.mul(normal, sphereA.worldRadius));
+-				return new Contact(point, normal, radiusSum - distance);
+-			}
+-
+-			boxVsSphere(box, sphere) {
+-				let center = sphere.transform.position;
+-				let boxCenter = box.transform.position;
+-				let halfSize = Vector3.div(box.transform.lossyScale, 2);
+-				let closestPoint = new Vector3(
+-					Math.max(boxCenter.x - halfSize.x, Math.min(center.x, boxCenter.x + halfSize.x)),
+-					Math.max(boxCenter.y - halfSize.y, Math.min(center.y, boxCenter.y + halfSize.y)),
+-					Math.max(boxCenter.z - halfSize.z, Math.min(center.z, boxCenter.z + halfSize.z)),
+-				);
+-				let offset = Vector3.sub(center, closestPoint);
+-				let distance = offset.magnitude();
+-				if (distance == 0 || distance >= sphere.worldRadius) return null;
+-				return new Contact(closestPoint, Vector3.div(offset, distance), sphere.worldRadius - distance);
+-			}
+-
+-			boxVsBox(boxA, boxB) {
+-				let [minA, maxA] = boxA.getAABB();
+-				let [minB, maxB] = boxB.getAABB();
+-				let overlapX = Math.min(maxA.x, maxB.x) - Math.max(minA.x, minB.x);
+-				let overlapY = Math.min(maxA.y, maxB.y) - Math.max(minA.y, minB.y);
+-				let overlapZ = Math.min(maxA.z, maxB.z) - Math.max(minA.z, minB.z);
+-				if (overlapX <= 0 || overlapY <= 0 || overlapZ <= 0) return null;
+-
+-				let centerA = boxA.transform.position;
+-				let centerB = boxB.transform.position;
+-				let normal;
+-				let depth;
+-				if (overlapX < overlapY && overlapX < overlapZ) {
+-					normal = new Vector3(centerB.x > centerA.x ? 1 : -1, 0, 0);
+-					depth = overlapX;
+-				} else if (overlapY < overlapZ) {
+-					normal = new Vector3(0, centerB.y > centerA.y ? 1 : -1, 0);
+-					depth = overlapY;
+-				} else {
+-					normal = new Vector3(0, 0, centerB.z > centerA.z ? 1 : -1);
+-					depth = overlapZ;
+-				}
+-				let point = new Vector3(
+-					(Math.max(minA.x, minB.x) + Math.min(maxA.x, maxB.x)) / 2,
+-					(Math.max(minA.y, minB.y) + Math.min(maxA.y, maxB.y)) / 2,
+-					(Math.max(minA.z, minB.z) + Math.min(maxA.z, maxB.z)) / 2,
+-				);
+-				return new Contact(point, normal, depth);
++				let penetration = EPA.findPenetration(simplex, colliderA, colliderB);
++				let point = penetration.pointOnA;
++				if (colliderA instanceof SphereCollider) point = colliderA.support(penetration.normal);
++				if (colliderB instanceof SphereCollider) point = colliderB.support(Vector3.mul(penetration.normal, -1));
++				return new Contact(point, penetration.normal, penetration.depth);
+ 			}
+ 
+ 			getInverseMass(rigidbody) {
+@@ -3432,22 +3372,22 @@ void main(){
+ 				physicsObjects.push(ball);
+ 			}
+ 
+-			let cube = scene.add(new GameObject("Cube", new Vector3(-3, 3.5, -4.5), Vector3.zero, Vector3.one));
++			let cube = scene.add(new GameObject("Cube", new Vector3(-3, 3.5, -4.5), new Vector3(20, 30, 10), Vector3.one));
+ 			cube.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+ 			cube.addComponent(new BoxCollider());
+-			cube.addComponent(new Rigidbody(1, false));
++			cube.addComponent(new Rigidbody());
+ 			physicsObjects.push(cube);
+ 
+-			let lyingPlank = scene.add(new GameObject("Lying plank", new Vector3(0.5, 3.5, -4.5), Vector3.zero, new Vector3(3, 0.4, 0.4)));
++			let lyingPlank = scene.add(new GameObject("Lying plank", new Vector3(0.5, 3.5, -4.5), new Vector3(0, 0, 25), new Vector3(3, 0.4, 0.4)));
+ 			lyingPlank.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+ 			lyingPlank.addComponent(new BoxCollider());
+-			lyingPlank.addComponent(new Rigidbody(1, false));
++			lyingPlank.addComponent(new Rigidbody());
+ 			physicsObjects.push(lyingPlank);
+ 
+-			let standingPlank = scene.add(new GameObject("Standing plank", new Vector3(3.5, 3.5, -4.5), new Vector3(0, 0, 90), new Vector3(3, 0.4, 0.4)));
++			let standingPlank = scene.add(new GameObject("Standing plank", new Vector3(3.5, 3.5, -4.5), new Vector3(0, 0, 75), new Vector3(3, 0.4, 0.4)));
+ 			standingPlank.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+ 			standingPlank.addComponent(new BoxCollider());
+-			standingPlank.addComponent(new Rigidbody(1, false));
++			standingPlank.addComponent(new Rigidbody());
+ 			physicsObjects.push(standingPlank);
+ 
+ 			pushableObjects = [cube, lyingPlank, standingPlank];
+@@ -3460,6 +3400,12 @@ void main(){
+ 				physicsObjects.push(box);
+ 			}
+ 
++			let fallingCrystal = scene.add(new GameObject("Falling crystal", new Vector3(0, 6, 0), new Vector3(30, 0, 20), Vector3.one));
++			fallingCrystal.addComponent(new MeshRenderer(crystalMesh, new Material(new Color(170, 90, 255))));
++			fallingCrystal.addComponent(new ConvexHullCollider(crystalMesh));
++			fallingCrystal.addComponent(new Rigidbody());
++			physicsObjects.push(fallingCrystal);
++
+ 			let rampBox = scene.add(new GameObject("Ramp box", new Vector3(6.2, 2.4, -5), new Vector3(0, 0, -20), Vector3.one));
+ 			rampBox.addComponent(new MeshRenderer(cubeMesh, boxMaterial));
+ 			rampBox.addComponent(new BoxCollider());

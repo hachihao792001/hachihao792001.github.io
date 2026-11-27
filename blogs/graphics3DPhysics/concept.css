@@ -1,0 +1,45 @@
+/* ==========================================================================
+   concept.css - the interactive explainer widget.
+
+   Deliberately narrower and lighter than .htmlPreview: a concept demo is a
+   figure in the prose, not a version of the thing being built, and the
+   reader should be able to tell which is which without reading a word.
+   ========================================================================== */
+
+.conceptDemo {
+    margin: var(--space-5, 24px) auto;
+    max-width: 560px;
+}
+
+.conceptDemo .conceptFrame {
+    display: block;
+    width: 100%;
+    border: 1px solid var(--border, #d7dee6);
+    border-radius: 10px;
+    background: #f7f9fb;
+    overflow: hidden;
+}
+
+.conceptCaption {
+    margin-top: 7px;
+    text-align: center;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--muted, #5b7183);
+}
+
+.conceptMissing {
+    padding: 18px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: #8a4b45;
+    background: #fdf3f2;
+    border: 1px dashed #e0b4af;
+    border-radius: 10px;
+}
+
+@media (max-width: 640px) {
+    .conceptDemo {
+        max-width: 100%;
+    }
+}

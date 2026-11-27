@@ -1,0 +1,48 @@
+--- "a/htmlPreviews\\htmlPreview34.html"
++++ "b/htmlPreviews\\htmlPreview35.html"
+@@ -3245,10 +3245,20 @@ void main(){
+ 					isReferenceOnA = false;
+ 				}
+ 
+-				let referencePlane = new Plane(referenceFace.normal.clone(), referenceFace.vertices[0]);
++				let polygon = incidentFace.vertices;
++				let referenceVertices = referenceFace.vertices;
++				for (let i = 0; i < referenceVertices.length; i++) {
++					let edgeStart = referenceVertices[i];
++					let edgeEnd = referenceVertices[(i + 1) % referenceVertices.length];
++					let inwardNormal = Vector3.cross(referenceFace.normal, Vector3.sub(edgeEnd, edgeStart));
++					polygon = ContactManifold.clipPolygon(polygon, new Plane(inwardNormal, edgeStart));
++					if (polygon.length == 0) return [];
++				}
++
++				let referencePlane = new Plane(referenceFace.normal.clone(), referenceVertices[0]);
+ 				let contactNormal = isReferenceOnA ? referenceFace.normal : Vector3.mul(referenceFace.normal, -1);
+ 				let contacts = [];
+-				for (let point of incidentFace.vertices) {
++				for (let point of polygon) {
+ 					let depth = -referencePlane.distanceToPoint(point);
+ 					if (depth >= 0) {
+ 						contacts.push(new Contact(point, contactNormal, depth));
+@@ -3256,6 +3266,22 @@ void main(){
+ 				}
+ 				return contacts;
+ 			}
++
++			static clipPolygon(polygon, plane) {
++				let result = [];
++				for (let i = 0; i < polygon.length; i++) {
++					let current = polygon[i];
++					let next = polygon[(i + 1) % polygon.length];
++					let isCurrentInFront = plane.isPointInFrontOfPlane(current);
++					let isNextInFront = plane.isPointInFrontOfPlane(next);
++					if (isCurrentInFront) result.push(current);
++					if (isCurrentInFront != isNextInFront) {
++						let [, intersection] = plane.intersectWithLine(current, next);
++						result.push(intersection);
++					}
++				}
++				return result;
++			}
+ 		}
+ 
+ 		class PhysicsWorld {

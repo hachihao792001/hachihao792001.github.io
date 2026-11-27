@@ -1,0 +1,60 @@
+--- "a/htmlPreviews\\htmlPreview24.html"
++++ "b/htmlPreviews\\htmlPreview25.html"
+@@ -3181,11 +3181,26 @@ void main(){
+ 		ramp.addComponent(new BoxCollider());
+ 
+ 		let crystal = scene.add(new GameObject("Crystal", new Vector3(5.5, 2.5, -1), Vector3.zero, Vector3.one));
++		let crystalStartPosition = crystal.transform.position.clone();
+ 		let crystalMaterial = new Material(new Color(170, 90, 255));
+ 		let crystalMesh = Primitives.crystal();
+ 		crystal.addComponent(new MeshRenderer(crystalMesh, crystalMaterial));
+ 		let crystalCollider = crystal.addComponent(new ConvexHullCollider(crystalMesh));
+ 
++		let testBox = scene.add(new GameObject("Test box", new Vector3(5.5, 2.5, -1), new Vector3(0, 30, 20), new Vector3(1.2, 1.2, 1.2)));
++		testBox.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 160, 60))));
++		let testBoxCollider = testBox.addComponent(new BoxCollider());
++
++		let minkowskiOrigin = new Vector3(5.5, 4, 3.5);
++		let originMarker = scene.add(new GameObject("Origin marker", minkowskiOrigin, Vector3.zero, new Vector3(0.2, 0.2, 0.2)));
++		originMarker.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 0, 0)), false));
++		let minkowskiDots = [];
++		for (let i = 0; i < crystalCollider.localVertices.length * testBoxCollider.localVertices.length; i++) {
++			let dot = scene.add(new GameObject("Minkowski dot", Vector3.zero.clone(), Vector3.zero, new Vector3(0.08, 0.08, 0.08)));
++			dot.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(60, 60, 60)), false));
++			minkowskiDots.push(dot);
++		}
++
+ 		let supportMarkers = [];
+ 		for (let i = 0; i < 2; i++) {
+ 			let marker = scene.add(new GameObject("Support marker", Vector3.zero.clone(), Vector3.zero, new Vector3(0.15, 0.15, 0.15)));
+@@ -3321,6 +3336,21 @@ void main(){
+ 			}
+ 		}
+ 
++		function moveCrystal(time) {
++			crystal.transform.position = Vector3.add(crystalStartPosition, new Vector3(Math.sin(time / 1500) * 2, 0, 0));
++			crystal.transform.rotation = Quaternion.buildQuaternionEuler(new Vector3(0, time / 40, 0));
++		}
++
++		function updateMinkowskiDots() {
++			let i = 0;
++			for (let a of crystalCollider.getVertices()) {
++				for (let b of testBoxCollider.getVertices()) {
++					minkowskiDots[i].transform.position = Vector3.add(minkowskiOrigin, Vector3.sub(a, b));
++					i++;
++				}
++			}
++		}
++
+ 		function updateGameObjectTransforms() {
+ 			camera.updateMovement(dt, keyStates);
+ 			if (lookInput.x != 0 || lookInput.y != 0) {
+@@ -3351,6 +3381,8 @@ void main(){
+ 			physicsWorld.update(scene, dt, fixedUpdate);
+ 			updatePushArrows();
+ 			updateSupportMarkers();
++			moveCrystal(time);
++			updateMinkowskiDots();
+ 			physicsInfo.textContent = `Max penetration: ${physicsWorld.maxPenetration.toFixed(3)}`;
+ 			renderer.render(scene, camera);
+ 

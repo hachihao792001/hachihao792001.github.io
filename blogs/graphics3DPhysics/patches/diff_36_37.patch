@@ -1,0 +1,82 @@
+--- "a/htmlPreviews\\htmlPreview36.html"
++++ "b/htmlPreviews\\htmlPreview37.html"
+@@ -273,6 +273,13 @@
+ 				<span id="restitutionText" class="slider-value">0.00</span>
+ 			</span>
+ 		</div>
++		<div class="controlRow">
++			<label class="controlLabel" for="iterations">Solver iterations:</label>
++			<span>
++				<input type="range" id="iterations" min="1" max="30" step="1" value="10" />
++				<span id="iterationsText" class="slider-value">10</span>
++			</span>
++		</div>
+ 	</div>
+ 
+ 	<div id="helpPopup" style="display: none">
+@@ -3292,6 +3299,7 @@ void main(){
+ 				this.maxPenetration = 0;
+ 				this.allowedPenetration = 0.01;
+ 				this.correctionPercent = 0.2;
++				this.iterations = 10;
+ 			}
+ 
+ 			update(scene, dt, fixedUpdate) {
+@@ -3310,19 +3318,31 @@ void main(){
+ 				}
+ 
+ 				let colliders = scene.getAllComponentsOfType(Collider);
+-				this.maxPenetration = 0;
++				let manifolds = [];
+ 				for (let i = 0; i < colliders.length; i++) {
+ 					for (let j = i + 1; j < colliders.length; j++) {
+ 						if (colliders[i].rigidbody == null && colliders[j].rigidbody == null) continue;
+ 						let contacts = ContactManifold.findContacts(colliders[i], colliders[j]);
+-						for (let contact of contacts) {
+-							this.maxPenetration = Math.max(this.maxPenetration, contact.depth);
+-							this.resolveContact(colliders[i], colliders[j], contact);
+-							this.correctPositions(colliders[i], colliders[j], contact);
++						if (contacts.length > 0) manifolds.push({ colliderA: colliders[i], colliderB: colliders[j], contacts: contacts });
++					}
++				}
++
++				for (let iteration = 0; iteration < this.iterations; iteration++) {
++					for (let manifold of manifolds) {
++						for (let contact of manifold.contacts) {
++							this.resolveContact(manifold.colliderA, manifold.colliderB, contact);
+ 						}
+ 					}
+ 				}
+ 
++				this.maxPenetration = 0;
++				for (let manifold of manifolds) {
++					for (let contact of manifold.contacts) {
++						this.maxPenetration = Math.max(this.maxPenetration, contact.depth);
++						this.correctPositions(manifold.colliderA, manifold.colliderB, contact);
++					}
++				}
++
+ 				for (let rigidbody of rigidbodies) {
+ 					rigidbody.integrateVelocity(dt);
+ 				}
+@@ -3433,6 +3453,8 @@ void main(){
+ 		let maxFps = parseFloat(maxFpsSlider.value);
+ 		const restitutionSlider = (document.getElementById("restitution"));
+ 		const restitutionText = (document.getElementById("restitutionText"));
++		const iterationsSlider = (document.getElementById("iterations"));
++		const iterationsText = (document.getElementById("iterationsText"));
+ 		webglRenderer.useShadow = useShadowCheckbox.checked;
+ 		softwareRenderer.useShadow = useShadowCheckbox.checked;
+ 
+@@ -3790,6 +3812,11 @@ void main(){
+ 			restitutionText.textContent = restitution.toFixed(2);
+ 		});
+ 
++		iterationsSlider.addEventListener("input", () => {
++			physicsWorld.iterations = parseInt(iterationsSlider.value);
++			iterationsText.textContent = physicsWorld.iterations.toString();
++		});
++
+ 		function readResolution(input, min, max, current) {
+ 			let value = parseInt(input.value);
+ 			if (isNaN(value)) return current;

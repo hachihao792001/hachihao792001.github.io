@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept: clipping the incident face</title>
+    <style>
+        :root { --ink: #17384a; --muted: #5b7183; --line: #c6d4de; }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 12px; background: #f7f9fb; color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        canvas { background: #fff; border: 1px solid var(--line); border-radius: 8px; max-width: 100%; height: auto; touch-action: none; cursor: grab; }
+        canvas.dragging { cursor: grabbing; }
+        .readout { font-size: 13px; line-height: 1.6; text-align: center; max-width: 500px; }
+        .hint { font-size: 11.5px; color: var(--muted); }
+        label { font-size: 12.5px; }
+    </style>
+</head>
+
+<body>
+    <canvas id="c" width="460" height="300"></canvas>
+    <label>Bước clip: <input type="range" id="steps" min="0" max="4" step="1" value="4" /> <span id="stepsText">4</span> / 4 cạnh</label>
+    <label>Xoay incident face: <input type="range" id="angle" min="0" max="90" step="1" value="25" /></label>
+    <div class="readout" id="out"></div>
+    <div class="hint">Nhìn từ trên xuống. Kéo incident face (cam). Reference face (xanh) đứng yên. Chấm đỏ là các điểm chạm còn lại sau khi clip.</div>
+
+    <script>
+        const canvas = document.getElementById("c");
+        const ctx = canvas.getContext("2d");
+        const out = document.getElementById("out");
+        const stepsSlider = document.getElementById("steps");
+        const stepsText = document.getElementById("stepsText");
+        const angleSlider = document.getElementById("angle");
+        const O = { x: 230, y: 150 };
+        const SCALE = 55;
+
+        // the reference face, counter-clockwise
+        const reference = [{ x: -1.2, y: -0.8 }, { x: 1.2, y: -0.8 }, { x: 1.2, y: 0.8 }, { x: -1.2, y: 0.8 }];
+        const incidentCenter = { x: 1.3, y: 0.4 };
+        const incidentHalf = { x: 1.1, y: 0.6 };
+
+        const toScreen = v => ({ x: O.x + v.x * SCALE, y: O.y - v.y * SCALE });
+
+        function incident() {
+            const a = parseFloat(angleSlider.value) * Math.PI / 180;
+            const c = Math.cos(a), s = Math.sin(a);
+            return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => ({
+                x: incidentCenter.x + u * incidentHalf.x * c - v * incidentHalf.y * s,
+                y: incidentCenter.y + u * incidentHalf.x * s + v * incidentHalf.y * c,
+            }));
+        }
+
+        // keep the part of the polygon on the inner side of the edge from a to b (the reference face is counter-clockwise, so inside is on the left)
+        function clipAgainstEdge(polygon, a, b) {
+            const inwardNormal = { x: -(b.y - a.y), y: b.x - a.x };
+            const side = p => (p.x - a.x) * inwardNormal.x + (p.y - a.y) * inwardNormal.y;
+            const result = [];
+            for (let i = 0; i < polygon.length; i++) {
+                const current = polygon[i], next = polygon[(i + 1) % polygon.length];
+                const sc = side(current), sn = side(next);
+                if (sc >= 0) result.push(current);
+                if ((sc >= 0) != (sn >= 0)) {
+                    const t = sc / (sc - sn);
+                    result.push({ x: current.x + (next.x - current.x) * t, y: current.y + (next.y - current.y) * t });
+                }
+            }
+            return result;
+        }
+
+        function clipped(stepCount) {
+            let polygon = incident();
+            for (let i = 0; i < stepCount && polygon.length > 0; i++) {
+                polygon = clipAgainstEdge(polygon, reference[i], reference[(i + 1) % 4]);
+            }
+            return polygon;
+        }
+
+        function path(points, fill, stroke, width, dash = []) {
+            if (points.length == 0) return;
+            ctx.setLineDash(dash);
+            ctx.beginPath();
+            points.forEach((v, i) => { const s = toScreen(v); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); });
+            ctx.closePath();
+            if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+            ctx.strokeStyle = stroke; ctx.lineWidth = width; ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const stepCount = parseInt(stepsSlider.value);
+            path(reference, "rgba(108,141,181,0.2)", "#6c8db5", 2);
+            // the side lines of the reference edges already used for clipping
+            for (let i = 0; i < stepCount; i++) {
+                const a = reference[i], b = reference[(i + 1) % 4];
+                const d = { x: b.x - a.x, y: b.y - a.y };
+                const p = toScreen({ x: a.x - d.x * 2, y: a.y - d.y * 2 }), q = toScreen({ x: b.x + d.x * 2, y: b.y + d.y * 2 });
+                ctx.strokeStyle = "#6c8db5"; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); ctx.setLineDash([]);
+            }
+            path(incident(), null, "#c77d2a", 2, [6, 4]);
+            const result = clipped(stepCount);
+            path(result, "rgba(199,125,42,0.3)", "#c77d2a", 2);
+            for (const p of result) {
+                const s = toScreen(p);
+                ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, Math.PI * 2); ctx.fillStyle = "#c2473f"; ctx.fill();
+            }
+            ctx.font = "600 12px ui-monospace, Consolas, monospace";
+            ctx.fillStyle = "#6c8db5"; const r = toScreen({ x: -1.15, y: -0.7 }); ctx.fillText("reference", r.x, r.y);
+            ctx.fillStyle = "#c77d2a"; const c = toScreen(incidentCenter); ctx.fillText("incident", c.x - 26, c.y - 4);
+        }
+
+        function say() {
+            const stepCount = parseInt(stepsSlider.value);
+            const result = clipped(stepCount);
+            out.innerHTML = stepCount == 0
+                ? "Chưa clip: 4 góc của incident face, nhiều góc nằm hẳn ngoài reference face, không chạm vào gì cả."
+                : `Đã clip theo ${stepCount} cạnh của reference face: còn ${result.length} điểm. ` +
+                (stepCount == 4 ? "Tất cả đều nằm trên vùng 2 mặt thật sự chồng lên nhau." : "Kéo thanh trượt để clip tiếp.");
+        }
+
+        function render() { stepsText.textContent = stepsSlider.value; draw(); say(); }
+        stepsSlider.addEventListener("input", render);
+        angleSlider.addEventListener("input", render);
+
+        let dragging = false, grabOffset = null;
+        function at(e) {
+            const r = canvas.getBoundingClientRect();
+            return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) };
+        }
+        canvas.addEventListener("pointerdown", e => {
+            const p = at(e), s = toScreen(incidentCenter);
+            if (Math.hypot(p.x - s.x, p.y - s.y) > 70) return;
+            dragging = true; grabOffset = { x: p.x - s.x, y: p.y - s.y }; canvas.classList.add("dragging");
+            try { canvas.setPointerCapture(e.pointerId); } catch (err) { }
+        });
+        canvas.addEventListener("pointermove", e => {
+            if (!dragging) return;
+            const p = at(e);
+            incidentCenter.x = Math.max(-3.5, Math.min(3.5, (p.x - grabOffset.x - O.x) / SCALE));
+            incidentCenter.y = Math.max(-2.4, Math.min(2.4, (O.y - (p.y - grabOffset.y)) / SCALE));
+            render();
+        });
+        const release = () => { dragging = false; canvas.classList.remove("dragging"); };
+        canvas.addEventListener("pointerup", release);
+        canvas.addEventListener("pointercancel", release);
+
+        render();
+
+        (function selfTest() {
+            // an incident face fully inside the reference face must come out unchanged: 4 points
+            const saved = { ...incidentCenter }, savedAngle = angleSlider.value;
+            incidentCenter.x = 0; incidentCenter.y = 0; angleSlider.value = 0;
+            const inside = clipped(4).length;
+            Object.assign(incidentCenter, saved); angleSlider.value = savedAngle;
+            if (inside !== 4) console.error("clipping self-test failed", inside);
+        })();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,190 @@
+--- "a/htmlPreviews\\htmlPreview9.html"
++++ "b/htmlPreviews\\htmlPreview10.html"
+@@ -163,7 +163,6 @@
+ 		<div id="crosshair"></div>
+ 	</div>
+ 	<h2 id="fps">FPS: 0</h2>
+-	<h3 id="physicsInfo">Bounce peaks:</h3>
+ 	<div>
+ 		<button id="helpButton"
+ 			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Help</button>
+@@ -2760,6 +2759,34 @@ void main(){
+ 			}
+ 		}
+ 
++		class Collider extends Component {
++			get rigidbody() {
++				return this.gameObject.getComponent(Rigidbody);
++			}
++		}
++
++		class SphereCollider extends Collider {
++			constructor(radius = 0.5) {
++				super();
++				this.radius = radius;
++			}
++
++			get worldRadius() {
++				return this.radius * this.transform.lossyScale.x;
++			}
++		}
++
++		class BoxCollider extends Collider {
++		}
++
++		class Contact {
++			constructor(point, normal, depth) {
++				this.point = point;
++				this.normal = normal;
++				this.depth = depth;
++			}
++		}
++
+ 		class PhysicsWorld {
+ 			constructor(gravity = new Vector3(0, -9.81, 0)) {
+ 				this.gravity = gravity;
+@@ -2779,13 +2806,63 @@ void main(){
+ 				let rigidbodies = scene.getAllComponentsOfType(Rigidbody);
+ 				for (let rigidbody of rigidbodies) {
+ 					rigidbody.integrateForces(dt, this.gravity);
+-					rigidbody.integrateVelocity(dt);
++				}
+ 
+-					let bottomY = rigidbody.transform.position.y - rigidbody.transform.lossyScale.y / 2;
+-					if (bottomY < 0.5 && rigidbody.velocity.y < 0) {
+-						rigidbody.velocity = new Vector3(rigidbody.velocity.x, -rigidbody.velocity.y, rigidbody.velocity.z);
++				let colliders = scene.getAllComponentsOfType(Collider);
++				for (let i = 0; i < colliders.length; i++) {
++					for (let j = i + 1; j < colliders.length; j++) {
++						if (colliders[i].rigidbody == null && colliders[j].rigidbody == null) continue;
++						let contact = this.findContact(colliders[i], colliders[j]);
++						if (contact != null) this.resolveContact(colliders[i], colliders[j], contact);
+ 					}
+ 				}
++
++				for (let rigidbody of rigidbodies) {
++					rigidbody.integrateVelocity(dt);
++				}
++			}
++
++			findContact(colliderA, colliderB) {
++				if (colliderA instanceof BoxCollider && colliderB instanceof SphereCollider) return this.boxVsSphere(colliderA, colliderB);
++				if (colliderA instanceof SphereCollider && colliderB instanceof BoxCollider) {
++					let contact = this.boxVsSphere(colliderB, colliderA);
++					if (contact != null) contact.normal = Vector3.mul(contact.normal, -1);
++					return contact;
++				}
++				return null;
++			}
++
++			boxVsSphere(box, sphere) {
++				let center = sphere.transform.position;
++				let boxCenter = box.transform.position;
++				let halfSize = Vector3.div(box.transform.lossyScale, 2);
++				let closestPoint = new Vector3(
++					Math.max(boxCenter.x - halfSize.x, Math.min(center.x, boxCenter.x + halfSize.x)),
++					Math.max(boxCenter.y - halfSize.y, Math.min(center.y, boxCenter.y + halfSize.y)),
++					Math.max(boxCenter.z - halfSize.z, Math.min(center.z, boxCenter.z + halfSize.z)),
++				);
++				let offset = Vector3.sub(center, closestPoint);
++				let distance = offset.magnitude();
++				if (distance == 0 || distance >= sphere.worldRadius) return null;
++				return new Contact(closestPoint, Vector3.div(offset, distance), sphere.worldRadius - distance);
++			}
++
++			resolveContact(colliderA, colliderB, contact) {
++				let rigidbodyA = colliderA.rigidbody;
++				let rigidbodyB = colliderB.rigidbody;
++				let movableCount = (rigidbodyA != null ? 1 : 0) + (rigidbodyB != null ? 1 : 0);
++				let pushDistance = contact.depth / movableCount;
++
++				if (rigidbodyA != null) {
++					rigidbodyA.transform.position = Vector3.sub(rigidbodyA.transform.position, Vector3.mul(contact.normal, pushDistance));
++					let speedTowardB = Vector3.dot(rigidbodyA.velocity, contact.normal);
++					if (speedTowardB > 0) rigidbodyA.velocity = Vector3.sub(rigidbodyA.velocity, Vector3.mul(contact.normal, speedTowardB));
++				}
++				if (rigidbodyB != null) {
++					rigidbodyB.transform.position = Vector3.add(rigidbodyB.transform.position, Vector3.mul(contact.normal, pushDistance));
++					let speedTowardA = -Vector3.dot(rigidbodyB.velocity, contact.normal);
++					if (speedTowardA > 0) rigidbodyB.velocity = Vector3.add(rigidbodyB.velocity, Vector3.mul(contact.normal, speedTowardA));
++				}
+ 			}
+ 		}
+ 
+@@ -2812,7 +2889,6 @@ void main(){
+ 		canvasResHeightInput.value = canvasRenderHeight.toString();
+ 
+ 		const fpsInfo = (document.getElementById("fps"));
+-		const physicsInfo = (document.getElementById("physicsInfo"));
+ 		let frames = 0,
+ 			fpsTimeCounter = 0;
+ 
+@@ -2857,13 +2933,12 @@ void main(){
+ 		let cubeMesh = Primitives.cube();
+ 		let sphereMesh = Primitives.sphere();
+ 		let physicsObjects = [];
+-		let ball;
+-		let ballRigidbody;
+ 
+ 		function spawnPhysicsObjects() {
+-			ball = scene.add(new GameObject("Ball", new Vector3(0, 5, 0), Vector3.zero, Vector3.one));
++			let ball = scene.add(new GameObject("Ball", new Vector3(0, 5, 0), Vector3.zero, Vector3.one));
+ 			ball.addComponent(new MeshRenderer(sphereMesh, new Material(new Color(255, 90, 90))));
+-			ballRigidbody = ball.addComponent(new Rigidbody());
++			ball.addComponent(new SphereCollider());
++			ball.addComponent(new Rigidbody());
+ 			physicsObjects.push(ball);
+ 		}
+ 
+@@ -2871,9 +2946,6 @@ void main(){
+ 			scene.roots = scene.roots.filter((gameObject) => !physicsObjects.includes(gameObject));
+ 			physicsObjects = [];
+ 			spawnPhysicsObjects();
+-			bouncePeaks = [];
+-			wasBallGoingUp = false;
+-			physicsInfo.textContent = "Bounce peaks:";
+ 		}
+ 
+ 		let sun = scene.add(new GameObject("Sun"));
+@@ -2882,6 +2954,7 @@ void main(){
+ 
+ 		let ground = scene.add(new GameObject("Ground", new Vector3(0, 0, 0), Vector3.zero, new Vector3(30, 1, 30)));
+ 		ground.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(0, 255, 0), brickTexture)));
++		ground.addComponent(new BoxCollider());
+ 
+ 		let pointLights = [
+ 			scene.add(new GameObject("Point light 1", new Vector3(0, 2, 5), Vector3.zero, new Vector3(0.1, 0.1, 0.1))),
+@@ -2897,9 +2970,6 @@ void main(){
+ 
+ 		let physicsWorld = new PhysicsWorld();
+ 
+-		let bouncePeaks = [];
+-		let wasBallGoingUp = false;
+-
+ 		let lastTime = performance.now();
+ 		let dt = 0;
+ 
+@@ -2913,15 +2983,6 @@ void main(){
+ 			sun.transform.rotation = Quaternion.multiply(q, sun.transform.rotation);
+ 		}
+ 
+-		function updateBouncePeaks() {
+-			let isBallGoingUp = ballRigidbody.velocity.y > 0;
+-			if (wasBallGoingUp && !isBallGoingUp) {
+-				bouncePeaks.push(ball.transform.position.y.toFixed(2));
+-				physicsInfo.textContent = `Bounce peaks: ${bouncePeaks.slice(-6).join(", ")}`;
+-			}
+-			wasBallGoingUp = isBallGoingUp;
+-		}
+-
+ 		function update(time = performance.now()) {
+ 			if (time - lastTime < 1000 / maxFps - 1) {
+ 				requestAnimationFrame(update);
+@@ -2940,7 +3001,6 @@ void main(){
+ 
+ 			updateGameObjectTransforms();
+ 			physicsWorld.update(scene, dt);
+-			updateBouncePeaks();
+ 			renderer.render(scene, camera);
+ 
+ 			requestAnimationFrame(update);

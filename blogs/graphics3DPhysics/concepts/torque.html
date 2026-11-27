@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept: torque</title>
+    <style>
+        :root {
+            --ink: #17384a;
+            --muted: #5b7183;
+            --line: #c6d4de;
+            --r: #20799b;
+            --f: #c77d2a;
+            --pos: #2a8f5c;
+            --neg: #c2473f;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 12px;
+            background: #f7f9fb;
+            color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        canvas {
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            max-width: 100%;
+            height: auto;
+            touch-action: none;
+            cursor: grab;
+        }
+
+        canvas.dragging {
+            cursor: grabbing;
+        }
+
+        .readout {
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 12.5px;
+            line-height: 1.75;
+            text-align: center;
+        }
+
+        .result {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .hint {
+            font-size: 11.5px;
+            color: var(--muted);
+        }
+
+        .r {
+            color: var(--r);
+            font-weight: 600;
+        }
+
+        .f {
+            color: var(--f);
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="c" width="460" height="280"></canvas>
+    <div class="readout" id="out"></div>
+    <div class="hint">Kéo chấm xanh (điểm đặt lực) và đầu mũi tên cam (lực). Thử đẩy thẳng vào tâm.</div>
+
+    <script>
+        const canvas = document.getElementById("c");
+        const ctx = canvas.getContext("2d");
+        const out = document.getElementById("out");
+
+        const O = { x: 230, y: 140 };
+        const SCALE = 80;
+
+        // math coordinates, y up; the box is centred on the origin
+        const point = { x: -0.9, y: 0.8 };   // where the force is applied
+        const force = { x: 1.3, y: 0 };      // the force vector, drawn starting at the point
+        const half = { x: 1.2, y: 1.0 };
+
+        const toScreen = v => ({ x: O.x + v.x * SCALE, y: O.y - v.y * SCALE });
+        const toMath = p => ({ x: (p.x - O.x) / SCALE, y: (O.y - p.y) / SCALE });
+        const term = n => (n < 0 ? "(" + n.toFixed(2) + ")" : n.toFixed(2));
+
+        function arrowLine(from, to, color, width) {
+            const a = toScreen(from), b = toScreen(to);
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = width;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+            const ang = Math.atan2(b.y - a.y, b.x - a.x);
+            ctx.beginPath();
+            ctx.moveTo(b.x, b.y);
+            ctx.lineTo(b.x - 12 * Math.cos(ang - 0.4), b.y - 12 * Math.sin(ang - 0.4));
+            ctx.lineTo(b.x - 12 * Math.cos(ang + 0.4), b.y - 12 * Math.sin(ang + 0.4));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function handle(p, color) {
+            const s = toScreen(p);
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, 7, 0, Math.PI * 2);
+            ctx.fillStyle = "#fff";
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+
+        function torqueOf() {
+            return point.x * force.y - point.y * force.x;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // the box
+            const tl = toScreen({ x: -half.x, y: half.y });
+            ctx.fillStyle = "#f3e6d2";
+            ctx.strokeStyle = "#b8956a";
+            ctx.lineWidth = 2;
+            ctx.fillRect(tl.x, tl.y, half.x * 2 * SCALE, half.y * 2 * SCALE);
+            ctx.strokeRect(tl.x, tl.y, half.x * 2 * SCALE, half.y * 2 * SCALE);
+
+            const tip = { x: point.x + force.x, y: point.y + force.y };
+            const fLen = Math.hypot(force.x, force.y);
+
+            // the line the force acts along, and the lever arm: the perpendicular from the centre to that line
+            if (fLen > 1e-6) {
+                const d = { x: force.x / fLen, y: force.y / fLen };
+                const a = toScreen({ x: point.x - d.x * 5, y: point.y - d.y * 5 });
+                const b = toScreen({ x: point.x + d.x * 5, y: point.y + d.y * 5 });
+                ctx.strokeStyle = "#e0c9a6";
+                ctx.setLineDash([3, 5]);
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+                ctx.stroke();
+
+                const along = point.x * d.x + point.y * d.y;
+                const foot = { x: point.x - d.x * along, y: point.y - d.y * along };
+                const fs = toScreen(foot), os = toScreen({ x: 0, y: 0 });
+                ctx.strokeStyle = "#7d8e99";
+                ctx.setLineDash([5, 4]);
+                ctx.beginPath();
+                ctx.moveTo(os.x, os.y);
+                ctx.lineTo(fs.x, fs.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // r: from the centre to the point
+            ctx.setLineDash([6, 4]);
+            arrowLine({ x: 0, y: 0 }, point, "#20799b", 2);
+            ctx.setLineDash([]);
+            arrowLine(point, tip, "#c77d2a", 3.5);
+
+            // centre of mass
+            const os = toScreen({ x: 0, y: 0 });
+            ctx.fillStyle = "#17384a";
+            ctx.beginPath();
+            ctx.arc(os.x, os.y, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // the turn this torque produces, as a curved arrow around the centre
+            const t = torqueOf();
+            if (Math.abs(t) > 0.03) {
+                const radius = 26;
+                const start = -0.6, end = start + Math.sign(t) * Math.min(2.6, 0.6 + Math.abs(t));
+                ctx.strokeStyle = t > 0 ? "#2a8f5c" : "#c2473f";
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(os.x, os.y, radius, -start, -end, t > 0);
+                ctx.stroke();
+                const ex = os.x + radius * Math.cos(-end), ey = os.y + radius * Math.sin(-end);
+                const tangent = -end + (t > 0 ? -Math.PI / 2 : Math.PI / 2);
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.beginPath();
+                ctx.moveTo(ex + 8 * Math.cos(tangent), ey + 8 * Math.sin(tangent));
+                ctx.lineTo(ex + 8 * Math.cos(tangent + 2.4), ey + 8 * Math.sin(tangent + 2.4));
+                ctx.lineTo(ex + 8 * Math.cos(tangent - 2.4), ey + 8 * Math.sin(tangent - 2.4));
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            handle(point, "#20799b");
+            handle(tip, "#c77d2a");
+
+            ctx.font = "600 13px ui-monospace, Consolas, monospace";
+            const ps = toScreen(point), ts = toScreen(tip);
+            ctx.fillStyle = "#20799b";
+            ctx.fillText("r", (os.x + ps.x) / 2 - 12, (os.y + ps.y) / 2 - 4);
+            ctx.fillStyle = "#c77d2a";
+            ctx.fillText("F", ts.x + 10, ts.y - 8);
+        }
+
+        function say() {
+            const t = torqueOf();
+            const fLen = Math.hypot(force.x, force.y);
+            const leverArm = fLen > 1e-6 ? Math.abs(t) / fLen : 0;
+            let verdict = "quay ngược chiều kim đồng hồ", colour = "var(--pos)";
+            if (Math.abs(t) < 0.03) { verdict = "không quay: lực đi qua tâm, chỉ đẩy vật đi thẳng"; colour = "var(--muted)"; }
+            else if (t < 0) { verdict = "quay cùng chiều kim đồng hồ"; colour = "var(--neg)"; }
+
+            out.innerHTML =
+                `<span class="r">r</span> = (${point.x.toFixed(2)}, ${point.y.toFixed(2)})&nbsp;&nbsp;&nbsp;` +
+                `<span class="f">F</span> = (${force.x.toFixed(2)}, ${force.y.toFixed(2)})<br/>` +
+                `τ = <span class="r">r.x</span>&times;<span class="f">F.y</span> &minus; <span class="r">r.y</span>&times;<span class="f">F.x</span> = ` +
+                `${term(point.x)}&times;${term(force.y)} &minus; ${term(point.y)}&times;${term(force.x)} = ` +
+                `<span class="result" style="color:${colour}">${t.toFixed(2)}</span><br/>` +
+                `|τ| = khoảng cách vuông góc (nét đứt xám) &times; |F| = ${leverArm.toFixed(2)} &times; ${fLen.toFixed(2)}<br/>` +
+                `<span style="color:var(--muted)">${verdict}</span>`;
+        }
+
+        function render() { draw(); say(); }
+
+        let held = null;
+
+        function at(e) {
+            const r = canvas.getBoundingClientRect();
+            return {
+                x: (e.clientX - r.left) * (canvas.width / r.width),
+                y: (e.clientY - r.top) * (canvas.height / r.height),
+            };
+        }
+
+        canvas.addEventListener("pointerdown", e => {
+            const p = at(e);
+            const tip = { x: point.x + force.x, y: point.y + force.y };
+            const candidates = [["tip", tip], ["point", point]];
+            let best = null, bestD = 26;
+            for (const [name, v] of candidates) {
+                const s = toScreen(v);
+                const d = Math.hypot(s.x - p.x, s.y - p.y);
+                if (d < bestD) { bestD = d; best = name; }
+            }
+            if (!best) return;
+            held = best;
+            canvas.classList.add("dragging");
+            try { canvas.setPointerCapture(e.pointerId); } catch (err) { }
+        });
+
+        canvas.addEventListener("pointermove", e => {
+            if (!held) return;
+            const m = toMath(at(e));
+            if (held == "point") {
+                point.x = Math.max(-half.x, Math.min(half.x, m.x));
+                point.y = Math.max(-half.y, Math.min(half.y, m.y));
+            } else {
+                force.x = m.x - point.x;
+                force.y = m.y - point.y;
+            }
+            render();
+        });
+
+        const release = () => { held = null; canvas.classList.remove("dragging"); };
+        canvas.addEventListener("pointerup", release);
+        canvas.addEventListener("pointercancel", release);
+
+        render();
+
+        (function selfTest() {
+            // pushing to the right at a point above the centre must turn the box clockwise (negative)
+            const saved = [point.x, point.y, force.x, force.y];
+            point.x = 0; point.y = 1; force.x = 1; force.y = 0;
+            if (torqueOf() !== -1) console.error("torque self-test failed: expected -1, got", torqueOf());
+            [point.x, point.y, force.x, force.y] = saved;
+        })();
+    </script>
+</body>
+
+</html>

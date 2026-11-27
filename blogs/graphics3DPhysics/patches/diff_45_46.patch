@@ -1,0 +1,22 @@
+--- "a/htmlPreviews\\htmlPreview45.html"
++++ "b/htmlPreviews\\htmlPreview46.html"
+@@ -2787,6 +2787,7 @@ void main(){
+ 				this.angularVelocity = new Vector3(0, 0, 0);
+ 				this.force = new Vector3(0, 0, 0);
+ 				this.torque = new Vector3(0, 0, 0);
++				this.cachedLocalInverseInertia = null;
+ 			}
+ 
+ 			get collider() {
+@@ -2794,7 +2795,10 @@ void main(){
+ 			}
+ 
+ 			get localInverseInertia() {
+-				return this.collider.calculateLocalInverseInertia(this.mass);
++				if (this.cachedLocalInverseInertia == null) {
++					this.cachedLocalInverseInertia = this.collider.calculateLocalInverseInertia(this.mass);
++				}
++				return this.cachedLocalInverseInertia;
+ 			}
+ 
+ 			addForce(force) {

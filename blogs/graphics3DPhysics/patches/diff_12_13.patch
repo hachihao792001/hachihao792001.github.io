@@ -1,0 +1,169 @@
+--- "a/htmlPreviews\\htmlPreview12.html"
++++ "b/htmlPreviews\\htmlPreview13.html"
+@@ -163,6 +163,7 @@
+ 		<div id="crosshair"></div>
+ 	</div>
+ 	<h2 id="fps">FPS: 0</h2>
++	<h3 id="physicsInfo">Max penetration: 0</h3>
+ 	<div>
+ 		<button id="helpButton"
+ 			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Help</button>
+@@ -259,10 +260,10 @@
+ 			</span>
+ 		</div>
+ 		<div class="controlRow">
+-			<label class="controlLabel" for="stiffness">Stiffness:</label>
++			<label class="controlLabel" for="restitution">Ball restitution:</label>
+ 			<span>
+-				<input type="range" id="stiffness" min="50" max="20000" step="50" value="2000" />
+-				<span id="stiffnessText" class="slider-value">2000</span>
++				<input type="range" id="restitution" min="0" max="1" step="0.05" value="0" />
++				<span id="restitutionText" class="slider-value">0.00</span>
+ 			</span>
+ 		</div>
+ 	</div>
+@@ -2752,8 +2753,10 @@ void main(){
+ 
+ 		// ===== physics.js =====
+ 		class Rigidbody extends Component {
+-			constructor() {
++			constructor(mass = 1) {
+ 				super();
++				this.mass = mass;
++				this.inverseMass = 1 / mass;
+ 				this.velocity = new Vector3(0, 0, 0);
+ 			}
+ 
+@@ -2767,14 +2770,19 @@ void main(){
+ 		}
+ 
+ 		class Collider extends Component {
++			constructor(restitution = 0) {
++				super();
++				this.restitution = restitution;
++			}
++
+ 			get rigidbody() {
+ 				return this.gameObject.getComponent(Rigidbody);
+ 			}
+ 		}
+ 
+ 		class SphereCollider extends Collider {
+-			constructor(radius = 0.5) {
+-				super();
++			constructor(radius = 0.5, restitution = 0) {
++				super(restitution);
+ 				this.radius = radius;
+ 			}
+ 
+@@ -2799,7 +2807,7 @@ void main(){
+ 				this.gravity = gravity;
+ 				this.fixedDeltaTime = 1 / 60;
+ 				this.timeAccumulator = 0;
+-				this.stiffness = 2000;
++				this.maxPenetration = 0;
+ 			}
+ 
+ 			update(scene, dt) {
+@@ -2817,11 +2825,14 @@ void main(){
+ 				}
+ 
+ 				let colliders = scene.getAllComponentsOfType(Collider);
++				this.maxPenetration = 0;
+ 				for (let i = 0; i < colliders.length; i++) {
+ 					for (let j = i + 1; j < colliders.length; j++) {
+ 						if (colliders[i].rigidbody == null && colliders[j].rigidbody == null) continue;
+ 						let contact = this.findContact(colliders[i], colliders[j]);
+-						if (contact != null) this.resolveContact(colliders[i], colliders[j], contact, dt);
++						if (contact == null) continue;
++						this.maxPenetration = Math.max(this.maxPenetration, contact.depth);
++						this.resolveContact(colliders[i], colliders[j], contact);
+ 					}
+ 				}
+ 
+@@ -2866,12 +2877,29 @@ void main(){
+ 				return new Contact(closestPoint, Vector3.div(offset, distance), sphere.worldRadius - distance);
+ 			}
+ 
+-			resolveContact(colliderA, colliderB, contact, dt) {
++			getInverseMass(rigidbody) {
++				return rigidbody != null ? rigidbody.inverseMass : 0;
++			}
++
++			getVelocity(rigidbody) {
++				return rigidbody != null ? rigidbody.velocity : new Vector3(0, 0, 0);
++			}
++
++			resolveContact(colliderA, colliderB, contact) {
+ 				let rigidbodyA = colliderA.rigidbody;
+ 				let rigidbodyB = colliderB.rigidbody;
+-				let velocityChange = Vector3.mul(contact.normal, this.stiffness * contact.depth * dt);
+-				if (rigidbodyA != null) rigidbodyA.velocity = Vector3.sub(rigidbodyA.velocity, velocityChange);
+-				if (rigidbodyB != null) rigidbodyB.velocity = Vector3.add(rigidbodyB.velocity, velocityChange);
++				let inverseMassA = this.getInverseMass(rigidbodyA);
++				let inverseMassB = this.getInverseMass(rigidbodyB);
++
++				let relativeVelocity = Vector3.sub(this.getVelocity(rigidbodyB), this.getVelocity(rigidbodyA));
++				let normalVelocity = Vector3.dot(relativeVelocity, contact.normal);
++				if (normalVelocity > 0) return;
++
++				let restitution = Math.max(colliderA.restitution, colliderB.restitution);
++				let impulseMagnitude = -(1 + restitution) * normalVelocity / (inverseMassA + inverseMassB);
++				let impulse = Vector3.mul(contact.normal, impulseMagnitude);
++				if (rigidbodyA != null) rigidbodyA.velocity = Vector3.sub(rigidbodyA.velocity, Vector3.mul(impulse, inverseMassA));
++				if (rigidbodyB != null) rigidbodyB.velocity = Vector3.add(rigidbodyB.velocity, Vector3.mul(impulse, inverseMassB));
+ 			}
+ 		}
+ 
+@@ -2898,6 +2926,7 @@ void main(){
+ 		canvasResHeightInput.value = canvasRenderHeight.toString();
+ 
+ 		const fpsInfo = (document.getElementById("fps"));
++		const physicsInfo = (document.getElementById("physicsInfo"));
+ 		let frames = 0,
+ 			fpsTimeCounter = 0;
+ 
+@@ -2927,8 +2956,8 @@ void main(){
+ 		const maxFpsSlider = (document.getElementById("maxFps"));
+ 		const maxFpsText = (document.getElementById("maxFpsText"));
+ 		let maxFps = parseFloat(maxFpsSlider.value);
+-		const stiffnessSlider = (document.getElementById("stiffness"));
+-		const stiffnessText = (document.getElementById("stiffnessText"));
++		const restitutionSlider = (document.getElementById("restitution"));
++		const restitutionText = (document.getElementById("restitutionText"));
+ 		webglRenderer.useShadow = useShadowCheckbox.checked;
+ 		softwareRenderer.useShadow = useShadowCheckbox.checked;
+ 
+@@ -2963,7 +2992,7 @@ void main(){
+ 				let position = new Vector3(((i % 4) - 1.5) * 0.8, 2 + i * 0.7, (Math.floor(i / 4) - 1) * 0.8);
+ 				let ball = scene.add(new GameObject("Ball " + i, position, Vector3.zero, Vector3.one));
+ 				ball.addComponent(new MeshRenderer(sphereMesh, ballMaterial));
+-				ball.addComponent(new SphereCollider());
++				ball.addComponent(new SphereCollider(0.5, parseFloat(restitutionSlider.value)));
+ 				ball.addComponent(new Rigidbody());
+ 				physicsObjects.push(ball);
+ 			}
+@@ -3028,6 +3057,7 @@ void main(){
+ 
+ 			updateGameObjectTransforms();
+ 			physicsWorld.update(scene, dt);
++			physicsInfo.textContent = `Max penetration: ${physicsWorld.maxPenetration.toFixed(3)}`;
+ 			renderer.render(scene, camera);
+ 
+ 			requestAnimationFrame(update);
+@@ -3072,9 +3102,12 @@ void main(){
+ 			maxFpsText.textContent = maxFps.toFixed(0);
+ 		});
+ 
+-		stiffnessSlider.addEventListener("input", () => {
+-			physicsWorld.stiffness = parseFloat(stiffnessSlider.value);
+-			stiffnessText.textContent = physicsWorld.stiffness.toFixed(0);
++		restitutionSlider.addEventListener("input", () => {
++			let restitution = parseFloat(restitutionSlider.value);
++			for (let collider of scene.getAllComponentsOfType(SphereCollider)) {
++				collider.restitution = restitution;
++			}
++			restitutionText.textContent = restitution.toFixed(2);
+ 		});
+ 
+ 		function readResolution(input, min, max, current) {

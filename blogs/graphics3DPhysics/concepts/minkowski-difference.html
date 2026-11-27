@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept: Minkowski difference</title>
+    <style>
+        :root { --ink: #17384a; --muted: #5b7183; --line: #c6d4de; }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 12px; background: #f7f9fb; color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        canvas { background: #fff; border: 1px solid var(--line); border-radius: 8px; max-width: 100%; height: auto; touch-action: none; cursor: grab; }
+        canvas.dragging { cursor: grabbing; }
+        .readout { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12.5px; line-height: 1.7; text-align: center; }
+        .result { font-size: 17px; font-weight: 600; }
+        .hint { font-size: 11.5px; color: var(--muted); }
+    </style>
+</head>
+
+<body>
+    <canvas id="c" width="540" height="290"></canvas>
+    <div class="readout" id="out"></div>
+    <div class="hint">Kéo hình vuông B (màu cam) ở khung trái. Khung phải vẽ A − B: lấy mọi điểm của A trừ mọi điểm của B.</div>
+
+    <script>
+        const canvas = document.getElementById("c");
+        const ctx = canvas.getContext("2d");
+        const out = document.getElementById("out");
+        const SCALE = 42;
+        const LEFT = { x: 135, y: 145 };
+        const RIGHT = { x: 405, y: 145 };
+
+        const shapeA = [{ x: -0.2, y: -1.2 }, { x: 1.3, y: -0.6 }, { x: 1.1, y: 0.9 }, { x: -0.4, y: 1.3 }, { x: -1.3, y: 0.1 }];
+        const squareB = [{ x: -0.6, y: -0.6 }, { x: 0.6, y: -0.6 }, { x: 0.6, y: 0.6 }, { x: -0.6, y: 0.6 }];
+        const positionB = { x: 1.6, y: 0.9 };
+
+        const toScreen = (origin, v) => ({ x: origin.x + v.x * SCALE, y: origin.y - v.y * SCALE });
+        const shapeB = () => squareB.map(v => ({ x: v.x + positionB.x, y: v.y + positionB.y }));
+
+        function convexHull(points) {
+            const p = points.slice().sort((a, b) => a.x - b.x || a.y - b.y);
+            const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+            const lower = [], upper = [];
+            for (const q of p) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0) lower.pop(); lower.push(q); }
+            for (const q of p.slice().reverse()) { while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0) upper.pop(); upper.push(q); }
+            return lower.slice(0, -1).concat(upper.slice(0, -1));
+        }
+
+        function containsOrigin(hull) {
+            for (let i = 0; i < hull.length; i++) {
+                const a = hull[i], b = hull[(i + 1) % hull.length];
+                if ((b.x - a.x) * (0 - a.y) - (b.y - a.y) * (0 - a.x) < 0) return false;
+            }
+            return true;
+        }
+
+        function minkowskiDifference() {
+            const result = [];
+            for (const a of shapeA) for (const b of shapeB()) result.push({ x: a.x - b.x, y: a.y - b.y });
+            return result;
+        }
+
+        function polygon(origin, points, fill, stroke) {
+            ctx.beginPath();
+            points.forEach((v, i) => { const s = toScreen(origin, v); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); });
+            ctx.closePath();
+            ctx.fillStyle = fill; ctx.fill();
+            ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = "#e3eaf0"; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(270, 10); ctx.lineTo(270, 280); ctx.stroke();
+
+            const overlap = containsOrigin(convexHull(minkowskiDifference()));
+            polygon(LEFT, shapeA, overlap ? "rgba(194,71,63,0.25)" : "rgba(108,141,181,0.25)", "#6c8db5");
+            polygon(LEFT, shapeB(), "rgba(199,125,42,0.25)", "#c77d2a");
+            ctx.fillStyle = "#17384a"; ctx.font = "600 13px ui-monospace, Consolas, monospace";
+            const la = toScreen(LEFT, { x: 0, y: 0 }); ctx.fillText("A", la.x - 4, la.y + 4);
+            const lb = toScreen(LEFT, positionB); ctx.fillText("B", lb.x - 4, lb.y + 4);
+            ctx.font = "12px Inter, sans-serif"; ctx.fillStyle = "#5b7183";
+            ctx.fillText("thế giới", 10, 20);
+            ctx.fillText("A − B", 280, 20);
+
+            // right panel: axes, the points a - b, their hull, and the origin
+            ctx.strokeStyle = "#e3eaf0";
+            ctx.beginPath(); ctx.moveTo(275, RIGHT.y); ctx.lineTo(535, RIGHT.y); ctx.moveTo(RIGHT.x, 10); ctx.lineTo(RIGHT.x, 280); ctx.stroke();
+            const diff = minkowskiDifference();
+            polygon(RIGHT, convexHull(diff), overlap ? "rgba(194,71,63,0.2)" : "rgba(42,143,92,0.15)", overlap ? "#c2473f" : "#2a8f5c");
+            ctx.fillStyle = "#7d8e99";
+            for (const p of diff) { const s = toScreen(RIGHT, p); ctx.fillRect(s.x - 1.5, s.y - 1.5, 3, 3); }
+            const o = toScreen(RIGHT, { x: 0, y: 0 });
+            ctx.strokeStyle = "#17384a"; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.moveTo(o.x - 7, o.y - 7); ctx.lineTo(o.x + 7, o.y + 7); ctx.moveTo(o.x + 7, o.y - 7); ctx.lineTo(o.x - 7, o.y + 7); ctx.stroke();
+            ctx.fillStyle = "#17384a"; ctx.font = "12px ui-monospace, Consolas, monospace"; ctx.fillText("gốc (0, 0)", o.x + 9, o.y - 8);
+        }
+
+        function say() {
+            const overlap = containsOrigin(convexHull(minkowskiDifference()));
+            out.innerHTML = `${shapeA.length} đỉnh của A &times; ${squareB.length} đỉnh của B = ${shapeA.length * squareB.length} điểm a − b, A − B là hình bao lồi của chúng<br/>` +
+                (overlap
+                    ? `<span class="result" style="color:#c2473f">A và B chồng lên nhau</span> &mdash; gốc tọa độ nằm trong A − B (có a = b, tức a − b = 0)`
+                    : `<span class="result" style="color:#2a8f5c">A và B không chạm nhau</span> &mdash; gốc tọa độ nằm ngoài A − B`);
+        }
+
+        function render() { draw(); say(); }
+
+        let dragging = false, grabOffset = null;
+        function at(e) {
+            const r = canvas.getBoundingClientRect();
+            return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) };
+        }
+        canvas.addEventListener("pointerdown", e => {
+            const p = at(e), s = toScreen(LEFT, positionB);
+            if (Math.abs(p.x - s.x) > 0.6 * SCALE + 10 || Math.abs(p.y - s.y) > 0.6 * SCALE + 10) return;
+            dragging = true; grabOffset = { x: p.x - s.x, y: p.y - s.y }; canvas.classList.add("dragging");
+            try { canvas.setPointerCapture(e.pointerId); } catch (err) { }
+        });
+        canvas.addEventListener("pointermove", e => {
+            if (!dragging) return;
+            const p = at(e);
+            positionB.x = Math.max(-2.4, Math.min(2.4, (p.x - grabOffset.x - LEFT.x) / SCALE));
+            positionB.y = Math.max(-2.8, Math.min(2.8, (LEFT.y - (p.y - grabOffset.y)) / SCALE));
+            render();
+        });
+        const release = () => { dragging = false; canvas.classList.remove("dragging"); };
+        canvas.addEventListener("pointerup", release);
+        canvas.addEventListener("pointercancel", release);
+
+        render();
+
+        (function selfTest() {
+            const saved = { ...positionB };
+            positionB.x = 0; positionB.y = 0;
+            const a = containsOrigin(convexHull(minkowskiDifference()));
+            positionB.x = 2.4; positionB.y = 2.6;
+            const b = containsOrigin(convexHull(minkowskiDifference()));
+            Object.assign(positionB, saved);
+            if (!a || b) console.error("minkowski self-test failed", a, b);
+        })();
+    </script>
+</body>
+
+</html>

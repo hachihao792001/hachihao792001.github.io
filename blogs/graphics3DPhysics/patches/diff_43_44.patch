@@ -1,0 +1,89 @@
+--- "a/htmlPreviews\\htmlPreview43.html"
++++ "b/htmlPreviews\\htmlPreview44.html"
+@@ -163,7 +163,7 @@
+ 		<div id="crosshair"></div>
+ 	</div>
+ 	<h2 id="fps">FPS: 0</h2>
+-	<h3 id="physicsInfo">Max penetration: 0</h3>
++	<h3 id="physicsInfo">Physics: 0 ms per frame</h3>
+ 	<div>
+ 		<button id="helpButton"
+ 			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Help</button>
+@@ -3287,7 +3287,6 @@ void main(){
+ 				this.gravity = gravity;
+ 				this.fixedDeltaTime = 1 / 60;
+ 				this.timeAccumulator = 0;
+-				this.maxPenetration = 0;
+ 				this.allowedPenetration = 0.01;
+ 				this.baumgarte = 0.2;
+ 				this.iterations = 10;
+@@ -3346,12 +3345,7 @@ void main(){
+ 					}
+ 				}
+ 
+-				this.maxPenetration = 0;
+-				for (let manifold of manifolds) {
+-					for (let contact of manifold.contacts) {
+-						this.maxPenetration = Math.max(this.maxPenetration, contact.depth);
+-					}
+-				}
++
+ 
+ 				for (let rigidbody of rigidbodies) {
+ 					rigidbody.integrateVelocity(dt);
+@@ -3502,6 +3496,7 @@ void main(){
+ 
+ 		let cubeMesh = Primitives.cube();
+ 		let crystalMesh = Primitives.crystal();
++		let blockColors = [new Color(235, 200, 150), new Color(210, 170, 115)];
+ 		let physicsObjects = [];
+ 
+ 		function spawnPhysicsObjects() {
+@@ -3510,6 +3505,21 @@ void main(){
+ 			crystal.addComponent(new ConvexHullCollider(crystalMesh));
+ 			crystal.addComponent(new Rigidbody());
+ 			physicsObjects.push(crystal);
++
++			for (let layer = 0; layer < 18; layer++) {
++				for (let i = 0; i < 3; i++) {
++					let y = 0.5 + 0.3 + layer * 0.6;
++					let offset = i - 1;
++					let isAlongZ = layer % 2 == 0;
++					let position = isAlongZ ? new Vector3(offset, y, 0) : new Vector3(0, y, offset);
++					let scale = isAlongZ ? new Vector3(1, 0.6, 3) : new Vector3(3, 0.6, 1);
++					let block = scene.add(new GameObject("Block " + layer + "-" + i, position, Vector3.zero, scale));
++					block.addComponent(new MeshRenderer(cubeMesh, new Material(blockColors[(layer + i) % 2])));
++					block.addComponent(new BoxCollider());
++					block.addComponent(new Rigidbody());
++					physicsObjects.push(block);
++				}
++			}
+ 		}
+ 
+ 		function resetPhysicsObjects() {
+@@ -3542,6 +3552,7 @@ void main(){
+ 
+ 		let lastTime = performance.now();
+ 		let dt = 0;
++		let physicsTime = 0;
+ 
+ 		function fixedUpdate() {
+ 		}
+@@ -3576,13 +3587,16 @@ void main(){
+ 			frames++;
+ 			if (fpsTimeCounter >= 1) {
+ 				fpsInfo.textContent = `FPS: ${frames}`;
++				physicsInfo.textContent = `Physics: ${(physicsTime / frames).toFixed(1)} ms per frame`;
++				physicsTime = 0;
+ 				frames = 0;
+ 				fpsTimeCounter = 0;
+ 			}
+ 
+ 			updateGameObjectTransforms();
++			let physicsStartTime = performance.now();
+ 			physicsWorld.update(scene, dt, fixedUpdate);
+-			physicsInfo.textContent = `Max penetration: ${physicsWorld.maxPenetration.toFixed(3)}`;
++			physicsTime += performance.now() - physicsStartTime;
+ 			renderer.render(scene, camera);
+ 
+ 			requestAnimationFrame(update);

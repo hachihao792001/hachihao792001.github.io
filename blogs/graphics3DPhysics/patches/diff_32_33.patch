@@ -1,0 +1,98 @@
+--- "a/htmlPreviews\\htmlPreview32.html"
++++ "b/htmlPreviews\\htmlPreview33.html"
+@@ -3205,6 +3205,59 @@ void main(){
+ 			}
+ 		}
+ 
++		class ContactManifold {
++			static findContacts(colliderA, colliderB) {
++				let simplex = GJK.findSimplexContainingOrigin(colliderA, colliderB);
++				if (simplex == null) return [];
++
++				let penetration = EPA.findPenetration(simplex, colliderA, colliderB);
++				let facesA = colliderA.getFaces();
++				let facesB = colliderB.getFaces();
++				if (facesA != null && facesB != null) {
++					let contacts = ContactManifold.findFaceContacts(facesA, facesB, penetration.normal);
++					if (contacts.length > 0) return contacts;
++				}
++
++				let point = penetration.pointOnA;
++				if (colliderA instanceof SphereCollider) point = colliderA.support(penetration.normal);
++				if (colliderB instanceof SphereCollider) point = colliderB.support(Vector3.mul(penetration.normal, -1));
++				return [new Contact(point, penetration.normal, penetration.depth)];
++			}
++
++			static findMostAlignedFace(faces, direction) {
++				let best = faces[0];
++				for (let face of faces) {
++					if (Vector3.dot(face.normal, direction) > Vector3.dot(best.normal, direction)) best = face;
++				}
++				return best;
++			}
++
++			static findFaceContacts(facesA, facesB, normal) {
++				let faceA = ContactManifold.findMostAlignedFace(facesA, normal);
++				let faceB = ContactManifold.findMostAlignedFace(facesB, Vector3.mul(normal, -1));
++
++				let referenceFace = faceA;
++				let incidentFace = faceB;
++				let isReferenceOnA = true;
++				if (Vector3.dot(faceB.normal, Vector3.mul(normal, -1)) > Vector3.dot(faceA.normal, normal) + 0.001) {
++					referenceFace = faceB;
++					incidentFace = faceA;
++					isReferenceOnA = false;
++				}
++
++				let referencePlane = new Plane(referenceFace.normal.clone(), referenceFace.vertices[0]);
++				let contactNormal = isReferenceOnA ? referenceFace.normal : Vector3.mul(referenceFace.normal, -1);
++				let contacts = [];
++				for (let point of incidentFace.vertices) {
++					let depth = -referencePlane.distanceToPoint(point);
++					if (depth >= 0) {
++						contacts.push(new Contact(point, contactNormal, depth));
++					}
++				}
++				return contacts;
++			}
++		}
++
+ 		class PhysicsWorld {
+ 			constructor(gravity = new Vector3(0, -9.81, 0)) {
+ 				this.gravity = gravity;
+@@ -3235,11 +3288,12 @@ void main(){
+ 				for (let i = 0; i < colliders.length; i++) {
+ 					for (let j = i + 1; j < colliders.length; j++) {
+ 						if (colliders[i].rigidbody == null && colliders[j].rigidbody == null) continue;
+-						let contact = this.findContact(colliders[i], colliders[j]);
+-						if (contact == null) continue;
+-						this.maxPenetration = Math.max(this.maxPenetration, contact.depth);
+-						this.resolveContact(colliders[i], colliders[j], contact);
+-						this.correctPositions(colliders[i], colliders[j], contact);
++						let contacts = ContactManifold.findContacts(colliders[i], colliders[j]);
++						for (let contact of contacts) {
++							this.maxPenetration = Math.max(this.maxPenetration, contact.depth);
++							this.resolveContact(colliders[i], colliders[j], contact);
++							this.correctPositions(colliders[i], colliders[j], contact);
++						}
+ 					}
+ 				}
+ 
+@@ -3248,17 +3302,6 @@ void main(){
+ 				}
+ 			}
+ 
+-			findContact(colliderA, colliderB) {
+-				let simplex = GJK.findSimplexContainingOrigin(colliderA, colliderB);
+-				if (simplex == null) return null;
+-
+-				let penetration = EPA.findPenetration(simplex, colliderA, colliderB);
+-				let point = penetration.pointOnA;
+-				if (colliderA instanceof SphereCollider) point = colliderA.support(penetration.normal);
+-				if (colliderB instanceof SphereCollider) point = colliderB.support(Vector3.mul(penetration.normal, -1));
+-				return new Contact(point, penetration.normal, penetration.depth);
+-			}
+-
+ 			getInverseMass(rigidbody) {
+ 				return rigidbody != null ? rigidbody.inverseMass : 0;
+ 			}

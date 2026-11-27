@@ -1,0 +1,93 @@
+--- "a/htmlPreviews\\htmlPreview8.html"
++++ "b/htmlPreviews\\htmlPreview9.html"
+@@ -1546,6 +1546,32 @@
+ 				]);
+ 			}
+ 
++			static sphere(segments = 20, rings = 14) {
++				let triangles = [];
++				let pointOnSphere = (ring, segment) => {
++					let theta = (ring / rings) * Math.PI;
++					let phi = (segment / segments) * Math.PI * 2;
++					return new Vector3(0.5 * Math.sin(theta) * Math.cos(phi), 0.5 * Math.cos(theta), 0.5 * Math.sin(theta) * Math.sin(phi));
++				};
++				let uvOnSphere = (ring, segment) => new Vector2(segment / segments, 1 - ring / rings);
++
++				for (let ring = 0; ring < rings; ring++) {
++					for (let segment = 0; segment < segments; segment++) {
++						let a = pointOnSphere(ring, segment);
++						let b = pointOnSphere(ring, segment + 1);
++						let c = pointOnSphere(ring + 1, segment + 1);
++						let d = pointOnSphere(ring + 1, segment);
++						let uvA = uvOnSphere(ring, segment);
++						let uvB = uvOnSphere(ring, segment + 1);
++						let uvC = uvOnSphere(ring + 1, segment + 1);
++						let uvD = uvOnSphere(ring + 1, segment);
++						if (ring != 0) triangles.push(new Triangle([a, b, c], [uvA, uvB, uvC]));
++						if (ring != rings - 1) triangles.push(new Triangle([a, c, d], [uvA, uvC, uvD]));
++					}
++				}
++				return Mesh.fromTriangles(triangles);
++			}
++
+ 			static cube() {
+ 				return Mesh.fromTriangles([
+ 					// FRONT
+@@ -2829,15 +2855,16 @@ void main(){
+ 		let scene = new Scene();
+ 
+ 		let cubeMesh = Primitives.cube();
++		let sphereMesh = Primitives.sphere();
+ 		let physicsObjects = [];
+-		let box;
+-		let boxRigidbody;
++		let ball;
++		let ballRigidbody;
+ 
+ 		function spawnPhysicsObjects() {
+-			box = scene.add(new GameObject("Box", new Vector3(0, 5, 0), Vector3.zero, Vector3.one));
+-			box.addComponent(new MeshRenderer(cubeMesh, new Material(new Color(255, 255, 255), woodTexture)));
+-			boxRigidbody = box.addComponent(new Rigidbody());
+-			physicsObjects.push(box);
++			ball = scene.add(new GameObject("Ball", new Vector3(0, 5, 0), Vector3.zero, Vector3.one));
++			ball.addComponent(new MeshRenderer(sphereMesh, new Material(new Color(255, 90, 90))));
++			ballRigidbody = ball.addComponent(new Rigidbody());
++			physicsObjects.push(ball);
+ 		}
+ 
+ 		function resetPhysicsObjects() {
+@@ -2845,7 +2872,7 @@ void main(){
+ 			physicsObjects = [];
+ 			spawnPhysicsObjects();
+ 			bouncePeaks = [];
+-			wasBoxGoingUp = false;
++			wasBallGoingUp = false;
+ 			physicsInfo.textContent = "Bounce peaks:";
+ 		}
+ 
+@@ -2871,7 +2898,7 @@ void main(){
+ 		let physicsWorld = new PhysicsWorld();
+ 
+ 		let bouncePeaks = [];
+-		let wasBoxGoingUp = false;
++		let wasBallGoingUp = false;
+ 
+ 		let lastTime = performance.now();
+ 		let dt = 0;
+@@ -2887,12 +2914,12 @@ void main(){
+ 		}
+ 
+ 		function updateBouncePeaks() {
+-			let isBoxGoingUp = boxRigidbody.velocity.y > 0;
+-			if (wasBoxGoingUp && !isBoxGoingUp) {
+-				bouncePeaks.push(box.transform.position.y.toFixed(2));
++			let isBallGoingUp = ballRigidbody.velocity.y > 0;
++			if (wasBallGoingUp && !isBallGoingUp) {
++				bouncePeaks.push(ball.transform.position.y.toFixed(2));
+ 				physicsInfo.textContent = `Bounce peaks: ${bouncePeaks.slice(-6).join(", ")}`;
+ 			}
+-			wasBoxGoingUp = isBoxGoingUp;
++			wasBallGoingUp = isBallGoingUp;
+ 		}
+ 
+ 		function update(time = performance.now()) {

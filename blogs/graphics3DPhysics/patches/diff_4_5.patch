@@ -1,0 +1,74 @@
+--- "a/htmlPreviews\\htmlPreview4.html"
++++ "b/htmlPreviews\\htmlPreview5.html"
+@@ -163,6 +163,7 @@
+ 		<div id="crosshair"></div>
+ 	</div>
+ 	<h2 id="fps">FPS: 0</h2>
++	<h3 id="physicsInfo">Bounce peaks:</h3>
+ 	<div>
+ 		<button id="helpButton"
+ 			style="font-family: inherit;font-size: 15px;height: 30px;padding: 0 16px;margin-top: 0px">Help</button>
+@@ -2736,6 +2737,11 @@ void main(){
+ 				for (let rigidbody of rigidbodies) {
+ 					rigidbody.integrateVelocity(dt);
+ 					rigidbody.integrateForces(dt, this.gravity);
++
++					let bottomY = rigidbody.transform.position.y - rigidbody.transform.lossyScale.y / 2;
++					if (bottomY < 0.5 && rigidbody.velocity.y < 0) {
++						rigidbody.velocity = new Vector3(rigidbody.velocity.x, -rigidbody.velocity.y, rigidbody.velocity.z);
++					}
+ 				}
+ 			}
+ 		}
+@@ -2763,6 +2769,7 @@ void main(){
+ 		canvasResHeightInput.value = canvasRenderHeight.toString();
+ 
+ 		const fpsInfo = (document.getElementById("fps"));
++		const physicsInfo = (document.getElementById("physicsInfo"));
+ 		let frames = 0,
+ 			fpsTimeCounter = 0;
+ 
+@@ -2817,6 +2824,9 @@ void main(){
+ 			scene.roots = scene.roots.filter((gameObject) => !physicsObjects.includes(gameObject));
+ 			physicsObjects = [];
+ 			spawnPhysicsObjects();
++			bouncePeaks = [];
++			wasBoxGoingUp = false;
++			physicsInfo.textContent = "Bounce peaks:";
+ 		}
+ 
+ 		let sun = scene.add(new GameObject("Sun"));
+@@ -2840,6 +2850,9 @@ void main(){
+ 
+ 		let physicsWorld = new PhysicsWorld();
+ 
++		let bouncePeaks = [];
++		let wasBoxGoingUp = false;
++
+ 		let lastTime = performance.now();
+ 		let dt = 0;
+ 
+@@ -2853,6 +2866,15 @@ void main(){
+ 			sun.transform.rotation = Quaternion.multiply(q, sun.transform.rotation);
+ 		}
+ 
++		function updateBouncePeaks() {
++			let isBoxGoingUp = boxRigidbody.velocity.y > 0;
++			if (wasBoxGoingUp && !isBoxGoingUp) {
++				bouncePeaks.push(box.transform.position.y.toFixed(2));
++				physicsInfo.textContent = `Bounce peaks: ${bouncePeaks.slice(-6).join(", ")}`;
++			}
++			wasBoxGoingUp = isBoxGoingUp;
++		}
++
+ 		function update(time = performance.now()) {
+ 			dt = (time - lastTime) / 1000;
+ 			lastTime = time;
+@@ -2867,6 +2889,7 @@ void main(){
+ 
+ 			updateGameObjectTransforms();
+ 			physicsWorld.step(scene, dt);
++			updateBouncePeaks();
+ 			renderer.render(scene, camera);
+ 
+ 			requestAnimationFrame(update);

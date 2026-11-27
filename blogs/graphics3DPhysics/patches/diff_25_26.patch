@@ -1,0 +1,122 @@
+--- "a/htmlPreviews\\htmlPreview25.html"
++++ "b/htmlPreviews\\htmlPreview26.html"
+@@ -2939,6 +2939,99 @@ void main(){
+ 			}
+ 		}
+ 
++		class MinkowskiPoint {
++			constructor(pointOnA, pointOnB) {
++				this.pointOnA = pointOnA;
++				this.pointOnB = pointOnB;
++				this.point = Vector3.sub(pointOnA, pointOnB);
++			}
++
++			static support(colliderA, colliderB, direction) {
++				return new MinkowskiPoint(colliderA.support(direction), colliderB.support(Vector3.mul(direction, -1)));
++			}
++		}
++
++		class GJK {
++			static isOverlapping(colliderA, colliderB) {
++				return GJK.findSimplexContainingOrigin(colliderA, colliderB) != null;
++			}
++
++			static findSimplexContainingOrigin(colliderA, colliderB) {
++				let direction = Vector3.sub(colliderB.transform.position, colliderA.transform.position);
++				if (direction.magnitude() < 1e-9) direction = new Vector3(1, 0, 0);
++
++				let simplex = [MinkowskiPoint.support(colliderA, colliderB, direction)];
++				direction = Vector3.mul(simplex[0].point, -1);
++
++				for (let iteration = 0; iteration < 64; iteration++) {
++					if (direction.magnitude() < 1e-12) return null;
++					let newPoint = MinkowskiPoint.support(colliderA, colliderB, direction);
++					if (Vector3.dot(newPoint.point, direction) <= 0) return null;
++
++					simplex.unshift(newPoint);
++					let containsOrigin;
++					[simplex, direction, containsOrigin] = GJK.updateSimplex(simplex);
++					if (containsOrigin) return simplex;
++				}
++				return null;
++			}
++
++			static updateSimplex(simplex) {
++				if (simplex.length == 2) return GJK.updateLine(simplex);
++				if (simplex.length == 3) return GJK.updateTriangle(simplex);
++				return GJK.updateTetrahedron(simplex);
++			}
++
++			static updateLine(simplex) {
++				let [a, b] = simplex;
++				let ab = Vector3.sub(b.point, a.point);
++				let ao = Vector3.mul(a.point, -1);
++				if (Vector3.dot(ab, ao) > 0) {
++					return [[a, b], Vector3.cross(Vector3.cross(ab, ao), ab), false];
++				}
++				return [[a], ao, false];
++			}
++
++			static updateTriangle(simplex) {
++				let [a, b, c] = simplex;
++				let ab = Vector3.sub(b.point, a.point);
++				let ac = Vector3.sub(c.point, a.point);
++				let ao = Vector3.mul(a.point, -1);
++				let abc = Vector3.cross(ab, ac);
++
++				if (Vector3.dot(Vector3.cross(abc, ac), ao) > 0) {
++					if (Vector3.dot(ac, ao) > 0) {
++						return [[a, c], Vector3.cross(Vector3.cross(ac, ao), ac), false];
++					}
++					return GJK.updateLine([a, b]);
++				}
++				if (Vector3.dot(Vector3.cross(ab, abc), ao) > 0) {
++					return GJK.updateLine([a, b]);
++				}
++				if (Vector3.dot(abc, ao) > 0) {
++					return [[a, b, c], abc, false];
++				}
++				return [[a, c, b], Vector3.mul(abc, -1), false];
++			}
++
++			static updateTetrahedron(simplex) {
++				let [a, b, c, d] = simplex;
++				let ab = Vector3.sub(b.point, a.point);
++				let ac = Vector3.sub(c.point, a.point);
++				let ad = Vector3.sub(d.point, a.point);
++				let ao = Vector3.mul(a.point, -1);
++
++				let abc = Vector3.cross(ab, ac);
++				let acd = Vector3.cross(ac, ad);
++				let adb = Vector3.cross(ad, ab);
++
++				if (Vector3.dot(abc, ao) >= 0) return GJK.updateTriangle([a, b, c]);
++				if (Vector3.dot(acd, ao) >= 0) return GJK.updateTriangle([a, c, d]);
++				if (Vector3.dot(adb, ao) >= 0) return GJK.updateTriangle([a, d, b]);
++				return [simplex, null, true];
++			}
++		}
++
+ 		class Contact {
+ 			constructor(point, normal, depth) {
+ 				this.point = point;
+@@ -3351,6 +3444,11 @@ void main(){
+ 			}
+ 		}
+ 
++		function updateOverlapColor() {
++			let isOverlapping = GJK.isOverlapping(crystalCollider, testBoxCollider);
++			crystalMaterial.color = isOverlapping ? new Color(255, 40, 40) : new Color(170, 90, 255);
++		}
++
+ 		function updateGameObjectTransforms() {
+ 			camera.updateMovement(dt, keyStates);
+ 			if (lookInput.x != 0 || lookInput.y != 0) {
+@@ -3383,6 +3481,7 @@ void main(){
+ 			updateSupportMarkers();
+ 			moveCrystal(time);
+ 			updateMinkowskiDots();
++			updateOverlapColor();
+ 			physicsInfo.textContent = `Max penetration: ${physicsWorld.maxPenetration.toFixed(3)}`;
+ 			renderer.render(scene, camera);
+ 

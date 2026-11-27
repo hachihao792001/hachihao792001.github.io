@@ -1,0 +1,66 @@
+--- "a/htmlPreviews\\htmlPreview39.html"
++++ "b/htmlPreviews\\htmlPreview40.html"
+@@ -3302,7 +3302,7 @@ void main(){
+ 				this.timeAccumulator = 0;
+ 				this.maxPenetration = 0;
+ 				this.allowedPenetration = 0.01;
+-				this.correctionPercent = 0.2;
++				this.baumgarte = 0.2;
+ 				this.iterations = 10;
+ 			}
+ 
+@@ -3332,7 +3332,7 @@ void main(){
+ 				}
+ 
+ 				for (let manifold of manifolds) {
+-					this.prepareManifold(manifold);
++					this.prepareManifold(manifold, dt);
+ 				}
+ 				for (let iteration = 0; iteration < this.iterations; iteration++) {
+ 					for (let manifold of manifolds) {
+@@ -3344,7 +3344,6 @@ void main(){
+ 				for (let manifold of manifolds) {
+ 					for (let contact of manifold.contacts) {
+ 						this.maxPenetration = Math.max(this.maxPenetration, contact.depth);
+-						this.correctPositions(manifold.colliderA, manifold.colliderB, contact);
+ 					}
+ 				}
+ 
+@@ -3383,7 +3382,7 @@ void main(){
+ 				if (rigidbodyB != null) rigidbodyB.applyImpulseAtPosition(impulse, point);
+ 			}
+ 
+-			prepareManifold(manifold) {
++			prepareManifold(manifold, dt) {
+ 				let rigidbodyA = manifold.colliderA.rigidbody;
+ 				let rigidbodyB = manifold.colliderB.rigidbody;
+ 				let restitution = Math.max(manifold.colliderA.restitution, manifold.colliderB.restitution);
+@@ -3398,7 +3397,8 @@ void main(){
+ 					contact.tangentMass1 = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.tangent1);
+ 					contact.tangentMass2 = this.calculateEffectiveMass(rigidbodyA, rigidbodyB, contact.point, contact.tangent2);
+ 					let normalVelocity = Vector3.dot(this.getRelativeVelocity(rigidbodyA, rigidbodyB, contact.point), contact.normal);
+-					contact.bias = normalVelocity < -1 ? -restitution * normalVelocity : 0;
++					contact.bias = (this.baumgarte / dt) * Math.max(0, contact.depth - this.allowedPenetration);
++					if (normalVelocity < -1) contact.bias += -restitution * normalVelocity;
+ 				}
+ 			}
+ 
+@@ -3425,18 +3425,6 @@ void main(){
+ 					this.applyImpulse(rigidbodyA, rigidbodyB, Vector3.mul(contact.normal, contact.normalImpulse - oldNormalImpulse), contact.point);
+ 				}
+ 			}
+-
+-			correctPositions(colliderA, colliderB, contact) {
+-				let rigidbodyA = colliderA.rigidbody;
+-				let rigidbodyB = colliderB.rigidbody;
+-				let inverseMassA = this.getInverseMass(rigidbodyA);
+-				let inverseMassB = this.getInverseMass(rigidbodyB);
+-
+-				let correctionDepth = Math.max(contact.depth - this.allowedPenetration, 0) * this.correctionPercent;
+-				let correction = Vector3.mul(contact.normal, correctionDepth / (inverseMassA + inverseMassB));
+-				if (rigidbodyA != null) rigidbodyA.transform.position = Vector3.sub(rigidbodyA.transform.position, Vector3.mul(correction, inverseMassA));
+-				if (rigidbodyB != null) rigidbodyB.transform.position = Vector3.add(rigidbodyB.transform.position, Vector3.mul(correction, inverseMassB));
+-			}
+ 		}
+ 
+ 		// ===== index.js =====

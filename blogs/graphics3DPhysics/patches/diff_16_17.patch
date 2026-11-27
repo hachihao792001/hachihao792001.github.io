@@ -1,0 +1,39 @@
+--- "a/htmlPreviews\\htmlPreview16.html"
++++ "b/htmlPreviews\\htmlPreview17.html"
+@@ -2767,18 +2767,27 @@ void main(){
+ 				this.velocity = new Vector3(0, 0, 0);
+ 				this.angularVelocity = new Vector3(0, 0, 0);
+ 				this.force = new Vector3(0, 0, 0);
++				this.torque = new Vector3(0, 0, 0);
+ 			}
+ 
+ 			addForce(force) {
+ 				this.force = Vector3.add(this.force, force);
+ 			}
+ 
++			addForceAtPosition(force, position) {
++				this.addForce(force);
++				let r = Vector3.sub(position, this.transform.position);
++				this.torque = Vector3.add(this.torque, Vector3.cross(r, force));
++			}
++
+ 			integrateForces(dt, gravity) {
+ 				if (this.useGravity) {
+ 					this.velocity = Vector3.add(this.velocity, Vector3.mul(gravity, dt));
+ 				}
+ 				this.velocity = Vector3.add(this.velocity, Vector3.mul(this.force, this.inverseMass * dt));
++				this.angularVelocity = Vector3.add(this.angularVelocity, Vector3.mul(this.torque, dt));
+ 				this.force = new Vector3(0, 0, 0);
++				this.torque = new Vector3(0, 0, 0);
+ 			}
+ 
+ 			integrateVelocity(dt) {
+@@ -3084,7 +3093,7 @@ void main(){
+ 				let rigidbody = pushableObject.getComponent(Rigidbody);
+ 				let force = Vector3.mul(pushableObject.transform.transformDirection(Vector3.right), pushStrength);
+ 				if (keyStates["pushCenter"]) rigidbody.addForce(force);
+-				if (keyStates["pushOffCenter"]) rigidbody.addForce(force);
++				if (keyStates["pushOffCenter"]) rigidbody.addForceAtPosition(force, pushableObject.transform.transformPoint(offCenterPushPoint));
+ 			}
+ 		}
+ 
